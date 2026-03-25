@@ -12,6 +12,7 @@ import {
 } from "@/lib/validation/auth.validation"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
+import { ChabaSpinner } from "@/components/ui/ChabaSpinner"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function inp(err?: boolean) {
@@ -284,7 +285,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
           style={{ background: "linear-gradient(135deg,#8e78fb 0%,#6c52f0 100%)", boxShadow: "0 4px 14px rgba(142,120,251,.4)" }}>
           {loading ? (
             <>
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              <ChabaSpinner size={18} />
               {t("creatingAccount")}
             </>
           ) : t("createAccount")}

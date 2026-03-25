@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
+import { ChabaSpinner } from "@/components/ui/ChabaSpinner"
 
 function isSafeRedirect(p: string | null): p is string {
   return !!p && p.startsWith("/") && !p.startsWith("//")
@@ -205,7 +206,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
         >
           {loading ? (
             <>
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              <ChabaSpinner size={18} />
               {t("signingIn")}
             </>
           ) : t("signIn")}

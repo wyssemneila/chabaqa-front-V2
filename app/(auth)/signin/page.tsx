@@ -7,6 +7,8 @@ import SignInForm from "../components/signin-form"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { localizeHref } from "@/lib/i18n/client"
 import { useTranslations } from "next-intl"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { LangToggle } from "@/components/lang-toggle"
 
 export default function SignInPage() {
   const { user, isAuthenticated } = useAuthContext()
@@ -53,6 +55,12 @@ export default function SignInPage() {
         .fade-up-2 { animation: fadeUp .5s ease-out .15s both; }
         .fade-up-3 { animation: fadeUp .5s ease-out .25s both; }
       `}</style>
+
+      {/* ── Top-right toggles ── */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <LangToggle />
+        <ThemeToggle />
+      </div>
 
       {/* ── Page background ── */}
       <div

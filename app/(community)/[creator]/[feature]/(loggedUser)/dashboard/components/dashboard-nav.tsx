@@ -21,6 +21,8 @@ import {
   Home,
   AlertTriangle,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { LangToggle } from "@/components/lang-toggle";
 
 interface NavItem {
   label: string;
@@ -233,6 +235,12 @@ export function DashboardNav({ variant }: DashboardNavProps) {
             ))}
           </div>
         ))}
+      </div>
+
+      {/* Bottom toggles */}
+      <div className="px-3 py-3 border-t border-[#e5e7eb] flex items-center gap-2">
+        <LangToggle size="sm" />
+        <ThemeToggle size="sm" />
       </div>
     </nav>
   );

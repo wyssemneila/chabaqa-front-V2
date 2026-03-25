@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { LogOut, User as UserIcon, Plus, LayoutDashboard } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { LangToggle } from "@/components/lang-toggle"
 import { usePathname } from "next/navigation"
 import Image from "next/image"
 import { useAuth } from "@/hooks/use-auth"
@@ -130,6 +132,8 @@ export function Header() {
 
         {/* Right CTA */}
         <div className="flex items-center gap-2">
+          <LangToggle />
+          <ThemeToggle />
           {loading ? null : !isAuthenticated ? (
             <>
               <Link
@@ -242,6 +246,9 @@ export function Header() {
           </Link>
         ))}
         <div className="flex gap-2 mt-2 pt-2 border-t border-[var(--bd)]">
+          <LangToggle size="sm" />
+          <ThemeToggle size="sm" />
+          <div className="flex-1 flex gap-2">
           {loading ? null : !isAuthenticated ? (
             <>
               <Link
@@ -285,6 +292,7 @@ export function Header() {
               </button>
             </>
           )}
+          </div>
         </div>
       </div>
     </div>

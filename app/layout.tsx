@@ -11,6 +11,7 @@ import { CookieConsentProvider } from "@/components/cookie-consent-provider"
 import { ArabicAutoTranslate } from "@/components/arabic-auto-translate"
 import { PwaServiceWorker } from "@/components/pwa-service-worker"
 import LoadingScreen from "@/components/ui/LoadingScreen"
+import { ThemeProvider } from "@/components/theme-provider"
 import { DEFAULT_LOCALE, getLocaleDirection, isAppLocale, LOCALE_COOKIE } from "@/lib/i18n/config"
 import { getMessagesForLocale } from "@/lib/i18n/messages"
 import {
@@ -124,6 +125,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <ReactQueryProvider>
             <LoadingScreen />
             {children}
@@ -138,6 +140,7 @@ export default async function RootLayout({
               {JSON.stringify(generateWebSiteSchema())}
             </Script>
           </ReactQueryProvider>
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

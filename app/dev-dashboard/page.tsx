@@ -12,6 +12,8 @@ import {
   DashboardSection,
   StatCard,
 } from "@/app/(community)/[creator]/[feature]/(loggedUser)/dashboard/components";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { LangToggle } from "@/components/lang-toggle";
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const B = {
@@ -542,6 +544,8 @@ export default function DevDashboardPreview() {
           </div>
 
           <div className="flex items-center gap-2">
+            <LangToggle size="sm" />
+            <ThemeToggle size="sm" />
             {/* Notification bell */}
             <button className="relative w-9 h-9 flex items-center justify-center rounded-xl border transition-all duration-200 shrink-0"
               style={{ borderColor: B.border, color: B.text2 }}
