@@ -12,6 +12,7 @@ export {
   DashboardSection,
   StatCard,
   ActionCard,
+  ActionCard as DashboardCard,
   DashboardLoading,
   DashboardEmpty,
   DashboardError,
