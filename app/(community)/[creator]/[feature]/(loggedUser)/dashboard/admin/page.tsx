@@ -94,6 +94,8 @@ export default function AdminDashboardPage() {
             description="All time"
             icon={Users}
             isLoading={isStatsLoading}
+            iconBg="#ede9ff"
+            iconColor="#8e78fb"
           />
           <StatCard
             title="Active Today"
@@ -101,6 +103,8 @@ export default function AdminDashboardPage() {
             description="Last 24 hours"
             icon={Activity}
             isLoading={isStatsLoading}
+            iconBg="#eaf5ee"
+            iconColor="#1a7a4a"
           />
           <StatCard
             title="Posts This Week"
@@ -108,6 +112,8 @@ export default function AdminDashboardPage() {
             description="Community activity"
             icon={MessageSquare}
             isLoading={isStatsLoading}
+            iconBg="#ede9ff"
+            iconColor="#8e78fb"
           />
           <StatCard
             title="Growth Rate"
@@ -115,7 +121,9 @@ export default function AdminDashboardPage() {
             description="vs last month"
             icon={TrendingUp}
             isLoading={isStatsLoading}
-            trend={growthRate !== 0 ? { value: Math.abs(growthRate), isPositive: growthRate > 0 } : undefined}
+            iconBg="#fef6e4"
+            iconColor="#8a5a00"
+            trend={growthRate !== 0 ? { value: Math.abs(growthRate) } : undefined}
           />
         </div>
       </DashboardSection>

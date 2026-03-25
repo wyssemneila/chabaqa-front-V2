@@ -2,438 +2,302 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Loader2, AlertCircle, Eye, EyeOff } from "lucide-react"
 import { signupAction } from "../signup/actions"
-import { signUpSchema, validatePasswordStrength, getPasswordStrengthLabel, getPasswordStrengthColor } from "@/lib/validation/auth.validation"
+import {
+  signUpSchema,
+  validatePasswordStrength,
+  getPasswordStrengthLabel,
+} from "@/lib/validation/auth.validation"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
 
-interface SignUpFormProps {
-  onSuccess?: () => void
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function inp(err?: boolean) {
+  return [
+    "w-full h-12 px-4 rounded-xl border text-[14px] outline-none",
+    "placeholder-[#9ca3af] text-[#111827] bg-white",
+    "transition-all duration-200",
+    "disabled:opacity-50 disabled:cursor-not-allowed",
+    err
+      ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200"
+      : "border-[#e5e7eb] focus:border-[#8e78fb] focus:ring-2 focus:ring-[#8e78fb]/15",
+  ].join(" ")
 }
 
-export default function SignUpForm({ onSuccess }: SignUpFormProps = {}) {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [numtel, setNumtel] = useState("")
-  const [dateNaissance, setDateNaissance] = useState("")
-  const [agreeToTerms, setAgreeToTerms] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [passwordStrength, setPasswordStrength] = useState({ score: 0, feedback: [] as string[] })
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const t = useTranslations("auth.signupForm")
+function Err({ msg }: { msg?: string }) {
+  if (!msg) return null
+  return (
+    <p className="mt-1.5 text-[12px] flex items-center gap-1" style={{ color: "#dc2626" }}>
+      <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      {msg}
+    </p>
+  )
+}
 
-  // Pre-fill email from invite link
+function EyeIcon({ open }: { open: boolean }) {
+  return open ? (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+    </svg>
+  ) : (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  )
+}
+
+const STRENGTH_COLORS = ["#e5e7eb","#f87171","#fb923c","#fbbf24","#34d399","#10b981","#059669"]
+
+// ── Component ─────────────────────────────────────────────────────────────────
+export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {}) {
+  const [name, setName]                           = useState("")
+  const [email, setEmail]                         = useState("")
+  const [password, setPassword]                   = useState("")
+  const [confirmPassword, setConfirmPassword]     = useState("")
+  const [numtel, setNumtel]                       = useState("")
+  const [dateNaissance, setDateNaissance]         = useState("")
+  const [dobDay, setDobDay]                       = useState("")
+  const [dobMonth, setDobMonth]                   = useState("")
+  const [dobYear, setDobYear]                     = useState("")
+  const [agreeToTerms, setAgreeToTerms]           = useState(false)
+  const [showPw, setShowPw]                       = useState(false)
+  const [showCpw, setShowCpw]                     = useState(false)
+  const [loading, setLoading]                     = useState(false)
+  const [error, setError]                         = useState("")
+  const [fe, setFe]                               = useState<Record<string, string>>({})
+  const [strength, setStrength]                   = useState({ score: 0, feedback: [] as string[] })
+
+  const router       = useRouter()
+  const pathname     = usePathname()
+  const searchParams = useSearchParams()
+  const t            = useTranslations("auth.signupForm")
+
   useEffect(() => {
-    const inviteEmail = searchParams.get("email")
-    if (inviteEmail && !email) {
-      setEmail(inviteEmail)
-    }
+    const inv = searchParams.get("email")
+    if (inv && !email) setEmail(inv)
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (password) {
-      setPasswordStrength(validatePasswordStrength(password))
-    } else {
-      setPasswordStrength({ score: 0, feedback: [] })
-    }
+    setStrength(password ? validatePasswordStrength(password) : { score: 0, feedback: [] })
   }, [password])
 
-  const validateForm = (): boolean => {
-    setFieldErrors({})
-    try {
-      signUpSchema.parse({
-        name,
-        email,
-        password,
-        confirmPassword,
-        numtel,
-        dateNaissance,
-        agreeToTerms,
-      })
-      return true
-    } catch (err: any) {
-      const errors: Record<string, string> = {}
-      if (err.errors) {
-        err.errors.forEach((error: any) => {
-          const path = error.path[0]
-          errors[path] = error.message
-        })
-      }
-      setFieldErrors(errors)
-      return false
+  const validate = () => {
+    setFe({})
+    try { signUpSchema.parse({ name, email, password, confirmPassword, numtel, dateNaissance, agreeToTerms }); return true }
+    catch (e: any) {
+      const errs: Record<string, string> = {}
+      e.errors?.forEach((x: any) => { errs[x.path[0]] = x.message })
+      setFe(errs); return false
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-
-    if (!validateForm()) {
-      return
-    }
-
-    setIsLoading(true)
-
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); setError("")
+    if (!validate()) return
+    setLoading(true)
     try {
-      const result = await signupAction({ 
-        name, 
-        email, 
-        password, 
-        numtel, 
-        date_naissance: dateNaissance 
-      })
-
-      if (result.success) {
-        if (onSuccess) {
-          onSuccess()
-        } else {
-          const nextEmail = encodeURIComponent(result.email || email)
-          const inviteToken = searchParams.get("inviteToken")
-          const inviteParam = inviteToken ? `&inviteToken=${encodeURIComponent(inviteToken)}` : ""
-          router.push(`${localizeHref(pathname, "/verify-email")}?email=${nextEmail}${inviteParam}`)
-        }
+      const res = await signupAction({ name, email, password, numtel, date_naissance: dateNaissance })
+      if (res.success) {
+        if (onSuccess) { onSuccess(); return }
+        const enc   = encodeURIComponent(res.email || email)
+        const tok   = searchParams.get("inviteToken")
+        const extra = tok ? `&inviteToken=${encodeURIComponent(tok)}` : ""
+        router.push(`${localizeHref(pathname, "/verify-email")}?email=${enc}${extra}`)
       } else {
-        setError(result.error || t("unknownError"))
+        setError(res.error || t("unknownError"))
       }
-    } catch (error) {
-      setError(t("connectionError"))
-    } finally {
-      setIsLoading(false)
-    }
+    } catch { setError(t("connectionError")) }
+    finally { setLoading(false) }
   }
+
+  const pct   = Math.min(100, (strength.score / 6) * 100)
+  const color = STRENGTH_COLORS[strength.score] ?? STRENGTH_COLORS[0]
+
   return (
-    <div className="backdrop-blur-xl bg-white/25 border border-white/40 p-8 rounded-3xl shadow-2xl animate-fade-in-delay-400">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Error Message */}
-        {error && (
-          <div className="p-4 bg-red-100/80 backdrop-blur-sm border border-red-200 rounded-2xl">
-            <p className="text-red-700 text-sm">{error}</p>
+    <div
+      className="rounded-2xl border p-8 space-y-5"
+      style={{ background: "#fff", borderColor: "#e5e7eb", boxShadow: "0 4px 24px rgba(142,120,251,.1), 0 1px 4px rgba(0,0,0,.05)" }}
+    >
+      {/* Error */}
+      {error && (
+        <div className="px-4 py-3 rounded-xl text-[13px] flex gap-2" style={{ background: "#fee2e2", border: "1px solid #fca5a5", color: "#b91c1c" }}>
+          <svg className="h-4 w-4 shrink-0 mt-px" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={onSubmit} className="space-y-5">
+        {/* Full name */}
+        <div className="space-y-1.5">
+          <label htmlFor="su-name" className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("fullName")}</label>
+          <input id="su-name" type="text" value={name} autoComplete="name" disabled={loading} required
+            onChange={e => { setName(e.target.value); if (fe.name) setFe({ ...fe, name: "" }) }}
+            placeholder={t("fullNamePlaceholder")} className={inp(!!fe.name)} />
+          <Err msg={fe.name} />
+        </div>
+
+        {/* Email */}
+        <div className="space-y-1.5">
+          <label htmlFor="su-email" className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("email")}</label>
+          <input id="su-email" type="email" value={email} autoComplete="email" disabled={loading} required
+            onChange={e => { setEmail(e.target.value); if (fe.email) setFe({ ...fe, email: "" }) }}
+            placeholder={t("emailPlaceholder")} className={inp(!!fe.email)} />
+          <Err msg={fe.email} />
+        </div>
+
+        {/* Phone */}
+        <div className="space-y-1.5">
+          <label htmlFor="su-phone" className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("phoneOptional")}</label>
+          <input id="su-phone" type="tel" value={numtel} autoComplete="tel" disabled={loading}
+            onChange={e => { setNumtel(e.target.value); if (fe.numtel) setFe({ ...fe, numtel: "" }) }}
+            placeholder={t("phonePlaceholder")} className={inp(!!fe.numtel)} />
+          <Err msg={fe.numtel} />
+        </div>
+
+        {/* Date of birth — 3-select picker */}
+        <div className="space-y-1.5">
+          <label className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("birthDateOptional")}</label>
+          <div className="grid grid-cols-3 gap-2">
+            {(["day", "month", "year"] as const).map(part => {
+              const selCls = [
+                "w-full h-12 px-3 rounded-xl border text-[14px] outline-none appearance-none cursor-pointer",
+                "bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
+                fe.dateNaissance
+                  ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200"
+                  : "border-[#e5e7eb] focus:border-[#8e78fb] focus:ring-2 focus:ring-[#8e78fb]/15",
+              ].join(" ")
+
+              const update = (d: string, m: string, y: string) => {
+                setDateNaissance(d && m && y ? `${y}-${m}-${d}` : "")
+                if (fe.dateNaissance) setFe(prev => ({ ...prev, dateNaissance: "" }))
+              }
+
+              if (part === "day") return (
+                <select key="day" value={dobDay} disabled={loading} onChange={e => { setDobDay(e.target.value); update(e.target.value, dobMonth, dobYear) }} className={selCls} style={{ color: dobDay ? "#111827" : "#9ca3af" }}>
+                  <option value="" disabled>{t("dobDay")}</option>
+                  {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0")).map(d => <option key={d} value={d} style={{ color: "#111827" }}>{parseInt(d)}</option>)}
+                </select>
+              )
+              if (part === "month") return (
+                <select key="month" value={dobMonth} disabled={loading} onChange={e => { setDobMonth(e.target.value); update(dobDay, e.target.value, dobYear) }} className={selCls} style={{ color: dobMonth ? "#111827" : "#9ca3af" }}>
+                  <option value="" disabled>{t("dobMonth")}</option>
+                  {[["01","monthJan"],["02","monthFeb"],["03","monthMar"],["04","monthApr"],["05","monthMay"],["06","monthJun"],["07","monthJul"],["08","monthAug"],["09","monthSep"],["10","monthOct"],["11","monthNov"],["12","monthDec"]].map(([v, k]) => <option key={v} value={v} style={{ color: "#111827" }}>{t(k as any)}</option>)}
+                </select>
+              )
+              return (
+                <select key="year" value={dobYear} disabled={loading} onChange={e => { setDobYear(e.target.value); update(dobDay, dobMonth, e.target.value) }} className={selCls} style={{ color: dobYear ? "#111827" : "#9ca3af" }}>
+                  <option value="" disabled>{t("dobYear")}</option>
+                  {Array.from({ length: 100 }, (_, i) => String(new Date().getFullYear() - 13 - i)).map(y => <option key={y} value={y} style={{ color: "#111827" }}>{y}</option>)}
+                </select>
+              )
+            })}
           </div>
-        )}
-
-        {/* Name Field */}
-        <div className="space-y-2 animate-fade-in-delay-600">
-          <Label htmlFor="name" className="text-sm font-medium text-gray-800 block">
-            {t("fullName")}
-          </Label>
-          <Input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value)
-              if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: '' })
-            }}
-            placeholder={t("fullNamePlaceholder")}
-            required
-            disabled={isLoading}
-            className={`w-full px-4 py-4 rounded-2xl border-2 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/70 backdrop-blur-sm disabled:opacity-50 ${
-              fieldErrors.name
-                ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-200'
-                : 'border-white/50 focus:border-[#86e4fd] focus:ring-4 focus:ring-[#86e4fd]/20'
-            }`}
-          />
-          {fieldErrors.name && (
-            <div className="mt-1 flex items-center text-sm text-red-600">
-              <AlertCircle className="w-4 h-4 mr-1" />
-              {fieldErrors.name}
-            </div>
-          )}
+          <Err msg={fe.dateNaissance} />
         </div>
 
-        {/* Email Field */}
-        <div className="space-y-2 animate-fade-in-delay-700">
-          <Label htmlFor="email" className="text-sm font-medium text-gray-800 block">
-            {t("email")}
-          </Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value)
-              if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: '' })
-            }}
-            placeholder={t("emailPlaceholder")}
-            required
-            disabled={isLoading}
-            className={`w-full px-4 py-4 rounded-2xl border-2 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/70 backdrop-blur-sm disabled:opacity-50 ${
-              fieldErrors.email
-                ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-200'
-                : 'border-white/50 focus:border-[#86e4fd] focus:ring-4 focus:ring-[#86e4fd]/20'
-            }`}
-          />
-          {fieldErrors.email && (
-            <div className="mt-1 flex items-center text-sm text-red-600">
-              <AlertCircle className="w-4 h-4 mr-1" />
-              {fieldErrors.email}
-            </div>
-          )}
-        </div>
-
-        {/* Phone Field */}
-        <div className="space-y-2 animate-fade-in-delay-750">
-          <Label htmlFor="numtel" className="text-sm font-medium text-gray-800 block">
-            {t("phoneOptional")}
-          </Label>
-          <Input
-            id="numtel"
-            type="tel"
-            value={numtel}
-            onChange={(e) => {
-              setNumtel(e.target.value)
-              if (fieldErrors.numtel) setFieldErrors({ ...fieldErrors, numtel: '' })
-            }}
-            placeholder={t("phonePlaceholder")}
-            disabled={isLoading}
-            className={`w-full px-4 py-4 rounded-2xl border-2 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/70 backdrop-blur-sm disabled:opacity-50 ${
-              fieldErrors.numtel
-                ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-200'
-                : 'border-white/50 focus:border-[#86e4fd] focus:ring-4 focus:ring-[#86e4fd]/20'
-            }`}
-          />
-          {fieldErrors.numtel && (
-            <div className="mt-1 flex items-center text-sm text-red-600">
-              <AlertCircle className="w-4 h-4 mr-1" />
-              {fieldErrors.numtel}
-            </div>
-          )}
-        </div>
-
-        {/* Date of Birth Field */}
-        <div className="space-y-2 animate-fade-in-delay-775">
-          <Label htmlFor="dateNaissance" className="text-sm font-medium text-gray-800 block">
-            {t("birthDateOptional")}
-          </Label>
-          <Input
-            id="dateNaissance"
-            type="date"
-            value={dateNaissance}
-            onChange={(e) => {
-              setDateNaissance(e.target.value)
-              if (fieldErrors.dateNaissance) setFieldErrors({ ...fieldErrors, dateNaissance: '' })
-            }}
-            disabled={isLoading}
-            className={`w-full px-4 py-4 rounded-2xl border-2 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/70 backdrop-blur-sm disabled:opacity-50 ${
-              fieldErrors.dateNaissance
-                ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-200'
-                : 'border-white/50 focus:border-[#86e4fd] focus:ring-4 focus:ring-[#86e4fd]/20'
-            }`}
-          />
-          {fieldErrors.dateNaissance && (
-            <div className="mt-1 flex items-center text-sm text-red-600">
-              <AlertCircle className="w-4 h-4 mr-1" />
-              {fieldErrors.dateNaissance}
-            </div>
-          )}
-        </div>
-
-        {/* Password Field */}
-        <div className="space-y-2 animate-fade-in-delay-800">
-          <Label htmlFor="password" className="text-sm font-medium text-gray-800 block">
-            {t("password")}
-          </Label>
+        {/* Password */}
+        <div className="space-y-1.5">
+          <label htmlFor="su-pw" className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("password")}</label>
           <div className="relative">
-            <Input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value)
-                if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: '' })
-              }}
-              placeholder={t("passwordPlaceholder")}
-              required
-              disabled={isLoading}
-              className={`w-full px-4 py-4 pr-12 rounded-2xl border-2 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/70 backdrop-blur-sm disabled:opacity-50 ${
-                fieldErrors.password
-                  ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-200'
-                  : 'border-white/50 focus:border-[#86e4fd] focus:ring-4 focus:ring-[#86e4fd]/20'
-              }`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              disabled={isLoading}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-[#86e4fd] transition-colors duration-200 disabled:opacity-50"
-            >
-              {showPassword ? (
-                <EyeOff className="w-5 h-5" />
-              ) : (
-                <Eye className="w-5 h-5" />
-              )}
+            <input id="su-pw" type={showPw ? "text" : "password"} value={password}
+              autoComplete="new-password" disabled={loading} required
+              onChange={e => { setPassword(e.target.value); if (fe.password) setFe({ ...fe, password: "" }) }}
+              placeholder={t("passwordPlaceholder")} className={`${inp(!!fe.password)} pr-12`} />
+            <button type="button" onClick={() => setShowPw(v => !v)} disabled={loading}
+              aria-label={showPw ? "Hide" : "Show"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+              style={{ color: "#9ca3af" }}
+              onMouseEnter={e => { e.currentTarget.style.color="#8e78fb"; e.currentTarget.style.background="#ede9ff" }}
+              onMouseLeave={e => { e.currentTarget.style.color="#9ca3af"; e.currentTarget.style.background="transparent" }}>
+              <EyeIcon open={showPw} />
             </button>
           </div>
-          
-          {/* Password Strength Indicator */}
+
+          {/* Strength bar */}
           {password && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-600">{t("passwordStrength")}</span>
-                <span className="text-xs font-semibold text-gray-700">{getPasswordStrengthLabel(passwordStrength.score)}</span>
+            <div className="space-y-1 pt-0.5">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px]" style={{ color: "#9ca3af" }}>{t("passwordStrength")}</span>
+                <span className="text-[11px] font-semibold" style={{ color }}>{getPasswordStrengthLabel(strength.score)}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div
-                  className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor(passwordStrength.score)}`}
-                  style={{ width: `${Math.min(100, (passwordStrength.score / 6) * 100)}%` }}
-                />
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "#f3f4f6" }}>
+                <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: color }} />
               </div>
-              {passwordStrength.feedback.length > 0 && (
-                <ul className="text-xs text-gray-600 space-y-1">
-                  {passwordStrength.feedback.map((item, idx) => (
-                    <li key={idx}>• {item}</li>
-                  ))}
+              {strength.feedback.length > 0 && (
+                <ul className="text-[11px] space-y-0.5" style={{ color: "#9ca3af" }}>
+                  {strength.feedback.map((f, i) => <li key={i}>· {f}</li>)}
                 </ul>
               )}
             </div>
           )}
-          
-          {fieldErrors.password && (
-            <div className="mt-1 flex items-center text-sm text-red-600">
-              <AlertCircle className="w-4 h-4 mr-1" />
-              {fieldErrors.password}
-            </div>
-          )}
+          <Err msg={fe.password} />
         </div>
 
-        {/* Confirm Password Field */}
-        <div className="space-y-2 animate-fade-in-delay-850">
-          <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-800 block">
-            {t("confirmPassword")}
-          </Label>
+        {/* Confirm password */}
+        <div className="space-y-1.5">
+          <label htmlFor="su-cpw" className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("confirmPassword")}</label>
           <div className="relative">
-            <Input
-              id="confirmPassword"
-              type={showConfirmPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value)
-                if (fieldErrors.confirmPassword) setFieldErrors({ ...fieldErrors, confirmPassword: '' })
-              }}
-              placeholder={t("confirmPasswordPlaceholder")}
-              required
-              disabled={isLoading}
-              className={`w-full px-4 py-4 pr-12 rounded-2xl border-2 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/70 backdrop-blur-sm disabled:opacity-50 ${
-                fieldErrors.confirmPassword
-                  ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-200'
-                  : 'border-white/50 focus:border-[#86e4fd] focus:ring-4 focus:ring-[#86e4fd]/20'
-              }`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              disabled={isLoading}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-[#86e4fd] transition-colors duration-200 disabled:opacity-50"
-            >
-              {showConfirmPassword ? (
-                <EyeOff className="w-5 h-5" />
-              ) : (
-                <Eye className="w-5 h-5" />
-              )}
+            <input id="su-cpw" type={showCpw ? "text" : "password"} value={confirmPassword}
+              autoComplete="new-password" disabled={loading} required
+              onChange={e => { setConfirmPassword(e.target.value); if (fe.confirmPassword) setFe({ ...fe, confirmPassword: "" }) }}
+              placeholder={t("confirmPasswordPlaceholder")} className={`${inp(!!fe.confirmPassword)} pr-12`} />
+            <button type="button" onClick={() => setShowCpw(v => !v)} disabled={loading}
+              aria-label={showCpw ? "Hide" : "Show"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+              style={{ color: "#9ca3af" }}
+              onMouseEnter={e => { e.currentTarget.style.color="#8e78fb"; e.currentTarget.style.background="#ede9ff" }}
+              onMouseLeave={e => { e.currentTarget.style.color="#9ca3af"; e.currentTarget.style.background="transparent" }}>
+              <EyeIcon open={showCpw} />
             </button>
           </div>
-          {fieldErrors.confirmPassword && (
-            <div className="mt-1 flex items-center text-sm text-red-600">
-              <AlertCircle className="w-4 h-4 mr-1" />
-              {fieldErrors.confirmPassword}
+          <Err msg={fe.confirmPassword} />
+        </div>
+
+        {/* Terms */}
+        <div className="space-y-1">
+          <div className="flex items-start gap-2.5">
+            <input type="checkbox" id="su-terms" checked={agreeToTerms} disabled={loading}
+              onChange={e => { setAgreeToTerms(e.target.checked); if (fe.agreeToTerms) setFe({ ...fe, agreeToTerms: "" }) }}
+              className="w-4 h-4 mt-0.5 shrink-0 rounded cursor-pointer accent-[#8e78fb]" />
+            <div className="text-[13px] leading-relaxed" style={{ color: "#6b7280" }}>
+              <label htmlFor="su-terms" className="cursor-pointer">{t("agreePrefix")} </label>
+              <Link href={localizeHref(pathname, "/terms-of-service")} target="_blank" rel="noopener noreferrer"
+                className="font-semibold underline" style={{ color: "#8e78fb" }}>{t("terms")}</Link>
+              {" "}{t("and")}{" "}
+              <Link href={localizeHref(pathname, "/privacy-policy")} target="_blank" rel="noopener noreferrer"
+                className="font-semibold underline" style={{ color: "#8e78fb" }}>{t("privacy")}</Link>.
             </div>
-          )}
+          </div>
+          <Err msg={fe.agreeToTerms} />
         </div>
 
-        {/* Terms Agreement */}
-        <div className="flex items-start space-x-2 animate-fade-in-delay-900">
-          <input
-            type="checkbox"
-            id="agreeToTerms"
-            aria-label={`${t("agreePrefix")} ${t("terms")} ${t("and")} ${t("privacy")}`}
-            checked={agreeToTerms}
-            onChange={(e) => {
-              setAgreeToTerms(e.target.checked)
-              if (fieldErrors.agreeToTerms) setFieldErrors({ ...fieldErrors, agreeToTerms: '' })
-            }}
-            disabled={isLoading}
-            className="w-4 h-4 rounded border-gray-300 text-[#86e4fd] focus:ring-[#86e4fd] mt-1"
-          />
-          <div className="text-sm text-gray-700">
-            <Label htmlFor="agreeToTerms" className="cursor-pointer">
-              {t("agreePrefix")}{" "}
-            </Label>
-            <Link
-              href={localizeHref(pathname, "/terms-of-service")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-[#86e4fd] underline hover:text-[#74d4f0]"
-            >
-              {t("terms")}
-            </Link>
-            {" "}{t("and")}{" "}
-            <Link
-              href={localizeHref(pathname, "/privacy-policy")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-[#86e4fd] underline hover:text-[#74d4f0]"
-            >
-              {t("privacy")}
-            </Link>
-            .
-          </div>
-        </div>
-        {fieldErrors.agreeToTerms && (
-          <div className="flex items-center text-sm text-red-600">
-            <AlertCircle className="w-4 h-4 mr-1" />
-            {fieldErrors.agreeToTerms}
-          </div>
-        )}
-
-        {/* Create Account Button */}
-        <div className="animate-fade-in-delay-900">
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#8e78fb] to-[#86e4fd] text-white font-semibold text-lg shadow-lg hover:shadow-2xl transition-all duration-300 border-0 relative overflow-hidden group hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                <span>{t("creatingAccount")}</span>
-              </>
-            ) : (
-              <>
-                <span className="relative z-10">{t("createAccount")}</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-[#7c66e9] to-[#74d4f0] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </>
-            )}
-          </Button>
-        </div>
+        {/* Submit */}
+        <button type="submit" disabled={loading}
+          className="w-full h-12 rounded-xl text-[14px] font-semibold text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 active:scale-[.98] flex items-center justify-center gap-2"
+          style={{ background: "linear-gradient(135deg,#8e78fb 0%,#6c52f0 100%)", boxShadow: "0 4px 14px rgba(142,120,251,.4)" }}>
+          {loading ? (
+            <>
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              {t("creatingAccount")}
+            </>
+          ) : t("createAccount")}
+        </button>
       </form>
 
-      {/* Sign in link */}
-      <div className="mt-8 text-center animate-fade-in-delay-1000">
-        <div className="text-sm text-gray-700 drop-shadow-sm">
-          {t("alreadyHaveAccount")}{" "}
-          <Link
-            href={localizeHref(pathname, "/signin")}
-            className="text-[#86e4fd] hover:text-[#74d4f0] font-medium transition-all duration-200 hover:underline"
-          >
-            {t("signIn")}
-          </Link>
-        </div>
-      </div>
-
+      {/* Sign-in link */}
+      <p className="text-center text-[13px]" style={{ color: "#6b7280" }}>
+        {t("alreadyHaveAccount")}{" "}
+        <Link href={localizeHref(pathname, "/signin")} className="font-semibold hover:underline" style={{ color: "#8e78fb" }}>
+          {t("signIn")}
+        </Link>
+      </p>
     </div>
   )
 }

@@ -20,10 +20,10 @@ export function DashboardShell({ children, variant }: DashboardShellProps) {
   const communityPath = `/${creatorSlug}`;
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] bg-[#f5f4f0]">
+    <div className="flex min-h-[calc(100vh-4rem)] bg-[#fafafe]">
 
       {/* Desktop Sidebar */}
-      <aside className="hidden w-[220px] shrink-0 border-r border-[#e4e2db] bg-white lg:flex lg:flex-col sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
+      <aside className="hidden w-[220px] shrink-0 border-r border-[#e5e7eb] bg-white lg:flex lg:flex-col sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
         <DashboardNav variant={variant} />
       </aside>
 
@@ -31,24 +31,24 @@ export function DashboardShell({ children, variant }: DashboardShellProps) {
       <div className="flex flex-1 flex-col min-w-0">
 
         {/* Mobile Header */}
-        <header className="sticky top-16 z-40 flex h-14 items-center gap-4 border-b border-[#e4e2db] bg-white px-4 lg:hidden">
+        <header className="sticky top-16 z-40 flex h-14 items-center gap-4 border-b border-[#e5e7eb] bg-white px-4 lg:hidden">
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0 text-[#5a5850] hover:text-[#1a1916] hover:bg-[#f0efe9]">
+              <Button variant="ghost" size="icon" className="shrink-0 text-[#6b7280] hover:text-[#111827] hover:bg-[#f5f3ff]">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle navigation</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[220px] p-0 bg-white border-r border-[#e4e2db]">
+            <SheetContent side="left" className="w-[220px] p-0 bg-white border-r border-[#e5e7eb]">
               <DashboardNav variant={variant} />
             </SheetContent>
           </Sheet>
 
           <div className="flex-1">
-            <h1 className="text-[13px] font-semibold text-[#1a1916] capitalize">{variant} Dashboard</h1>
+            <h1 className="text-[13px] font-bold text-[#111827] capitalize">{variant} Dashboard</h1>
           </div>
 
-          <Button variant="ghost" size="sm" asChild className="text-[#5a5850] hover:text-[#1a1916] hover:bg-[#f0efe9] text-xs">
+          <Button variant="ghost" size="sm" asChild className="text-[#6b7280] hover:text-[#111827] hover:bg-[#f5f3ff] text-xs">
             <Link href={communityPath}>
               <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />Back
             </Link>

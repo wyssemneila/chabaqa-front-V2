@@ -141,27 +141,27 @@ function NavItemComponent({ item, isActive, can }: NavItemComponentProps) {
       className={cn(
         "relative flex items-center gap-2 px-4 py-[7px] text-[13px] transition-colors",
         isActive
-          ? "bg-[#eef1ff] text-[#2a5cff] font-medium"
-          : "text-[#5a5850] hover:bg-[#f0efe9] hover:text-[#1a1916]",
+          ? "bg-[#ede9ff] text-[#8e78fb] font-semibold"
+          : "text-[#6b7280] hover:bg-[#f5f3ff] hover:text-[#111827]",
         item.backendRequired && "cursor-not-allowed opacity-50"
       )}
     >
       {/* Active left border indicator */}
       {isActive && (
-        <span className="absolute left-0 top-1 bottom-1 w-[3px] bg-[#2a5cff] rounded-r-[3px]" />
+        <span className="absolute left-0 top-1 bottom-1 w-[3px] bg-[#8e78fb] rounded-r-[3px]" />
       )}
 
       <Icon
         className={cn(
           "h-[15px] w-[15px] shrink-0",
-          isActive ? "opacity-100 text-[#2a5cff]" : "opacity-70"
+          isActive ? "opacity-100 text-[#8e78fb]" : "opacity-70"
         )}
       />
 
       <span className="flex-1 truncate">{item.label}</span>
 
       {item.badge && (
-        <span className="ml-auto text-[9px] font-semibold tracking-[.04em] bg-[#f0efe9] text-[#9a9890] px-1.5 py-0.5 rounded-full border border-[#e4e2db]">
+        <span className="ml-auto text-[9px] font-bold tracking-[.06em] bg-[#f5f3ff] text-[#9ca3af] px-1.5 py-0.5 rounded-full border border-[#e5e7eb]">
           {item.badge}
         </span>
       )}
@@ -183,7 +183,7 @@ export function DashboardNav({ variant }: DashboardNavProps) {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#2a5cff] border-t-transparent" />
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#8e78fb] border-t-transparent" />
       </div>
     );
   }
@@ -201,16 +201,17 @@ export function DashboardNav({ variant }: DashboardNavProps) {
     <nav className="flex h-full flex-col">
 
       {/* Workspace header */}
-      <div className="px-4 pt-[18px] pb-[14px] border-b border-[#e4e2db]">
+      <div className="px-4 pt-[18px] pb-[14px] border-b border-[#e5e7eb]">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-[#1a1916] rounded-lg flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "linear-gradient(135deg, #8e78fb 0%, #6c52f0 100%)" }}>
             <Shield className="h-4 w-4 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-[#1a1916] truncate capitalize">
+            <p className="text-[13px] font-bold text-[#111827] truncate capitalize">
               {variant} Workspace
             </p>
-            <p className="text-[11px] text-[#9a9890]">{ROLE_LABELS[role]}</p>
+            <p className="text-[11px] text-[#9ca3af]">{ROLE_LABELS[role]}</p>
           </div>
         </div>
       </div>
@@ -219,7 +220,7 @@ export function DashboardNav({ variant }: DashboardNavProps) {
       <div className="flex-1 overflow-y-auto py-2">
         {sections.map((section) => (
           <div key={section.title} className="pt-2.5 pb-1">
-            <p className="text-[10px] font-semibold tracking-[.07em] uppercase text-[#9a9890] px-4 pb-1.5">
+            <p className="text-[10px] font-bold tracking-[.07em] uppercase text-[#9ca3af] px-4 pb-1.5">
               {section.title}
             </p>
             {section.items.map((item) => (
