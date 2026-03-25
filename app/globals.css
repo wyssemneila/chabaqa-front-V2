@@ -33,6 +33,20 @@
   }
 
   .dark {
+    /* ── Chabaqa brand dark tokens ── */
+    --bg:          #12111a;
+    --white:       #1c1a2e;
+    --t1:          #f0eeff;
+    --t2:          #b8b2e0;
+    --t3:          #7a7598;
+    --bd:          #2e2a4a;
+    --bd2:         #413b6e;
+    --p2:          #1e1a35;
+    --p3:          #3d3570;
+    --nav-bg:      rgba(18,17,26,0.94);
+    --footer-bg:   #0d0c17;
+    --section-alt: #161424;
+    /* ── shadcn/ui dark tokens ── */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
@@ -66,6 +80,9 @@
   }
   body {
     @apply bg-background text-foreground;
+    background: var(--bg);
+    color: var(--t1);
+    transition: background 0.3s ease, color 0.3s ease;
   }
 
   .font-latin {

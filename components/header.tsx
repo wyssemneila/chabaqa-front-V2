@@ -109,7 +109,7 @@ export function Header() {
       >
         {/* Logo */}
         <Link href={withLocale("/")} aria-label="Chabaqa — go to homepage" className="flex-shrink-0">
-          <Image src="/Logos/PNG/frensh1.png" alt="Chabaqa" width={112} height={28} className="h-9 w-auto" priority />
+          <Image src="/Logos/PNG/frensh1.png" alt="Chabaqa" width={140} height={44} className="h-11 w-auto" priority />
         </Link>
 
         {/* Desktop links */}
@@ -138,16 +138,16 @@ export function Header() {
             <>
               <Link
                 href={withLocale("/signin")}
-                className="hidden md:inline-flex items-center h-10 px-4 rounded-xl text-sm font-semibold text-[var(--t2)] border border-[var(--bd)] bg-[var(--white)] hover:border-[var(--p3)] hover:text-[var(--p)] transition-colors"
+                className="hidden md:inline-flex items-center h-8 px-3 rounded-lg text-[12px] font-semibold text-[var(--t2)] border border-[var(--bd)] bg-[var(--white)] hover:border-[var(--p3)] hover:text-[var(--p)] transition-colors"
               >
                 {t("login")}
               </Link>
               <Link
                 href={withLocale("/dashboard/create-community")}
-                className="hidden md:inline-flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold text-white bg-[var(--p)] hover:bg-[var(--p-dark)] transition-colors shadow-[0_4px_16px_rgba(142,120,251,.35)]"
+                className="hidden md:inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-semibold text-white bg-[var(--p)] hover:bg-[var(--p-dark)] transition-colors shadow-[0_4px_12px_rgba(142,120,251,.35)]"
               >
                 {t("start")}
-                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="12" height="12" aria-hidden="true">
                   <line x1="5" y1="12" x2="19" y2="12" />
                   <polyline points="12 5 19 12 12 19" />
                 </svg>
@@ -255,7 +255,7 @@ export function Header() {
                 href={withLocale("/signin")}
                 onClick={() => setIsMenuOpen(false)}
                 tabIndex={isMenuOpen ? 0 : -1}
-                className="flex-1 flex items-center justify-center h-10 rounded-xl text-sm font-semibold text-[var(--t2)] border border-[var(--bd)] bg-[var(--white)]"
+                className="flex-1 flex items-center justify-center h-9 rounded-xl text-[13px] font-semibold text-[var(--t2)] border border-[var(--bd)] bg-[var(--white)]"
               >
                 {t("login")}
               </Link>
@@ -263,7 +263,7 @@ export function Header() {
                 href={withLocale("/dashboard/create-community")}
                 onClick={() => setIsMenuOpen(false)}
                 tabIndex={isMenuOpen ? 0 : -1}
-                className="flex-1 flex items-center justify-center h-10 rounded-xl text-sm font-semibold text-white bg-[var(--p)]"
+                className="flex-1 flex items-center justify-center h-9 rounded-xl text-[13px] font-semibold text-white bg-[var(--p)]"
               >
                 {t("start")} →
               </Link>

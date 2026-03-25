@@ -29,9 +29,7 @@ export function Footer() {
   return (
     <footer
       className="pt-16 pb-8 px-6 md:px-10"
-      style={{
-        background: "linear-gradient(135deg, #8e78fb 0%, #5d67ff 100%)",
-      }}
+      style={{ background: "var(--footer-bg,#1a1730)" }}
     >
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
@@ -41,9 +39,9 @@ export function Footer() {
               <Image
                 src="/Logos/PNG/frensh1.png"
                 alt="Chabaqa"
-                width={120}
-                height={32}
-                className="h-8 w-auto brightness-0 invert"
+                width={160}
+                height={48}
+                className="h-12 w-auto brightness-0 invert"
               />
             </Link>
             <p className="text-white/70 text-sm leading-relaxed mb-6">{t("tagline")}</p>
