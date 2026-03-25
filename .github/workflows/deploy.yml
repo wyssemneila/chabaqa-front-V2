@@ -20,10 +20,10 @@ jobs:
           node-version: "22"
 
       - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Build
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://api.chabaqa.io/api' }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://chabaqa.io' }}
+          NEXT_PUBLIC_API_URL: "https://api.chabaqa.io/api"
+          NEXT_PUBLIC_APP_URL: "https://chabaqa.io"
         run: npm run build
