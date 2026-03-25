@@ -86,13 +86,13 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const localeHeader = headers().get("x-app-locale")
-  const localeCookie = cookies().get(LOCALE_COOKIE)?.value
+  const localeHeader = (await headers()).get("x-app-locale")
+  const localeCookie = (await cookies()).get(LOCALE_COOKIE)?.value
   const locale = isAppLocale(localeHeader)
     ? localeHeader
     : isAppLocale(localeCookie)
