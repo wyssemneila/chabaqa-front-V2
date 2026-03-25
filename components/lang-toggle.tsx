@@ -1,8 +1,8 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useLocale } from "next-intl"
-import { LOCALE_COOKIE } from "@/lib/i18n/config"
+import { usePathname } from "next/navigation"
+import { stripLocaleFromPath } from "@/lib/i18n/client"
 
 interface LangToggleProps {
   className?: string
@@ -10,16 +10,17 @@ interface LangToggleProps {
 }
 
 export function LangToggle({ className = "", size = "md" }: LangToggleProps) {
-  const router = useRouter()
-  const locale = useLocale()
-  const isAr   = locale === "ar"
+  const locale   = useLocale()
+  const pathname = usePathname()
+  const isAr     = locale === "ar"
 
   const dim = size === "sm" ? "w-8 h-8 text-[11px]" : "w-9 h-9 text-[12px]"
 
   const toggle = () => {
-    const next = isAr ? "en" : "ar"
-    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`
-    window.location.reload()
+    const next       = isAr ? "en" : "ar"
+    const bare       = stripLocaleFromPath(pathname) // e.g. /signin
+    const target     = bare === "/" ? `/${next}` : `/${next}${bare}`
+    window.location.href = target
   }
 
   return (
