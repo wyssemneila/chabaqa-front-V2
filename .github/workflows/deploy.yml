@@ -1,0 +1,75 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Build
+        env:
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          API_INTERNAL_URL: ${{ secrets.API_INTERNAL_URL }}
+        run: npm run build
+
+      - name: Deploy via SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          API_INTERNAL_URL: ${{ secrets.API_INTERNAL_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "$VPS_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          if [ -z "${NEXT_PUBLIC_API_URL:-}" ] || [ -z "${API_INTERNAL_URL:-}" ] || [ -z "${NEXT_PUBLIC_APP_URL:-}" ] || [ -z "${JWT_SECRET:-}" ]; then
+            echo "Missing required frontend deploy env. Check NEXT_PUBLIC_API_URL, API_INTERNAL_URL, NEXT_PUBLIC_APP_URL, JWT_SECRET secrets." >&2
+            exit 1
+          fi
+          if [ -z "${VPS_PORT:-}" ]; then VPS_PORT=22; fi
+          ssh-keyscan -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts
+          cat > /tmp/frontend.env <<EOF_INNER
+          NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+          API_INTERNAL_URL=${API_INTERNAL_URL}
+          NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+          JWT_SECRET=${JWT_SECRET}
+          EOF_INNER
+          scp -P "$VPS_PORT" /tmp/frontend.env "$VPS_USER@$VPS_HOST:/tmp/frontend.env"
+          rsync -az --delete -e "ssh -p $VPS_PORT" \
+            --rsync-path="sudo rsync" \
+            .next/standalone/ "$VPS_USER@$VPS_HOST:/var/www/frontend/.next/standalone/"
+          rsync -az --delete -e "ssh -p $VPS_PORT" \
+            --rsync-path="sudo rsync" \
+            .next/static/ "$VPS_USER@$VPS_HOST:/var/www/frontend/.next/static/"
+          rsync -az --delete -e "ssh -p $VPS_PORT" \
+            --rsync-path="sudo rsync" \
+            public/ "$VPS_USER@$VPS_HOST:/var/www/frontend/public/"
+          ssh -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" 'sudo install -m 0640 /tmp/frontend.env /var/www/frontend/.env && sudo rm -f /tmp/frontend.env'
+          ssh -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" 'sudo chown -R www-data:www-data /var/www/frontend'
+          ssh -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" 'bash -lc "set -euo pipefail; if ! command -v supervisorctl >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y supervisor; fi; if command -v systemctl >/dev/null 2>&1; then sudo systemctl start supervisor || true; else sudo service supervisor start || true; fi; if ! sudo supervisorctl status >/dev/null 2>&1; then if command -v systemctl >/dev/null 2>&1; then sudo systemctl restart supervisor; else sudo service supervisor restart; fi; fi; sudo supervisorctl status >/dev/null; sudo supervisorctl restart chabaqa-frontend"'
