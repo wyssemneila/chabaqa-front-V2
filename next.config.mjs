@@ -10,9 +10,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  output: 'standalone',
   experimental: {
-    cpus: 1,
     optimizePackageImports: ['lucide-react'],
   },
   images: {
