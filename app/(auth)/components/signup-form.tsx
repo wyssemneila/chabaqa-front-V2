@@ -18,12 +18,12 @@ import { ChabaSpinner } from "@/components/ui/ChabaSpinner"
 function inp(err?: boolean) {
   return [
     "w-full h-12 px-4 rounded-xl border text-[14px] outline-none",
-    "placeholder-[#9ca3af] text-[#111827] bg-white",
+    "placeholder-[var(--t3)] text-[var(--t1)] bg-[var(--white)]",
     "transition-all duration-200",
     "disabled:opacity-50 disabled:cursor-not-allowed",
     err
       ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-      : "border-[#e5e7eb] focus:border-[#8e78fb] focus:ring-2 focus:ring-[#8e78fb]/15",
+      : "border-[var(--bd)] focus:border-[#8e78fb] focus:ring-2 focus:ring-[#8e78fb]/15",
   ].join(" ")
 }
 
@@ -122,7 +122,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
   return (
     <div
       className="rounded-2xl border p-8 space-y-5"
-      style={{ background: "#fff", borderColor: "#e5e7eb", boxShadow: "0 4px 24px rgba(142,120,251,.1), 0 1px 4px rgba(0,0,0,.05)" }}
+      style={{ background: "var(--white,#fff)", borderColor: "var(--bd,#e5e7eb)", boxShadow: "0 4px 24px rgba(142,120,251,.1), 0 1px 4px rgba(0,0,0,.05)" }}
     >
       {/* Error */}
       {error && (
@@ -137,7 +137,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
       <form onSubmit={onSubmit} className="space-y-5">
         {/* Full name */}
         <div className="space-y-1.5">
-          <label htmlFor="su-name" className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("fullName")}</label>
+          <label htmlFor="su-name" className="text-[13px] font-semibold" style={{ color: "var(--t1,#111827)" }}>{t("fullName")}</label>
           <input id="su-name" type="text" value={name} autoComplete="name" disabled={loading} required
             onChange={e => { setName(e.target.value); if (fe.name) setFe({ ...fe, name: "" }) }}
             placeholder={t("fullNamePlaceholder")} className={inp(!!fe.name)} />
@@ -146,7 +146,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
 
         {/* Email */}
         <div className="space-y-1.5">
-          <label htmlFor="su-email" className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("email")}</label>
+          <label htmlFor="su-email" className="text-[13px] font-semibold" style={{ color: "var(--t1,#111827)" }}>{t("email")}</label>
           <input id="su-email" type="email" value={email} autoComplete="email" disabled={loading} required
             onChange={e => { setEmail(e.target.value); if (fe.email) setFe({ ...fe, email: "" }) }}
             placeholder={t("emailPlaceholder")} className={inp(!!fe.email)} />
@@ -155,7 +155,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
 
         {/* Phone */}
         <div className="space-y-1.5">
-          <label htmlFor="su-phone" className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("phoneOptional")}</label>
+          <label htmlFor="su-phone" className="text-[13px] font-semibold" style={{ color: "var(--t1,#111827)" }}>{t("phoneOptional")}</label>
           <input id="su-phone" type="tel" value={numtel} autoComplete="tel" disabled={loading}
             onChange={e => { setNumtel(e.target.value); if (fe.numtel) setFe({ ...fe, numtel: "" }) }}
             placeholder={t("phonePlaceholder")} className={inp(!!fe.numtel)} />
@@ -164,15 +164,15 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
 
         {/* Date of birth — 3-select picker */}
         <div className="space-y-1.5">
-          <label className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("birthDateOptional")}</label>
+          <label className="text-[13px] font-semibold" style={{ color: "var(--t1,#111827)" }}>{t("birthDateOptional")}</label>
           <div className="grid grid-cols-3 gap-2">
             {(["day", "month", "year"] as const).map(part => {
               const selCls = [
                 "w-full h-12 px-3 rounded-xl border text-[14px] outline-none appearance-none cursor-pointer",
-                "bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
+                "bg-[var(--white)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
                 fe.dateNaissance
                   ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-                  : "border-[#e5e7eb] focus:border-[#8e78fb] focus:ring-2 focus:ring-[#8e78fb]/15",
+                  : "border-[var(--bd)] focus:border-[#8e78fb] focus:ring-2 focus:ring-[#8e78fb]/15",
               ].join(" ")
 
               const update = (d: string, m: string, y: string) => {
@@ -181,21 +181,21 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
               }
 
               if (part === "day") return (
-                <select key="day" value={dobDay} disabled={loading} onChange={e => { setDobDay(e.target.value); update(e.target.value, dobMonth, dobYear) }} className={selCls} style={{ color: dobDay ? "#111827" : "#9ca3af" }}>
+                <select key="day" value={dobDay} disabled={loading} onChange={e => { setDobDay(e.target.value); update(e.target.value, dobMonth, dobYear) }} className={selCls} style={{ color: dobDay ? "var(--t1,#111827)" : "var(--t3,#9ca3af)" }}>
                   <option value="" disabled>{t("dobDay")}</option>
-                  {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0")).map(d => <option key={d} value={d} style={{ color: "#111827" }}>{parseInt(d)}</option>)}
+                  {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0")).map(d => <option key={d} value={d}>{parseInt(d)}</option>)}
                 </select>
               )
               if (part === "month") return (
-                <select key="month" value={dobMonth} disabled={loading} onChange={e => { setDobMonth(e.target.value); update(dobDay, e.target.value, dobYear) }} className={selCls} style={{ color: dobMonth ? "#111827" : "#9ca3af" }}>
+                <select key="month" value={dobMonth} disabled={loading} onChange={e => { setDobMonth(e.target.value); update(dobDay, e.target.value, dobYear) }} className={selCls} style={{ color: dobMonth ? "var(--t1,#111827)" : "var(--t3,#9ca3af)" }}>
                   <option value="" disabled>{t("dobMonth")}</option>
-                  {[["01","monthJan"],["02","monthFeb"],["03","monthMar"],["04","monthApr"],["05","monthMay"],["06","monthJun"],["07","monthJul"],["08","monthAug"],["09","monthSep"],["10","monthOct"],["11","monthNov"],["12","monthDec"]].map(([v, k]) => <option key={v} value={v} style={{ color: "#111827" }}>{t(k as any)}</option>)}
+                  {[["01","monthJan"],["02","monthFeb"],["03","monthMar"],["04","monthApr"],["05","monthMay"],["06","monthJun"],["07","monthJul"],["08","monthAug"],["09","monthSep"],["10","monthOct"],["11","monthNov"],["12","monthDec"]].map(([v, k]) => <option key={v} value={v}>{t(k as any)}</option>)}
                 </select>
               )
               return (
-                <select key="year" value={dobYear} disabled={loading} onChange={e => { setDobYear(e.target.value); update(dobDay, dobMonth, e.target.value) }} className={selCls} style={{ color: dobYear ? "#111827" : "#9ca3af" }}>
+                <select key="year" value={dobYear} disabled={loading} onChange={e => { setDobYear(e.target.value); update(dobDay, dobMonth, e.target.value) }} className={selCls} style={{ color: dobYear ? "var(--t1,#111827)" : "var(--t3,#9ca3af)" }}>
                   <option value="" disabled>{t("dobYear")}</option>
-                  {Array.from({ length: 100 }, (_, i) => String(new Date().getFullYear() - 13 - i)).map(y => <option key={y} value={y} style={{ color: "#111827" }}>{y}</option>)}
+                  {Array.from({ length: 100 }, (_, i) => String(new Date().getFullYear() - 13 - i)).map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
               )
             })}
@@ -205,7 +205,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
 
         {/* Password */}
         <div className="space-y-1.5">
-          <label htmlFor="su-pw" className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("password")}</label>
+          <label htmlFor="su-pw" className="text-[13px] font-semibold" style={{ color: "var(--t1,#111827)" }}>{t("password")}</label>
           <div className="relative">
             <input id="su-pw" type={showPw ? "text" : "password"} value={password}
               autoComplete="new-password" disabled={loading} required
@@ -214,9 +214,9 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
             <button type="button" onClick={() => setShowPw(v => !v)} disabled={loading}
               aria-label={showPw ? "Hide" : "Show"}
               className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-              style={{ color: "#9ca3af" }}
-              onMouseEnter={e => { e.currentTarget.style.color="#8e78fb"; e.currentTarget.style.background="#ede9ff" }}
-              onMouseLeave={e => { e.currentTarget.style.color="#9ca3af"; e.currentTarget.style.background="transparent" }}>
+              style={{ color: "var(--t3,#9ca3af)" }}
+              onMouseEnter={e => { e.currentTarget.style.color="#8e78fb"; e.currentTarget.style.background="var(--p2,#ede9ff)" }}
+              onMouseLeave={e => { e.currentTarget.style.color="var(--t3,#9ca3af)"; e.currentTarget.style.background="transparent" }}>
               <EyeIcon open={showPw} />
             </button>
           </div>
@@ -225,14 +225,14 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
           {password && (
             <div className="space-y-1 pt-0.5">
               <div className="flex justify-between items-center">
-                <span className="text-[11px]" style={{ color: "#9ca3af" }}>{t("passwordStrength")}</span>
+                <span className="text-[11px]" style={{ color: "var(--t3,#9ca3af)" }}>{t("passwordStrength")}</span>
                 <span className="text-[11px] font-semibold" style={{ color }}>{getPasswordStrengthLabel(strength.score)}</span>
               </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "#f3f4f6" }}>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bd,#f3f4f6)" }}>
                 <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: color }} />
               </div>
               {strength.feedback.length > 0 && (
-                <ul className="text-[11px] space-y-0.5" style={{ color: "#9ca3af" }}>
+                <ul className="text-[11px] space-y-0.5" style={{ color: "var(--t3,#9ca3af)" }}>
                   {strength.feedback.map((f, i) => <li key={i}>· {f}</li>)}
                 </ul>
               )}
@@ -243,7 +243,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
 
         {/* Confirm password */}
         <div className="space-y-1.5">
-          <label htmlFor="su-cpw" className="text-[13px] font-semibold" style={{ color: "#111827" }}>{t("confirmPassword")}</label>
+          <label htmlFor="su-cpw" className="text-[13px] font-semibold" style={{ color: "var(--t1,#111827)" }}>{t("confirmPassword")}</label>
           <div className="relative">
             <input id="su-cpw" type={showCpw ? "text" : "password"} value={confirmPassword}
               autoComplete="new-password" disabled={loading} required
@@ -252,9 +252,9 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
             <button type="button" onClick={() => setShowCpw(v => !v)} disabled={loading}
               aria-label={showCpw ? "Hide" : "Show"}
               className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-              style={{ color: "#9ca3af" }}
-              onMouseEnter={e => { e.currentTarget.style.color="#8e78fb"; e.currentTarget.style.background="#ede9ff" }}
-              onMouseLeave={e => { e.currentTarget.style.color="#9ca3af"; e.currentTarget.style.background="transparent" }}>
+              style={{ color: "var(--t3,#9ca3af)" }}
+              onMouseEnter={e => { e.currentTarget.style.color="#8e78fb"; e.currentTarget.style.background="var(--p2,#ede9ff)" }}
+              onMouseLeave={e => { e.currentTarget.style.color="var(--t3,#9ca3af)"; e.currentTarget.style.background="transparent" }}>
               <EyeIcon open={showCpw} />
             </button>
           </div>
@@ -267,7 +267,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
             <input type="checkbox" id="su-terms" checked={agreeToTerms} disabled={loading}
               onChange={e => { setAgreeToTerms(e.target.checked); if (fe.agreeToTerms) setFe({ ...fe, agreeToTerms: "" }) }}
               className="w-4 h-4 mt-0.5 shrink-0 rounded cursor-pointer accent-[#8e78fb]" />
-            <div className="text-[13px] leading-relaxed" style={{ color: "#6b7280" }}>
+            <div className="text-[13px] leading-relaxed" style={{ color: "var(--t2,#6b7280)" }}>
               <label htmlFor="su-terms" className="cursor-pointer">{t("agreePrefix")} </label>
               <Link href={localizeHref(pathname, "/terms-of-service")} target="_blank" rel="noopener noreferrer"
                 className="font-semibold underline" style={{ color: "#8e78fb" }}>{t("terms")}</Link>
@@ -293,7 +293,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
       </form>
 
       {/* Sign-in link */}
-      <p className="text-center text-[13px]" style={{ color: "#6b7280" }}>
+      <p className="text-center text-[13px]" style={{ color: "var(--t2,#6b7280)" }}>
         {t("alreadyHaveAccount")}{" "}
         <Link href={localizeHref(pathname, "/signin")} className="font-semibold hover:underline" style={{ color: "#8e78fb" }}>
           {t("signIn")}

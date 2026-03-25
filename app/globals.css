@@ -811,6 +811,22 @@ body {
   --section-alt:#f0eefe;
 }
 
+/* ── Dark mode brand token overrides (unlayered — beats @layer base) ──── */
+.dark {
+  --bg:          #12111a;
+  --white:       #1c1a2e;
+  --t1:          #f0eeff;
+  --t2:          #b8b2e0;
+  --t3:          #7a7598;
+  --bd:          #2e2a4a;
+  --bd2:         #413b6e;
+  --p2:          #1e1a35;
+  --p3:          #3d3570;
+  --nav-bg:      rgba(18,17,26,0.94);
+  --footer-bg:   #0d0c17;
+  --section-alt: #161424;
+}
+
 /* ── Landing Page Animations ─────────────────────────────────────────── */
 @keyframes blobMove {
   0%, 100% { transform: translate(0, 0) scale(1); }

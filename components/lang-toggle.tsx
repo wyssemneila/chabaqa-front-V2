@@ -19,7 +19,7 @@ export function LangToggle({ className = "", size = "md" }: LangToggleProps) {
   const toggle = () => {
     const next = isAr ? "en" : "ar"
     document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`
-    router.refresh()
+    window.location.reload()
   }
 
   return (

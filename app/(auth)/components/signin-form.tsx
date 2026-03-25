@@ -19,12 +19,12 @@ function isSafeRedirect(p: string | null): p is string {
 function inp(err?: boolean) {
   return [
     "w-full h-12 px-4 rounded-xl border text-[14px] outline-none",
-    "placeholder-[#9ca3af] text-[#111827] bg-white",
+    "placeholder-[var(--t3)] text-[var(--t1)] bg-[var(--white)]",
     "transition-all duration-200",
     "disabled:opacity-50 disabled:cursor-not-allowed",
     err
       ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-      : "border-[#e5e7eb] focus:border-[#8e78fb] focus:ring-2 focus:ring-[#8e78fb]/15",
+      : "border-[var(--bd)] focus:border-[#8e78fb] focus:ring-2 focus:ring-[#8e78fb]/15",
   ].join(" ")
 }
 
@@ -124,7 +124,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
   return (
     <div
       className="rounded-2xl border p-8 space-y-5"
-      style={{ background: "#fff", borderColor: "#e5e7eb", boxShadow: "0 4px 24px rgba(142,120,251,.1), 0 1px 4px rgba(0,0,0,.05)" }}
+      style={{ background: "var(--white,#fff)", borderColor: "var(--bd,#e5e7eb)", boxShadow: "0 4px 24px rgba(142,120,251,.1), 0 1px 4px rgba(0,0,0,.05)" }}
     >
       {/* Success */}
       {success && (
@@ -145,7 +145,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
       <form onSubmit={onSubmit} className="space-y-5">
         {/* Email */}
         <div className="space-y-1.5">
-          <label htmlFor="si-email" className="text-[13px] font-semibold" style={{ color: "#111827" }}>
+          <label htmlFor="si-email" className="text-[13px] font-semibold" style={{ color: "var(--t1,#111827)" }}>
             {t("email")}
           </label>
           <input
@@ -161,7 +161,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
 
         {/* Password */}
         <div className="space-y-1.5">
-          <label htmlFor="si-password" className="text-[13px] font-semibold" style={{ color: "#111827" }}>
+          <label htmlFor="si-password" className="text-[13px] font-semibold" style={{ color: "var(--t1,#111827)" }}>
             {t("password")}
           </label>
           <div className="relative">
@@ -176,9 +176,9 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
               type="button" onClick={() => setShowPw(v => !v)} disabled={loading}
               aria-label={showPw ? "Hide password" : "Show password"}
               className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-              style={{ color: "#9ca3af" }}
-              onMouseEnter={e => { e.currentTarget.style.color = "#8e78fb"; e.currentTarget.style.background = "#ede9ff" }}
-              onMouseLeave={e => { e.currentTarget.style.color = "#9ca3af"; e.currentTarget.style.background = "transparent" }}
+              style={{ color: "var(--t3,#9ca3af)" }}
+              onMouseEnter={e => { e.currentTarget.style.color = "#8e78fb"; e.currentTarget.style.background = "var(--p2,#ede9ff)" }}
+              onMouseLeave={e => { e.currentTarget.style.color = "var(--t3,#9ca3af)"; e.currentTarget.style.background = "transparent" }}
             >
               <EyeIcon open={showPw} />
             </button>
@@ -193,7 +193,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
             onChange={e => setRememberMe(e.target.checked)}
             className="w-4 h-4 rounded cursor-pointer accent-[#8e78fb]"
           />
-          <label htmlFor="si-remember" className="text-[13px] cursor-pointer" style={{ color: "#6b7280" }}>
+          <label htmlFor="si-remember" className="text-[13px] cursor-pointer" style={{ color: "var(--t2,#6b7280)" }}>
             {t("rememberMe")}
           </label>
         </div>
@@ -215,10 +215,10 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
         {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-[#e5e7eb]" />
+            <span className="w-full border-t" style={{ borderColor: "var(--bd,#e5e7eb)" }} />
           </div>
           <div className="relative flex justify-center">
-            <span className="bg-white px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
+            <span className="px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ background: "var(--white,#fff)", color: "var(--t3,#9ca3af)" }}>
               {t("orContinueWith")}
             </span>
           </div>
@@ -228,7 +228,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
         <button
           type="button" onClick={googleLogin} disabled={loading}
           className="w-full h-12 flex items-center justify-center gap-2.5 rounded-xl border text-[14px] font-semibold transition-all duration-200 disabled:opacity-50 hover:-translate-y-px"
-          style={{ borderColor: "#e5e7eb", color: "#111827", background: "#fff" }}
+          style={{ borderColor: "var(--bd,#e5e7eb)", color: "var(--t1,#111827)", background: "var(--white,#fff)" }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = "#c4b8fd"; e.currentTarget.style.background = "#fafafe" }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#fff" }}
         >
@@ -246,7 +246,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
         >
           {t("forgotPassword")}
         </Link>
-        <p style={{ color: "#6b7280" }}>
+        <p style={{ color: "var(--t2,#6b7280)" }}>
           {t("newToChabaqa")}{" "}
           <Link href={localizeHref(pathname, "/signup")} className="font-semibold hover:underline" style={{ color: "#8e78fb" }}>
             {t("createAccount")}

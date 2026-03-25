@@ -45,7 +45,7 @@ export default async function SignUpPage() {
           background:
             "radial-gradient(ellipse 90% 55% at 50% -5%, rgba(142,120,251,.18) 0%, transparent 70%)," +
             "radial-gradient(ellipse 55% 40% at 95% 95%, rgba(108,82,240,.12) 0%, transparent 70%)," +
-            "#fafafe",
+            "var(--bg,#fafafe)",
         }}
       >
         <div className="w-full max-w-[420px]">
@@ -63,10 +63,10 @@ export default async function SignUpPage() {
 
           {/* Headline */}
           <div className="text-center mb-7 fade-up-2">
-            <h1 className="text-[22px] font-black mb-1" style={{ color: "#111827" }}>
+            <h1 className="text-[22px] font-black mb-1" style={{ color: "var(--t1,#111827)" }}>
               {t("headline")}
             </h1>
-            <p className="text-[14px]" style={{ color: "#6b7280" }}>{t("subheadline")}</p>
+            <p className="text-[14px]" style={{ color: "var(--t2,#6b7280)" }}>{t("subheadline")}</p>
           </div>
 
           {/* Form card */}
