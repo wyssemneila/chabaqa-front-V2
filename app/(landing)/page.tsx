@@ -3,6 +3,7 @@ import { AppInstallCTA } from "@/app/(landing)/components/app-install-cta"
 import { FAQ } from "@/app/(landing)/components/faq"
 import { Features } from "@/app/(landing)/components/features"
 import { Hero } from "@/app/(landing)/components/hero"
+import { HowItWorks } from "@/app/(landing)/components/how-it-works"
 import { Pricing } from "@/app/(landing)/components/pricing"
 import { RevealProvider } from "@/app/(landing)/components/reveal-provider"
 import { YouTubeVideos } from "@/app/(landing)/components/youtube-videos"
@@ -126,16 +127,17 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <>
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen" style={{ background: 'var(--bg)' }}>
         <Header />
         <RevealProvider />
         <Hero />
         <About />
         <Features />
+        <HowItWorks />
         <YouTubeVideos />
         <Pricing />
-        <AppInstallCTA />
         <FAQ />
+        <AppInstallCTA />
         <Footer />
       </main>
       

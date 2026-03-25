@@ -1,36 +1,29 @@
-"use client"
+'use client'
+import { STEPS } from '@/lib/landing-data'
 
-import { siteData } from "@/lib/data"
-import { useTranslations } from "next-intl"
+const STEPS_TEXT = [
+  { num: '1', title: 'Create your community', desc: 'Sign up, name your community, add a description and banner. Takes 3 minutes. Your invite link is live immediately.' },
+  { num: '2', title: 'Add your content',      desc: 'Upload course videos, create challenges, set your coaching calendar, and list your digital products — all from one dashboard.' },
+  { num: '3', title: 'Share & earn',          desc: 'Share your invite link. Members join, pay, and engage. You get paid with transparent transaction fees starting at 2.9%.' },
+]
 
 export function HowItWorks() {
-  const t = useTranslations("landing.howItWorks")
-
   return (
-    <section id="how-it-works" className="py-20 bg-white ">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{t("title")}</h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            {t("subtitle")}
-          </p>
+    <section className="py-24 px-6 md:px-10 bg-[var(--bg)]" id="how" aria-label="How it works">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-16 reveal">
+          <div className="text-xs font-bold uppercase tracking-[.1em] text-[var(--p)] mb-3">Simple setup</div>
+          <h2 className="text-[clamp(28px,4vw,44px)] font-black text-[var(--t1)] mb-4">Up and running in minutes</h2>
+          <p className="text-[var(--t3)] max-w-xl mx-auto">No developers, no headaches. Just create, share, and grow.</p>
         </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {siteData.howItWorks.map((step, index) => (
-            <div key={index} className="text-center">
-              <div className="relative mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-chabaqa-primary to-chabaqa-secondary1 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-white">{step.step}</span>
-                </div>
-                {index < siteData.howItWorks.length - 1 && (
-                  <div className="hidden lg:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-chabaqa-primary/30 to-chabaqa-secondary1/30 transform -translate-y-1/2"></div>
-                )}
+        <div className="grid md:grid-cols-3 gap-10 stagger">
+          {STEPS_TEXT.map((step, i) => (
+            <div key={step.num} className="text-center">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black text-white mx-auto mb-6" style={{ background: STEPS[i].color, boxShadow: `0 8px 24px ${STEPS[i].shadow}` }}>
+                {step.num}
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                {t.has(`steps.${index}.title`) ? t(`steps.${index}.title`) : step.title}
-              </h3>
-              <p className="text-gray-600 leading-relaxed">{t.has(`steps.${index}.description`) ? t(`steps.${index}.description`) : step.description}</p>
+              <div className="text-lg font-bold text-[var(--t1)] mb-3">{step.title}</div>
+              <p className="text-[var(--t3)] leading-relaxed text-[15px]">{step.desc}</p>
             </div>
           ))}
         </div>

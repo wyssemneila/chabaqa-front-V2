@@ -770,6 +770,30 @@ body {
 }
 
 
+/* ── Chabaqa Brand Tokens ──────────────────────────────────────────────── */
+:root {
+  --p:          #8e78fb;
+  --p-dark:     #6c52f0;
+  --p2:         #ede9ff;
+  --p3:         #c4b8fd;
+  --orange:     #ff9b28;
+  --o2:         #fff3e4;
+  --cyan:       #47c7ea;
+  --c2:         #e4f8fd;
+  --pink:       #f65887;
+  --pk2:        #ffe4ee;
+  --bg:         #f7f7fe;
+  --white:      #ffffff;
+  --t1:         #1a1730;
+  --t2:         #46426a;
+  --t3:         #9590b8;
+  --bd:         #e8e4ff;
+  --bd2:        #d4ccff;
+  --nav-bg:     rgba(247,247,254,0.94);
+  --footer-bg:  #1a1730;
+  --section-alt:#f0eefe;
+}
+
 /* ── Landing Page Animations ─────────────────────────────────────────── */
 @keyframes blobMove {
   0%, 100% { transform: translate(0, 0) scale(1); }
@@ -866,4 +890,43 @@ body {
     transform: none !important;
     transition: none !important;
   }
+}
+
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+
+@keyframes ringA {
+  from,4%   { stroke-dasharray:0 660;  stroke-width:20; stroke-dashoffset:-330; }
+  12%        { stroke-dasharray:60 600; stroke-width:30; stroke-dashoffset:-335; }
+  32%        { stroke-dasharray:60 600; stroke-width:30; stroke-dashoffset:-595; }
+  40%,54%   { stroke-dasharray:0 660;  stroke-width:20; stroke-dashoffset:-660; }
+  62%        { stroke-dasharray:60 600; stroke-width:30; stroke-dashoffset:-665; }
+  82%        { stroke-dasharray:60 600; stroke-width:30; stroke-dashoffset:-925; }
+  90%,to    { stroke-dasharray:0 660;  stroke-width:20; stroke-dashoffset:-990; }
+}
+@keyframes ringB {
+  from,12%  { stroke-dasharray:0 220;  stroke-width:20; stroke-dashoffset:-110; }
+  20%        { stroke-dasharray:20 200; stroke-width:30; stroke-dashoffset:-115; }
+  40%        { stroke-dasharray:20 200; stroke-width:30; stroke-dashoffset:-195; }
+  48%,62%   { stroke-dasharray:0 220;  stroke-width:20; stroke-dashoffset:-220; }
+  70%        { stroke-dasharray:20 200; stroke-width:30; stroke-dashoffset:-225; }
+  90%        { stroke-dasharray:20 200; stroke-width:30; stroke-dashoffset:-305; }
+  98%,to    { stroke-dasharray:0 220;  stroke-width:20; stroke-dashoffset:-330; }
+}
+@keyframes ringC {
+  from       { stroke-dasharray:0 440;  stroke-width:20; stroke-dashoffset:0;    }
+  8%          { stroke-dasharray:40 400; stroke-width:30; stroke-dashoffset:-5;   }
+  28%         { stroke-dasharray:40 400; stroke-width:30; stroke-dashoffset:-175; }
+  36%,58%   { stroke-dasharray:0 440;  stroke-width:20; stroke-dashoffset:-220; }
+  66%         { stroke-dasharray:40 400; stroke-width:30; stroke-dashoffset:-225; }
+  86%         { stroke-dasharray:40 400; stroke-width:30; stroke-dashoffset:-395; }
+  94%,to    { stroke-dasharray:0 440;  stroke-width:20; stroke-dashoffset:-440; }
+}
+@keyframes ringD {
+  from,8%   { stroke-dasharray:0 440;  stroke-width:20; stroke-dashoffset:0;    }
+  16%        { stroke-dasharray:40 400; stroke-width:30; stroke-dashoffset:-5;   }
+  36%        { stroke-dasharray:40 400; stroke-width:30; stroke-dashoffset:-175; }
+  44%,50%   { stroke-dasharray:0 440;  stroke-width:20; stroke-dashoffset:-220; }
+  58%        { stroke-dasharray:40 400; stroke-width:30; stroke-dashoffset:-225; }
+  78%        { stroke-dasharray:40 400; stroke-width:30; stroke-dashoffset:-395; }
+  86%,to    { stroke-dasharray:0 440;  stroke-width:20; stroke-dashoffset:-440; }
 }
