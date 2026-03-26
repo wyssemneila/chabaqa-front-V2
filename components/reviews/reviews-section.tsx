@@ -94,7 +94,7 @@ export function ReviewsSection({
           <CardContent className="p-6 sm:p-8">
             <div className="flex flex-col md:flex-row gap-8 items-center">
               {/* Overall Rating */}
-              <div className="text-center md:text-left flex-shrink-0 min-w-[180px]">
+              <div className="text-center md:text-start flex-shrink-0 min-w-[180px]">
                 <div className="text-5xl font-bold text-gray-900 tracking-tight mb-2">
                   {stats.averageRating.toFixed(1)}
                 </div>
@@ -123,7 +123,7 @@ export function ReviewsSection({
                           style={{ width: `${percentage}%` }} 
                         />
                       </div>
-                      <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">
+                      <span className="text-xs text-muted-foreground w-10 text-end tabular-nums">
                         {percentage > 0 ? `${Math.round(percentage)}%` : '0%'}
                       </span>
                     </div>
@@ -132,7 +132,7 @@ export function ReviewsSection({
               </div>
 
               {/* Highlights */}
-              <div className="hidden lg:flex flex-col gap-4 border-l pl-8 ml-auto min-w-[200px]">
+              <div className="hidden lg:flex flex-col gap-4 border-l ps-8 ms-auto min-w-[200px]">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
                     <MessageSquare className="h-5 w-5" />

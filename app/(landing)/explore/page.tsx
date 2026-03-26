@@ -2,10 +2,16 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import ExploreClient from "./explore-page-client"
 import type { Metadata } from "next"
+import { getTranslations } from "next-intl/server"
+import { generateAlternateLanguages } from "@/lib/seo-config"
 
-export const metadata: Metadata = {
-  title: "Explore Communities, Courses & More | Chabaqa",
-  description: "Discover communities, courses, challenges, and more — all built by creators in Tunisia and MENA.",
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("landing.explore")
+  return {
+    title: t("metaTitle"),
+    description: t("metaDesc"),
+    alternates: generateAlternateLanguages("/explore"),
+  }
 }
 
 export default function ExplorePage() {

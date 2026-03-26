@@ -522,7 +522,7 @@ export function DMComponent() {
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       placeholder="Search conversations..."
-                      className="pl-10 h-10 text-sm bg-gray-100 border-transparent rounded-lg focus-visible:ring-0 placeholder:text-gray-400"
+                      className="ps-10 h-10 text-sm bg-gray-100 border-transparent rounded-lg focus-visible:ring-0 placeholder:text-gray-400"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -558,14 +558,14 @@ export function DMComponent() {
                             key={conv.id}
                             onClick={() => handleSelectConversation(conv)}
                             className={cn(
-                              "w-full flex items-center gap-3.5 px-5 py-3.5 transition-all duration-200 text-left group relative",
+                              "w-full flex items-center gap-3.5 px-5 py-3.5 transition-all duration-200 text-start group relative",
                               "hover:bg-gray-50 active:bg-gray-100",
                               isUnread && "bg-gray-50/50"
                             )}
                           >
                             {/* Unread indicator bar */}
                             {isUnread && (
-                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-8 bg-gray-900 rounded-r-full" />
+                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-8 bg-gray-900 rounded-e-full" />
                             )}
                             <div className="relative flex-shrink-0">
                               <Avatar className="h-12 w-12 border border-gray-100">
@@ -587,7 +587,7 @@ export function DMComponent() {
                                   {name}
                                 </span>
                                 <span className={cn(
-                                  "text-[11px] flex-shrink-0 ml-2",
+                                  "text-[11px] flex-shrink-0 ms-2",
                                   isUnread ? "text-gray-900 font-semibold" : "text-gray-400"
                                 )}>
                                   {conv.lastMessageAt ? formatConversationTime(conv.lastMessageAt) : ''}
@@ -786,12 +786,12 @@ export function DMComponent() {
                                   isMine ? cn(
                                     "rounded-2xl",
                                     !prevIsSame && nextIsSame && "rounded-br-md",
-                                    prevIsSame && nextIsSame && "rounded-r-md",
+                                    prevIsSame && nextIsSame && "rounded-e-md",
                                     prevIsSame && !nextIsSame && "rounded-tr-md",
                                   ) : cn(
                                     "rounded-2xl",
                                     !prevIsSame && nextIsSame && "rounded-bl-md",
-                                    prevIsSame && nextIsSame && "rounded-l-md",
+                                    prevIsSame && nextIsSame && "rounded-s-md",
                                     prevIsSame && !nextIsSame && "rounded-tl-md",
                                   ),
                                 )}>
@@ -860,7 +860,7 @@ export function DMComponent() {
 
                                     {/* Seen / Delivered / Sent indicator */}
                                     {isMine && isLastInGroup && (
-                                      <span className="inline-flex items-center ml-0.5">
+                                      <span className="inline-flex items-center ms-0.5">
                                         {isTemp ? (
                                           <Check className="h-3 w-3 text-white/60" />
                                         ) : hasReadAt ? (
@@ -877,7 +877,7 @@ export function DMComponent() {
 
                             {/* "Seen" label after the very last sent message */}
                             {isMine && hasReadAt && idx === messages.length - 1 && (
-                              <div className="flex justify-end mt-1 pr-1">
+                              <div className="flex justify-end mt-1 pe-1">
                                 <span className="text-[10px] text-gray-400 font-medium">Seen</span>
                               </div>
                             )}

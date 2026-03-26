@@ -57,7 +57,7 @@ export function PageHeader({ title, description, breadcrumbs, badge, actions, cl
           <div className="flex items-center gap-2 flex-shrink-0">
             {actions.map((action, i) => {
               const ActionIcon = action.icon
-              const btn = <Button key={i} variant={action.variant || (i === 0 ? "default" : "outline")} size="sm" onClick={action.onClick}>{ActionIcon && <ActionIcon className="h-4 w-4 mr-2" />}{action.label}</Button>
+              const btn = <Button key={i} variant={action.variant || (i === 0 ? "default" : "outline")} size="sm" onClick={action.onClick}>{ActionIcon && <ActionIcon className="h-4 w-4 me-2" />}{action.label}</Button>
               return action.href ? <Link key={i} href={action.href}>{btn}</Link> : btn
             })}
           </div>
@@ -104,7 +104,7 @@ export function ActionBar({ searchValue, onSearchChange, searchPlaceholder = "Se
         {onSearchChange && (
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={searchValue} onChange={(e) => onSearchChange(e.target.value)} placeholder={searchPlaceholder} className="pl-9 h-9" />
+            <Input value={searchValue} onChange={(e) => onSearchChange(e.target.value)} placeholder={searchPlaceholder} className="ps-9 h-9" />
           </div>
         )}
         {children}
@@ -145,7 +145,7 @@ export function Section({ title, description, actions, children, className }: Se
             <div className="flex items-center gap-2">
               {actions.map((action, i) => {
                 const ActionIcon = action.icon
-                const btn = <Button key={i} variant={action.variant || "outline"} size="sm" onClick={action.onClick}>{ActionIcon && <ActionIcon className="h-4 w-4 mr-2" />}{action.label}</Button>
+                const btn = <Button key={i} variant={action.variant || "outline"} size="sm" onClick={action.onClick}>{ActionIcon && <ActionIcon className="h-4 w-4 me-2" />}{action.label}</Button>
                 return action.href ? <Link key={i} href={action.href}>{btn}</Link> : btn
               })}
             </div>

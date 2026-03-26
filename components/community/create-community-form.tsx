@@ -330,7 +330,7 @@ export function CreateCommunityForm({
                     </div>
                   </div>
                   {formData.joinFee === "paid" && (
-                    <div className="mt-6 ml-14 space-y-4">
+                    <div className="mt-6 ms-14 space-y-4">
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-3">Select Currency</label>
                         <Select value={formData.currency} onValueChange={(value) => updateFormData("currency", value)}>
@@ -443,7 +443,7 @@ export function CreateCommunityForm({
               disabled={!createdCommunity.inviteLink}
               className="sm:w-auto"
             >
-              <Copy className="w-4 h-4 mr-2" />
+              <Copy className="w-4 h-4 me-2" />
               {inviteCopied ? "Copied" : "Copy invite link"}
             </Button>
             <Button
@@ -453,7 +453,7 @@ export function CreateCommunityForm({
               disabled={!createdCommunity.slug}
               className="sm:w-auto"
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
+              <ExternalLink className="w-4 h-4 me-2" />
               Go to community
             </Button>
             <Button
@@ -479,7 +479,7 @@ export function CreateCommunityForm({
           onClick={() => router.push(backUrl)}
           className="mb-6 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
+          <ArrowLeft className="w-4 h-4 me-2" />
         </Button>
 
         <div className="max-w-3xl">
@@ -538,7 +538,7 @@ export function CreateCommunityForm({
             onClick={prevStep}
             className="px-8 py-3 rounded-xl font-semibold border-2 text-gray-700 hover:bg-gray-50"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4 me-2" />
             Back
           </Button>
         ) : <div />}
@@ -553,7 +553,7 @@ export function CreateCommunityForm({
         >
           {isSubmitting ? (
             <div className="flex items-center">
-              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin -ms-1 me-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
@@ -562,12 +562,12 @@ export function CreateCommunityForm({
           ) : currentStep === 3 ? (
             <>
               Create Community
-              <Check className="w-4 h-4 ml-2" />
+              <Check className="w-4 h-4 ms-2" />
             </>
           ) : (
             <>
               Continue
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-4 h-4 ms-2" />
             </>
           )}
         </Button>

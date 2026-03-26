@@ -39,7 +39,7 @@ export function StepIndicator({ steps, onStepClick, orientation = 'horizontal' }
                   {step.isCompleted ? <Check className="h-5 w-5" /> : <span className="text-sm font-medium">{stepIdx + 1}</span>}
                 </span>
               </div>
-              <div className={`flex flex-col ${orientation === 'vertical' ? 'ml-4 mt-1' : 'items-center text-center'}`}>
+              <div className={`flex flex-col ${orientation === 'vertical' ? 'ms-4 mt-1' : 'items-center text-center'}`}>
                 <span className={`text-sm font-medium ${step.isActive || step.isCompleted ? 'text-gray-900' : 'text-gray-500'}`}>
                   {step.label}
                 </span>

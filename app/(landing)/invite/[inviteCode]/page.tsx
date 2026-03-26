@@ -197,7 +197,7 @@ export default function InvitePage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="text-2xl font-bold text-gray-900">{preview.name}</h1>
                     <Badge className="bg-gray-100 text-gray-800 border border-gray-200">
-                      <Lock className="h-3 w-3 mr-1" />
+                      <Lock className="h-3 w-3 me-1" />
                       Private
                     </Badge>
                   </div>
@@ -234,7 +234,7 @@ export default function InvitePage() {
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-4 w-4 me-2 animate-spin" />
                       Processing...
                     </>
                   ) : !isAuthenticated ? (
@@ -244,7 +244,7 @@ export default function InvitePage() {
                   ) : (
                     "Join private community"
                   )}
-                  {!submitting && <ArrowRight className="h-4 w-4 ml-2" />}
+                  {!submitting && <ArrowRight className="h-4 w-4 ms-2" />}
                 </Button>
                 <Button asChild variant="outline">
                   <Link href="/explore">Back to Explore</Link>

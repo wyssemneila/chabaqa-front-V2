@@ -83,7 +83,7 @@ export function Resources() {
 
                     <div className="flex items-center text-chabaqa-primary font-medium transition-transform hover:translate-x-0.5">
                       <span className="text-sm">Read More</span>
-                      <ArrowRight className="w-4 h-4 ml-1" />
+                      <ArrowRight className="w-4 h-4 ms-1" />
                     </div>
                   </CardContent>
                 </Card>

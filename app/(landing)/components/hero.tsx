@@ -157,7 +157,7 @@ export function Hero() {
         <div className="flex items-center gap-3 justify-center" style={{ animation: 'fadeDown .7s .4s ease both' }}>
           <div className="flex" aria-hidden="true">
             {[['MI','#ede9ff','#8e78fb'],['AB','#dcfce7','#166534'],['WN','#e4f8fd','#0e7490'],['SA','#ffe4ee','#9d174d']].map(([init,bg,color]) => (
-              <div key={init} className="w-8 h-8 rounded-full border-[2.5px] border-[var(--bg)] -ml-2 first:ml-0 text-[10px] font-extrabold flex items-center justify-center" style={{ background: bg, color }}>{init}</div>
+              <div key={init} className="w-8 h-8 rounded-full border-[2.5px] border-[var(--bg)] -ms-2 first:ms-0 text-[10px] font-extrabold flex items-center justify-center" style={{ background: bg, color }}>{init}</div>
             ))}
           </div>
           <span className="text-[13px] font-medium text-[var(--t3)]">{t('proofText')}</span>
@@ -166,7 +166,7 @@ export function Hero() {
         {/* Stats */}
         <div className="flex items-center bg-[var(--white)] border border-[var(--bd)] rounded-2xl overflow-hidden mt-8 md:mt-12 max-w-[680px] w-full mx-auto shadow-[0_4px_24px_rgba(142,120,251,.1)]" style={{ animation: 'fadeUp .7s .5s ease both' }} role="list" aria-label="Key stats">
           {statsRaw.map((s, i) => (
-            <div key={s.label} className="flex-1 py-3 px-3 md:py-4 md:px-5 text-center border-r border-[var(--bd)] last:border-r-0" role="listitem">
+            <div key={s.label} className="flex-1 py-3 px-3 md:py-4 md:px-5 text-center border-r border-[var(--bd)] last:border-e-0" role="listitem">
               <div className="text-[16px] md:text-[22px] font-black leading-none" style={{ color: STAT_COLORS[i] }}>{s.val}</div>
               <div className="text-[10px] md:text-[11px] font-semibold uppercase tracking-[.06em] text-[var(--t3)] mt-1">{s.label}</div>
             </div>

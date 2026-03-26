@@ -29,7 +29,7 @@ export function TermsModal({ open, onOpenChange }: TermsModalProps) {
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="h-[60vh] pr-4">
+        <ScrollArea className="h-[60vh] pe-4">
           <div className="space-y-4 text-sm">
             <div>
               <p className="font-semibold">App Name: Chabaqa</p>
@@ -54,7 +54,7 @@ export function TermsModal({ open, onOpenChange }: TermsModalProps) {
                 Chabaqa is a platform that enables creators to build engaged communities, share content, create courses 
                 and challenges, and monetize their expertise through various features including:
               </p>
-              <ul className="list-disc ml-6 mt-2 space-y-1">
+              <ul className="list-disc ms-6 mt-2 space-y-1">
                 <li>Community creation and management</li>
                 <li>Content sharing (posts, images, videos)</li>
                 <li>Course and challenge creation</li>
@@ -67,10 +67,10 @@ export function TermsModal({ open, onOpenChange }: TermsModalProps) {
             <div>
               <h3 className="font-bold text-base mb-2">3) User Accounts</h3>
               
-              <div className="ml-4 space-y-3">
+              <div className="ms-4 space-y-3">
                 <div>
                   <h4 className="font-semibold">A. Account Registration</h4>
-                  <ul className="list-disc ml-6 space-y-1">
+                  <ul className="list-disc ms-6 space-y-1">
                     <li>You must be at least 13 years old to use Chabaqa</li>
                     <li>You must provide accurate and complete information</li>
                     <li>You are responsible for maintaining the security of your account</li>
@@ -90,7 +90,7 @@ export function TermsModal({ open, onOpenChange }: TermsModalProps) {
             <div>
               <h3 className="font-bold text-base mb-2">4) User Content</h3>
               
-              <div className="ml-4 space-y-3">
+              <div className="ms-4 space-y-3">
                 <div>
                   <h4 className="font-semibold">A. Your Content</h4>
                   <p>
@@ -102,7 +102,7 @@ export function TermsModal({ open, onOpenChange }: TermsModalProps) {
                 <div>
                   <h4 className="font-semibold">B. Content Standards</h4>
                   <p>You agree not to post content that:</p>
-                  <ul className="list-disc ml-6 mt-2 space-y-1">
+                  <ul className="list-disc ms-6 mt-2 space-y-1">
                     <li>Is illegal, harmful, threatening, abusive, or harassing</li>
                     <li>Infringes on intellectual property rights</li>
                     <li>Contains viruses or malicious code</li>
@@ -116,7 +116,7 @@ export function TermsModal({ open, onOpenChange }: TermsModalProps) {
             <div>
               <h3 className="font-bold text-base mb-2">5) Payments and Refunds</h3>
               
-              <div className="ml-4 space-y-3">
+              <div className="ms-4 space-y-3">
                 <div>
                   <h4 className="font-semibold">A. Payments</h4>
                   <p>
@@ -145,7 +145,7 @@ export function TermsModal({ open, onOpenChange }: TermsModalProps) {
             <div>
               <h3 className="font-bold text-base mb-2">6) Prohibited Activities</h3>
               <p>You may not:</p>
-              <ul className="list-disc ml-6 mt-2 space-y-1">
+              <ul className="list-disc ms-6 mt-2 space-y-1">
                 <li>Use the service for any illegal purpose</li>
                 <li>Attempt to gain unauthorized access to our systems</li>
                 <li>Interfere with or disrupt the service</li>
@@ -168,7 +168,7 @@ export function TermsModal({ open, onOpenChange }: TermsModalProps) {
             <div>
               <h3 className="font-bold text-base mb-2">8) Termination</h3>
               
-              <div className="ml-4 space-y-2">
+              <div className="ms-4 space-y-2">
                 <div>
                   <h4 className="font-semibold">A. By You</h4>
                   <p>You may delete your account at any time through the app settings.</p>

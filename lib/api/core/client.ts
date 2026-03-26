@@ -84,7 +84,7 @@ class ApiClient {
 
       // Transform error using error message mapping
       try {
-        const { mapErrorMessage } = await import('../../error-messages');
+        const { mapErrorMessage } = await import('../../utils/error-messages');
         const mapped = mapErrorMessage(error);
         error.message = mapped.message;
         error.guidance = mapped.guidance;

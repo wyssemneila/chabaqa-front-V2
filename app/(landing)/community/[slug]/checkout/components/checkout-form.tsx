@@ -251,12 +251,12 @@ export function CheckoutForm({
               onClick={handleBackToCommunity}
               className="inline-flex items-center text-sm text-gray-600 hover:text-chabaqa-primary transition-colors w-fit"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="w-4 h-4 me-2" />
               Back to Community
             </button>
           )}
 
-          <div className={`flex flex-col sm:flex-row gap-4 ${embedded ? 'items-center sm:items-start text-center sm:text-left' : ''}`}>
+          <div className={`flex flex-col sm:flex-row gap-4 ${embedded ? 'items-center sm:items-start text-center sm:text-start' : ''}`}>
             <div className={`relative flex-shrink-0 ${embedded ? 'h-24 w-24' : 'h-32 w-32'}`}>
               <Image
                 src={community.logo || community.image || "/placeholder.svg"}
@@ -293,7 +293,7 @@ export function CheckoutForm({
                 {community.creator?.verified && (
                   <CheckCircle className="w-4 h-4 text-blue-500" />
                 )}
-                <Badge className="ml-1 bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                <Badge className="ms-1 bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
                   Secure checkout
                 </Badge>
@@ -492,7 +492,7 @@ export function CheckoutForm({
                         }}
                         />
                       </label>
-                      <p className="pl-1">or drag and drop</p>
+                      <p className="ps-1">or drag and drop</p>
                     </div>
                     <p className="text-xs text-gray-500">
                       PNG, JPG, PDF up to 10MB
@@ -516,7 +516,7 @@ export function CheckoutForm({
               >
                 {isProcessing ? (
                   <>
-                    <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" />
+                    <Loader2 className="animate-spin -ms-1 me-3 h-5 w-5" />
                     <span>{basePrice <= 0 ? 'Joining...' : 'Processing...'}</span>
                   </>
                 ) : success ? (

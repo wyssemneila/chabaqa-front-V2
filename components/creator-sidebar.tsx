@@ -283,7 +283,7 @@ export function CreatorSidebar() {
                       >
                         <span className="text-sm">{selectedCommunity.name?.charAt(0) || 'C'}</span>
                       </div>
-                      <div className="grid flex-1 text-left text-sm leading-tight">
+                      <div className="grid flex-1 text-start text-sm leading-tight">
                         <span className="truncate font-semibold">{selectedCommunity.name}</span>
                         <span className="truncate text-xs text-muted-foreground">
                           {selectedCommunity.members?.toLocaleString?.() ||
@@ -296,7 +296,7 @@ export function CreatorSidebar() {
                   ) : (
                     <span className="text-sm">Select Community</span>
                   )}
-                  <ChevronDown className="ml-auto size-4" />
+                  <ChevronDown className="ms-auto size-4" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -365,7 +365,7 @@ export function CreatorSidebar() {
                         <Badge
                           variant="secondary"
                           className={cn(
-                            "ml-auto text-xs",
+                            "ms-auto text-xs",
                             item.color === "courses" && "bg-courses-100 text-courses-700",
                             item.color === "challenges" && "bg-challenges-100 text-challenges-700",
                             item.color === "sessions" && "bg-sessions-100 text-sessions-700",
@@ -396,11 +396,11 @@ export function CreatorSidebar() {
                     <AvatarImage src="/placeholder.svg?height=32&width=32" alt="Sarah Johnson" />
                     <AvatarFallback className="rounded-lg">SJ</AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
+                  <div className="grid flex-1 text-start text-sm leading-tight">
                     <span className="truncate font-semibold">Sarah Johnson</span>
                     <span className="truncate text-xs text-muted-foreground">Creator</span>
                   </div>
-                  <ChevronDown className="ml-auto size-4" />
+                  <ChevronDown className="ms-auto size-4" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -410,16 +410,16 @@ export function CreatorSidebar() {
                 sideOffset={4}
               >
                 <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
+                  <User className="me-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
+                  <Settings className="me-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className="me-2 h-4 w-4" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -439,7 +439,7 @@ export function CreatorLayout({ children }: { children: React.ReactNode }) {
         <div className="flex-1">
           <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="container flex h-14 items-center">
-              <SidebarTrigger className="-ml-1" />
+              <SidebarTrigger className="-ms-1" />
               <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
                 <div className="w-full flex-1 md:w-auto md:flex-none">
                   <div className="flex items-center space-x-2">

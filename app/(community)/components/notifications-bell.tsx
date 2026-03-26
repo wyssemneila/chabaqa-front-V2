@@ -415,7 +415,7 @@ export function NotificationsBell({
                           type="button"
                           onClick={() => handleItemClick(n)}
                           className={cn(
-                            "group relative w-full overflow-hidden rounded-2xl border bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            "group relative w-full overflow-hidden rounded-2xl border bg-white p-4 text-start shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             !n.isRead ? "border-primary/30" : "border-border-color",
                           )}
                           aria-label={href ? `${n.title}. Open.` : `${n.title}. Mark as read.`}
@@ -491,7 +491,7 @@ export function NotificationsBell({
                           type="button"
                           onClick={() => handleItemClick(n)}
                           className={cn(
-                            "group relative w-full overflow-hidden rounded-2xl border bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            "group relative w-full overflow-hidden rounded-2xl border bg-white p-4 text-start shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             !n.isRead ? "border-primary/30" : "border-border-color",
                           )}
                           aria-label={href ? `${n.title}. Open.` : `${n.title}. Mark as read.`}

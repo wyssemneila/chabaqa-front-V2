@@ -98,7 +98,7 @@ export function AccessibleField({ id, label, error, hint, required, children }: 
   return (
     <div className="space-y-1.5">
       <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-        {label}{required && <span className="text-red-500 ml-1" aria-hidden="true">*</span>}{required && <span className="sr-only">(required)</span>}
+        {label}{required && <span className="text-red-500 ms-1" aria-hidden="true">*</span>}{required && <span className="sr-only">(required)</span>}
       </label>
       {hint && !error && <p id={hintId} className="text-sm text-gray-500">{hint}</p>}
       {React.cloneElement(children as React.ReactElement<any>, { id, 'aria-describedby': errorId || hintId, 'aria-invalid': !!error })}
@@ -114,7 +114,7 @@ export function AccessibleTable({ caption, captionHidden = false, children }: Ac
   return (
     <div className="overflow-x-auto" role="region" aria-label={caption}>
       <table className="min-w-full divide-y divide-gray-200">
-        <caption className={captionHidden ? 'sr-only' : 'text-lg font-semibold text-gray-900 text-left mb-4'}>{caption}</caption>
+        <caption className={captionHidden ? 'sr-only' : 'text-lg font-semibold text-gray-900 text-start mb-4'}>{caption}</caption>
         {children}
       </table>
     </div>

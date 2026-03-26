@@ -55,7 +55,7 @@ export function EmptyStateEducation({ type, customTitle, customDescription, show
         </div>
       )}
       {showTips && content.tips && content.tips.length > 0 && (
-        <div className="bg-gray-50 rounded-lg p-4 max-w-md text-left">
+        <div className="bg-gray-50 rounded-lg p-4 max-w-md text-start">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Tips</p>
           <ul className="space-y-1.5">
             {content.tips.map((tip, index) => (<li key={index} className="text-sm text-gray-600 flex items-start gap-2"><span className="text-primary mt-1">•</span>{tip}</li>))}

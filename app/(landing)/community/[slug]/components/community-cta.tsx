@@ -60,7 +60,7 @@ export function CommunityCTA({
             style={{ background: themeTokens?.softPrimary || undefined, opacity: 0.35 }}
           />
           <div className="relative flex flex-col items-center justify-between gap-6 md:flex-row md:gap-8">
-          <div className="relative max-w-xl text-center md:text-left">
+          <div className="relative max-w-xl text-center md:text-start">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900">
               {title}
             </h2>

@@ -254,7 +254,7 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
                         <Link href="/dashboard/create-community" className="flex items-center px-2 py-2">
-                          <Plus className="mr-2 h-4 w-4" />
+                          <Plus className="me-2 h-4 w-4" />
                           Create New Community
                         </Link>
                       </DropdownMenuItem>
@@ -274,7 +274,7 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
               placeholder="Search courses, challenges, posts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-muted/50 border-0 focus-visible:ring-1"
+              className="ps-10 bg-muted/50 border-0 focus-visible:ring-1"
             />
           </div>
         </div>
@@ -285,7 +285,7 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" className="hidden sm:flex">
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 me-2" />
                 Create
               </Button>
             </DropdownMenuTrigger>
@@ -293,7 +293,7 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
               {quickActions.map((action) => (
                 <DropdownMenuItem key={action.label} asChild>
                   <Link href={action.href} className="flex items-center">
-                    <action.icon className="mr-2 h-4 w-4" />
+                    <action.icon className="me-2 h-4 w-4" />
                     {action.label}
                   </Link>
                 </DropdownMenuItem>
@@ -445,14 +445,14 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="ps-10"
                   />
                 </div>
                 <div className="space-y-2">
                   {quickActions.map((action) => (
                     <Button key={action.label} variant="ghost" className="w-full justify-start" asChild>
                       <Link href={action.href}>
-                        <action.icon className="mr-2 h-4 w-4" />
+                        <action.icon className="me-2 h-4 w-4" />
                         {action.label}
                       </Link>
                     </Button>
@@ -475,7 +475,7 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
                       .join("")}
                   </AvatarFallback>
                 </Avatar>
-                <div className="hidden sm:block text-left">
+                <div className="hidden sm:block text-start">
                   <div className="text-sm font-medium">{currentUser.name}</div>
                   <div className="text-xs text-muted-foreground capitalize">{userType}</div>
                 </div>
@@ -490,21 +490,21 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/">
-                  <Home className="mr-2 h-4 w-4" />
+                  <Home className="me-2 h-4 w-4" />
                   Home
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
+                <User className="me-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
+                <Settings className="me-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
-                <LogOut className="mr-2 h-4 w-4" />
+                <LogOut className="me-2 h-4 w-4" />
                 Log out
               </DropdownMenuItem>
             </DropdownMenuContent>

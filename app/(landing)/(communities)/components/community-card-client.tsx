@@ -28,7 +28,7 @@ export function CommunityCardClient({ slug }: { slug?: string }) {
         className="flex-1 bg-gradient-to-r from-chabaqa-primary to-chabaqa-secondary1 hover:from-chabaqa-primary/90 hover:to-chabaqa-secondary1/90 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group border-0 h-11"
       >
         Join Community
-        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+        <ArrowRight className="w-4 h-4 ms-2 group-hover:translate-x-1 transition-transform" />
       </Button>
       <Button
         onClick={handlePreview}

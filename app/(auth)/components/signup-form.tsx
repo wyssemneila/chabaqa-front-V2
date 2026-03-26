@@ -210,7 +210,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
             <input id="su-pw" type={showPw ? "text" : "password"} value={password}
               autoComplete="new-password" disabled={loading} required
               onChange={e => { setPassword(e.target.value); if (fe.password) setFe({ ...fe, password: "" }) }}
-              placeholder={t("passwordPlaceholder")} className={`${inp(!!fe.password)} pr-12`} />
+              placeholder={t("passwordPlaceholder")} className={`${inp(!!fe.password)} pe-12`} />
             <button type="button" onClick={() => setShowPw(v => !v)} disabled={loading}
               aria-label={showPw ? "Hide" : "Show"}
               className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
@@ -248,7 +248,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void } = {
             <input id="su-cpw" type={showCpw ? "text" : "password"} value={confirmPassword}
               autoComplete="new-password" disabled={loading} required
               onChange={e => { setConfirmPassword(e.target.value); if (fe.confirmPassword) setFe({ ...fe, confirmPassword: "" }) }}
-              placeholder={t("confirmPasswordPlaceholder")} className={`${inp(!!fe.confirmPassword)} pr-12`} />
+              placeholder={t("confirmPasswordPlaceholder")} className={`${inp(!!fe.confirmPassword)} pe-12`} />
             <button type="button" onClick={() => setShowCpw(v => !v)} disabled={loading}
               aria-label={showCpw ? "Hide" : "Show"}
               className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"

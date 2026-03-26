@@ -49,7 +49,7 @@ export function FeaturedCommunities({ communities }: FeaturedCommunitiesProps) {
         <div className="text-center mb-6 px-4">
 
           <div className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-full border border-amber-200/50 mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 mr-1.5" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 me-1.5" />
             <span className="text-xs font-medium text-amber-700">
               {t("featured.badge")}
             </span>

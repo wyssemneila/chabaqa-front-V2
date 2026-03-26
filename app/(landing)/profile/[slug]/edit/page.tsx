@@ -361,7 +361,7 @@ export default function EditProfilePage() {
                       id="username"
                       name="username"
                       type="text"
-                      className="w-full rounded-lg border border-border-color pl-10 pr-4 py-2 bg-gray-50 text-gray-600"
+                      className="w-full rounded-lg border border-border-color ps-10 pe-4 py-2 bg-gray-50 text-gray-600"
                       value={username}
                       readOnly
                       aria-readonly
@@ -378,7 +378,7 @@ export default function EditProfilePage() {
                       id="fullName"
                       name="fullName"
                       type="text"
-                      className={`w-full rounded-lg border pl-10 pr-4 py-2 focus:ring-2 transition ${nameTouched && nameError ? 'border-red-300 focus:ring-red-200' : 'border-border-color focus:ring-primary focus:border-primary'}`}
+                      className={`w-full rounded-lg border ps-10 pe-4 py-2 focus:ring-2 transition ${nameTouched && nameError ? 'border-red-300 focus:ring-red-200' : 'border-border-color focus:ring-primary focus:border-primary'}`}
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       onBlur={() => setNameTouched(true)}
@@ -403,7 +403,7 @@ export default function EditProfilePage() {
                     id="email"
                     name="email"
                     type="email"
-                    className={`w-full rounded-lg border pl-10 pr-4 py-2 focus:ring-2 transition ${emailTouched && emailError ? 'border-red-300 focus:ring-red-200' : 'border-border-color focus:ring-primary focus:border-primary'}`}
+                    className={`w-full rounded-lg border ps-10 pe-4 py-2 focus:ring-2 transition ${emailTouched && emailError ? 'border-red-300 focus:ring-red-200' : 'border-border-color focus:ring-primary focus:border-primary'}`}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onBlur={() => setEmailTouched(true)}
@@ -427,7 +427,7 @@ export default function EditProfilePage() {
                     id="location"
                     name="location"
                     type="text"
-                    className="w-full rounded-lg border border-border-color pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition"
+                    className="w-full rounded-lg border border-border-color ps-10 pe-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition"
                     placeholder="City, Country"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
@@ -451,7 +451,7 @@ export default function EditProfilePage() {
                   onBlur={() => setBioTouched(true)}
                   maxLength={BIO_MAX}
                 />
-                <div className="mt-1 text-xs text-text-tertiary text-right">{bio.length}/{BIO_MAX}</div>
+                <div className="mt-1 text-xs text-text-tertiary text-end">{bio.length}/{BIO_MAX}</div>
               </div>
 
               <div>
@@ -470,7 +470,7 @@ export default function EditProfilePage() {
                           id={`social-${platform}`}
                           name={`social-${platform}`}
                           type="url"
-                          className="w-full rounded-lg border border-border-color pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition"
+                          className="w-full rounded-lg border border-border-color ps-10 pe-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition"
                           placeholder={`https://${platform === "website" ? "your-site.com" : `${platform}.com/username`}`}
                           value={socialLinks[platform] || ""}
                           onChange={(e) =>

@@ -100,7 +100,7 @@ export function CommunityDetailsSidebar({ community }: CommunityDetailsSidebarPr
             <h3 className="text-xl font-bold text-gray-900">Membership</h3>
             {isMember ? (
               <Badge variant="outline" className="border-chabaqa-primary text-chabaqa-primary">
-                <CheckCircle className="w-3 h-3 mr-1" /> Member
+                <CheckCircle className="w-3 h-3 me-1" /> Member
               </Badge>
             ) : isFree ? (
               <Badge variant="outline" className="border-gray-300 text-gray-700">
@@ -108,7 +108,7 @@ export function CommunityDetailsSidebar({ community }: CommunityDetailsSidebarPr
               </Badge>
             ) : (
               <Badge variant="outline" className="border-gray-300 text-gray-700">
-                <Crown className="w-3 h-3 mr-1" />
+                <Crown className="w-3 h-3 me-1" />
                 Premium
               </Badge>
             )}
@@ -153,12 +153,12 @@ export function CommunityDetailsSidebar({ community }: CommunityDetailsSidebarPr
             >
               {isPrivate ? (
                 <>
-                  <Lock className="w-5 h-5 mr-2" />
+                  <Lock className="w-5 h-5 me-2" />
                   Invitation required
                 </>
               ) : (
                 <>
-                  <UserPlus className="w-5 h-5 mr-2" />
+                  <UserPlus className="w-5 h-5 me-2" />
                   {isFree ? "Join for Free" : "Join Now"}
                 </>
               )}

@@ -152,12 +152,12 @@ export function FeatureHero({ feature }: FeatureHeroProps) {
               variant="outline"
               className={`${typeConfig.badgeColor} border text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 font-semibold capitalize`}
             >
-              <IconComponent className="w-3 h-3 mr-1" />
+              <IconComponent className="w-3 h-3 me-1" />
               {feature.type}
             </Badge>
             {feature.verified && (
               <Badge className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold">
-                <CheckCircle className="w-3 h-3 mr-1" />
+                <CheckCircle className="w-3 h-3 me-1" />
                 Verified
               </Badge>
             )}

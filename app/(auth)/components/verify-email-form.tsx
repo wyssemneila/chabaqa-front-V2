@@ -209,7 +209,7 @@ export default function VerifyEmailForm({ email, inviteToken }: VerifyEmailFormP
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  <Loader2 className="w-5 h-5 animate-spin me-2" />
                   <span>{t("verifying")}</span>
                 </>
               ) : (
@@ -225,7 +225,7 @@ export default function VerifyEmailForm({ email, inviteToken }: VerifyEmailFormP
             >
               {isResending ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  <Loader2 className="w-5 h-5 animate-spin me-2" />
                   <span>{t("resending")}</span>
                 </>
               ) : resendCooldown > 0 ? (

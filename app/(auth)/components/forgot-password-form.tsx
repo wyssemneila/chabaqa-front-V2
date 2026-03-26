@@ -105,7 +105,7 @@ export default function ForgotPasswordForm() {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    <Loader2 className="w-5 h-5 animate-spin me-2" />
                     <span>{t("sending")}</span>
                   </>
                 ) : (

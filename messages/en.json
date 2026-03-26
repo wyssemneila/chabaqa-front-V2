@@ -48,12 +48,16 @@
     "signinPage": {
       "headline": "Sign in to your Chabaqa space",
       "subheadline": "Create, educate and manage your digital communities",
-      "footer": "© 2026 Chabaqa. Build the future of communities."
+      "footer": "© 2026 Chabaqa. Build the future of communities.",
+      "metaTitle": "Sign In | Chabaqa",
+      "metaDesc": "Sign in to your Chabaqa creator space. Build and monetize your digital community."
     },
     "signupPage": {
       "headline": "Create your Chabaqa space",
       "subheadline": "Create, educate and manage your digital communities",
-      "footer": "© 2026 Chabaqa. Build the future of communities."
+      "footer": "© 2026 Chabaqa. Build the future of communities.",
+      "metaTitle": "Create Account | Chabaqa",
+      "metaDesc": "Create your free Chabaqa account and start building your community."
     },
     "signinForm": {
       "email": "Email address",
@@ -115,7 +119,9 @@
     "forgotPasswordPage": {
       "backgroundAlt": "Gradient Background",
       "logoAlt": "Chabaqa Logo",
-      "footer": "© 2026 Chabaqa. Build the future of communities."
+      "footer": "© 2026 Chabaqa. Build the future of communities.",
+      "metaTitle": "Forgot Password | Chabaqa",
+      "metaDesc": "Reset your Chabaqa account password securely."
     },
     "forgotPasswordForm": {
       "title": "Forgot your password?",
@@ -140,7 +146,9 @@
     "resetPasswordPage": {
       "backgroundAlt": "Gradient Background",
       "logoAlt": "Chabaqa Logo",
-      "footer": "© 2026 Chabaqa. Build the future of communities."
+      "footer": "© 2026 Chabaqa. Build the future of communities.",
+      "metaTitle": "Reset Password | Chabaqa",
+      "metaDesc": "Create a new secure password for your Chabaqa account."
     },
     "resetPasswordForm": {
       "title": "Reset your password",
@@ -614,7 +622,9 @@
       ],
       "subtitle": "Everything you need to know about Chabaqa - the all-in-one community platform for creators, coaches, and educators. Learn about features, pricing, and how to build and monetize your community.",
       "stillHaveQuestions": "Still have questions about Chabaqa?",
-      "contactSupport": "Contact Our Support Team"
+      "contactSupport": "Contact Our Support Team",
+      "metaTitle": "FAQ | Chabaqa",
+      "metaDesc": "Find answers to common questions about Chabaqa — the all-in-one community platform for creators."
     },
     "footer": {
       "description": "Chabaqa startup",
@@ -729,7 +739,9 @@
             "subtitle": "Earn revenue"
           }
         }
-      }
+      },
+      "metaTitle": "Explore Communities, Courses & More | Chabaqa",
+      "metaDesc": "Discover communities, courses, challenges, and more — all built by creators in Tunisia and MENA."
     },
     "legal": {
       "badge": "Legal",
@@ -744,7 +756,9 @@
       "effectiveDate": "February 27, 2026",
       "lastUpdated": "February 28, 2026",
       "relatedLabel": "Read Terms of Service",
-      "relatedDescription": "For platform usage rules, account obligations, and legal terms."
+      "relatedDescription": "For platform usage rules, account obligations, and legal terms.",
+      "metaTitle": "Privacy Policy | Chabaqa",
+      "metaDesc": "Read how Chabaqa collects, uses, protects, and processes your personal data."
     },
     "termsOfService": {
       "title": "Terms of Service",
@@ -752,8 +766,16 @@
       "effectiveDate": "February 27, 2026",
       "lastUpdated": "February 27, 2026",
       "relatedLabel": "Read Privacy Policy",
-      "relatedDescription": "For data handling, security, retention, and privacy rights."
-    }
+      "relatedDescription": "For data handling, security, retention, and privacy rights.",
+      "metaTitle": "Terms of Service | Chabaqa",
+      "metaDesc": "Review the terms governing your use of Chabaqa platform, including account obligations and creator responsibilities."
+    },
+    "blogs": {
+      "metaTitle": "Blog | Chabaqa",
+      "metaDesc": "Expert insights on building engaged communities, creating online courses, and monetization strategies for creators."
+    },
+    "metaTitle": "Chabaqa — Turn your passion into business",
+    "metaDesc": "Build and monetize your community with courses, sessions, events, challenges, and digital products on Chabaqa."
   },
   "community": {
     "labels": {
@@ -1347,5 +1369,10 @@
     "statCourses": "Courses & Products",
     "statMembers": "Members",
     "free": "Free"
+  },
+  "dashboard": {
+    "metaTitle": "Dashboard | Chabaqa",
+    "metaTemplate": "%s | Chabaqa",
+    "metaDesc": "Manage your Chabaqa communities, courses, and creator tools."
   }
 }

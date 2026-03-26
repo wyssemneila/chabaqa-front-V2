@@ -141,7 +141,7 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
                           <Badge
                             variant="secondary"
                             className={cn(
-                              "ml-auto text-xs",
+                              "ms-auto text-xs",
                               item.color === "courses" && "bg-courses-100 text-courses-700",
                               item.color === "challenges" && "bg-challenges-100 text-challenges-700",
                               item.color === "sessions" && "bg-sessions-100 text-sessions-700",
@@ -183,11 +183,11 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center text-muted-foreground">
-                    <Clock className="h-3 w-3 mr-1" />
+                    <Clock className="h-3 w-3 me-1" />
                     12 days left
                   </div>
                   <div className="flex items-center text-muted-foreground">
-                    <Users className="h-3 w-3 mr-1" />
+                    <Users className="h-3 w-3 me-1" />
                     {challenges[0].participants.length}
                   </div>
                 </div>
@@ -195,7 +195,7 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
                   href={`/community/${communitySlug}/challenge`}
                   className="text-xs text-challenges-600 hover:text-challenges-700 font-medium flex items-center"
                 >
-                  <Target className="h-3 w-3 mr-1" />
+                  <Target className="h-3 w-3 me-1" />
                   View Challenge →
                 </Link>
               </div>
@@ -222,7 +222,7 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
                 <span className="text-muted-foreground">Learning Streak</span>
                 <div className="flex items-center">
                   <span className="font-medium">12 days</span>
-                  <div className="w-2 h-2 bg-green-500 rounded-full ml-2" />
+                  <div className="w-2 h-2 bg-green-500 rounded-full ms-2" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-sm">
@@ -285,7 +285,7 @@ export function CommunityLayout({
           <div className="flex-1">
             <div className="sticky top-16 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
               <div className="flex h-14 items-center px-4">
-                <SidebarTrigger className="-ml-1" />
+                <SidebarTrigger className="-ms-1" />
               </div>
             </div>
             <main className="flex-1 p-6">{children}</main>

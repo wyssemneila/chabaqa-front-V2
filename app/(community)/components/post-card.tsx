@@ -230,7 +230,7 @@ function MentionInput({
                   <button
                     type="button"
                     onClick={() => selectMember(m)}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 hover:bg-primary-50 transition-colors text-left"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 hover:bg-primary-50 transition-colors text-start"
                   >
                     <Avatar className="h-7 w-7 shrink-0">
                       <AvatarImage src={m.avatar || "/placeholder.svg?height=28&width=28"} className="object-cover" />
@@ -646,7 +646,7 @@ export function PostCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem disabled={isBookmarkPending} onClick={() => onBookmark?.(post)}>
-                <Bookmark className="h-4 w-4 mr-2" />
+                <Bookmark className="h-4 w-4 me-2" />
                 {isBookmarked ? "Remove from saved" : "Save post"}
               </DropdownMenuItem>
               {canPinPost && (
@@ -654,11 +654,11 @@ export function PostCard({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handlePinToggle} disabled={isPinning}>
                     {isPinning ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-4 w-4 me-2 animate-spin" />
                     ) : post.isPinned ? (
-                      <PinOff className="h-4 w-4 mr-2" />
+                      <PinOff className="h-4 w-4 me-2" />
                     ) : (
-                      <Pin className="h-4 w-4 mr-2" />
+                      <Pin className="h-4 w-4 me-2" />
                     )}
                     {post.isPinned ? "Unpin post" : "Pin post"}
                   </DropdownMenuItem>
@@ -669,7 +669,7 @@ export function PostCard({
                   <DropdownMenuSeparator />
                   {onEdit && (
                     <DropdownMenuItem onClick={() => onEdit(post)}>
-                      <Pencil className="h-4 w-4 mr-2" />
+                      <Pencil className="h-4 w-4 me-2" />
                       Edit post
                     </DropdownMenuItem>
                   )}
@@ -678,7 +678,7 @@ export function PostCard({
                       onClick={() => onDelete(post.id)}
                       className="text-red-600 focus:text-red-600"
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
+                      <Trash2 className="h-4 w-4 me-2" />
                       Delete post
                     </DropdownMenuItem>
                   )}
@@ -1027,7 +1027,7 @@ export function PostCard({
                                     onClick={() => setEditingComment(null)}
                                     className="h-7 text-xs rounded-full"
                                   >
-                                    <X className="h-3 w-3 mr-1" />Cancel
+                                    <X className="h-3 w-3 me-1" />Cancel
                                   </Button>
                                   <Button
                                     size="sm"
@@ -1036,8 +1036,8 @@ export function PostCard({
                                     className="h-7 text-xs rounded-full bg-primary-600 hover:bg-primary-700"
                                   >
                                     {isUpdatingComment
-                                      ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                      : <Check className="h-3 w-3 mr-1" />
+                                      ? <Loader2 className="h-3 w-3 animate-spin me-1" />
+                                      : <Check className="h-3 w-3 me-1" />
                                     }
                                     Save
                                   </Button>
@@ -1145,7 +1145,7 @@ export function PostCard({
 
                       {/* Threaded replies */}
                       {commentReplies.length > 0 && (
-                        <div className="ml-10 space-y-2 border-l-2 border-slate-100 pl-3">
+                        <div className="ms-10 space-y-2 border-s-2 border-slate-100 ps-3">
                           {commentReplies.map((reply) => {
                             const isEditingReply = editingComment?.id === reply.id
                             const canManageReply = reply.userId === currentUserId
@@ -1266,7 +1266,7 @@ export function PostCard({
             >
               {isDeletingComment ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 me-2 animate-spin" />
                   Deleting…
                 </>
               ) : (

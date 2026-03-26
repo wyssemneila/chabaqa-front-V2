@@ -102,7 +102,7 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
                           <Badge
                             variant="secondary"
                             className={cn(
-                              "ml-auto text-xs",
+                              "ms-auto text-xs",
                               item.color === "courses" && "bg-courses-100 text-courses-700",
                               item.color === "challenges" && "bg-challenges-100 text-challenges-700",
                               item.color === "sessions" && "bg-sessions-100 text-sessions-700",
@@ -187,7 +187,7 @@ export function CommunityLayout({
         <div className="flex-1">
           <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex h-14 items-center px-4">
-              <SidebarTrigger className="-ml-1" />
+              <SidebarTrigger className="-ms-1" />
             </div>
           </div>
           <main className="flex-1 p-6">{children}</main>

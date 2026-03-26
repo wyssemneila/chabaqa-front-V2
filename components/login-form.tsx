@@ -62,7 +62,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   placeholder="creator@chabqa.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="ps-10"
                   required
                 />
               </div>
@@ -78,7 +78,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   placeholder="password123"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="ps-10 pe-10"
                   required
                 />
                 <button

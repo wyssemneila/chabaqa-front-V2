@@ -42,7 +42,7 @@ export function ContextualNudge({ id, type, title, message, actionLabel, actionU
             <div><p className="text-sm font-medium text-gray-900">{title}</p><p className="text-sm text-gray-600">{message}</p></div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {actionUrl && <Link href={actionUrl}><Button size="sm">{actionLabel}<ArrowRight className="h-4 w-4 ml-1" /></Button></Link>}
+            {actionUrl && <Link href={actionUrl}><Button size="sm">{actionLabel}<ArrowRight className="h-4 w-4 ms-1" /></Button></Link>}
             {dismissable && <button onClick={handleDismiss} className="text-gray-400 hover:text-gray-600 p-1"><X className="h-5 w-5" /></button>}
           </div>
         </div>

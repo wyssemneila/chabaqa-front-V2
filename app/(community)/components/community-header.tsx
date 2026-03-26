@@ -354,7 +354,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                             {community.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="text-left">
+                        <div className="text-start">
                           <div className="font-medium text-sm">{community.name}</div>
                           <div className="text-xs text-muted-foreground">
                             {typeof (community as any).members === 'number'
@@ -413,7 +413,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/explore" className="cursor-pointer">
-                      <Search className="mr-2 h-4 w-4" />
+                      <Search className="me-2 h-4 w-4" />
                       <span>Explore Communities</span>
                     </Link>
                   </DropdownMenuItem>
@@ -435,7 +435,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
               placeholder="Search posts, courses, challenges..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-gray-50 border-0 focus-visible:ring-1 rounded-full"
+              className="ps-10 bg-gray-50 border-0 focus-visible:ring-1 rounded-full"
             />
           </div>
         </form> */}
@@ -545,7 +545,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                         onClick={() => setMobileMenuOpen(false)} // ✅ closes menu
                       >
                         <Link href={`/${creatorSlug}/${currentCommunity}${item.href}`}>
-                          <item.icon className="mr-2 h-4 w-4" />
+                          <item.icon className="me-2 h-4 w-4" />
                           {item.label}
                         </Link>
                       </Button>
@@ -562,7 +562,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         <Link href="/creator/dashboard">
-                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          <LayoutDashboard className="me-2 h-4 w-4" />
                           Dashboard
                         </Link>
                       </Button>
@@ -574,7 +574,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                       onClick={() => setMobileMenuOpen(false)} // ✅ closes menu
                     >
                       <Link href="/home">
-                        <Home className="mr-2 h-4 w-4" />
+                        <Home className="me-2 h-4 w-4" />
                         Home
                       </Link>
                     </Button>
@@ -585,7 +585,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                       onClick={() => setMobileMenuOpen(false)} // ✅ closes menu
                     >
                       <Link href="/profile">
-                        <UserIcon className="mr-2 h-4 w-4" />
+                        <UserIcon className="me-2 h-4 w-4" />
                         Profile
                       </Link>
                     </Button>
@@ -595,7 +595,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                       onClick={() => setMobileMenuOpen(false)} // ✅ closes menu
                     >
                       <Link href="/settings">
-                        <Settings className="mr-2 h-4 w-4" />
+                        <Settings className="me-2 h-4 w-4" />
                         Settings
                       </Link>
                     </Button>
@@ -607,7 +607,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                         handleLogout()
                       }}
                     >
-                      <LogOut className="mr-2 h-4 w-4" />
+                      <LogOut className="me-2 h-4 w-4" />
                       Log out
                     </Button>
                   </div>
@@ -641,33 +641,33 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                 {currentUser?.role === 'creator' && (
                   <DropdownMenuItem asChild>
                     <Link href="/creator/dashboard">
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <LayoutDashboard className="me-2 h-4 w-4" />
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem asChild>
                   <Link href="/">
-                    <Home className="mr-2 h-4 w-4" />
+                    <Home className="me-2 h-4 w-4" />
                     Home
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/profile">
-                    <UserIcon className="mr-2 h-4 w-4" />
+                    <UserIcon className="me-2 h-4 w-4" />
                     Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
+                    <Settings className="me-2 h-4 w-4" />
                     Settings
                   </Link>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className="me-2 h-4 w-4" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>

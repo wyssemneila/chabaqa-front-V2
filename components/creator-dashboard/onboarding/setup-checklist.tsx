@@ -50,7 +50,7 @@ export function SetupChecklist({
             <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
           </div>
           {showProgress && (
-            <div className="text-right">
+            <div className="text-end">
               <span className="text-2xl font-bold text-primary">{progressPercent}%</span>
               <p className="text-xs text-gray-500">{completedCount} of {items.length} complete</p>
             </div>
@@ -115,7 +115,7 @@ export function SetupChecklist({
                   <Link href={item.actionUrl}>
                     <Button size="sm" variant={item.status === 'in-progress' ? 'default' : 'outline'}>
                       {item.actionLabel || 'Start'}
-                      <ChevronRight className="h-4 w-4 ml-1" />
+                      <ChevronRight className="h-4 w-4 ms-1" />
                     </Button>
                   </Link>
                 </div>

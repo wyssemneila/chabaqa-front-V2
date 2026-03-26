@@ -27,42 +27,42 @@ export function CommunityDetailsContent({ community }: CommunityDetailsContentPr
             value="posts"
             className="data-[state=active]:bg-[#ef4444] data-[state=active]:text-white rounded-lg transition-all duration-200"
           >
-            <MessageSquare className="w-4 h-4 mr-2" />
+            <MessageSquare className="w-4 h-4 me-2" />
             <span className="hidden sm:inline">Posts</span>
           </TabsTrigger>
           <TabsTrigger 
             value="courses"
             className="data-[state=active]:bg-[#47c7ea] data-[state=active]:text-white rounded-lg transition-all duration-200"
           >
-            <BookOpen className="w-4 h-4 mr-2" />
+            <BookOpen className="w-4 h-4 me-2" />
             <span className="hidden sm:inline">Courses</span>
           </TabsTrigger>
           <TabsTrigger 
             value="challenges"
             className="data-[state=active]:bg-[#ff9b28] data-[state=active]:text-white rounded-lg transition-all duration-200"
           >
-            <Trophy className="w-4 h-4 mr-2" />
+            <Trophy className="w-4 h-4 me-2" />
             <span className="hidden sm:inline">Challenges</span>
           </TabsTrigger>
           <TabsTrigger 
             value="events"
             className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white rounded-lg transition-all duration-200"
           >
-            <Calendar className="w-4 h-4 mr-2" />
+            <Calendar className="w-4 h-4 me-2" />
             <span className="hidden sm:inline">Events</span>
           </TabsTrigger>
           <TabsTrigger 
             value="products"
             className="data-[state=active]:bg-[#a855f7] data-[state=active]:text-white rounded-lg transition-all duration-200"
           >
-            <Package className="w-4 h-4 mr-2" />
+            <Package className="w-4 h-4 me-2" />
             <span className="hidden sm:inline">Products</span>
           </TabsTrigger>
           <TabsTrigger 
             value="about"
             className="data-[state=active]:bg-chabaqa-primary data-[state=active]:text-white rounded-lg transition-all duration-200"
           >
-            <Info className="w-4 h-4 mr-2" />
+            <Info className="w-4 h-4 me-2" />
             <span className="hidden sm:inline">About</span>
           </TabsTrigger>
         </TabsList>

@@ -178,7 +178,7 @@ export default function ResetPasswordForm({ email }: ResetPasswordFormProps) {
                   placeholder={t("newPasswordPlaceholder")}
                   required
                   disabled={isLoading}
-                  className="w-full px-4 py-4 pr-12 rounded-2xl border-2 border-white/60 focus:border-[#8e78fb] focus:ring-4 focus:ring-[#8e78fb]/20 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/80 backdrop-blur-sm disabled:opacity-50 shadow-sm"
+                  className="w-full px-4 py-4 pe-12 rounded-2xl border-2 border-white/60 focus:border-[#8e78fb] focus:ring-4 focus:ring-[#8e78fb]/20 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/80 backdrop-blur-sm disabled:opacity-50 shadow-sm"
                 />
                 <button
                   type="button"
@@ -204,7 +204,7 @@ export default function ResetPasswordForm({ email }: ResetPasswordFormProps) {
                   placeholder={t("confirmPasswordPlaceholder")}
                   required
                   disabled={isLoading}
-                  className="w-full px-4 py-4 pr-12 rounded-2xl border-2 border-white/60 focus:border-[#8e78fb] focus:ring-4 focus:ring-[#8e78fb]/20 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/80 backdrop-blur-sm disabled:opacity-50 shadow-sm"
+                  className="w-full px-4 py-4 pe-12 rounded-2xl border-2 border-white/60 focus:border-[#8e78fb] focus:ring-4 focus:ring-[#8e78fb]/20 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/80 backdrop-blur-sm disabled:opacity-50 shadow-sm"
                 />
                 <button
                   type="button"
@@ -225,7 +225,7 @@ export default function ResetPasswordForm({ email }: ResetPasswordFormProps) {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    <Loader2 className="w-5 h-5 animate-spin me-2" />
                     <span>{t("resetting")}</span>
                   </>
                 ) : (

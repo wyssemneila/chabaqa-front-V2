@@ -108,7 +108,7 @@ export function CommunityTestimonials({
 
               <div className="flex items-center">
                 <div
-                  className="relative mr-3 h-9 w-9 flex-shrink-0 overflow-hidden rounded-full border-2"
+                  className="relative me-3 h-9 w-9 flex-shrink-0 overflow-hidden rounded-full border-2"
                   style={{ borderColor: themeTokens?.mutedBorder || undefined }}
                 >
                   <Image

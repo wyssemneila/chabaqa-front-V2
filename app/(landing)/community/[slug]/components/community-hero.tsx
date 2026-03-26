@@ -159,7 +159,7 @@ export function CommunityHero({
                   color: primary,
                 }}
               >
-                <Users className="w-2.5 h-2.5 mr-0.5" />
+                <Users className="w-2.5 h-2.5 me-0.5" />
                 <span className="hidden sm:inline">Community</span>
                 <span className="sm:hidden">Community</span>
               </Badge>
@@ -168,7 +168,7 @@ export function CommunityHero({
                   variant="outline"
                   className="bg-white text-green-700 border-green-200 px-2 py-0.5 text-xs font-medium"
                 >
-                  <Verified className="w-2.5 h-2.5 mr-0.5" />
+                  <Verified className="w-2.5 h-2.5 me-0.5" />
                   Verified
                 </Badge>
               )}

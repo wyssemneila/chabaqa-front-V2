@@ -87,16 +87,16 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
                       <p className="text-gray-600">{community.description}</p>
                       <div className="flex items-center space-x-4 mt-2">
                         <div className="flex items-center text-gray-500">
-                          <Users className="w-4 h-4 mr-1" />
+                          <Users className="w-4 h-4 me-1" />
                           <span className="text-sm">{community.members.toLocaleString()}</span>
                         </div>
                         <div className="flex items-center text-gray-500">
-                          <Star className="w-4 h-4 mr-1 fill-yellow-400 text-yellow-400" />
+                          <Star className="w-4 h-4 me-1 fill-yellow-400 text-yellow-400" />
                           <span className="text-sm">{community.rating}</span>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <div className="text-3xl font-bold text-gray-900">
                         {formatPrice(community.price, community.priceType)}
                       </div>
@@ -150,17 +150,17 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
                 <div className="flex items-center space-x-4 text-sm text-gray-600">
                   {community.priceType === "free" ? (
                     <div className="flex items-center text-green-600">
-                      <Gift className="w-4 h-4 mr-2" />
+                      <Gift className="w-4 h-4 me-2" />
                       <span>Completely Free!</span>
                     </div>
                   ) : (
                     <>
                       <div className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
+                        <Clock className="w-4 h-4 me-1" />
                         <span>7-day free trial</span>
                       </div>
                       <div className="flex items-center">
-                        <Shield className="w-4 h-4 mr-1" />
+                        <Shield className="w-4 h-4 me-1" />
                         <span>Cancel anytime</span>
                       </div>
                     </>
@@ -174,7 +174,7 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
                   className="bg-gradient-to-r from-chabaqa-primary to-chabaqa-secondary1 text-white px-8"
                 >
                   {community.priceType === "free" ? "Join for Free" : "Continue to Payment"}
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                  <ArrowRight className="ms-2 w-5 h-5" />
                 </Button>
               </div>
             </div>
@@ -190,7 +190,7 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
                       <h3 className="text-lg font-semibold text-gray-900">{community.name}</h3>
                       <p className="text-gray-600">Monthly subscription</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <div className="text-2xl font-bold text-gray-900">${community.price}/mo</div>
                       <div className="text-sm text-green-600">7-day free trial</div>
                     </div>
@@ -200,7 +200,7 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
 
               <div className="space-y-4">
                 <h4 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <CreditCard className="w-5 h-5 mr-2" />
+                  <CreditCard className="w-5 h-5 me-2" />
                   Secure Checkout
                 </h4>
                 <div className="text-sm text-gray-600">
@@ -230,7 +230,7 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
                   className="bg-gradient-to-r from-chabaqa-primary to-chabaqa-secondary1 text-white px-8"
                 >
                   {isProcessing ? "Processing..." : `Start Free Trial`}
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                  <ArrowRight className="ms-2 w-5 h-5" />
                 </Button>
               </div>
             </div>
@@ -254,11 +254,11 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
               <div className="space-y-4">
                 <div className="flex items-center justify-center space-x-6 text-sm text-gray-600">
                   <div className="flex items-center">
-                    <Sparkles className="w-4 h-4 mr-2 text-green-500" />
+                    <Sparkles className="w-4 h-4 me-2 text-green-500" />
                     <span>Instant access</span>
                   </div>
                   <div className="flex items-center">
-                    <Users className="w-4 h-4 mr-2 text-green-500" />
+                    <Users className="w-4 h-4 me-2 text-green-500" />
                     <span>Join {community.members.toLocaleString()}+ members</span>
                   </div>
                 </div>
@@ -276,7 +276,7 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
                   className="bg-gradient-to-r from-chabaqa-primary to-chabaqa-secondary1 text-white px-8"
                 >
                   Start Exploring
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                  <ArrowRight className="ms-2 w-5 h-5" />
                 </Button>
               </div>
             </div>

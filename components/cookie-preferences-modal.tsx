@@ -45,7 +45,7 @@ export function CookiePreferencesModal({
         <div className="h-1 w-full rounded-t-lg bg-gradient-to-r from-chabaqa-primary via-chabaqa-secondary2 to-chabaqa-secondary1" />
 
         <div className="space-y-5 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
-          <DialogHeader className="space-y-3 text-left">
+          <DialogHeader className="space-y-3 text-start">
             <div className="flex items-center gap-3">
               <div className="rounded-xl border border-chabaqa-primary/20 bg-white p-2 shadow-sm">
                 <Image

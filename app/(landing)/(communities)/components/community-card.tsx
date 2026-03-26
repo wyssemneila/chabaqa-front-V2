@@ -177,7 +177,7 @@ export function CommunityCard({ community, viewMode = "grid", accessAware = fals
                 </h3>
                 {community.verified && (
                   <Badge className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 text-[10px] px-2 py-0.5 flex items-center">
-                    <CheckCircle className="w-3 h-3 mr-1" />
+                    <CheckCircle className="w-3 h-3 me-1" />
                     {t("verified")}
                   </Badge>
                 )}
@@ -231,11 +231,11 @@ export function CommunityCard({ community, viewMode = "grid", accessAware = fals
               {/* Left badges / stats */}
               <div className="flex gap-2">
                 <div className="flex items-center text-[11px] bg-chabaqa-primary/10 px-2 py-0.5 rounded-full font-medium text-chabaqa-primary">
-                  <Users className="w-3 h-3 mr-1 text-chabaqa-primary" />
+                  <Users className="w-3 h-3 me-1 text-chabaqa-primary" />
                   {formatMembers(community.members)}
                 </div>
                 <div className="flex items-center text-[11px] bg-chabaqa-primary/10 px-2 py-0.5 rounded-full font-medium text-chabaqa-primary">
-                  <Award className="w-3 h-3 mr-1 text-yellow-500" />
+                  <Award className="w-3 h-3 me-1 text-yellow-500" />
                   {formatProductRating()}
                 </div>
                 {/* Type badge with custom styling */}
@@ -338,11 +338,11 @@ export function CommunityCard({ community, viewMode = "grid", accessAware = fals
         {/* Stats */}
         <div className="flex gap-2">
           <div className="flex items-center text-[11px] bg-chabaqa-primary/10 px-2 py-0.5 rounded-full font-medium text-chabaqa-primary">
-            <Users className="w-3 h-3 mr-1 text-chabaqa-primary" />
+            <Users className="w-3 h-3 me-1 text-chabaqa-primary" />
             {formatMembers(community.members)}
           </div>
           <div className="flex items-center text-[11px] bg-chabaqa-primary/10 px-2 py-0.5 rounded-full font-medium text-chabaqa-primary">
-            <Award className="w-3 h-3 mr-1 text-yellow-500" />
+            <Award className="w-3 h-3 me-1 text-yellow-500" />
             {formatProductRating()}
           </div>
           {/* Type badge with custom styling */}

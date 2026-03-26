@@ -271,7 +271,7 @@ export function LiveSupportWidget() {
           <ScrollArea className="h-[370px] bg-gradient-to-b from-white to-slate-50 px-4 py-3">
             {loading ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading support conversation...
+                <Loader2 className="me-2 h-4 w-4 animate-spin" /> Loading support conversation...
               </div>
             ) : (
               <div className="space-y-3">
@@ -291,7 +291,7 @@ export function LiveSupportWidget() {
                             key={question}
                             type="button"
                             onClick={() => onSend(question).catch(() => undefined)}
-                            className="rounded-full border border-chabaqa-primary/20 bg-chabaqa-primary/5 px-3 py-1 text-left text-xs font-medium text-chabaqa-primary transition hover:border-chabaqa-primary/40 hover:bg-chabaqa-primary/10"
+                            className="rounded-full border border-chabaqa-primary/20 bg-chabaqa-primary/5 px-3 py-1 text-start text-xs font-medium text-chabaqa-primary transition hover:border-chabaqa-primary/40 hover:bg-chabaqa-primary/10"
                             disabled={sending}
                           >
                             {question}
@@ -339,7 +339,7 @@ export function LiveSupportWidget() {
                 onClick={onRequestAdmin}
                 disabled={requestingAdmin}
               >
-                <LifeBuoy className="mr-2 h-4 w-4" />
+                <LifeBuoy className="me-2 h-4 w-4" />
                 {requestingAdmin ? "Requesting admin..." : "Request Admin"}
               </Button>
             )}

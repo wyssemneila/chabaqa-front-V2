@@ -52,7 +52,7 @@ function StatusBadge({ className, status, showIcon = true, size, ...props }: Sta
   const Icon = statusIcons[status]
   return (
     <div className={cn(statusBadgeVariants({ status, size }), className)} {...props}>
-      {showIcon && Icon && <Icon className="mr-1 h-3 w-3" />}
+      {showIcon && Icon && <Icon className="me-1 h-3 w-3" />}
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </div>
   )

@@ -100,25 +100,21 @@ const TERMS_SECTIONS = [
   },
 ] as const
 
-export const metadata: Metadata = {
-  title: "Terms of Service | Chabaqa",
-  description:
-    "Read Chabaqa's Terms of Service covering platform access, account responsibilities, payments, content standards, and legal terms.",
-  alternates: {
-    canonical: "https://chabaqa.io/terms-of-service",
-  },
-  openGraph: {
-    title: "Terms of Service | Chabaqa",
-    description:
-      "Understand the terms that govern use of Chabaqa, including accounts, payments, content, and platform policies.",
-    url: "https://chabaqa.io/terms-of-service",
-    siteName: "Chabaqa",
-    type: "website",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("landing.termsOfService")
+  return {
+    title: t("metaTitle"),
+    description: t("metaDesc"),
+    alternates: { canonical: "https://chabaqa.io/terms-of-service" },
+    openGraph: {
+      title: t("metaTitle"),
+      description: t("metaDesc"),
+      url: "https://chabaqa.io/terms-of-service",
+      siteName: "Chabaqa",
+      type: "website",
+    },
+    robots: { index: true, follow: true },
+  }
 }
 
 export default function TermsOfServicePage() {

@@ -83,7 +83,7 @@ export function CourseReviewsSection({ courseId, showForm = true, onRefreshCours
         <Card>
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-6">
-              <div className="text-center md:text-left">
+              <div className="text-center md:text-start">
                 <div className="text-4xl font-bold">{stats.averageRating.toFixed(1)}</div>
                 <StarRating rating={stats.averageRating} size="md" className="justify-center md:justify-start mt-1" />
                 <p className="text-sm text-muted-foreground mt-1">{stats.ratingCount} reviews</p>

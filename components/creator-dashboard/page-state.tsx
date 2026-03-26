@@ -112,7 +112,7 @@ export function PageState({ variant, title, description, icon, actions, onRetry,
               const ActionIcon = action.icon
               const btn = (
                 <Button key={i} variant={action.variant || (i === 0 ? "default" : "outline")} size={compact ? "sm" : "default"} onClick={action.onClick}>
-                  {ActionIcon && <ActionIcon className="h-4 w-4 mr-2" />}
+                  {ActionIcon && <ActionIcon className="h-4 w-4 me-2" />}
                   {action.label}
                 </Button>
               )

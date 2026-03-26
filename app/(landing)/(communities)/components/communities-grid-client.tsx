@@ -147,7 +147,7 @@ export function CommunitiesGridClient({
                 : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 }`}
             >
-              <Grid className="w-3.5 h-3.5 mr-1.5" />
+              <Grid className="w-3.5 h-3.5 me-1.5" />
               Grid
             </Button>
             <Button
@@ -159,7 +159,7 @@ export function CommunitiesGridClient({
                 : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 }`}
             >
-              <List className="w-3.5 h-3.5 mr-1.5" />
+              <List className="w-3.5 h-3.5 me-1.5" />
               List
             </Button>
           </div>

@@ -90,7 +90,7 @@ export function CommunitiesSearch({ onFiltersChange }: CommunitiesSearchProps) {
             placeholder="Search communities..."
             value={filters.query}
             onChange={(e) => handleFilterChange("query", e.target.value)}
-            className="pl-10 h-9 border-gray-300 focus:border-chabaqa-primary"
+            className="ps-10 h-9 border-gray-300 focus:border-chabaqa-primary"
           />
         </div>
 
@@ -139,7 +139,7 @@ export function CommunitiesSearch({ onFiltersChange }: CommunitiesSearchProps) {
               }`}
             >
               {option.label}
-              {filters.quickFilters.includes(option.value) && <X className="w-3 h-3 ml-1" />}
+              {filters.quickFilters.includes(option.value) && <X className="w-3 h-3 ms-1" />}
             </Button>
           ))}
         </div>
@@ -161,7 +161,7 @@ export function CommunitiesSearch({ onFiltersChange }: CommunitiesSearchProps) {
               onClick={clearAllFilters}
               className="h-7 px-3 text-xs text-red-600 hover:text-red-700"
             >
-              <X className="w-3 h-3 mr-1" />
+              <X className="w-3 h-3 me-1" />
               Clear All
             </Button>
           )}

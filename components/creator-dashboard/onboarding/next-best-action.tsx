@@ -78,7 +78,7 @@ export function NextBestAction({ action, onDismiss, variant = 'card' }: NextBest
           <Link href={action.actionUrl}>
             <Button size="sm">
               {action.actionLabel}
-              <ArrowRight className="h-4 w-4 ml-1" />
+              <ArrowRight className="h-4 w-4 ms-1" />
             </Button>
           </Link>
         </div>
@@ -123,7 +123,7 @@ export function NextBestAction({ action, onDismiss, variant = 'card' }: NextBest
         <Link href={action.actionUrl} className="w-full">
           <Button className="w-full" variant={action.priority === 'urgent' ? 'default' : 'outline'}>
             {action.actionLabel}
-            <ArrowRight className="h-4 w-4 ml-2" />
+            <ArrowRight className="h-4 w-4 ms-2" />
           </Button>
         </Link>
       </div>

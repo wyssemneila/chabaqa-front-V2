@@ -73,12 +73,12 @@ export function MetricCard({ title, value, change, icon: Icon, color = "primary"
         {change && (
           <div className="flex items-center text-xs mt-1">
             {change.trend === "up" ? (
-              <TrendingUp className={cn("h-3 w-3 mr-1", config.trend)} />
+              <TrendingUp className={cn("h-3 w-3 me-1", config.trend)} />
             ) : (
-              <TrendingDown className="h-3 w-3 mr-1 text-red-500" />
+              <TrendingDown className="h-3 w-3 me-1 text-red-500" />
             )}
             <span className={cn(change.trend === "up" ? config.trend : "text-red-500")}>{change.value}</span>
-            <span className="text-muted-foreground ml-1">from last month</span>
+            <span className="text-muted-foreground ms-1">from last month</span>
           </div>
         )}
       </CardContent>

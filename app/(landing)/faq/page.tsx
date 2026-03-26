@@ -2,91 +2,16 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { FAQ } from "../components/faq"
 import type { Metadata } from "next"
+import { getTranslations } from "next-intl/server"
+import { generateAlternateLanguages } from "@/lib/seo-config"
 
-export const metadata: Metadata = {
-  title: "FAQ - Frequently Asked Questions | Chabaqa Community Platform",
-  description: "Find answers to common questions about Chabaqa , the all-in-one community platform. Learn about creating communities, online courses, challenges, coaching sessions, events, and monetization strategies.",
-  keywords: [
-    // English keywords
-    "chabaqa faq",
-    "community platform questions",
-    "online course platform faq",
-    "creator platform help",
-    "community building questions",
-    "course creation help",
-    "coaching platform faq",
-    "membership site questions",
-    "creator monetization faq",
-    // Arabic transliterations for SEO
-    "shabqa",
-    "chabka",
-    "shabka",
-    "chabqa",
-    "chabaqa",
-    "shabqa platform",
-    "chabka community",
-    "shabka online",
-    "شبقة",
-    // Long-tail keywords
-    "how to create community chabaqa",
-    "chabaqa pricing questions",
-    "online course platform comparison",
-    "best community platform for creators",
-    "how to monetize community",
-    "chabaqa vs other platforms",
-    "community engagement tools",
-    "creator economy platform"
-  ],
-  authors: [{ name: "Chabaqa" }],
-  openGraph: {
-    title: "FAQ - Frequently Asked Questions | Chabaqa Community Platform",
-    description: "Get answers to all your questions about Chabaqa, the all-in-one platform for creators to build, engage, and monetize their communities.",
-    url: "https://chabaqa.io/faq",
-    siteName: "Chabaqa",
-    type: "website",
-    locale: "en_US",
-    alternateLocale: ["ar_TN"],
-    images: [
-      {
-        url: "/og-faq.jpg",
-        width: 1200,
-        height: 630,
-        alt: "Chabaqa FAQ - Community Platform Questions"
-      }
-    ]
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "FAQ - Frequently Asked Questions | Chabaqa",
-    description: "Get answers to all your questions about Chabaqa community platform.",
-    images: ["/og-faq.jpg"],
-    creator: "@chabaqa"
-  },
-  alternates: {
-    canonical: "https://chabaqa.io/faq",
-    languages: {
-      'en': 'https://chabaqa.io/faq',
-      'ar': 'https://chabaqa.io/ar/faq'
-    }
-  },
-  robots: {
-    index: true,
-    follow: true,
-    nocache: false,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    }
-  },
-  other: {
-    'revisit-after': '7 days',
-    'distribution': 'global',
-    'rating': 'general',
-    'geo.region': 'TN',
-    'geo.placename': 'Tunisia',
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("landing.faq")
+  return {
+    title: t("metaTitle"),
+    description: t("metaDesc"),
+    alternates: generateAlternateLanguages("/faq"),
+    robots: { index: true, follow: true },
   }
 }
 

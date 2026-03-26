@@ -170,11 +170,11 @@ export function FeaturedCommunityCard({ community, index, slug, accessAware = fa
         {/* Compact Stats */}
         <div className="flex gap-2">
           <div className="flex items-center text-[11px] bg-chabaqa-primary/10 px-2 py-0.5 rounded-full font-medium text-chabaqa-primary">
-            <Users className="w-3 h-3 mr-1 text-chabaqa-primary" />
+            <Users className="w-3 h-3 me-1 text-chabaqa-primary" />
             {formatMembers(community.members)}
           </div>
           <div className="flex items-center text-[11px] bg-chabaqa-primary/10 px-2 py-0.5 rounded-full font-medium text-chabaqa-primary">
-            <Award className="w-3 h-3 mr-1 text-yellow-500" />
+            <Award className="w-3 h-3 me-1 text-yellow-500" />
             {community.rating.toFixed(1)}
           </div>
           {/* Simple Type badge */}

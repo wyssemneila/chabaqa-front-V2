@@ -88,7 +88,7 @@ export function BlogPost({ post }: BlogPostProps) {
           </div>
           <button
             onClick={handleShare}
-            className="ml-auto flex items-center gap-2 text-chabaqa-primary hover:text-chabaqa-primary/80 transition-colors"
+            className="ms-auto flex items-center gap-2 text-chabaqa-primary hover:text-chabaqa-primary/80 transition-colors"
             aria-label="Share this post"
           >
             <Share2 className="w-4 h-4" />

@@ -79,7 +79,7 @@ export function CommunityDetailsHero({ community }: CommunityDetailsHeroProps) {
                     </h1>
                     {community.isVerified && (
                       <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-lg">
-                        <Shield className="w-3 h-3 mr-1" />
+                        <Shield className="w-3 h-3 me-1" />
                         Verified
                       </Badge>
                     )}

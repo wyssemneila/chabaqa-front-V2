@@ -170,7 +170,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
               autoComplete="current-password" spellCheck={false} disabled={loading} required
               onChange={e => { setPassword(e.target.value); if (fe.password) setFe({ ...fe, password: "" }) }}
               placeholder={t("passwordPlaceholder")}
-              className={`${inp(!!fe.password)} pr-12`}
+              className={`${inp(!!fe.password)} pe-12`}
             />
             <button
               type="button" onClick={() => setShowPw(v => !v)} disabled={loading}

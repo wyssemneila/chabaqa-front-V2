@@ -136,7 +136,7 @@ export default function SettingsPage() {
                 </p>
               </div>
               <Badge className={userType === "creator" ? "bg-purple-100 text-purple-700 border-purple-200" : "bg-blue-100 text-blue-700 border-blue-200"}>
-                <Crown className="w-3 h-3 mr-1" />
+                <Crown className="w-3 h-3 me-1" />
                 {userType === "creator" ? "Creator Account" : "User Account"}
               </Badge>
             </div>
@@ -145,36 +145,36 @@ export default function SettingsPage() {
           <Tabs defaultValue="profile" className="space-y-6">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto gap-2">
               <TabsTrigger value="profile" className="text-xs sm:text-sm">
-                <User className="w-4 h-4 mr-1 sm:mr-2" />
+                <User className="w-4 h-4 me-1 sm:me-2" />
                 <span className="hidden sm:inline">Profile</span>
               </TabsTrigger>
               <TabsTrigger value="notifications" className="text-xs sm:text-sm">
-                <Bell className="w-4 h-4 mr-1 sm:mr-2" />
+                <Bell className="w-4 h-4 me-1 sm:me-2" />
                 <span className="hidden sm:inline">Notifications</span>
               </TabsTrigger>
               <TabsTrigger value="privacy" className="text-xs sm:text-sm">
-                <Shield className="w-4 h-4 mr-1 sm:mr-2" />
+                <Shield className="w-4 h-4 me-1 sm:me-2" />
                 <span className="hidden sm:inline">Privacy</span>
               </TabsTrigger>
               <TabsTrigger value="security" className="text-xs sm:text-sm">
-                <Lock className="w-4 h-4 mr-1 sm:mr-2" />
+                <Lock className="w-4 h-4 me-1 sm:me-2" />
                 <span className="hidden sm:inline">Security</span>
               </TabsTrigger>
               {userType === "creator" && (
                 <>
                   <TabsTrigger value="branding" className="text-xs sm:text-sm">
-                    <Palette className="w-4 h-4 mr-1 sm:mr-2" />
+                    <Palette className="w-4 h-4 me-1 sm:me-2" />
                     <span className="hidden sm:inline">Branding</span>
                   </TabsTrigger>
                   <TabsTrigger value="billing" className="text-xs sm:text-sm">
-                    <CreditCard className="w-4 h-4 mr-1 sm:mr-2" />
+                    <CreditCard className="w-4 h-4 me-1 sm:me-2" />
                     <span className="hidden sm:inline">Billing</span>
                   </TabsTrigger>
                 </>
               )}
               {userType === "user" && (
                 <TabsTrigger value="subscription" className="text-xs sm:text-sm">
-                  <Crown className="w-4 h-4 mr-1 sm:mr-2" />
+                  <Crown className="w-4 h-4 me-1 sm:me-2" />
                   <span className="hidden sm:inline">Plan</span>
                 </TabsTrigger>
               )}
@@ -197,7 +197,7 @@ export default function SettingsPage() {
                     </div>
                     <div className="flex-1">
                       <Button variant="outline" size="sm">
-                        <Camera className="w-4 h-4 mr-2" />
+                        <Camera className="w-4 h-4 me-2" />
                         Change Photo
                       </Button>
                       <p className="text-xs text-gray-500 mt-2">
@@ -302,7 +302,7 @@ export default function SettingsPage() {
                   <div className="flex justify-end gap-3 pt-4">
                     <Button variant="outline">Cancel</Button>
                     <Button onClick={handleSaveProfile} className="bg-blue-600 hover:bg-blue-700">
-                      <Save className="w-4 h-4 mr-2" />
+                      <Save className="w-4 h-4 me-2" />
                       Save Changes
                     </Button>
                   </div>
@@ -402,7 +402,7 @@ export default function SettingsPage() {
 
                   <div className="flex justify-end pt-4">
                     <Button className="bg-blue-600 hover:bg-blue-700">
-                      <Save className="w-4 h-4 mr-2" />
+                      <Save className="w-4 h-4 me-2" />
                       Save Preferences
                     </Button>
                   </div>
@@ -472,7 +472,7 @@ export default function SettingsPage() {
 
                   <div className="flex justify-end pt-4">
                     <Button className="bg-blue-600 hover:bg-blue-700">
-                      <Save className="w-4 h-4 mr-2" />
+                      <Save className="w-4 h-4 me-2" />
                       Save Settings
                     </Button>
                   </div>
@@ -581,7 +581,7 @@ export default function SettingsPage() {
                         variant="destructive"
                         onClick={() => setIsDeleteDialogOpen(true)}
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
+                        <Trash2 className="w-4 h-4 me-2" />
                         Delete Account
                       </Button>
                     </div>
@@ -648,7 +648,7 @@ export default function SettingsPage() {
 
                     <div className="flex justify-end pt-4">
                       <Button className="bg-blue-600 hover:bg-blue-700">
-                        <Save className="w-4 h-4 mr-2" />
+                        <Save className="w-4 h-4 me-2" />
                         Save Branding
                       </Button>
                     </div>
@@ -677,7 +677,7 @@ export default function SettingsPage() {
                           </p>
                         </div>
                         <Button className="bg-purple-600 hover:bg-purple-700">
-                          <Crown className="w-4 h-4 mr-2" />
+                          <Crown className="w-4 h-4 me-2" />
                           Upgrade Plan
                         </Button>
                       </div>
@@ -705,7 +705,7 @@ export default function SettingsPage() {
                         </Button>
                       </div>
                       <Button variant="outline" className="w-full">
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-4 h-4 me-2" />
                         Add Payment Method
                       </Button>
                     </CardContent>
@@ -806,7 +806,7 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       <Button variant="outline" className="w-full">
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-4 h-4 me-2" />
                         Add Payment Method
                       </Button>
                     </CardContent>
@@ -891,7 +891,7 @@ export default function SettingsPage() {
                   variant="destructive"
                   onClick={handleDeleteAccount}
                 >
-                  <Trash2 className="w-4 h-4 mr-2" />
+                  <Trash2 className="w-4 h-4 me-2" />
                   Delete My Account
                 </Button>
               </DialogFooter>

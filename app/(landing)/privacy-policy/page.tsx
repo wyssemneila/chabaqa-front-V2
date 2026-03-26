@@ -103,25 +103,21 @@ const PRIVACY_SECTIONS = [
   },
 ] as const
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | Chabaqa",
-  description:
-    "Read Chabaqa's Privacy Policy to understand how we collect, use, protect, and process personal data across our platform.",
-  alternates: {
-    canonical: "https://chabaqa.io/privacy-policy",
-  },
-  openGraph: {
-    title: "Privacy Policy | Chabaqa",
-    description:
-      "Learn how Chabaqa handles personal data, platform security, retention, and user privacy rights.",
-    url: "https://chabaqa.io/privacy-policy",
-    siteName: "Chabaqa",
-    type: "website",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("landing.privacyPolicy")
+  return {
+    title: t("metaTitle"),
+    description: t("metaDesc"),
+    alternates: { canonical: "https://chabaqa.io/privacy-policy" },
+    openGraph: {
+      title: t("metaTitle"),
+      description: t("metaDesc"),
+      url: "https://chabaqa.io/privacy-policy",
+      siteName: "Chabaqa",
+      type: "website",
+    },
+    robots: { index: true, follow: true },
+  }
 }
 
 export default function PrivacyPolicyPage() {

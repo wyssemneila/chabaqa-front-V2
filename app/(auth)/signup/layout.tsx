@@ -1,9 +1,13 @@
 import type React from "react"
 import type { Metadata } from "next"
+import { getTranslations } from "next-intl/server"
 
-export const metadata: Metadata = {
-  title: "Sign Up - Chabaqa",
-  description: "Create your Chabaqa account and join our community platform.",
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth.signupPage")
+  return {
+    title: t("metaTitle"),
+    description: t("metaDesc"),
+  }
 }
 
 export default function SignUpLayout({

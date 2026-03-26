@@ -160,7 +160,7 @@ export function PostShareDialog({ postId, open, onOpenChange, onShareTracked }: 
 
         {isLoadingMeta ? (
           <div className="flex items-center justify-center py-10 text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="me-2 h-4 w-4 animate-spin" />
             Preparing share options...
           </div>
         ) : (
@@ -169,7 +169,7 @@ export function PostShareDialog({ postId, open, onOpenChange, onShareTracked }: 
               <Input value={shareMeta?.shareUrl || ""} readOnly aria-label="Share URL" />
               <Button type="button" variant="outline" onClick={handleCopyLink} disabled={!shareMeta?.shareUrl || Boolean(actionState)}>
                 {actionState === "copy_link" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
-                <span className="ml-2 hidden sm:inline">Copy link</span>
+                <span className="ms-2 hidden sm:inline">Copy link</span>
               </Button>
             </div>
 
@@ -182,7 +182,7 @@ export function PostShareDialog({ postId, open, onOpenChange, onShareTracked }: 
                 disabled={!shareMeta || Boolean(actionState)}
               >
                 {actionState === "native" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-                <span className="ml-2">Native Share</span>
+                <span className="ms-2">Native Share</span>
               </Button>
             )}
 
@@ -197,7 +197,7 @@ export function PostShareDialog({ postId, open, onOpenChange, onShareTracked }: 
                   className="justify-start"
                 >
                   {actionState === method ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
-                  <span className="ml-2">{label}</span>
+                  <span className="ms-2">{label}</span>
                 </Button>
               ))}
             </div>
