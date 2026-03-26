@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react"
 import BackButton from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/[challengeId]/components/BackButton"
 import ChallengeHeader from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/[challengeId]/components/ChallengeHeader"
 import ChallengeTabs from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/[challengeId]/components/ChallengeTabs"
-import { challengesApi } from "@/lib/api/challenges.api"
-import { trackChallengeViewOnce } from "@/lib/api/challenge-tracking"
+import { challengesApi } from "@/lib/api/learning/challenges.api"
+import { trackChallengeViewOnce } from "@/lib/api/learning/challenge-tracking"
 
 interface ChallengeDetailPageContentProps {
   slug: string

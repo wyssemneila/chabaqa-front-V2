@@ -8,7 +8,7 @@ import { CheckCircle, PlayCircle, Lock, MessageSquare, StickyNote, ArrowRight, S
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { api } from "@/lib/api"
-import { coursesApi } from "@/lib/api/courses.api"
+import { coursesApi } from "@/lib/api/learning/courses.api"
 import { tokenStorage } from "@/lib/token-storage"
 import { useToast } from "@/components/ui/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"

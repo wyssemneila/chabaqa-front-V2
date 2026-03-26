@@ -41,7 +41,7 @@ import type {
   CreatorCourseChaptersFunnelResponse,
   CreatorChallengeTasksFunnelResponse,
   CreatorInsightsResponse,
-} from "@/lib/api/creator-analytics.api"
+} from "@/lib/api/creator/creator-analytics.api"
 
 type AnalyticsFeature = Exclude<CreatorAnalyticsExportScope, "overview">
 type AnalyticsTimeRange = "7d" | "28d" | "90d" | "1y"

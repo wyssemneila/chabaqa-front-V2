@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import ChallengesPageContent from '@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/components/challenges-page-content'
-import { challengesCommunityApi } from "@/lib/api/challenges-community.api"
+import { challengesCommunityApi } from "@/lib/api/learning/challenges-community.api"
 
 export default async function ChallengesPage({ 
   params 

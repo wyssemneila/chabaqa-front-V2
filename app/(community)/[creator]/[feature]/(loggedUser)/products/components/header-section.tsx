@@ -1,5 +1,5 @@
 import { ShoppingBag } from "lucide-react"
-import { ProductWithDetails, ProductPurchase } from "@/lib/api/products-community.api"
+import { ProductWithDetails, ProductPurchase } from "@/lib/api/commerce/products-community.api"
 
 interface HeaderSectionProps {
   allProducts: ProductWithDetails[]

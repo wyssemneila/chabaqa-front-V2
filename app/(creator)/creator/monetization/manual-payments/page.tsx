@@ -23,7 +23,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { manualPaymentsApi } from "@/lib/api/manual-payments"
+import { manualPaymentsApi } from "@/lib/api/commerce/manual-payments"
 import Image from "next/image"
 
 interface PaymentRequest {

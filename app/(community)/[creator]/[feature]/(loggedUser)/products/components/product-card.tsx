@@ -9,9 +9,9 @@ import { useToast } from "@/components/ui/use-toast"
 import { Star, Users, Download, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { ProductWithDetails } from "@/lib/api/products-community.api"
+import { ProductWithDetails } from "@/lib/api/commerce/products-community.api"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
-import { useProductPurchaseFlow } from "@/lib/hooks/use-product-purchase-flow"
+import { useProductPurchaseFlow } from "@/hooks/use-product-purchase-flow"
 import { getUserProfileHref } from "@/lib/profile-handle"
 
 interface ProductCardProps {

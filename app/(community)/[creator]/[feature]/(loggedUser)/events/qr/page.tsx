@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
-import { eventsApi } from "@/lib/api/events.api";
-import { normalizeEventRegistrations } from "@/lib/api/events-community.api";
+import { eventsApi } from "@/lib/api/events/events.api";
+import { normalizeEventRegistrations } from "@/lib/api/events/events-community.api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

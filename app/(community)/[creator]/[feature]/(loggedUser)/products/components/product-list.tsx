@@ -7,7 +7,7 @@ import {
   ProductWithDetails,
   ProductPurchase,
   isProductOwnedByUser,
-} from "@/lib/api/products-community.api"
+} from "@/lib/api/commerce/products-community.api"
 
 interface ProductListProps {
   creatorSlug: string

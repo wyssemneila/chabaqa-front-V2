@@ -11,7 +11,7 @@ import {
   DashboardError,
 } from "../../components";
 import { ROLE_LABELS, ROLE_COLORS, type CommunityRole } from "@/lib/permissions";
-import { communitiesApi } from "@/lib/api/communities.api";
+import { communitiesApi } from "@/lib/api/community/communities.api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import Link from "next/link";
-import type { CommunityMember } from "@/lib/api/types";
+import type { CommunityMember } from "@/lib/api/core/types";
 
 function getMemberName(m: CommunityMember): string {
   const u = (m as any).user || m;

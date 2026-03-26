@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { normalizeUser } from "@/lib/hooks/useUser"
+import { normalizeUser } from "@/hooks/use-user"
 import { registerBrowserPushForCurrentUser } from "@/lib/push-notifications"
 import { io, Socket } from "socket.io-client"
 import { resolveSocketBaseUrl } from "@/lib/socket-url"

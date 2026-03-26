@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDashboard, DashboardShell, DashboardLoading, DashboardUnauthorized, DashboardEmpty, DashboardError } from "../../components";
 import { ROLE_LABELS, ROLE_COLORS, type CommunityRole } from "@/lib/permissions";
-import { communitiesApi } from "@/lib/api/communities.api";
+import { communitiesApi } from "@/lib/api/community/communities.api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { Users, Search, RefreshCw, Calendar, Mail, Shield, Crown, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
-import type { CommunityMember } from "@/lib/api/types";
+import type { CommunityMember } from "@/lib/api/core/types";
 
 function getMemberName(m: CommunityMember): string {
   const u = (m as any).user || m;

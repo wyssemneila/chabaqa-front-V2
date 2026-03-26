@@ -1,7 +1,7 @@
-import { emailCampaignsApi } from "@/lib/api/email-campaigns.api"
-import { apiClient } from "@/lib/api/client"
+import { emailCampaignsApi } from "@/lib/api/creator/email-campaigns.api"
+import { apiClient } from "@/lib/api/core/client"
 
-jest.mock("@/lib/api/client", () => ({
+jest.mock("@/lib/api/core/client", () => ({
   apiClient: {
     get: jest.fn(),
     post: jest.fn(),

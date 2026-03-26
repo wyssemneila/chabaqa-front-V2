@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import { Download } from "lucide-react"
-import { useProductPurchaseFlow } from "@/lib/hooks/use-product-purchase-flow"
+import { useProductPurchaseFlow } from "@/hooks/use-product-purchase-flow"
 
 interface PurchaseCardProps {
   product: any

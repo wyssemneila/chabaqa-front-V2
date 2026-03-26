@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { sessionsApi, type BookingStats, type CreatorBookingViewModel } from "@/lib/api/sessions.api"
+import { sessionsApi, type BookingStats, type CreatorBookingViewModel } from "@/lib/api/events/sessions.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import BookingsPageContent from "./components/bookings-page-content"

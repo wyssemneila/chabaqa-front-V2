@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { adminApi } from "@/lib/api/admin-api"
+import { adminApi } from "@/lib/api/admin/admin-api"
 
 export default function SecurityReportsPage() {
   const { toast } = useToast()

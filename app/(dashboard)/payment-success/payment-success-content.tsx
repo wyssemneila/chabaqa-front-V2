@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import Link from 'next/link';
-import { communitiesApi } from '@/lib/api/communities.api';
+import { communitiesApi } from '@/lib/api/community/communities.api';
 import { useToast } from '@/components/ui/use-toast';
 
 

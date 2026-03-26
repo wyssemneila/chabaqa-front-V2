@@ -9,10 +9,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import ChallengeSelectionModal from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/components/challenge-selection-modal"
-import { challengesApi } from "@/lib/api/challenges.api"
-import { communitiesApi } from "@/lib/api/communities.api"
-import { trackChallengeViewOnce } from "@/lib/api/challenge-tracking"
-import type { Challenge } from "@/lib/api/types"
+import { challengesApi } from "@/lib/api/learning/challenges.api"
+import { communitiesApi } from "@/lib/api/community/communities.api"
+import { trackChallengeViewOnce } from "@/lib/api/learning/challenge-tracking"
+import type { Challenge } from "@/lib/api/core/types"
 import {
   ArrowRight,
   BookOpen,

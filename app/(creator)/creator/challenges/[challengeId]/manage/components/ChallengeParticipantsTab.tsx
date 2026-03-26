@@ -11,8 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Users, Trophy, Clock, MessageSquare, Wallet, ExternalLink, Image as ImageIcon, FileText } from "lucide-react"
 import { apiClient } from "@/lib/api"
-import { challengesApi } from "@/lib/api/challenges.api"
-import { resolveImageUrl } from "@/lib/hooks/useUser"
+import { challengesApi } from "@/lib/api/learning/challenges.api"
+import { resolveImageUrl } from "@/hooks/use-user"
 import { toast } from "sonner"
 
 interface Participant {

@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
-import { extractApiError } from "@/lib/api/error-parser"
-import { challengesApi } from "@/lib/api/challenges.api"
+import { extractApiError } from "@/lib/api/core/error-parser"
+import { challengesApi } from "@/lib/api/learning/challenges.api"
 import {
   mapBackendErrorsToCreatorFields,
   validateManageDetails,

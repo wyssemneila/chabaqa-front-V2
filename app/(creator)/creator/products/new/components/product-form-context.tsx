@@ -3,7 +3,7 @@
 import { createContext, useContext, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { productsApi, type CreateProductData } from "@/lib/api/products.api"
+import { productsApi, type CreateProductData } from "@/lib/api/commerce/products.api"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 
 interface ProductVariantForm {

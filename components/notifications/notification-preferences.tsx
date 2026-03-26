@@ -12,7 +12,7 @@ import {
   type ChannelPreferencesPayload,
   type NotificationPreferencesResponse,
   type PreferenceItemPayload,
-} from "@/lib/api/notifications.api";
+} from "@/lib/api/social/notifications.api";
 
 const NOTIFICATION_TYPES = [
   { key: "post_mention", label: "Post Mentions" },

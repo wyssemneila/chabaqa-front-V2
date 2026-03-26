@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/app/(admin)/providers/admin-auth-provider"
-import { adminApi, CommunityModerationDto } from "@/lib/api/admin-api"
+import { adminApi, CommunityModerationDto } from "@/lib/api/admin/admin-api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/app/(admin)/_components/status-badge"

@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress"
 import { StarRating } from "./star-rating"
 import { ReviewForm } from "./review-form"
 import { ReviewsList } from "./reviews-list"
-import { feedbackApi, Feedback, FeedbackStats, CreateFeedbackDto } from "@/lib/api/feedback.api"
+import { feedbackApi, Feedback, FeedbackStats, CreateFeedbackDto } from "@/lib/api/social/feedback.api"
 import { Star, MessageSquare, Award, ThumbsUp } from "lucide-react"
 
 export type RelatedModel = 'Cours' | 'Community' | 'Challenge' | 'Event' | 'Product' | 'Session'

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useAdminAuth } from "@/app/(admin)/providers/admin-auth-provider"
-import { adminApi, ProcessPayoutDto, UpdatePayoutStatusDto, AdminPayoutDetails } from "@/lib/api/admin-api"
+import { adminApi, ProcessPayoutDto, UpdatePayoutStatusDto, AdminPayoutDetails } from "@/lib/api/admin/admin-api"
 import { StatusBadge } from "@/app/(admin)/_components/status-badge"
 import { ConfirmDialog } from "@/app/(admin)/_components/confirm-dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

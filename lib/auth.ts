@@ -1,7 +1,7 @@
 "use client"
 
 import { authApi } from "@/lib/api"
-import type { User } from "@/lib/api/types"
+import type { User } from "@/lib/api/core/types"
 import { tokenManager } from "@/lib/token-manager"
 
 export async function authenticatedFetch(

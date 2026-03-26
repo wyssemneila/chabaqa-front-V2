@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { CalendarIcon, Upload, X, ImageIcon } from "lucide-react"
-import { storageApi } from "@/lib/api/storage.api"
+import { storageApi } from "@/lib/api/media/storage.api"
 import { useToast } from "@/hooks/use-toast"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
 

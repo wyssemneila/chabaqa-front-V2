@@ -7,7 +7,7 @@ import { Loader2, Trash2, Upload } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { getResourceIcon } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { mediaApi } from "@/lib/api/media.api"
+import { mediaApi } from "@/lib/api/media/media.api"
 
 interface ChallengeResourceCardProps {
   resource: {

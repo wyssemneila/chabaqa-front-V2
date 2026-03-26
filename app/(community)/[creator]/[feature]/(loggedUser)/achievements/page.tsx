@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, use } from 'react'
-import { communitiesApi } from "@/lib/api/communities.api"
-import { achievementsApi } from "@/lib/api/achievements.api"
-import type { Community, AchievementWithProgress } from "@/lib/api/types"
+import { communitiesApi } from "@/lib/api/community/communities.api"
+import { achievementsApi } from "@/lib/api/learning/achievements.api"
+import type { Community, AchievementWithProgress } from "@/lib/api/core/types"
 import AchievementsPageContent from "./components/achievements-page-content"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"

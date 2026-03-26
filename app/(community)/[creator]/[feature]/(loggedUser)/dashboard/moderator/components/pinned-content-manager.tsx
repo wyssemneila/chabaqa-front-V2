@@ -56,7 +56,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { moderationApi, type PinnedPost } from "@/lib/api/moderation.api";
+import { moderationApi, type PinnedPost } from "@/lib/api/admin/moderation.api";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Heart, MessageCircle, Share2, Trash2, Edit2, Loader2 } from "lucide-react"
-import type { Post } from "@/lib/api/types"
+import type { Post } from "@/lib/api/core/types"
 import {
   AlertDialog,
   AlertDialogAction,

@@ -28,7 +28,7 @@ import {
   Video,
   Zap,
 } from "lucide-react"
-import type { PageContent } from "@/lib/api/community-page-content"
+import type { PageContent } from "@/lib/api/community/community-page-content"
 import type { CSSProperties, ComponentType } from "react"
 import type { LucideIcon } from "lucide-react"
 import type { CommunityThemeTokens } from "@/lib/community-theme"

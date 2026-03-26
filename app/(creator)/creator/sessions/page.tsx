@@ -3,7 +3,7 @@
 import React from "react"
 import { useEffect, useState, useCallback, useRef } from "react"
 import ClientSessionsView from "./components/client-sessions-view"
-import { type CreatorBookingViewModel } from "@/lib/api/sessions.api"
+import { type CreatorBookingViewModel } from "@/lib/api/events/sessions.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
 import { loadSessionsCached } from "@/app/(creator)/creator/context/community-switch-cache"

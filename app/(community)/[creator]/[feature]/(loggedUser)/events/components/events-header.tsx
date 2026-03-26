@@ -1,5 +1,5 @@
 import { Sparkles } from "lucide-react";
-import { EventRegistration, EventWithTickets } from "@/lib/api/events-community.api";
+import { EventRegistration, EventWithTickets } from "@/lib/api/events/events-community.api";
 import { computeEventStartAt } from "@/lib/utils/event-time";
 
 interface EventsHeaderProps {

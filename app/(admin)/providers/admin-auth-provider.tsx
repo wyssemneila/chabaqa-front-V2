@@ -8,7 +8,7 @@ import {
   type AdminCapabilities,
   type AdminLoginResponse,
   type AdminSessionResponse,
-} from "@/lib/api/admin-api"
+} from "@/lib/api/admin/admin-api"
 import { localizeHref, stripLocaleFromPath } from "@/lib/i18n/client"
 import { getAdminLandingPath } from "../lib/admin-capability-routing"
 

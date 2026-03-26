@@ -6,7 +6,7 @@ import CourseHeader from "@/app/(community)/[creator]/[feature]/(loggedUser)/cou
 import EnhancedVideoPlayer from "@/app/(community)/[creator]/[feature]/(loggedUser)/courses/[courseId]/components/enhanced-video-player"
 import ChapterTabs from "@/app/(community)/[creator]/[feature]/(loggedUser)/courses/[courseId]/components/chapter-tabs"
 import CourseSidebar from "@/app/(community)/[creator]/[feature]/(loggedUser)/courses/[courseId]/components/course-sidebar"
-import { coursesApi } from "@/lib/api/courses.api"
+import { coursesApi } from "@/lib/api/learning/courses.api"
 import { tokenStorage } from "@/lib/token-storage"
 import { useToast } from "@/components/ui/use-toast"
 import type { CourseSession } from "@/hooks/use-course-session"

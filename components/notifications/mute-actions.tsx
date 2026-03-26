@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, VolumeX, Volume2, Trash2 } from "lucide-react";
-import { notificationsApi, type NotificationMutePayload } from "@/lib/api/notifications.api";
+import { notificationsApi, type NotificationMutePayload } from "@/lib/api/social/notifications.api";
 
 interface MuteButtonProps {
   targetType: "thread" | "user" | "community";

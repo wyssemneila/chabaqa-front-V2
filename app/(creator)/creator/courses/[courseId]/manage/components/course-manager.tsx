@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { coursesApi } from "@/lib/api/courses.api"
+import { coursesApi } from "@/lib/api/learning/courses.api"
 import { Course } from "@/lib/models"
 import { toast } from "sonner"
 import { CourseHeader } from "./course-header"

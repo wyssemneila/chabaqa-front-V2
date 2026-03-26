@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import CoursesPageContent from '@/app/(community)/[creator]/[feature]/(loggedUser)/courses/components/CoursesPageContent'
-import { coursesCommunityApi } from "@/lib/api/courses-community.api"
+import { coursesCommunityApi } from "@/lib/api/learning/courses-community.api"
 
 export default async function CoursesPage({
   params,

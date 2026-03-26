@@ -1,7 +1,7 @@
 "use client"
 
 import { api, apiClient } from "@/lib/api"
-import { sessionsApi, type CreatorBookingViewModel } from "@/lib/api/sessions.api"
+import { sessionsApi, type CreatorBookingViewModel } from "@/lib/api/events/sessions.api"
 
 const CACHE_TTL_MS = 30_000
 const MAX_COMMUNITIES_PER_KEY = 6

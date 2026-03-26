@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Search, Filter } from "lucide-react"
 import ProductList from "@/app/(community)/[creator]/[feature]/(loggedUser)/products/components/product-list"
 import ProductDetailsSidebar from "@/app/(community)/[creator]/[feature]/(loggedUser)/products/components/product-details-sidebar"
-import { ProductWithDetails, ProductPurchase } from "@/lib/api/products-community.api"
+import { ProductWithDetails, ProductPurchase } from "@/lib/api/commerce/products-community.api"
 
 
 interface ProductsTabsProps {

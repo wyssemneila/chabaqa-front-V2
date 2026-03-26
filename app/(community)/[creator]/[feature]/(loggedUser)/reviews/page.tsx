@@ -5,9 +5,9 @@ import { useState, useEffect } from "react"
 import { Loader2, AlertCircle, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CommunityReviewsSection } from "@/components/reviews/community-reviews-section"
-import { communitiesApi } from "@/lib/api/communities.api"
+import { communitiesApi } from "@/lib/api/community/communities.api"
 import { StarRating } from "@/components/reviews/star-rating"
-import { feedbackApi, FeedbackStats } from "@/lib/api/feedback.api"
+import { feedbackApi, FeedbackStats } from "@/lib/api/social/feedback.api"
 
 interface Community {
   id: string;

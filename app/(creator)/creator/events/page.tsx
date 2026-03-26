@@ -8,7 +8,7 @@ import { EventsList } from "./components/events-list"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
-import { eventsApi } from "@/lib/api/events.api"
+import { eventsApi } from "@/lib/api/events/events.api"
 import { computeEventStartAt } from "@/lib/utils/event-time"
 import {
   PageShell,

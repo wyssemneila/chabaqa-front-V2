@@ -47,7 +47,7 @@ import {
   type ModerationActivityLog,
   type ModerationAction,
   type ContentType,
-} from "@/lib/api/moderation.api";
+} from "@/lib/api/admin/moderation.api";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

@@ -28,7 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { useAuthContext } from "@/app/providers/auth-provider"
-import { notificationsApi } from "@/lib/api/notifications.api"
+import { notificationsApi } from "@/lib/api/social/notifications.api"
 import { cn } from "@/lib/utils"
 
 type NormalizedNotification = {

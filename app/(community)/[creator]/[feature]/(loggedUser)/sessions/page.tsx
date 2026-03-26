@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import SessionsPageContent from '@/app/(community)/[creator]/[feature]/(loggedUser)/sessions/components/SessionsPageContent'
-import { sessionsCommunityApi } from "@/lib/api/sessions-community.api"
+import { sessionsCommunityApi } from "@/lib/api/events/sessions-community.api"
 
 export default async function SessionsPage({ 
   params 

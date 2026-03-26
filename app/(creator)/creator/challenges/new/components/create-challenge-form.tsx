@@ -9,10 +9,10 @@ import { TimelinePricingStep } from "./timeline-pricing-step"
 import { ChallengeStepsStep } from "./challenge-steps-step"
 import { ReviewPublishStep } from "./review-publish-step"
 import { ChallengeNavigation } from "./challenge-navigation"
-import { challengesApi, type CreateChallengeData } from "@/lib/api/challenges.api"
+import { challengesApi, type CreateChallengeData } from "@/lib/api/learning/challenges.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
-import { extractApiError } from "@/lib/api/error-parser"
+import { extractApiError } from "@/lib/api/core/error-parser"
 import {
   mapBackendErrorsToCreatorFields,
   normalizeDifficultyToBackend,

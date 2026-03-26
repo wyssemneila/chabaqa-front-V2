@@ -2,7 +2,7 @@ import ManageEventClient from "./components/ManageEventClient"
 import { api } from "@/lib/api"
 import { notFound } from "next/navigation"
 import { Event } from "@/lib/models"
-import { Event as ApiEvent } from "@/lib/api/types"
+import { Event as ApiEvent } from "@/lib/api/core/types"
 
 interface PageProps {
   params: { eventId: string }

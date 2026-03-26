@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EnhancedCard } from "@/components/ui/enhanced-card";
-import { sessionsApi, type CreatorBookingViewModel } from "@/lib/api/sessions.api";
+import { sessionsApi, type CreatorBookingViewModel } from "@/lib/api/events/sessions.api";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import Link from "next/link";

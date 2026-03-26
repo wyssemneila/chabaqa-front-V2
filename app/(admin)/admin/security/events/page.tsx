@@ -10,7 +10,7 @@ import { FilterPanel, FilterConfig } from "@/app/(admin)/_components/filter-pane
 import { StatusBadge } from "@/app/(admin)/_components/status-badge"
 import { ConfirmDialog } from "@/app/(admin)/_components/confirm-dialog"
 import { MetricCard } from "@/app/(admin)/_components/metric-card"
-import { adminApi, SecurityEventFilters } from "@/lib/api/admin-api"
+import { adminApi, SecurityEventFilters } from "@/lib/api/admin/admin-api"
 import { formatDistanceToNow } from "date-fns"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"

@@ -5,7 +5,7 @@ import {
   ProductWithDetails,
   ProductPurchase,
   isProductOwnedByUser,
-} from "@/lib/api/products-community.api"
+} from "@/lib/api/commerce/products-community.api"
 import { getFileTypeIcon } from "@/lib/utilsmedia"
 import Link from "next/link"
 

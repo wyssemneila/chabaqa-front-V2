@@ -52,8 +52,8 @@ import {
   Info,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
-import { communitiesApi } from "@/lib/api/communities.api";
-import type { CommunityMember } from "@/lib/api/types";
+import { communitiesApi } from "@/lib/api/community/communities.api";
+import type { CommunityMember } from "@/lib/api/core/types";
 import { ROLE_COLORS, ROLE_LABELS, type CommunityRole } from "@/lib/permissions";
 
 // ── Types ──────────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/app/(admin)/providers/admin-auth-provider"
-import { adminApi } from "@/lib/api/admin-api"
+import { adminApi } from "@/lib/api/admin/admin-api"
 import { MetricCard } from "@/app/(admin)/_components/metric-card"
 import { ChartCard } from "@/app/(admin)/_components/chart-card"
 

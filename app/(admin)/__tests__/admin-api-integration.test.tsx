@@ -1,4 +1,4 @@
-import { adminApi } from '@/lib/api/admin-api';
+import { adminApi } from '@/lib/api/admin/admin-api';
 import { apiClient } from '@/lib/api-client';
 
 jest.mock('@/lib/api-client', () => ({

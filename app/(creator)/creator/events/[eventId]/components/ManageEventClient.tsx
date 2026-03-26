@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from "react"
 import { Event } from "@/lib/models"
 import EventHeader from "./EventHeader"
 import EventTabs from "./EventTabs"
-import { eventsApi } from "@/lib/api/events.api"
+import { eventsApi } from "@/lib/api/events/events.api"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 

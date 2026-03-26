@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 import { DashboardProvider } from "./components/dashboard-context";
 import { DashboardLoading, DashboardError } from "./components/dashboard-cards";
-import { communitiesApi } from "@/lib/api/communities.api";
+import { communitiesApi } from "@/lib/api/community/communities.api";
 
 interface DashboardLayoutProps {
   children: ReactNode;

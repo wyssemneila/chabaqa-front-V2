@@ -1,7 +1,7 @@
 import React from "react"
 import { render, screen } from "@testing-library/react"
 import CoursePlayer from "@/app/(community)/[creator]/[feature]/(loggedUser)/courses/[courseId]/components/course-player"
-import { coursesApi } from "@/lib/api/courses.api"
+import { coursesApi } from "@/lib/api/learning/courses.api"
 
 jest.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: jest.fn() }),
@@ -17,7 +17,7 @@ jest.mock("@/lib/api", () => ({
   },
 }))
 
-jest.mock("@/lib/api/courses.api", () => ({
+jest.mock("@/lib/api/learning/courses.api", () => ({
   coursesApi: {
     trackStart: jest.fn(),
     startChapter: jest.fn(),

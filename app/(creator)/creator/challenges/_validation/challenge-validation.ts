@@ -1,4 +1,4 @@
-import type { ParsedApiError } from "@/lib/api/error-parser";
+import type { ParsedApiError } from "@/lib/api/core/error-parser";
 
 export interface ValidationResult {
   isValid: boolean;

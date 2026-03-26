@@ -1,5 +1,5 @@
 import { cookies } from "next/headers"
-import type { User } from "@/lib/api/types"
+import type { User } from "@/lib/api/core/types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 

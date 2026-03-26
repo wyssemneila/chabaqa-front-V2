@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Plus, X, Coins, Mic, Ticket, Upload, ImageIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { storageApi } from "@/lib/api/storage.api"
+import { storageApi } from "@/lib/api/media/storage.api"
 import { useToast } from "@/hooks/use-toast"
 
 interface SpeakersTicketsStepProps {

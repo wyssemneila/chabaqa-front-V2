@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import ProductPageContent from "@/app/(community)/[creator]/[feature]/(loggedUser)/products/[productId]/components/product-page-content"
-import { productsCommunityApi, ProductWithDetails, ProductPurchase } from "@/lib/api/products-community.api"
-import { getMe } from "@/lib/api/user.api"
+import { productsCommunityApi, ProductWithDetails, ProductPurchase } from "@/lib/api/commerce/products-community.api"
+import { getMe } from "@/lib/api/user/user.api"
 import { useToast } from "@/components/ui/use-toast"
-import { trackingApi } from "@/lib/api/tracking.api"
+import { trackingApi } from "@/lib/api/creator/tracking.api"
 
 function normalizeId(value: any): string {
   if (!value) return ""

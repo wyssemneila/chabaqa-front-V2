@@ -1,7 +1,7 @@
 import React from "react"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { PostShareDialog } from "@/app/(community)/components/post-share-dialog"
-import { postsApi } from "@/lib/api/posts.api"
+import { postsApi } from "@/lib/api/community/posts.api"
 
 const mockToast = jest.fn()
 const mockOpen = jest.fn()
@@ -10,7 +10,7 @@ jest.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: mockToast }),
 }))
 
-jest.mock("@/lib/api/posts.api", () => ({
+jest.mock("@/lib/api/community/posts.api", () => ({
   postsApi: {
     getShareMeta: jest.fn(),
     share: jest.fn(),

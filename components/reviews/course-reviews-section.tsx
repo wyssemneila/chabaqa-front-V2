@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress"
 import { StarRating } from "./star-rating"
 import { CourseReviewForm } from "./course-review-form"
 import { CourseReviewsList } from "./course-reviews-list"
-import { feedbackApi, Feedback, FeedbackStats } from "@/lib/api/feedback.api"
+import { feedbackApi, Feedback, FeedbackStats } from "@/lib/api/social/feedback.api"
 import { Star } from "lucide-react"
 
 interface CourseReviewsSectionProps {

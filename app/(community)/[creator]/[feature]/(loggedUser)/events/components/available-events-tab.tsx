@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { EventWithTickets } from "@/lib/api/events-community.api";
+import { EventWithTickets } from "@/lib/api/events/events-community.api";
 import EventCard from "@/app/(community)/[creator]/[feature]/(loggedUser)/events/components/event-card";
 import { TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { eventsApi } from "@/lib/api/events.api";
-import { trackingApi } from "@/lib/api/tracking.api";
+import { eventsApi } from "@/lib/api/events/events.api";
+import { trackingApi } from "@/lib/api/creator/tracking.api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { computeEventStartAt } from "@/lib/utils/event-time";
 

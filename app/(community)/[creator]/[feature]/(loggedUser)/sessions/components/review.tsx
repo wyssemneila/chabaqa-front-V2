@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge"
 import { CalendarIcon, Clock, Star } from "lucide-react"
 import { format } from "date-fns"
-import { feedbackApi, type Feedback, type FeedbackStats } from "@/lib/api/feedback.api"
+import { feedbackApi, type Feedback, type FeedbackStats } from "@/lib/api/social/feedback.api"
 import { ReviewForm } from "@/components/reviews/review-form"
 import { ReviewsList } from "@/components/reviews/reviews-list"
 import { StarRating } from "@/components/reviews/star-rating"

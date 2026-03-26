@@ -8,9 +8,9 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { communitiesApi } from "@/lib/api/communities.api"
+import { communitiesApi } from "@/lib/api/community/communities.api"
 import { AlertTriangle, ArrowRight, Loader2, Lock, Users } from "lucide-react"
-import type { InvitePreview } from "@/lib/api/types"
+import type { InvitePreview } from "@/lib/api/core/types"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
 

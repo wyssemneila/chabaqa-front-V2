@@ -6,8 +6,8 @@ import { Copy, Facebook, Linkedin, Link2, Loader2, Mail, MessageCircle, Send, Sh
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { postsApi } from "@/lib/api/posts.api"
-import type { PostShareMeta, PostShareMethod, PostStats } from "@/lib/api/types"
+import { postsApi } from "@/lib/api/community/posts.api"
+import type { PostShareMeta, PostShareMethod, PostStats } from "@/lib/api/core/types"
 import { useToast } from "@/hooks/use-toast"
 
 interface PostShareDialogProps {

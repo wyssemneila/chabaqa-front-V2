@@ -10,7 +10,7 @@ import { SessionDetailsStep } from "./session-details-step"
 import { AvailabilityStep } from "./availability-step"
 import { ReviewPublishStep } from "./review-publish-step"
 import { NavigationButtons } from "./navigation-buttons"
-import { sessionsApi, type CreateSessionData } from "@/lib/api/sessions.api"
+import { sessionsApi, type CreateSessionData } from "@/lib/api/events/sessions.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 

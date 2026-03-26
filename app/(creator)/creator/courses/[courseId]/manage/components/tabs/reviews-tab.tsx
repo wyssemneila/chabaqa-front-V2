@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { StarRating } from "@/components/reviews/star-rating"
-import { feedbackApi, Feedback, FeedbackStats } from "@/lib/api/feedback.api"
+import { feedbackApi, Feedback, FeedbackStats } from "@/lib/api/social/feedback.api"
 import { Star, MessageSquare } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 

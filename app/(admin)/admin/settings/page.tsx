@@ -8,7 +8,7 @@ import {
   type AdminAlertConfig,
   type AdminAlertMetricType,
   type AdminPreferences,
-} from "@/lib/api/admin-api"
+} from "@/lib/api/admin/admin-api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

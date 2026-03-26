@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import type { Community, AchievementWithProgress } from "@/lib/api/types"
+import type { Community, AchievementWithProgress } from "@/lib/api/core/types"
 import { cn } from "@/lib/utils"
 import {
   Trophy,

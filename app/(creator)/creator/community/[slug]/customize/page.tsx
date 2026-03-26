@@ -14,8 +14,8 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Save, Palette, Type, Layout, Zap, Eye } from "lucide-react"
 import { ImageUpload } from "@/app/(dashboard)/components/image-upload"
 import { ColorPicker } from "@/app/(dashboard)/components/color-picker"
-import { communitiesApi } from "@/lib/api/communities.api"
-import type { UpdateCommunityData } from "@/lib/api/communities.api"
+import { communitiesApi } from "@/lib/api/community/communities.api"
+import type { UpdateCommunityData } from "@/lib/api/community/communities.api"
 import {
   Select,
   SelectItem,
@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectContent,
 } from "@/components/ui/select"
-import type { Community } from "@/lib/api/types"
+import type { Community } from "@/lib/api/core/types"
 import { isValidCustomDomain, normalizeCommunitySettings } from "@/lib/community-settings"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
 

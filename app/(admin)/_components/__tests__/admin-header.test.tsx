@@ -2,7 +2,7 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import { AdminHeader } from '../admin-header';
-import { adminApi } from '@/lib/api/admin-api';
+import { adminApi } from '@/lib/api/admin/admin-api';
 
 jest.mock('next/navigation', () => ({
   usePathname: () => '/en/admin/dashboard',
@@ -45,7 +45,7 @@ jest.mock('@/components/language-switcher', () => ({
   LanguageSwitcher: () => <div>LanguageSwitcher</div>,
 }));
 
-jest.mock('@/lib/api/admin-api', () => ({
+jest.mock('@/lib/api/admin/admin-api', () => ({
   adminApi: {
     notifications: {
       getSummary: jest.fn(),

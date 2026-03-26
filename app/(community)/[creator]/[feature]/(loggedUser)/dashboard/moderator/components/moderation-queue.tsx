@@ -66,7 +66,7 @@ import {
   type ModerationStatus,
   type ModerationAction,
   type ModerationQueueFilters,
-} from "@/lib/api/moderation.api";
+} from "@/lib/api/admin/moderation.api";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

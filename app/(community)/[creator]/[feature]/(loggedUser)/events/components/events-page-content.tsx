@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { EventRegistration, EventWithTickets, normalizeEventRegistrations } from "@/lib/api/events-community.api";
-import { eventsApi } from "@/lib/api/events.api";
+import { EventRegistration, EventWithTickets, normalizeEventRegistrations } from "@/lib/api/events/events-community.api";
+import { eventsApi } from "@/lib/api/events/events.api";
 import EventsHeader from "@/app/(community)/[creator]/[feature]/(loggedUser)/events/components/events-header";
 import EventsTabs from "@/app/(community)/[creator]/[feature]/(loggedUser)/events/components/events-tabs";
 import { computeEventStartAt } from "@/lib/utils/event-time";

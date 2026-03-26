@@ -38,7 +38,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { api } from "@/lib/api"
-import { subscriptionApi, CreatorSubscription, SubscriptionStats, SubscriptionStatus, PlanTier, CreatePlanData } from "@/lib/api/subscription.api"
+import { subscriptionApi, CreatorSubscription, SubscriptionStats, SubscriptionStatus, PlanTier, CreatePlanData } from "@/lib/api/commerce/subscription.api"
 import { format, parseISO } from 'date-fns';
 
 const SubscriptionsPage = () => {

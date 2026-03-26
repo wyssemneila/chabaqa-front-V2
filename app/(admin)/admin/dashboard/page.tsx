@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAdminAuth } from "../../providers/admin-auth-provider"
-import { adminApi } from "@/lib/api/admin-api"
+import { adminApi } from "@/lib/api/admin/admin-api"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

@@ -6,7 +6,7 @@ import { Filter } from "lucide-react";
 import AvailableEventsTab from "@/app/(community)/[creator]/[feature]/(loggedUser)/events/components/available-events-tab";
 import MyTicketsTab from "@/app/(community)/[creator]/[feature]/(loggedUser)/events/components/my-tickets-tab";
 import CalendarTab from "@/app/(community)/[creator]/[feature]/(loggedUser)/events/components/calendar-tab";
-import { EventWithTickets } from "@/lib/api/events-community.api";
+import { EventWithTickets } from "@/lib/api/events/events-community.api";
 
 interface EventsTabsProps {
   activeTab: string;

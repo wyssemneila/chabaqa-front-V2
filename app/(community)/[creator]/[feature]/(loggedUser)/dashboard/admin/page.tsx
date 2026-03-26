@@ -11,7 +11,7 @@ import {
   DashboardLoading,
 } from "../components";
 import { CommunityPermission } from "@/lib/permissions";
-import { communitiesApi } from "@/lib/api/communities.api";
+import { communitiesApi } from "@/lib/api/community/communities.api";
 import {
   Users,
   Shield,

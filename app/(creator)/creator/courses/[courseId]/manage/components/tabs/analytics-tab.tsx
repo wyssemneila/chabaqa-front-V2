@@ -9,7 +9,7 @@ import {
   creatorAnalyticsApi,
   type CourseAnalyticsDailyTrend,
   type CourseAnalyticsResponse,
-} from "@/lib/api/creator-analytics.api"
+} from "@/lib/api/creator/creator-analytics.api"
 
 interface AnalyticsTabProps {
   course: Course

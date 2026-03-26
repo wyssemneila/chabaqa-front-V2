@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card"
 import { Mail, Clock, UserCheck, XCircle } from "lucide-react"
-import type { InvitationStats } from "@/lib/api/community-invitations.api"
+import type { InvitationStats } from "@/lib/api/community/community-invitations.api"
 
 interface InvitationStatsCardsProps {
   stats: InvitationStats | null

@@ -28,7 +28,7 @@ import {
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import { useState } from "react"
-import { challengesApi } from "@/lib/api/challenges.api"
+import { challengesApi } from "@/lib/api/learning/challenges.api"
 
 interface ChallengeSelectionModalProps {
   challenge: any

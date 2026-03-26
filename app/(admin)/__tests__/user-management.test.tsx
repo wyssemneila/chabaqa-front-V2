@@ -3,10 +3,10 @@
  * Tests user CRUD operations and management features
  */
 
-import { adminApi } from '@/lib/api/admin-api';
+import { adminApi } from '@/lib/api/admin/admin-api';
 
 // Mock the API client
-jest.mock('@/lib/api/admin-api');
+jest.mock('@/lib/api/admin/admin-api');
 
 describe('User Management', () => {
   beforeEach(() => {

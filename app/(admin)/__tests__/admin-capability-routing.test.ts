@@ -3,7 +3,7 @@ import {
   getAdminLandingPath,
   requiresCapabilityGuard,
 } from "@/app/(admin)/lib/admin-capability-routing";
-import type { AdminCapabilities } from "@/lib/api/admin-api";
+import type { AdminCapabilities } from "@/lib/api/admin/admin-api";
 
 const emptyCaps: AdminCapabilities = {
   dashboard: false,

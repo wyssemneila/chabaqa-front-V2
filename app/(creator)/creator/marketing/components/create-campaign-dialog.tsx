@@ -32,7 +32,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
-import { emailCampaignsApi } from "@/lib/api/email-campaigns.api"
+import { emailCampaignsApi } from "@/lib/api/creator/email-campaigns.api"
 import { useToast } from "@/components/ui/use-toast"
 import { buildCampaignPayload } from "./campaign-form-utils"
 

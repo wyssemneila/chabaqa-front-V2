@@ -33,9 +33,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { sessionsApi, type CreatorBookingViewModel, type BookingStats } from "@/lib/api/sessions.api"
+import { sessionsApi, type CreatorBookingViewModel, type BookingStats } from "@/lib/api/events/sessions.api"
 import { useToast } from "@/hooks/use-toast"
-import { googleCalendarApi } from "@/lib/api/google-calendar.api"
+import { googleCalendarApi } from "@/lib/api/integrations/google-calendar.api"
 
 interface BookingsPageContentProps {
   bookings: CreatorBookingViewModel[]

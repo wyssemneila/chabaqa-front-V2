@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import EventsPageContent from "@/app/(community)/[creator]/[feature]/(loggedUser)/events/components/events-page-content"
-import { eventsCommunityApi } from "@/lib/api/events-community.api"
+import { eventsCommunityApi } from "@/lib/api/events/events-community.api"
 
 export default async function EventsPage({ 
   params,

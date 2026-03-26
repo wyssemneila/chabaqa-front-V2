@@ -1,8 +1,8 @@
 import React from 'react'
 import { notFound } from 'next/navigation'
 import ChallengeDetailPageContent from '@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/[challengeId]/components/ChallengeDetailPageContent'
-import { challengesApi } from '@/lib/api/challenges.api'
-import { communitiesApi } from '@/lib/api/communities.api'
+import { challengesApi } from '@/lib/api/learning/challenges.api'
+import { communitiesApi } from '@/lib/api/community/communities.api'
 
 // Always fetch fresh data — prevents Next.js from caching stale challenge tasks
 export const dynamic = 'force-dynamic'

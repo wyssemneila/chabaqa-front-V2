@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { api } from "@/lib/api"
 import { resolveSocketBaseUrl } from "@/lib/socket-url"
 import { cn } from "@/lib/utils"
-import type { LiveSupportMessage, LiveSupportStatus, LiveSupportTicket } from "@/lib/api/types"
+import type { LiveSupportMessage, LiveSupportStatus, LiveSupportTicket } from "@/lib/api/core/types"
 import { useAuthContext } from "@/app/providers/auth-provider"
 
 const QUICK_QUESTIONS = [

@@ -4,7 +4,7 @@ import type {
   CreateInactiveUserCampaignDto,
   EmailCampaignType,
   InactivityPeriod,
-} from "@/lib/api/email-campaigns.api"
+} from "@/lib/api/creator/email-campaigns.api"
 
 export type MarketingCampaignKind = "announcement" | "content-reminder" | "inactive-users"
 export type CampaignSendingMode = "now" | "scheduled"

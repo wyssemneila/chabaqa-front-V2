@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { useState } from "react"
-import { mediaApi } from "@/lib/api/media.api"
+import { mediaApi } from "@/lib/api/media/media.api"
 import { getCreatorVideoUrlError, normalizeVideoUrl } from "@/lib/utils/video-source"
 
 function ensureAbsoluteUploadUrl(value: unknown): string {

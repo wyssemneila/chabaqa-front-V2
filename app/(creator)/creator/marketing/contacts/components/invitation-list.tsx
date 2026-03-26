@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { CommunityInvitation, InvitationStatus } from "@/lib/api/community-invitations.api"
+import type { CommunityInvitation, InvitationStatus } from "@/lib/api/community/community-invitations.api"
 import {
   ChevronLeft,
   ChevronRight,

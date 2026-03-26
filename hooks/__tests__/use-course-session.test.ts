@@ -10,9 +10,9 @@
  */
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useCourseSession } from "@/hooks/use-course-session"
-import { coursesApi } from "@/lib/api/courses.api"
+import { coursesApi } from "@/lib/api/learning/courses.api"
 
-jest.mock("@/lib/api/courses.api", () => ({
+jest.mock("@/lib/api/learning/courses.api", () => ({
   coursesApi: {
     getCourseSession: jest.fn(),
     startChapter: jest.fn(),

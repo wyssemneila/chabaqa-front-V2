@@ -4,7 +4,7 @@ import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Users, Star, CheckCircle, Tag, Verified } from "lucide-react"
 import Link from "next/link"
-import type { PageContent } from "@/lib/api/community-page-content"
+import type { PageContent } from "@/lib/api/community/community-page-content"
 import type { CommunityThemeTokens } from "@/lib/community-theme"
 import { cn } from "@/lib/utils"
 

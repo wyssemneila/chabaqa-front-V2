@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { ProgressionSummary } from "@/lib/api/types"
+import type { ProgressionSummary } from "@/lib/api/core/types"
 
 interface ProgressByTypeProps {
   summary: ProgressionSummary

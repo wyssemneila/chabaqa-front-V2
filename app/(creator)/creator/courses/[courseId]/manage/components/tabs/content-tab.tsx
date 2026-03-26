@@ -20,8 +20,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { useEffect, useState } from "react"
 import { Course } from "@/lib/models"
-import { coursesApi } from "@/lib/api/courses.api"
-import { mediaApi } from "@/lib/api/media.api"
+import { coursesApi } from "@/lib/api/learning/courses.api"
+import { mediaApi } from "@/lib/api/media/media.api"
 import { getCreatorVideoUrlError, normalizeVideoUrl } from "@/lib/utils/video-source"
 
 type ContentTabProps = {

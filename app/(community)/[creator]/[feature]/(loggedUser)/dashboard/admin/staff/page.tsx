@@ -12,7 +12,7 @@ import {
   DashboardError,
 } from "../../components";
 import { CommunityPermission, ROLE_LABELS, ROLE_COLORS, type CommunityStaffRole } from "@/lib/permissions";
-import { communityAccessApi, type CommunityStaffMember } from "@/lib/api/community-access.api";
+import { communityAccessApi, type CommunityStaffMember } from "@/lib/api/community/community-access.api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

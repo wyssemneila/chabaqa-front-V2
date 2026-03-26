@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import ProductsPageContent from "@/app/(community)/[creator]/[feature]/(loggedUser)/products/components/products-page-content"
-import { productsCommunityApi } from "@/lib/api/products-community.api"
+import { productsCommunityApi } from "@/lib/api/commerce/products-community.api"
 
 type Props = {
   params: { creator: string; feature: string }

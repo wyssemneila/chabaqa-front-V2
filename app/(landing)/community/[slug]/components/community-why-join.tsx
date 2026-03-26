@@ -1,6 +1,6 @@
 import { Sparkles, Shield, Trophy, Users, CheckCircle } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
-import type { PageContent } from "@/lib/api/community-page-content"
+import type { PageContent } from "@/lib/api/community/community-page-content"
 import type { CommunityThemeTokens } from "@/lib/community-theme"
 import { cn } from "@/lib/utils"
 

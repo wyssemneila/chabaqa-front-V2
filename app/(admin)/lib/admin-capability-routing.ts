@@ -1,4 +1,4 @@
-import type { AdminCapabilities } from "@/lib/api/admin-api"
+import type { AdminCapabilities } from "@/lib/api/admin/admin-api"
 
 const FALLBACK_PATH = "/admin/dashboard"
 

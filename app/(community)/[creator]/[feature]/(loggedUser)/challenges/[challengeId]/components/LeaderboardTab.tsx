@@ -7,7 +7,7 @@ import { Trophy, Flame, Users } from "lucide-react"
 import Link from "next/link"
 import { tokenStorage } from "@/lib/token-storage"
 import { useEffect, useState } from "react"
-import { resolveImageUrl } from "@/lib/hooks/useUser"
+import { resolveImageUrl } from "@/hooks/use-user"
 import { getUserProfileHref } from "@/lib/profile-handle"
 
 interface LeaderboardTabProps {

@@ -12,8 +12,8 @@ import {
   DashboardEmpty,
 } from "../../components";
 import { CommunityPermission } from "@/lib/permissions";
-import { communityInvitationsApi, type InvitationStatus } from "@/lib/api/community-invitations.api";
-import { communitiesApi } from "@/lib/api/communities.api";
+import { communityInvitationsApi, type InvitationStatus } from "@/lib/api/community/community-invitations.api";
+import { communitiesApi } from "@/lib/api/community/communities.api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

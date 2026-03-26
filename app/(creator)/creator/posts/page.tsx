@@ -14,7 +14,7 @@ import { Plus, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { CreatePostDialog } from "./components/create-post-dialog"
 import { PostsList } from "./components/posts-list"
-import type { Post } from "@/lib/api/types"
+import type { Post } from "@/lib/api/core/types"
 
 export default function CreatorPostsPage() {
   const router = useRouter()

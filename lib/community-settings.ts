@@ -1,4 +1,4 @@
-import type { CommunitySettings } from "@/lib/api/types"
+import type { CommunitySettings } from "@/lib/api/core/types"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
 
 export type NormalizedCommunitySettings = {

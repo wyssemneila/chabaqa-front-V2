@@ -41,11 +41,11 @@ import {
   Smile,
   CornerDownRight,
 } from "lucide-react"
-import { postsApi } from "@/lib/api/posts.api"
-import { communityMembersApi, type CommunityMentionMember } from "@/lib/api/community-members.api"
-import type { Post, PostComment, PostStats, User } from "@/lib/api/types"
-import { trackingApi } from "@/lib/api/tracking.api"
-import { resolveImageUrl } from "@/lib/hooks/useUser"
+import { postsApi } from "@/lib/api/community/posts.api"
+import { communityMembersApi, type CommunityMentionMember } from "@/lib/api/community/community-members.api"
+import type { Post, PostComment, PostStats, User } from "@/lib/api/core/types"
+import { trackingApi } from "@/lib/api/creator/tracking.api"
+import { resolveImageUrl } from "@/hooks/use-user"
 import { getUserProfileHref } from "@/lib/profile-handle"
 import { useToast } from "@/hooks/use-toast"
 import { PostShareDialog } from "@/app/(community)/components/post-share-dialog"

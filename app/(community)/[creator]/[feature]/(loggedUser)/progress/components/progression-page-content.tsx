@@ -5,13 +5,13 @@ import { AlertCircle, Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { progressionApi } from "@/lib/api/progression.api"
+import { progressionApi } from "@/lib/api/learning/progression.api"
 import type {
   Community,
   ProgressionContentType,
   ProgressionItem,
   ProgressionOverview,
-} from "@/lib/api/types"
+} from "@/lib/api/core/types"
 import ProgressByType from "./progress-by-type"
 import ProgressHeader from "./progress-header"
 import ProgressItemCard from "./progress-item-card"

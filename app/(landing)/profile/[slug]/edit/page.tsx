@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { changePassword, deleteAccount, updateProfile } from "@/lib/api/user.api"
-import { storageApi } from "@/lib/api/storage.api"
-import { useCurrentUser } from "@/lib/hooks/useUser"
+import { changePassword, deleteAccount, updateProfile } from "@/lib/api/user/user.api"
+import { storageApi } from "@/lib/api/media/storage.api"
+import { useCurrentUser } from "@/hooks/use-user"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import {

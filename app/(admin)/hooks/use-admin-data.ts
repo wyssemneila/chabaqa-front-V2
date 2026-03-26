@@ -6,7 +6,7 @@
  */
 
 import useSWR, { SWRConfiguration } from 'swr'
-import { adminApi } from '@/lib/api/admin-api'
+import { adminApi } from '@/lib/api/admin/admin-api'
 
 // Default SWR configuration for admin data
 const defaultConfig: SWRConfiguration = {

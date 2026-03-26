@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from "react"
-import type { Community } from "@/lib/api/types"
+import type { Community } from "@/lib/api/core/types"
 
 interface CommunityContextValue {
     selectedCommunity: Community | null

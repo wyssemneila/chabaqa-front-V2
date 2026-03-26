@@ -12,7 +12,7 @@ import { CommunityContentSection } from "./components/community-content-section"
 import {
   getCommunityPageContent,
   type PageContent,
-} from "@/lib/api/community-page-content"
+} from "@/lib/api/community/community-page-content"
 import { normalizeCommunitySettings } from "@/lib/community-settings"
 import { buildCommunityTheme, getContentWidthClass } from "@/lib/community-theme"
 import { cn } from "@/lib/utils"

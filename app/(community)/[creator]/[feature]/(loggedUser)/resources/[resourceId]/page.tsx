@@ -7,15 +7,15 @@ import { AlertCircle, ArrowLeft, BookOpen, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { communitiesApi } from '@/lib/api/communities.api'
-import { resourcesApi } from '@/lib/api/resources.api'
+import { communitiesApi } from '@/lib/api/community/communities.api'
+import { resourcesApi } from '@/lib/api/media/resources.api'
 import type {
   Community,
   Resource,
   ResourceContentElement,
   ResourceContentGuide,
   ResourceContentVideo,
-} from '@/lib/api/types'
+} from '@/lib/api/core/types'
 import { resolveImageUrl } from '@/lib/resolve-image-url'
 
 const renderElement = (element: ResourceContentElement, index: number) => {

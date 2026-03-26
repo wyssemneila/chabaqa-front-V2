@@ -4,9 +4,9 @@ import { use, useEffect, useState } from 'react'
 import { AlertCircle, Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { communitiesApi } from "@/lib/api/communities.api"
-import { progressionApi } from "@/lib/api/progression.api"
-import type { Community, ProgressionOverview } from "@/lib/api/types"
+import { communitiesApi } from "@/lib/api/community/communities.api"
+import { progressionApi } from "@/lib/api/learning/progression.api"
+import type { Community, ProgressionOverview } from "@/lib/api/core/types"
 import ProgressionPageContent from "./components/progression-page-content"
 
 export default function ProgressionPage({

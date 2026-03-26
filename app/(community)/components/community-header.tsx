@@ -49,14 +49,14 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCommunityPermissions } from "@/hooks/use-community-permissions"
-import { communitiesApi } from "@/lib/api/communities.api"
+import { communitiesApi } from "@/lib/api/community/communities.api"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { authApi } from "@/lib/api/auth.api"
-import type { Community } from "@/lib/api/types"
+import type { Community } from "@/lib/api/core/types"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
 import { api } from "@/lib/api"
-import type { Conversation } from "@/lib/api/types"
-import { useSocket } from "@/lib/socket-context"
+import type { Conversation } from "@/lib/api/core/types"
+import { useSocket } from "@/app/providers/socket-provider"
 import { NotificationsBell } from "./notifications-bell"
 
 

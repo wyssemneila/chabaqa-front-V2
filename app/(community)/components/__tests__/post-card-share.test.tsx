@@ -1,13 +1,13 @@
 import React from "react"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { PostCard } from "@/app/(community)/components/post-card"
-import type { Post, User } from "@/lib/api/types"
+import type { Post, User } from "@/lib/api/core/types"
 
 jest.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: jest.fn() }),
 }))
 
-jest.mock("@/lib/api/posts.api", () => ({
+jest.mock("@/lib/api/community/posts.api", () => ({
   postsApi: {
     like: jest.fn(),
     unlike: jest.fn(),

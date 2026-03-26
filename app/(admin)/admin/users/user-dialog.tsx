@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { adminApi } from "@/lib/api/admin-api"
+import { adminApi } from "@/lib/api/admin/admin-api"
 import { toast } from "sonner"
 
 // Validation schema

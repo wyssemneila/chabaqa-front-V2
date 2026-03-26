@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { communityAccessApi } from "@/lib/api/community-access.api";
+import { communityAccessApi } from "@/lib/api/community/community-access.api";
 import type {
   CommunityRole,
   CommunityPermissionValue,

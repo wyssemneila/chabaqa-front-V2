@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { EmailCampaign, EmailCampaignStatus } from "@/lib/api/email-campaigns.api"
+import { EmailCampaign, EmailCampaignStatus } from "@/lib/api/creator/email-campaigns.api"
 import { Copy, Loader2, Mail, Pencil, Play, Trash2, Users, XCircle, ChevronLeft, ChevronRight } from "lucide-react"
 
 interface EmailCampaignListProps {

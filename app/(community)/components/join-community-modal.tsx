@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { X, CreditCard, Shield, CheckCircle, Users, Star, Clock, Gift, ArrowRight, Sparkles } from "lucide-react"
-import { communitiesApi } from "@/lib/api/communities.api"
+import { communitiesApi } from "@/lib/api/community/communities.api"
 
 interface JoinCommunityModalProps {
   community: any

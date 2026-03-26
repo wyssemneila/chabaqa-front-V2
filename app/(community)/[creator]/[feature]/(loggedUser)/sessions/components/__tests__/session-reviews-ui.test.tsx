@@ -25,7 +25,7 @@ jest.mock("@/lib/api", () => ({
   },
 }))
 
-jest.mock("@/lib/api/feedback.api", () => ({
+jest.mock("@/lib/api/social/feedback.api", () => ({
   feedbackApi: {
     getByRelated: jest.fn(),
     getStats: jest.fn(),

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState } from "react"
 import { useRouter } from "next/navigation"
-import { productsApi } from "@/lib/api/products.api"
+import { productsApi } from "@/lib/api/commerce/products.api"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 

@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { Calendar, CheckCircle, AlertCircle, ExternalLink, Unlink } from "lucide-react"
-import { googleCalendarApi } from "@/lib/api/google-calendar.api"
-import { sessionsApi } from "@/lib/api/sessions.api"
+import { googleCalendarApi } from "@/lib/api/integrations/google-calendar.api"
+import { sessionsApi } from "@/lib/api/events/sessions.api"
 
 interface GoogleCalendarIntegrationProps {
   className?: string

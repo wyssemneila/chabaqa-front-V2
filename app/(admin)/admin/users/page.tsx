@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/app/(admin)/providers/admin-auth-provider"
-import { adminApi, UserFilters } from "@/lib/api/admin-api"
+import { adminApi, UserFilters } from "@/lib/api/admin/admin-api"
 import { DataTable, ColumnDef } from "@/app/(admin)/_components/data-table"
 import { FilterPanel, FilterConfig } from "@/app/(admin)/_components/filter-panel"
 import { StatusBadge } from "@/app/(admin)/_components/status-badge"

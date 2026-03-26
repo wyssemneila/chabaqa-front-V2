@@ -3,10 +3,10 @@
  * Tests content moderation workflow and queue management
  */
 
-import { adminApi } from '@/lib/api/admin-api';
+import { adminApi } from '@/lib/api/admin/admin-api';
 
 // Mock the API client
-jest.mock('@/lib/api/admin-api');
+jest.mock('@/lib/api/admin/admin-api');
 
 describe('Content Moderation', () => {
   beforeEach(() => {

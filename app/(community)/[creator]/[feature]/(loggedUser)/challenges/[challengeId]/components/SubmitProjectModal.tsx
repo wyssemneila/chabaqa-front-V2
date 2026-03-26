@@ -27,8 +27,8 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Link as LinkIcon, FileText, X, Image as ImageIcon, Upload, Camera } from "lucide-react"
 import { toast } from "sonner"
 import Image from "next/image"
-import { mediaApi } from "@/lib/api/media.api"
-import { apiClient } from "@/lib/api/client"
+import { mediaApi } from "@/lib/api/media/media.api"
+import { apiClient } from "@/lib/api/core/client"
 
 const submissionSchema = z.object({
   content: z.string().min(10, {

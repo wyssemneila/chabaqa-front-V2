@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import HeaderSection from "@/app/(community)/[creator]/[feature]/(loggedUser)/sessions/components/HeaderSection"
 import SessionsTabs from "@/app/(community)/[creator]/[feature]/(loggedUser)/sessions/components/SessionsTabs"
-import { sessionsCommunityApi } from "@/lib/api/sessions-community.api"
+import { sessionsCommunityApi } from "@/lib/api/events/sessions-community.api"
 
 interface SessionsPageContentProps {
   slug: string

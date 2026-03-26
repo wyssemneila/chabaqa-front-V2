@@ -33,7 +33,7 @@ import { Shield, UserPlus, Trash2, Loader2, Search, Info } from "lucide-react"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
 import { PageShell } from "@/components/creator-dashboard"
-import { communityAccessApi, CommunityStaffMember } from "@/lib/api/community-access.api"
+import { communityAccessApi, CommunityStaffMember } from "@/lib/api/community/community-access.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCommunityPermissions } from "@/hooks/use-community-permissions"
 import {

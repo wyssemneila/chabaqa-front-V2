@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Ticket, CalendarIcon, MapPin, Users, Clock, ImageIcon, UserCircle } from "lucide-react";
 import { format } from "date-fns";
-import { EventWithTickets } from "@/lib/api/events-community.api";
+import { EventWithTickets } from "@/lib/api/events/events-community.api";
 import { resolveImageUrl } from "@/lib/resolve-image-url";
 import { getUserProfileHref } from "@/lib/profile-handle";
 

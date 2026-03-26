@@ -30,7 +30,7 @@ import { Menu, Bell, User, Settings, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
-import { adminApi, type AdminNotificationFeedItem } from "@/lib/api/admin-api"
+import { adminApi, type AdminNotificationFeedItem } from "@/lib/api/admin/admin-api"
 
 interface BreadcrumbItem {
   label: string

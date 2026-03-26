@@ -23,7 +23,7 @@ import {
 
 
 import Link from "next/link";
-import { sessionsApi, type CreatorBookingViewModel } from "@/lib/api/sessions.api";
+import { sessionsApi, type CreatorBookingViewModel } from "@/lib/api/events/sessions.api";
 import { resolveImageUrl } from "@/lib/resolve-image-url";
 
 import UpcomingSessionsCard from "./upcoming-sessions-card";

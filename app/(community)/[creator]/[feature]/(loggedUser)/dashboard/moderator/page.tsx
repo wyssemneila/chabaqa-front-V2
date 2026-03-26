@@ -11,7 +11,7 @@ import {
   DashboardUnauthorized,
 } from "../components";
 import { CommunityPermission } from "@/lib/permissions";
-import { moderationApi } from "@/lib/api/moderation.api";
+import { moderationApi } from "@/lib/api/admin/moderation.api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";

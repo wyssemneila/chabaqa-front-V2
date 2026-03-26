@@ -1,17 +1,17 @@
 import React from "react"
 import { act, render, screen, waitFor } from "@testing-library/react"
 import EnhancedVideoPlayer from "@/app/(community)/[creator]/[feature]/(loggedUser)/courses/[courseId]/components/enhanced-video-player"
-import { coursesApi } from "@/lib/api/courses.api"
-import { videoPlaybackApi } from "@/lib/api/video-playback.api"
+import { coursesApi } from "@/lib/api/learning/courses.api"
+import { videoPlaybackApi } from "@/lib/api/media/video-playback.api"
 
-jest.mock("@/lib/api/courses.api", () => ({
+jest.mock("@/lib/api/learning/courses.api", () => ({
   coursesApi: {
     updateChapterWatchTime: jest.fn().mockResolvedValue({}),
     completeChapterEnrollment: jest.fn().mockResolvedValue({ success: true }),
   },
 }))
 
-jest.mock("@/lib/api/video-playback.api", () => ({
+jest.mock("@/lib/api/media/video-playback.api", () => ({
   videoPlaybackApi: {
     createPlaybackSession: jest.fn(),
     extendSession: jest.fn().mockResolvedValue({}),

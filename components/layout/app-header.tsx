@@ -34,7 +34,7 @@ import {
 } from "lucide-react"
 import { communitiesApi } from "@/lib/api"
 import { useAuth } from "@/hooks/use-auth"
-import { Community } from "@/lib/api/types"
+import { Community } from "@/lib/api/core/types"
 
 
 interface AppHeaderProps {

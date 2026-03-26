@@ -26,7 +26,7 @@ import {
   Timer,
   Users,
 } from "lucide-react"
-import type { ProgressionContentType, ProgressionItem } from "@/lib/api/types"
+import type { ProgressionContentType, ProgressionItem } from "@/lib/api/core/types"
 import { cn } from "@/lib/utils"
 
 const TYPE_CONFIG: Record<

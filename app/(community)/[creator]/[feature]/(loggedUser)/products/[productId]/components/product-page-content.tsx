@@ -13,7 +13,7 @@ import ProductReviews from "@/app/(community)/[creator]/[feature]/(loggedUser)/p
 import PurchaseCard from "@/app/(community)/[creator]/[feature]/(loggedUser)/products/[productId]/components/purchase-card"
 import CreatorInfo from "@/app/(community)/[creator]/[feature]/(loggedUser)/products/[productId]/components/creator-info"
 import ProductDetails from "@/app/(community)/[creator]/[feature]/(loggedUser)/products/[productId]/components/product-details"
-import { productsApi } from "@/lib/api/products.api"
+import { productsApi } from "@/lib/api/commerce/products.api"
 import { useToast } from "@/components/ui/use-toast"
 
 interface ProductPageContentProps {

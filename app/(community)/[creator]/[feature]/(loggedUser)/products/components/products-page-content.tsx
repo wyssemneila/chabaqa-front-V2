@@ -8,7 +8,7 @@ import {
   ProductPurchase,
   isProductOwnedByUser,
   productsCommunityApi,
-} from "@/lib/api/products-community.api"
+} from "@/lib/api/commerce/products-community.api"
 import HeaderSection from "./header-section"
 import ProductsTabs from "./products-tabs"
 import { useToast } from "@/components/ui/use-toast"

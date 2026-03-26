@@ -23,9 +23,9 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
-import type { Conversation, Message, MessageAttachment } from "@/lib/api/types"
+import type { Conversation, Message, MessageAttachment } from "@/lib/api/core/types"
 import { useAuthContext } from "@/app/providers/auth-provider"
-import { useSocket } from "@/lib/socket-context"
+import { useSocket } from "@/app/providers/socket-provider"
 import { getErrorMessage } from "@/lib/utils/error-messages"
 
 const getParticipantId = (p: any): string => {

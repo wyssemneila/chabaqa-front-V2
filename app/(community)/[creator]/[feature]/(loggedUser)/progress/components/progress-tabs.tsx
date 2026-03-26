@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2, RefreshCw, Search } from "lucide-react"
-import type { ProgressionContentType, ProgressionSummary } from "@/lib/api/types"
+import type { ProgressionContentType, ProgressionSummary } from "@/lib/api/core/types"
 import { cn } from "@/lib/utils"
 
 const TYPE_CONFIG: Record<ProgressionContentType, { label: string }> = {

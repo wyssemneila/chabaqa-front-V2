@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { coursesApi } from "@/lib/api/courses.api"
+import { coursesApi } from "@/lib/api/learning/courses.api"
 import { tokenStorage } from "@/lib/token-storage"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────

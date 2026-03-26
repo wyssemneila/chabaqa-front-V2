@@ -16,7 +16,7 @@ jest.mock("@/lib/api", () => ({
   },
 }))
 
-jest.mock("@/lib/api/courses.api", () => ({
+jest.mock("@/lib/api/learning/courses.api", () => ({
   coursesApi: {
     initChapterStripePayment: jest.fn(),
   },

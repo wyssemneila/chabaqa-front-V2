@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { User, Calendar, Loader2 } from "lucide-react"
-import { usersApi, CreatorProfile, CreatorStats } from "@/lib/api/users.api"
+import { usersApi, CreatorProfile, CreatorStats } from "@/lib/api/user/users.api"
 import { getUserProfileHref } from "@/lib/profile-handle"
 
 interface CreatorInfoProps {

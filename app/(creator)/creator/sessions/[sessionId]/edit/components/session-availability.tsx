@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { sessionsApi } from "@/lib/api/sessions.api"
+import { sessionsApi } from "@/lib/api/events/sessions.api"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

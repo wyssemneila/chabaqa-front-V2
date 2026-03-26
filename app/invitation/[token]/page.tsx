@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, CheckCircle2, XCircle, Lock, Users, ExternalLink } from "lucide-react"
-import { communityInvitationsApi, type TokenValidation } from "@/lib/api/community-invitations.api"
+import { communityInvitationsApi, type TokenValidation } from "@/lib/api/community/community-invitations.api"
 
 export default function InviteAcceptPage() {
   const params = useParams()

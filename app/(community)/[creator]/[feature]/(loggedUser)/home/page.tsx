@@ -38,15 +38,15 @@ import {
   PencilLine,
 } from "lucide-react"
 import Link from "next/link"
-import { communityHomeApi, type CommunityHomeData } from "@/lib/api/community-home.api"
-import { communityMembersApi, type CommunityMentionMember } from "@/lib/api/community-members.api"
-import { postsApi } from "@/lib/api/posts.api"
-import type { Post, PostLink } from "@/lib/api/types"
+import { communityHomeApi, type CommunityHomeData } from "@/lib/api/community/community-home.api"
+import { communityMembersApi, type CommunityMentionMember } from "@/lib/api/community/community-members.api"
+import { postsApi } from "@/lib/api/community/posts.api"
+import type { Post, PostLink } from "@/lib/api/core/types"
 import { PostCard } from "@/app/(community)/components/post-card"
 import { useToast } from "@/hooks/use-toast"
 import { useSearchParams } from "next/navigation"
 import { getUserProfileHref } from "@/lib/profile-handle"
-import { trackingApi } from "@/lib/api/tracking.api"
+import { trackingApi } from "@/lib/api/creator/tracking.api"
 
 const POSTS_PAGE = 1
 const POSTS_LIMIT = 10

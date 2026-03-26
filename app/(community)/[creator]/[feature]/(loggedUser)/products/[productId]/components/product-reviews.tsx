@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { MessageSquare, Star, Send, Loader2 } from "lucide-react"
-import { feedbackApi, Feedback, FeedbackStats } from "@/lib/api/feedback.api"
+import { feedbackApi, Feedback, FeedbackStats } from "@/lib/api/social/feedback.api"
 import { formatDistanceToNow } from "date-fns"
 import { getUserProfileHref } from "@/lib/profile-handle"
 
