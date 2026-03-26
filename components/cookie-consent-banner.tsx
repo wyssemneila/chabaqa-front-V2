@@ -26,12 +26,12 @@ export function CookieConsentBanner({
       role="region"
       aria-label="Cookie consent"
       className="fixed bottom-5 inset-x-0 z-[70] flex justify-center px-4 pointer-events-none"
-      style={{ animation: "slideUpCookie .4s cubic-bezier(.16,1,.3,1) both" }}
+      style={{ animation: "slideUpCookie .65s cubic-bezier(.16,1,.3,1) 2.8s both" }}
     >
       <style>{`
         @keyframes slideUpCookie {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(28px) scale(.97); }
+          to   { opacity: 1; transform: translateY(0)   scale(1);    }
         }
       `}</style>
 
