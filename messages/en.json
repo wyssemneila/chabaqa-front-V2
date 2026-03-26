@@ -121,7 +121,9 @@
       "logoAlt": "Chabaqa Logo",
       "footer": "© 2026 Chabaqa. Build the future of communities.",
       "metaTitle": "Forgot Password | Chabaqa",
-      "metaDesc": "Reset your Chabaqa account password securely."
+      "metaDesc": "Reset your Chabaqa account password securely.",
+      "headline": "Forgot your password?",
+      "subheadline": "Enter your email and we will send you a reset code."
     },
     "forgotPasswordForm": {
       "title": "Forgot your password?",

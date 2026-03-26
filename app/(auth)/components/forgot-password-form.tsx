@@ -1,17 +1,27 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { Mail, Loader2 } from "lucide-react"
 import { forgotPasswordAction } from "../forgot-password/actions"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
 import { usePathname } from "next/navigation"
+import { ChabaSpinner } from "@/components/ui/ChabaSpinner"
+
+// ── Shared input class builder ────────────────────────────────────────────────
+function inp(err?: boolean) {
+  return [
+    "w-full h-12 px-4 rounded-xl border text-[14px] outline-none",
+    "placeholder-[var(--t3)] text-[var(--t1)] bg-[var(--white)]",
+    "transition-all duration-200",
+    "disabled:opacity-50 disabled:cursor-not-allowed",
+    err
+      ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200"
+      : "border-[var(--bd)] focus:border-[#8e78fb] focus:ring-2 focus:ring-[#8e78fb]/15",
+  ].join(" ")
+}
 
 export default function ForgotPasswordForm() {
   const t = useTranslations("auth.forgotPasswordForm")
@@ -42,122 +52,117 @@ export default function ForgotPasswordForm() {
   }
 
   return (
-    <>
-      {/* Header Message */}
-      <div className="text-center mb-8 animate-fade-in-delay-400">
-        {!isSubmitted ? (
-          <>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2 drop-shadow-sm">{t("title")}</h2>
-            <p className="text-gray-700 drop-shadow-sm">
-              {t("intro")}
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="w-16 h-16 bg-gradient-to-r from-[#8e78fb] to-[#47c7ea] rounded-full flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-8 h-8 text-white" />
+    <div
+      className="rounded-2xl border p-8 space-y-5"
+      style={{
+        background: "var(--white,#fff)",
+        borderColor: "var(--bd,#e5e7eb)",
+        boxShadow: "0 4px 24px rgba(142,120,251,.1), 0 1px 4px rgba(0,0,0,.05)",
+      }}
+    >
+      {!isSubmitted ? (
+        <>
+          {/* Error */}
+          {error && (
+            <div className="px-4 py-3 rounded-xl text-[13px] flex gap-2" style={{ background: "#fee2e2", border: "1px solid #fca5a5", color: "#b91c1c" }}>
+              <svg className="h-4 w-4 shrink-0 mt-px" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              {error}
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2 drop-shadow-sm">{t("checkEmailTitle")}</h2>
-            <p className="text-gray-700 drop-shadow-sm">
-              {t("checkEmailBody")} <strong>{email}</strong>
-            </p>
-            <p className="text-sm text-gray-600 mt-2 drop-shadow-sm">{t("codeExpires")}</p>
-          </>
-        )}
-      </div>
+          )}
 
-      {/* Reset Card */}
-      <div className="backdrop-blur-xl bg-white/25 border border-white/40 p-8 rounded-3xl shadow-2xl animate-fade-in-delay-600">
-        {!isSubmitted ? (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Error Message */}
-            {error && (
-              <div className="p-4 bg-red-100/80 backdrop-blur-sm border border-red-200 rounded-2xl">
-                <p className="text-red-700 text-sm">{error}</p>
-              </div>
-            )}
-
-            {/* Email Field */}
-            <div className="space-y-2 animate-fade-in-delay-800">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-800 block">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email */}
+            <div className="space-y-1.5">
+              <label htmlFor="fp-email" className="text-[13px] font-semibold" style={{ color: "var(--t1,#111827)" }}>
                 {t("emailLabel")}
-              </Label>
-              <div className="relative">
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t("emailPlaceholder")}
-                  required
-                  disabled={isLoading}
-                  className="w-full px-4 py-4 rounded-2xl border-2 border-white/60 focus:border-[#8e78fb] focus:ring-4 focus:ring-[#8e78fb]/20 transition-all duration-300 text-gray-900 placeholder-gray-500 bg-white/80 backdrop-blur-sm disabled:opacity-50 shadow-sm"
-                />
-              </div>
-            </div>
-
-            {/* Reset Button */}
-            <div className="animate-fade-in-delay-1000">
-              <Button
-                type="submit"
+              </label>
+              <input
+                id="fp-email"
+                type="email"
+                value={email}
+                autoComplete="email"
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="none"
                 disabled={isLoading}
-                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#8e78fb] to-[#47c7ea] text-white font-semibold text-lg shadow-lg hover:shadow-2xl transition-all duration-300 border-0 relative overflow-hidden group hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin me-2" />
-                    <span>{t("sending")}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="relative z-10">{t("sendCode")}</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#7c66e9] to-[#3bb5d6] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <div className="space-y-6">
-            {/* Success Message */}
-            <div className="text-center space-y-4">
-              <p className="text-gray-700 drop-shadow-sm">
-                {t("missingCodeHint")}
-              </p>
+                required
+                onChange={e => setEmail(e.target.value)}
+                placeholder={t("emailPlaceholder")}
+                className={inp()}
+              />
             </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-3">
-              <Link href={`${localizeHref(pathname, "/reset-password")}?email=${encodeURIComponent(email)}`}>
-                <Button className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#8e78fb] to-[#47c7ea] text-white font-semibold text-lg shadow-lg hover:shadow-2xl transition-all duration-300 border-0 relative overflow-hidden group hover:scale-105">
-                  <span className="relative z-10">{t("enterCode")}</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#7c66e9] to-[#3bb5d6] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </Button>
-              </Link>
-
-              <Button
-                onClick={() => setIsSubmitted(false)}
-                className="w-full py-4 px-6 rounded-2xl bg-white/95 backdrop-blur-sm border-2 border-white/60 text-gray-700 font-semibold text-lg shadow-lg hover:shadow-xl hover:border-[#8e78fb] transition-all duration-300 relative overflow-hidden group hover:bg-white"
-              >
-                <span className="relative z-10">{t("tryDifferentEmail")}</span>
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Back to Login Link */}
-        <div className="mt-8 text-center animate-fade-in-delay-1200">
-          <div className="text-sm text-gray-700 drop-shadow-sm">
-            {t("rememberPassword")}{" "}
-            <Link
-              href={localizeHref(pathname, "/signin")}
-              className="text-[#47c7ea] hover:text-[#3bb5d6] font-medium transition-all duration-200 hover:underline"
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-12 rounded-xl text-[14px] font-semibold text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 active:scale-[.98] flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg,#8e78fb 0%,#6c52f0 100%)", boxShadow: "0 4px 14px rgba(142,120,251,.4)" }}
             >
-              {t("signIn")}
-            </Link>
+              {isLoading ? (
+                <>
+                  <ChabaSpinner size={18} />
+                  {t("sending")}
+                </>
+              ) : t("sendCode")}
+            </button>
+          </form>
+        </>
+      ) : (
+        <div className="space-y-5">
+          {/* Success icon + message */}
+          <div className="flex flex-col items-center text-center gap-3 py-2">
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg,#8e78fb 0%,#47c7ea 100%)" }}
+            >
+              <Mail className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <p className="text-[15px] font-semibold mb-1" style={{ color: "var(--t1,#111827)" }}>{t("checkEmailTitle")}</p>
+              <p className="text-[13px]" style={{ color: "var(--t2,#6b7280)" }}>
+                {t("checkEmailBody")} <strong style={{ color: "var(--t1,#111827)" }}>{email}</strong>
+              </p>
+              <p className="text-[12px] mt-1" style={{ color: "var(--t3,#9ca3af)" }}>{t("codeExpires")}</p>
+            </div>
           </div>
+
+          <p className="text-[13px] text-center" style={{ color: "var(--t2,#6b7280)" }}>{t("missingCodeHint")}</p>
+
+          {/* Enter code */}
+          <Link href={`${localizeHref(pathname, "/reset-password")}?email=${encodeURIComponent(email)}`}>
+            <button
+              className="w-full h-12 rounded-xl text-[14px] font-semibold text-white transition-all duration-200 hover:opacity-90 active:scale-[.98] flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg,#8e78fb 0%,#6c52f0 100%)", boxShadow: "0 4px 14px rgba(142,120,251,.4)" }}
+            >
+              {t("enterCode")}
+            </button>
+          </Link>
+
+          {/* Try different email */}
+          <button
+            onClick={() => setIsSubmitted(false)}
+            className="w-full h-12 rounded-xl border text-[14px] font-semibold transition-all duration-200 hover:opacity-80 active:scale-[.98]"
+            style={{ borderColor: "var(--bd,#e5e7eb)", color: "var(--t1,#111827)", background: "var(--white,#fff)" }}
+          >
+            {t("tryDifferentEmail")}
+          </button>
         </div>
+      )}
+
+      {/* Back to sign in */}
+      <div className="pt-1 text-center text-[13px]">
+        <span style={{ color: "var(--t2,#6b7280)" }}>{t("rememberPassword")}{" "}</span>
+        <Link
+          href={localizeHref(pathname, "/signin")}
+          className="font-semibold hover:underline transition-colors"
+          style={{ color: "#8e78fb" }}
+        >
+          {t("signIn")}
+        </Link>
       </div>
-    </>
+    </div>
   )
 }
