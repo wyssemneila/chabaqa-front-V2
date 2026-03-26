@@ -17,7 +17,8 @@ export function Footer() {
     window.dispatchEvent(new CustomEvent(COOKIE_OPEN_PREFERENCES_EVENT))
   }
 
-  const columns = t.raw("columns") as Record<string, string[]>
+  const columnHeadings = t.raw("columnHeadings") as string[]
+  const columns = t.raw("columns") as string[][]
   const bottomLinks = t.raw("bottomLinks") as string[]
 
   const FOOTER_HREFS: string[][] = [
@@ -104,12 +105,12 @@ export function Footer() {
           </div>
 
           {/* Columns */}
-          {Object.entries(columns).map(([heading, links], colIdx) => (
-            <div key={heading}>
+          {columnHeadings.map((heading, colIdx) => (
+            <div key={colIdx}>
               <h4 className="text-white font-bold text-sm mb-4">{heading}</h4>
               <ul className="flex flex-col gap-3">
-                {links.map((link, linkIdx) => (
-                  <li key={link}>
+                {columns[colIdx]?.map((link, linkIdx) => (
+                  <li key={linkIdx}>
                     <Link
                       href={withLocale(FOOTER_HREFS[colIdx]?.[linkIdx] ?? "#")}
                       className="text-white/70 hover:text-white text-sm transition-colors"

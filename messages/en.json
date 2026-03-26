@@ -16,26 +16,31 @@
       "Privacy",
       "Cookies"
     ],
-    "columns": {
-      "Product": [
+    "columns": [
+      [
         "Features",
         "Pricing",
         "Community",
         "Courses",
         "Challenges"
       ],
-      "Company": [
+      [
         "About",
         "Blog",
         "Careers",
         "Contact"
       ],
-      "Legal": [
+      [
         "Terms of Service",
         "Privacy Policy",
         "Cookies"
       ]
-    }
+    ],
+    "columnHeadings": [
+      "Product",
+      "Company",
+      "Legal"
+    ]
   },
   "common": {
     "brand": "Chabaqa",
@@ -1370,7 +1375,13 @@
     "statCreators": "Creators",
     "statCourses": "Courses & Products",
     "statMembers": "Members",
-    "free": "Free"
+    "free": "Free",
+    "ctaCommunity": "Explore",
+    "ctaCourse": "Start",
+    "ctaChallenge": "Join",
+    "ctaProduct": "Download",
+    "ctaSession": "Book",
+    "ctaEvent": "Register"
   },
   "dashboard": {
     "metaTitle": "Dashboard | Chabaqa",

@@ -15,14 +15,6 @@ function fmt(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `${n}`
 }
 
-const CTA_LABEL: Record<ContentType, string> = {
-  community: 'Explore',
-  course:    'Start',
-  challenge: 'Join',
-  product:   'Download',
-  session:   'Book',
-  event:     'Register',
-}
 
 // ── Unified card (Featured + Regular share the same component) ─────────────
 function ExploreCard({
@@ -128,7 +120,7 @@ function ExploreCard({
         <a href={`${APP_URL}/explore`}
           className="mt-auto w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 hover:-translate-y-[1px]"
           style={{ background: 'var(--p)' }}>
-          {CTA_LABEL[item.type]}
+          {t(`cta${item.type.charAt(0).toUpperCase() + item.type.slice(1)}` as any)}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="11" height="11" aria-hidden="true">
             <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
           </svg>

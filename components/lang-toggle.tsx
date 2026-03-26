@@ -28,6 +28,7 @@ export function LangToggle({ className = "", size = "md" }: LangToggleProps) {
       type="button"
       onClick={toggle}
       aria-label={isAr ? "Switch to English" : "التبديل إلى العربية"}
+      data-no-auto-translate="true"
       className={`${dim} flex items-center justify-center rounded-xl border font-bold transition-all duration-200 cursor-pointer ${className}`}
       style={{
         borderColor: "var(--bd,#e5e7eb)",
