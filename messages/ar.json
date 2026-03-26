@@ -1384,6 +1384,23 @@
     "ctaSession": "احجز",
     "ctaEvent": "سجّل"
   },
+  "cookieConsent": {
+    "bannerText": "نستخدم ملفات تعريف الارتباط للحفاظ على أمان Chabaqa وتحسين تجربتك.",
+    "privacyPolicy": "سياسة الخصوصية",
+    "settings": "الإعدادات",
+    "reject": "رفض",
+    "acceptAll": "قبول الكل",
+    "modalBadge": "خصوصية Chabaqa",
+    "modalTitle": "تفضيلات ملفات الارتباط",
+    "modalDesc": "ملفات الارتباط الأساسية نشطة دائماً. يمكنك تحديد ما إذا كنت تريد تفعيل ملفات ارتباط التحليلات.",
+    "essentialTitle": "أساسية",
+    "essentialDesc": "مطلوبة للمصادقة والأمان والوظائف الأساسية للموقع.",
+    "alwaysActive": "نشط دائماً",
+    "analyticsTitle": "تحليلات",
+    "analyticsDesc": "تساعدنا على فهم الاستخدام وتحسين تجربة المنتج.",
+    "rejectNonEssential": "رفض غير الأساسية",
+    "savePreferences": "حفظ التفضيلات"
+  },
   "dashboard": {
     "metaTitle": "لوحة التحكم | شبكة",
     "metaTemplate": "%s | شبكة",

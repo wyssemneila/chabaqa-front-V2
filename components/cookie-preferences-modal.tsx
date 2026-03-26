@@ -1,18 +1,7 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Activity, LockKeyhole, Settings2 } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import React, { useEffect, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 
 type CookiePreferencesModalProps = {
   open: boolean
@@ -31,106 +20,250 @@ export function CookiePreferencesModal({
   onAcceptAll,
   onRejectNonEssential,
 }: CookiePreferencesModalProps) {
+  const t = useTranslations("cookieConsent")
   const [analytics, setAnalytics] = useState<boolean>(analyticsEnabled)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (open) {
-      setAnalytics(analyticsEnabled)
-    }
+    if (open) setAnalytics(analyticsEnabled)
   }, [open, analyticsEnabled])
 
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onOpenChange(false) }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [open, onOpenChange])
+
+  if (!open) return null
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl border-chabaqa-primary/20 p-0">
-        <div className="h-1 w-full rounded-t-lg bg-gradient-to-r from-chabaqa-primary via-chabaqa-secondary2 to-chabaqa-secondary1" />
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+      style={{ animation: "fadeInOverlay .2s ease both" }}
+    >
+      <style>{`
+        @keyframes fadeInOverlay {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes slideUpModal {
+          from { opacity: 0; transform: translateY(24px) scale(.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .cookie-toggle {
+          position: relative;
+          width: 44px;
+          height: 24px;
+          border-radius: 12px;
+          border: 2px solid var(--bd,#e5e7eb);
+          background: var(--bg,#f3f4f6);
+          cursor: pointer;
+          transition: background .2s, border-color .2s;
+          flex-shrink: 0;
+        }
+        .cookie-toggle.on {
+          background: linear-gradient(135deg,#8e78fb 0%,#6c52f0 100%);
+          border-color: #8e78fb;
+        }
+        .cookie-toggle-thumb {
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: white;
+          box-shadow: 0 1px 4px rgba(0,0,0,.2);
+          transition: transform .2s cubic-bezier(.16,1,.3,1);
+        }
+        .cookie-toggle.on .cookie-toggle-thumb {
+          transform: translateX(20px);
+        }
+      `}</style>
 
-        <div className="space-y-5 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
-          <DialogHeader className="space-y-3 text-start">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0"
+        style={{ background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)" }}
+        onClick={() => onOpenChange(false)}
+        aria-hidden="true"
+      />
+
+      {/* Modal card */}
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cookie-modal-title"
+        className="relative w-full max-w-md overflow-hidden rounded-2xl"
+        style={{
+          background: "var(--white,#fff)",
+          boxShadow: "0 24px 64px rgba(0,0,0,.18), 0 4px 16px rgba(142,120,251,.15)",
+          animation: "slideUpModal .3s cubic-bezier(.16,1,.3,1) both",
+        }}
+      >
+        {/* Gradient top bar */}
+        <div
+          className="h-1 w-full"
+          style={{ background: "linear-gradient(90deg,#8e78fb,#a78bfa,#6c52f0)" }}
+        />
+
+        <div className="p-6">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3 mb-5">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-chabaqa-primary/20 bg-white p-2 shadow-sm">
-                <Image
-                  src="/Logos/PNG/brandmark.png"
-                  alt="Chabaqa"
-                  width={24}
-                  height={24}
-                  className="h-6 w-6 object-contain"
-                />
+              {/* Icon */}
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "linear-gradient(135deg,#8e78fb 0%,#6c52f0 100%)", boxShadow: "0 4px 12px rgba(142,120,251,.35)" }}
+                aria-hidden="true"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18}>
+                  <path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/>
+                  <path d="M8.5 8.5v.01M16 15.5v.01M12 12v.01"/>
+                </svg>
               </div>
-              <div className="space-y-1">
-                <p className="inline-flex items-center gap-1 rounded-full border border-chabaqa-primary/20 bg-chabaqa-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-chabaqa-primary">
-                  <Settings2 className="h-3.5 w-3.5" />
-                  Chabaqa Privacy
-                </p>
-                <DialogTitle className="text-xl text-slate-900">Cookie Preferences</DialogTitle>
-              </div>
-            </div>
-          <DialogDescription>
-            Essential cookies are always active. You can decide whether to enable analytics cookies.
-          </DialogDescription>
-        </DialogHeader>
 
-          <div className="space-y-3">
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5">
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <p className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-800">
-                    <LockKeyhole className="h-4 w-4" />
-                    Essential
-                  </p>
-                  <p className="text-sm text-emerald-700">
-                    Required for authentication, security, and basic site functions.
-                  </p>
-                </div>
-                <Button type="button" variant="outline" size="sm" disabled>
-                  Always active
-                </Button>
+              <div>
+                {/* Badge */}
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider mb-1"
+                  style={{ background: "rgba(142,120,251,.12)", color: "#8e78fb", border: "1px solid rgba(142,120,251,.2)" }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={10} height={10} aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                  {t("modalBadge")}
+                </span>
+                <h2 id="cookie-modal-title" className="text-[17px] font-black" style={{ color: "var(--t1,#111827)" }}>
+                  {t("modalTitle")}
+                </h2>
               </div>
             </div>
 
-            <div className="rounded-xl border border-chabaqa-primary/25 bg-gradient-to-br from-chabaqa-primary/5 via-white to-chabaqa-secondary2/5 p-3.5">
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              aria-label="Close"
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0"
+              style={{ color: "var(--t3,#9ca3af)", border: "1px solid var(--bd,#e5e7eb)" }}
+              onMouseEnter={e => { e.currentTarget.style.color="var(--t1,#111827)"; e.currentTarget.style.background="var(--bg,#f3f4f6)" }}
+              onMouseLeave={e => { e.currentTarget.style.color="var(--t3,#9ca3af)"; e.currentTarget.style.background="transparent" }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14} aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* Description */}
+          <p className="text-[13px] mb-5 leading-relaxed" style={{ color: "var(--t2,#6b7280)" }}>
+            {t("modalDesc")}
+          </p>
+
+          {/* Cookie rows */}
+          <div className="space-y-3 mb-6">
+            {/* Essential */}
+            <div
+              className="rounded-xl p-4"
+              style={{
+                background: "rgba(16,185,129,.06)",
+                border: "1px solid rgba(16,185,129,.18)",
+              }}
+            >
               <div className="flex items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <p className="inline-flex items-center gap-1 text-sm font-semibold text-slate-900">
-                    <Activity className="h-4 w-4 text-chabaqa-primary" />
-                    Analytics
+                <div className="space-y-0.5">
+                  <p className="flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "#065f46" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14} aria-hidden="true">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    {t("essentialTitle")}
                   </p>
-                  <p className="text-sm text-slate-600">
-                    Helps us understand usage and improve the product experience.
-                  </p>
+                  <p className="text-[12px]" style={{ color: "#047857" }}>{t("essentialDesc")}</p>
                 </div>
-                <Switch
-                  aria-label="Enable analytics cookies"
-                  checked={analytics}
-                  onCheckedChange={(value) => setAnalytics(Boolean(value))}
-                />
+                <span
+                  className="shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                  style={{ background: "rgba(16,185,129,.15)", color: "#065f46" }}
+                >
+                  {t("alwaysActive")}
+                </span>
+              </div>
+            </div>
+
+            {/* Analytics */}
+            <div
+              className="rounded-xl p-4"
+              style={{
+                background: analytics ? "rgba(142,120,251,.06)" : "var(--bg,#f9fafb)",
+                border: analytics ? "1px solid rgba(142,120,251,.25)" : "1px solid var(--bd,#e5e7eb)",
+                transition: "background .2s, border-color .2s",
+              }}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <p className="flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--t1,#111827)" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke={analytics ? "#8e78fb" : "currentColor"} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14} aria-hidden="true">
+                      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    {t("analyticsTitle")}
+                  </p>
+                  <p className="text-[12px]" style={{ color: "var(--t2,#6b7280)" }}>{t("analyticsDesc")}</p>
+                </div>
+
+                {/* Custom toggle */}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={analytics}
+                  aria-label={t("analyticsTitle")}
+                  onClick={() => setAnalytics(v => !v)}
+                  className={`cookie-toggle${analytics ? " on" : ""}`}
+                >
+                  <span className="cookie-toggle-thumb" />
+                </button>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:justify-between sm:space-x-0">
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={onRejectNonEssential}>
-                Reject non-essential
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onAcceptAll}
-                className="border-chabaqa-primary/30 text-chabaqa-primary hover:bg-chabaqa-primary/10"
-              >
-                Accept all
-              </Button>
-            </div>
-            <Button
+          {/* Footer actions */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <button
+              type="button"
+              onClick={onRejectNonEssential}
+              className="flex-1 h-10 rounded-xl text-[13px] font-semibold border transition-colors cursor-pointer"
+              style={{ borderColor: "var(--bd,#e5e7eb)", color: "var(--t2,#6b7280)", background: "transparent" }}
+              onMouseEnter={e => { e.currentTarget.style.background="var(--bg,#f3f4f6)"; e.currentTarget.style.color="var(--t1,#111827)" }}
+              onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="var(--t2,#6b7280)" }}
+            >
+              {t("rejectNonEssential")}
+            </button>
+            <button
+              type="button"
+              onClick={onAcceptAll}
+              className="flex-1 h-10 rounded-xl text-[13px] font-semibold border transition-colors cursor-pointer"
+              style={{ borderColor: "rgba(142,120,251,.3)", color: "#8e78fb", background: "rgba(142,120,251,.06)" }}
+              onMouseEnter={e => { e.currentTarget.style.background="rgba(142,120,251,.12)" }}
+              onMouseLeave={e => { e.currentTarget.style.background="rgba(142,120,251,.06)" }}
+            >
+              {t("acceptAll")}
+            </button>
+            <button
               type="button"
               onClick={() => onSavePreferences({ analytics })}
-              className="border-0 bg-gradient-to-r from-chabaqa-primary to-chabaqa-secondary1 text-white shadow-md transition hover:from-chabaqa-primary/90 hover:to-chabaqa-secondary1/90"
+              className="flex-1 h-10 rounded-xl text-[13px] font-semibold text-white transition-all cursor-pointer hover:opacity-90 active:scale-[.98]"
+              style={{
+                background: "linear-gradient(135deg,#8e78fb 0%,#6c52f0 100%)",
+                boxShadow: "0 4px 14px rgba(142,120,251,.4)",
+              }}
             >
-              Save preferences
-            </Button>
-          </DialogFooter>
+              {t("savePreferences")}
+            </button>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }

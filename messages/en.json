@@ -1383,6 +1383,23 @@
     "ctaSession": "Book",
     "ctaEvent": "Register"
   },
+  "cookieConsent": {
+    "bannerText": "We use cookies to keep Chabaqa secure and improve your experience.",
+    "privacyPolicy": "Privacy Policy",
+    "settings": "Settings",
+    "reject": "Reject",
+    "acceptAll": "Accept all",
+    "modalBadge": "Chabaqa Privacy",
+    "modalTitle": "Cookie Preferences",
+    "modalDesc": "Essential cookies are always active. You can decide whether to enable analytics cookies.",
+    "essentialTitle": "Essential",
+    "essentialDesc": "Required for authentication, security, and basic site functions.",
+    "alwaysActive": "Always active",
+    "analyticsTitle": "Analytics",
+    "analyticsDesc": "Helps us understand usage and improve the product experience.",
+    "rejectNonEssential": "Reject non-essential",
+    "savePreferences": "Save preferences"
+  },
   "dashboard": {
     "metaTitle": "Dashboard | Chabaqa",
     "metaTemplate": "%s | Chabaqa",

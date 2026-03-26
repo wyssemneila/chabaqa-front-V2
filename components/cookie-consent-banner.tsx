@@ -2,6 +2,9 @@
 
 import React from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
+import { usePathname } from "next/navigation"
+import { localizeHref } from "@/lib/i18n/client"
 
 type CookieConsentBannerProps = {
   onAcceptAll: () => void
@@ -14,6 +17,10 @@ export function CookieConsentBanner({
   onRejectNonEssential,
   onOpenSettings,
 }: CookieConsentBannerProps) {
+  const t = useTranslations("cookieConsent")
+  const pathname = usePathname()
+  const withLocale = (href: string) => localizeHref(pathname, href)
+
   return (
     <div
       role="region"
@@ -31,7 +38,7 @@ export function CookieConsentBanner({
       <div
         className="pointer-events-auto w-full max-w-2xl flex flex-col sm:flex-row items-start sm:items-center gap-3 rounded-2xl px-4 py-3.5"
         style={{
-          background: "rgba(255,255,255,0.97)",
+          background: "var(--white,#fff)",
           backdropFilter: "blur(16px)",
           border: "1px solid rgba(142,120,251,.2)",
           boxShadow: "0 8px 32px rgba(142,120,251,.18), 0 2px 8px rgba(0,0,0,.06)",
@@ -50,10 +57,10 @@ export function CookieConsentBanner({
         </div>
 
         {/* Text */}
-        <p className="flex-1 text-[12.5px] leading-relaxed" style={{ color: "#374151" }}>
-          We use cookies to keep Chabaqa secure and improve your experience.{" "}
-          <Link href="/privacy-policy" className="font-semibold underline underline-offset-2" style={{ color: "#8e78fb" }}>
-            Privacy Policy
+        <p className="flex-1 text-[12.5px] leading-relaxed" style={{ color: "var(--t2,#374151)" }}>
+          {t("bannerText")}{" "}
+          <Link href={withLocale("/privacy-policy")} className="font-semibold underline underline-offset-2" style={{ color: "#8e78fb" }}>
+            {t("privacyPolicy")}
           </Link>
         </p>
 
@@ -63,21 +70,21 @@ export function CookieConsentBanner({
             type="button"
             onClick={onOpenSettings}
             className="h-8 px-3 rounded-lg text-[12px] font-semibold border transition-colors cursor-pointer"
-            style={{ borderColor: "#e5e7eb", color: "#6b7280", background: "transparent" }}
+            style={{ borderColor: "var(--bd,#e5e7eb)", color: "var(--t2,#6b7280)", background: "transparent" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor="#c4b8fd"; e.currentTarget.style.color="#8e78fb" }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor="#e5e7eb"; e.currentTarget.style.color="#6b7280" }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor="var(--bd,#e5e7eb)"; e.currentTarget.style.color="var(--t2,#6b7280)" }}
           >
-            Settings
+            {t("settings")}
           </button>
           <button
             type="button"
             onClick={onRejectNonEssential}
             className="h-8 px-3 rounded-lg text-[12px] font-semibold border transition-colors cursor-pointer"
-            style={{ borderColor: "#e5e7eb", color: "#6b7280", background: "transparent" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor="#e5e7eb"; e.currentTarget.style.color="#111827"; e.currentTarget.style.background="#f9fafb" }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor="#e5e7eb"; e.currentTarget.style.color="#6b7280"; e.currentTarget.style.background="transparent" }}
+            style={{ borderColor: "var(--bd,#e5e7eb)", color: "var(--t2,#6b7280)", background: "transparent" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor="var(--bd,#e5e7eb)"; e.currentTarget.style.color="var(--t1,#111827)"; e.currentTarget.style.background="var(--bg,#f9fafb)" }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor="var(--bd,#e5e7eb)"; e.currentTarget.style.color="var(--t2,#6b7280)"; e.currentTarget.style.background="transparent" }}
           >
-            Reject
+            {t("reject")}
           </button>
           <button
             type="button"
@@ -85,7 +92,7 @@ export function CookieConsentBanner({
             className="h-8 px-4 rounded-lg text-[12px] font-semibold text-white transition-all cursor-pointer hover:opacity-90 active:scale-95"
             style={{ background: "linear-gradient(135deg,#8e78fb 0%,#6c52f0 100%)", boxShadow: "0 4px 12px rgba(142,120,251,.4)" }}
           >
-            Accept all
+            {t("acceptAll")}
           </button>
         </div>
       </div>
