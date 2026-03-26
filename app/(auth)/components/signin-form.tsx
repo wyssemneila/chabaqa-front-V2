@@ -13,9 +13,9 @@ import { ChabaSpinner } from "@/components/ui/ChabaSpinner"
 import { inp, Err, EyeIcon } from "./form-helpers"
 
 const DEMO_ACCOUNTS = [
-  { label: "Learner", role: "learner", color: "#47c7ea", bg: "#e4f8fd", redirect: "/explore" },
-  { label: "Creator", role: "creator", color: "#8e78fb", bg: "#ede9ff", redirect: "/dashboard/create-community" },
-  { label: "Admin",   role: "admin",   color: "#f65887", bg: "#ffe4ee", redirect: "/dashboard/create-community" },
+  { label: "Learner", role: "learner", color: "#47c7ea", bg: "#e4f8fd" },
+  { label: "Creator", role: "creator", color: "#8e78fb", bg: "#ede9ff" },
+  { label: "Admin",   role: "admin",   color: "#f65887", bg: "#ffe4ee" },
 ]
 
 function isSafeRedirect(p: string | null): p is string {
@@ -80,18 +80,9 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
     } finally { setLoading(false) }
   }
 
-  const demoLogin = async (demo: typeof DEMO_ACCOUNTS[number]) => {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/auth/demo?role=${demo.role}`)
-      const { token, user } = await res.json()
-      updateAuth(token, user)
-      router.push(localizeHref(pathname, demo.redirect))
-    } catch {
-      setError("Demo login failed")
-    } finally {
-      setLoading(false)
-    }
+  const demoLogin = (demo: typeof DEMO_ACCOUNTS[number]) => {
+    const locale = pathname.split("/")[1] ?? "en"
+    window.location.href = `/api/auth/demo?role=${demo.role}&locale=${locale}`
   }
 
   const googleLogin = () => {
