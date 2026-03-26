@@ -4,11 +4,21 @@ import { useTranslations } from 'next-intl'
 import { FEATURES, FEATURE_PLACEHOLDERS } from '@/lib/landing-data'
 import FeatureIcons from '@/components/ui/FeatureIcons'
 
+// IDs must match FEATURES in landing-data — only text is translated
+const FEATURE_IDS = ['community', 'courses', 'challenges', 'products', 'events', 'sessions', 'analytics']
+
 export function Features() {
   const t = useTranslations('landing.features')
-  const items = t.raw('items') as { id: string; name: string; desc: string }[]
+  const tItems = t.raw('items') as { id: string; name: string; desc: string }[]
 
-  const [active, setActive] = useState(items[0]?.id ?? 'community')
+  // Build a name/desc lookup by position (index matches FEATURE_IDS order)
+  const textByIndex = FEATURE_IDS.map((id, i) => ({
+    id,
+    name: tItems[i]?.name ?? id,
+    desc: tItems[i]?.desc ?? '',
+  }))
+
+  const [active, setActive] = useState(FEATURE_IDS[0])
   const feature      = FEATURES.find(f => f.id === active) ?? FEATURES[0]
   const currentVideo = FEATURE_PLACEHOLDERS[active]
 
@@ -24,7 +34,7 @@ export function Features() {
         {/* Mobile: pill tabs row + centered video */}
         <div className="md:hidden mb-6">
           <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {items.map((f) => {
+            {textByIndex.map((f) => {
               const raw = FEATURES.find(r => r.id === f.id)!
               return (
                 <button key={f.id} onClick={() => setActive(f.id)}
@@ -55,7 +65,7 @@ export function Features() {
         {/* Desktop: sidebar tabs + video */}
         <div className="hidden md:grid md:grid-cols-[300px_1fr] gap-8 items-start">
           <div className="flex flex-col gap-2">
-            {items.map((f) => {
+            {textByIndex.map((f) => {
               const raw = FEATURES.find(r => r.id === f.id)!
               return (
                 <button key={f.id} onClick={() => setActive(f.id)}
