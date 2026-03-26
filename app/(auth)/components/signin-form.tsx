@@ -13,9 +13,21 @@ import { ChabaSpinner } from "@/components/ui/ChabaSpinner"
 import { inp, Err, EyeIcon } from "./form-helpers"
 
 const DEMO_ACCOUNTS = [
-  { label: "Learner",  email: "demo.learner@chabaqa.io",  password: "Demo@1234", color: "#47c7ea", bg: "#e4f8fd" },
-  { label: "Creator",  email: "demo.creator@chabaqa.io",  password: "Demo@1234", color: "#8e78fb", bg: "#ede9ff" },
-  { label: "Admin",    email: "demo.admin@chabaqa.io",    password: "Demo@1234", color: "#f65887", bg: "#ffe4ee" },
+  {
+    label: "Learner", color: "#47c7ea", bg: "#e4f8fd",
+    user: { _id: "demo-learner", name: "Demo Learner", email: "demo.learner@chabaqa.io", role: "user", username: "demo_learner" },
+    redirect: "/explore",
+  },
+  {
+    label: "Creator", color: "#8e78fb", bg: "#ede9ff",
+    user: { _id: "demo-creator", name: "Demo Creator", email: "demo.creator@chabaqa.io", role: "creator", username: "demo_creator" },
+    redirect: "/creator/dashboard",
+  },
+  {
+    label: "Admin", color: "#f65887", bg: "#ffe4ee",
+    user: { _id: "demo-admin", name: "Demo Admin", email: "demo.admin@chabaqa.io", role: "admin", username: "demo_admin" },
+    redirect: "/admin",
+  },
 ]
 
 function isSafeRedirect(p: string | null): p is string {
@@ -48,7 +60,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
   const pathname     = usePathname()
   const searchParams = useSearchParams()
   const { toast }    = useToast()
-  const { login }    = useAuthContext()
+  const { login, updateAuth } = useAuthContext()
   const t            = useTranslations("auth.signinForm")
 
   useEffect(() => {
@@ -80,17 +92,10 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
     } finally { setLoading(false) }
   }
 
-  const demoLogin = async (demo: typeof DEMO_ACCOUNTS[number]) => {
-    setError(""); setFe({})
-    setEmail(demo.email)
-    setPassword(demo.password)
-    setLoading(true)
-    try {
-      await login({ email: demo.email, password: demo.password, rememberMe: false })
-      onSuccess?.()
-    } catch (err: any) {
-      setError(err.message || t("loginFailed"))
-    } finally { setLoading(false) }
+  const demoLogin = (demo: typeof DEMO_ACCOUNTS[number]) => {
+    const fakeToken = `demo-token-${demo.user.role}-${Date.now()}`
+    updateAuth(fakeToken, demo.user)
+    router.push(localizeHref(pathname, demo.redirect))
   }
 
   const googleLogin = () => {
@@ -132,8 +137,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
               key={demo.label}
               type="button"
               onClick={() => demoLogin(demo)}
-              disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all hover:opacity-80 active:scale-95 disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all hover:opacity-80 active:scale-95"
               style={{ background: demo.bg, color: demo.color, border: `1.5px solid ${demo.color}30` }}
             >
               <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white" style={{ background: demo.color }}>
