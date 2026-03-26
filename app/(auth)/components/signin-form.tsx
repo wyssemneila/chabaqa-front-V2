@@ -13,21 +13,9 @@ import { ChabaSpinner } from "@/components/ui/ChabaSpinner"
 import { inp, Err, EyeIcon } from "./form-helpers"
 
 const DEMO_ACCOUNTS = [
-  {
-    label: "Learner", color: "#47c7ea", bg: "#e4f8fd",
-    user: { _id: "demo-learner", name: "Demo Learner", email: "demo.learner@chabaqa.io", role: "user", username: "demo_learner" },
-    redirect: "/explore",
-  },
-  {
-    label: "Creator", color: "#8e78fb", bg: "#ede9ff",
-    user: { _id: "demo-creator", name: "Demo Creator", email: "demo.creator@chabaqa.io", role: "creator", username: "demo_creator" },
-    redirect: "/creator/dashboard",
-  },
-  {
-    label: "Admin", color: "#f65887", bg: "#ffe4ee",
-    user: { _id: "demo-admin", name: "Demo Admin", email: "demo.admin@chabaqa.io", role: "admin", username: "demo_admin" },
-    redirect: "/admin",
-  },
+  { label: "Learner", role: "learner", color: "#47c7ea", bg: "#e4f8fd", redirect: "/explore" },
+  { label: "Creator", role: "creator", color: "#8e78fb", bg: "#ede9ff", redirect: "/dashboard/create-community" },
+  { label: "Admin",   role: "admin",   color: "#f65887", bg: "#ffe4ee", redirect: "/dashboard/create-community" },
 ]
 
 function isSafeRedirect(p: string | null): p is string {
@@ -92,10 +80,18 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
     } finally { setLoading(false) }
   }
 
-  const demoLogin = (demo: typeof DEMO_ACCOUNTS[number]) => {
-    const fakeToken = `demo-token-${demo.user.role}-${Date.now()}`
-    updateAuth(fakeToken, demo.user)
-    router.push(localizeHref(pathname, demo.redirect))
+  const demoLogin = async (demo: typeof DEMO_ACCOUNTS[number]) => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/auth/demo?role=${demo.role}`)
+      const { token, user } = await res.json()
+      updateAuth(token, user)
+      router.push(localizeHref(pathname, demo.redirect))
+    } catch {
+      setError("Demo login failed")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const googleLogin = () => {
