@@ -1,7 +1,6 @@
 'use client'
 import { useTranslations } from 'next-intl'
-
-const APP_URL = 'https://app.chabaqa.io'
+import { APP_URL } from '@/lib/config'
 
 export function About() {
   const t = useTranslations('landing.about')

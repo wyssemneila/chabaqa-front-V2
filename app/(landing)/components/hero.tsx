@@ -3,8 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { HERO_PILLS } from '@/lib/landing-data'
-
-const APP_URL = 'https://app.chabaqa.io'
+import { APP_URL } from '@/lib/config'
 const STAT_COLORS = ['var(--p)', 'var(--orange)', 'var(--cyan)', 'var(--pink)']
 
 function PillPopup({ title, desc, image, side }: { title: string; desc: string; image: string; side: 'left' | 'right' }) {

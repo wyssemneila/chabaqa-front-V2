@@ -3,25 +3,13 @@
 import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
-import { Mail, Loader2 } from "lucide-react"
+import { Mail } from "lucide-react"
 import { forgotPasswordAction } from "../forgot-password/actions"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
 import { usePathname } from "next/navigation"
 import { ChabaSpinner } from "@/components/ui/ChabaSpinner"
-
-// ── Shared input class builder ────────────────────────────────────────────────
-function inp(err?: boolean) {
-  return [
-    "w-full h-12 px-4 rounded-xl border text-[14px] outline-none",
-    "placeholder-[var(--t3)] text-[var(--t1)] bg-[var(--white)]",
-    "transition-all duration-200",
-    "disabled:opacity-50 disabled:cursor-not-allowed",
-    err
-      ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-      : "border-[var(--bd)] focus:border-[#8e78fb] focus:ring-2 focus:ring-[#8e78fb]/15",
-  ].join(" ")
-}
+import { inp } from "./form-helpers"
 
 export default function ForgotPasswordForm() {
   const t = useTranslations("auth.forgotPasswordForm")

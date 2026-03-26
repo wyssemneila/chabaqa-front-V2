@@ -1,6 +1,6 @@
 'use client'
+import { APP_URL } from '@/lib/config'
 
-const APP_URL = 'https://app.chabaqa.io'
 const CONTACT_EMAIL = 'hello@chabaqa.io'
 
 export function AppInstallCTA() {

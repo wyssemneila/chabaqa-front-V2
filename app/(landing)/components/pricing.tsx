@@ -2,8 +2,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { PLANS } from '@/lib/landing-data'
-
-const APP_URL = 'https://app.chabaqa.io'
+import { APP_URL } from '@/lib/config'
 
 export function Pricing() {
   const t = useTranslations('landing.pricing')
