@@ -41,7 +41,15 @@ export default async function SignUpPage() {
       </div>
 
       {/* ── Page ── */}
-      <div className="min-h-screen flex items-start justify-center p-4 py-10">
+      <div
+        className="min-h-screen flex items-start justify-center p-4 py-10"
+        style={{
+          background:
+            "radial-gradient(ellipse 90% 55% at 50% -5%, rgba(142,120,251,.18) 0%, transparent 70%)," +
+            "radial-gradient(ellipse 55% 40% at 95% 95%, rgba(108,82,240,.12) 0%, transparent 70%)," +
+            "var(--bg,#fafafe)",
+        }}
+      >
         <div className="w-full max-w-[420px]">
 
           {/* Logo */}
