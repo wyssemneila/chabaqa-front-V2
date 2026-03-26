@@ -60,7 +60,11 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       creator: post.author.social?.twitter
     },
     alternates: {
-      canonical: `https://chabaqa.io/blogs/${post.id}`
+      canonical: `https://chabaqa.io/blogs/${post.id}`,
+      languages: {
+        "en": `https://chabaqa.io/blogs/${post.id}`,
+        "ar": `https://chabaqa.io/ar/blogs/${post.id}`,
+      }
     }
   }
 }
@@ -73,7 +77,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen" style={{ background: "var(--bg)" }}>
       <Header />
       <BlogPost post={post} />
       <Footer />

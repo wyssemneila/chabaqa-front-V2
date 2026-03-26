@@ -3,7 +3,9 @@ import { Footer } from "@/components/footer"
 import { BlogList } from "../components/blog-list"
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
+import { getLocale } from "next-intl/server"
 import { generateAlternateLanguages } from "@/lib/seo-config"
+import { getAllBlogPosts } from "@/lib/blog-content"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("landing.blogs")
@@ -11,17 +13,33 @@ export async function generateMetadata(): Promise<Metadata> {
     title: t("metaTitle"),
     description: t("metaDesc"),
     alternates: generateAlternateLanguages("/blogs"),
+    openGraph: {
+      title: t("metaTitle"),
+      description: t("metaDesc"),
+      url: "https://chabaqa.io/blogs",
+      siteName: "Chabaqa",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("metaTitle"),
+      description: t("metaDesc"),
+    },
   }
 }
 
-export default function BlogsPage() {
+export default async function BlogsPage() {
+  const posts = getAllBlogPosts()
+  const locale = await getLocale()
+  const baseUrl = "https://chabaqa.io"
+
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen" style={{ background: "var(--bg)" }}>
       <Header />
       <BlogList />
       <Footer />
-      
-      {/* JSON-LD Structured Data for SEO */}
+
+      {/* JSON-LD Blog */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -30,26 +48,33 @@ export default function BlogsPage() {
             "@type": "Blog",
             "name": "Chabaqa Blog",
             "description": "Expert insights on community building, online courses, and creator monetization",
-            "url": "https://chabaqa.io/blogs",
+            "url": `${baseUrl}${locale === "ar" ? "/ar" : ""}/blogs`,
             "publisher": {
               "@type": "Organization",
               "name": "Chabaqa",
-              "logo": {
-                "@type": "ImageObject",
-                "url": "https://chabaqa.io/logo.png"
-              }
+              "logo": { "@type": "ImageObject", "url": `${baseUrl}/logo.png` }
             },
-            "blogPost": [
-              {
-                "@type": "BlogPosting",
-                "headline": "Building Engaged Communities: Best Practices for Creators",
-                "url": "https://chabaqa.io/blogs/1",
-                "datePublished": "2024-02-15",
-                "author": {
-                  "@type": "Person",
-                  "name": "Sarah Johnson"
-                }
-              }
+            "blogPost": posts.map((post) => ({
+              "@type": "BlogPosting",
+              "headline": post.title,
+              "url": `${baseUrl}/blogs/${post.id}`,
+              "datePublished": post.date,
+              "author": { "@type": "Person", "name": post.author.name }
+            }))
+          })
+        }}
+      />
+
+      {/* BreadcrumbList */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
+              { "@type": "ListItem", "position": 2, "name": "Blog", "item": `${baseUrl}/blogs` },
             ]
           })
         }}

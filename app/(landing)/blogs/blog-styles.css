@@ -364,3 +364,36 @@
   background: #bfdbfe;
   color: #1e40af;
 }
+
+/* ── Dark Mode ── */
+.dark .blog-content {
+  color: var(--t2);
+}
+.dark .blog-content h2,
+.dark .blog-content h3,
+.dark .blog-content h4 {
+  color: var(--t1);
+}
+.dark .blog-content p { color: var(--t2); }
+.dark .blog-content li { color: var(--t2); }
+.dark .blog-content strong { color: var(--t1); }
+.dark .blog-content blockquote {
+  background: var(--white);
+  border-left-color: var(--p);
+  color: var(--t1);
+}
+.dark .blog-content .tip-box {
+  background: linear-gradient(135deg, rgba(142,120,251,.15) 0%, rgba(108,82,240,.08) 100%);
+  border-left-color: var(--p);
+}
+.dark .blog-content .tip-box h3,
+.dark .blog-content .tip-box h4 { color: var(--t1); }
+.dark .blog-content .tip-box p,
+.dark .blog-content .tip-box li { color: var(--t2); }
+.dark .blog-content table { background: var(--white); }
+.dark .blog-content table th { background: var(--bg); color: var(--t1); border-color: var(--bd); }
+.dark .blog-content table td { color: var(--t2); border-color: var(--bd); }
+.dark .blog-content table tbody tr:hover { background: var(--bg); }
+.dark .blog-content a { color: var(--p3); }
+.dark .blog-content code { background: var(--bg); color: #f87171; }
+.dark .blog-content pre { background: #0d0c17; }

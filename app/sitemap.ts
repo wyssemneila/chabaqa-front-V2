@@ -3,15 +3,21 @@ import { MetadataRoute } from 'next'
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://chabaqa.io'
   
-  // Blog post IDs - update this array when adding new blog posts
-  const blogPostIds = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
-  
-  const blogPosts = blogPostIds.map((id) => ({
-    url: `${baseUrl}/blogs/${id}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly' as const,
-    priority: 0.7,
-  }))
+  // Blog post IDs
+  const blogPosts = ['1', '2', '3', '4', '5', '6'].flatMap((id) => [
+    {
+      url: `${baseUrl}/blogs/${id}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/ar/blogs/${id}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    },
+  ])
 
   return [
     // Homepage - highest priority
