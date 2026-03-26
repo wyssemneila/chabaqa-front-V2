@@ -12,6 +12,12 @@ import { localizeHref } from "@/lib/i18n/client"
 import { ChabaSpinner } from "@/components/ui/ChabaSpinner"
 import { inp, Err, EyeIcon } from "./form-helpers"
 
+const DEMO_ACCOUNTS = [
+  { label: "Learner",  email: "demo.learner@chabaqa.io",  password: "Demo@1234", color: "#47c7ea", bg: "#e4f8fd" },
+  { label: "Creator",  email: "demo.creator@chabaqa.io",  password: "Demo@1234", color: "#8e78fb", bg: "#ede9ff" },
+  { label: "Admin",    email: "demo.admin@chabaqa.io",    password: "Demo@1234", color: "#f65887", bg: "#ffe4ee" },
+]
+
 function isSafeRedirect(p: string | null): p is string {
   return !!p && p.startsWith("/") && !p.startsWith("//")
 }
@@ -74,6 +80,19 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
     } finally { setLoading(false) }
   }
 
+  const demoLogin = async (demo: typeof DEMO_ACCOUNTS[number]) => {
+    setError(""); setFe({})
+    setEmail(demo.email)
+    setPassword(demo.password)
+    setLoading(true)
+    try {
+      await login({ email: demo.email, password: demo.password, rememberMe: false })
+      onSuccess?.()
+    } catch (err: any) {
+      setError(err.message || t("loginFailed"))
+    } finally { setLoading(false) }
+  }
+
   const googleLogin = () => {
     const base = process.env.NEXT_PUBLIC_API_URL || `${window.location.origin}/api`
     const raw  = searchParams.get("redirect")
@@ -101,6 +120,30 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
           {error}
         </div>
       )}
+
+      {/* ── Demo accounts ──────────────────────────────────────────── */}
+      <div className="rounded-xl border border-dashed p-3 space-y-2" style={{ borderColor: "var(--p3,#c4b8fd)", background: "var(--p2,#ede9ff)08" }}>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-center" style={{ color: "var(--p,#8e78fb)" }}>
+          ⚡ Demo accounts
+        </p>
+        <div className="flex gap-2 flex-wrap justify-center">
+          {DEMO_ACCOUNTS.map(demo => (
+            <button
+              key={demo.label}
+              type="button"
+              onClick={() => demoLogin(demo)}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all hover:opacity-80 active:scale-95 disabled:opacity-40"
+              style={{ background: demo.bg, color: demo.color, border: `1.5px solid ${demo.color}30` }}
+            >
+              <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white" style={{ background: demo.color }}>
+                {demo.label[0]}
+              </span>
+              {demo.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <form onSubmit={onSubmit} className="space-y-5">
         {/* Email */}
