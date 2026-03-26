@@ -31,66 +31,69 @@ export default function RootLayout({
           z-index: 0;
           overflow: hidden;
           background: var(--bg, #fafafe);
-          transition: background 0.3s;
         }
 
         .auth-blob {
           position: absolute;
           border-radius: 50%;
-          filter: blur(100px);
-          opacity: 0.30;
+          filter: blur(110px);
+          opacity: 0.38;
           will-change: transform;
         }
-        .dark .auth-blob { opacity: 0.18; }
+        .dark .auth-blob { opacity: 0.22; }
 
-        /* Purple — top-left */
+        /* Purple — starts top-left, sweeps toward center-right */
         .auth-blob-purple {
-          width: 580px; height: 580px;
+          width: 65vw; height: 65vw;
+          max-width: 720px; max-height: 720px;
           background: #8e78fb;
-          top: -140px; left: -120px;
-          animation: authBlob1 9s ease-in-out infinite;
+          top: -15%; left: -10%;
+          animation: blobMove1 9s ease-in-out infinite alternate;
         }
-        /* Pink — bottom-right */
+        /* Pink — starts bottom-right, sweeps toward center-left */
         .auth-blob-pink {
-          width: 500px; height: 500px;
+          width: 55vw; height: 55vw;
+          max-width: 620px; max-height: 620px;
           background: #f65887;
-          bottom: -130px; right: -110px;
-          animation: authBlob2 12s ease-in-out infinite;
-        }
-        /* Blue — top-right */
-        .auth-blob-blue {
-          width: 420px; height: 420px;
-          background: #47c7ea;
-          top: 18%; right: -90px;
-          animation: authBlob3 10s ease-in-out infinite;
+          bottom: -15%; right: -10%;
+          animation: blobMove2 11s ease-in-out infinite alternate;
           animation-delay: -3s;
         }
-        /* Orange — bottom-left */
+        /* Blue — starts top-right, sweeps down-left */
+        .auth-blob-blue {
+          width: 48vw; height: 48vw;
+          max-width: 540px; max-height: 540px;
+          background: #47c7ea;
+          top: 5%; right: -8%;
+          animation: blobMove3 13s ease-in-out infinite alternate;
+          animation-delay: -5s;
+        }
+        /* Orange — starts bottom-left, sweeps up-right */
         .auth-blob-orange {
-          width: 340px; height: 340px;
+          width: 40vw; height: 40vw;
+          max-width: 460px; max-height: 460px;
           background: #ff9b28;
-          bottom: 12%; left: -80px;
-          animation: authBlob4 14s ease-in-out infinite;
-          animation-delay: -6s;
+          bottom: 10%; left: -5%;
+          animation: blobMove4 10s ease-in-out infinite alternate;
+          animation-delay: -7s;
         }
 
-        @keyframes authBlob1 {
-          0%,100% { transform: translate(0px,   0px)  scale(1);    }
-          33%      { transform: translate(70px,  50px) scale(1.06); }
-          66%      { transform: translate(-35px, 35px) scale(0.94); }
+        /* alternate = smoothly travels to destination, then smoothly returns */
+        @keyframes blobMove1 {
+          from { transform: translate(0,      0);     }
+          to   { transform: translate(30vw,  25vh);   }
         }
-        @keyframes authBlob2 {
-          0%,100% { transform: translate(0px,   0px)   scale(1);    }
-          33%      { transform: translate(-60px,-45px) scale(1.08); }
-          66%      { transform: translate(50px,  30px) scale(0.93); }
+        @keyframes blobMove2 {
+          from { transform: translate(0,      0);     }
+          to   { transform: translate(-28vw, -22vh);  }
         }
-        @keyframes authBlob3 {
-          0%,100% { transform: translate(0px,  0px)  scale(1);    }
-          50%      { transform: translate(-85px,65px) scale(1.10); }
+        @keyframes blobMove3 {
+          from { transform: translate(0,      0);     }
+          to   { transform: translate(-22vw,  28vh);  }
         }
-        @keyframes authBlob4 {
-          0%,100% { transform: translate(0px,   0px)   scale(1);   }
-          50%      { transform: translate(65px, -55px) scale(0.90); }
+        @keyframes blobMove4 {
+          from { transform: translate(0,      0);     }
+          to   { transform: translate(22vw,  -25vh);  }
         }
 
         @media (prefers-reduced-motion: reduce) {
