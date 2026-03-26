@@ -1,52 +1,48 @@
 'use client'
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { PLANS } from '@/lib/landing-data'
 
 const APP_URL = 'https://app.chabaqa.io'
 
-const PLANS_TEXT = [
-  { badge: '🌱 Starter',      name: 'Starter', desc: 'Perfect for getting started',    fee: 'Transaction fee: 7.9%',
-    features: ['1 Community (up to 100 members)', 'Activate up to 3 Courses', 'Digital Products enabled', '2 GB Storage', 'Basic analytics', '24/7 Support'] },
-  { badge: '⭐ Most Popular', name: 'Growth',  desc: 'For growing communities',        fee: 'Transaction fee: 4.9%',
-    features: ['Up to 3 Communities (10k members)', 'Unlimited Courses', 'Challenges, Sessions & Events', 'Magic Reach automation (500/mo)', 'Member gamification', 'Verified badge · 50 GB storage', '24/7 Priority Support'] },
-  { badge: '🚀 Pro',          name: 'Pro',     desc: 'For professional creators',      fee: 'Transaction fee: 2.9%',
-    features: ['Unlimited Communities & Members', 'Unlimited automation', 'Add up to 3 team admins', 'Custom domain name', 'Featured badge + top listings', '24/7 VIP Support'] },
-]
-
 export function Pricing() {
+  const t = useTranslations('landing.pricing')
+  const plans = t.raw('plans') as { badge: string; name: string; desc: string; fee: string; features: string[] }[]
+  const period = t.raw('period') as { free: string; monthly: string; yearly: string }
+
   const [yearly, setYearly] = useState(false)
 
   return (
     <section className="py-24 px-6 md:px-10 bg-[var(--bg)]" id="pricing" aria-label="Pricing plans">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14 reveal">
-          <div className="text-xs font-bold uppercase tracking-[.1em] text-[var(--p)] mb-3">Transparent pricing</div>
-          <h2 className="text-[clamp(28px,4vw,44px)] font-black text-[var(--t1)] mb-4">Start free, scale when ready</h2>
-          <p className="text-[var(--t3)] max-w-xl mx-auto mb-8">Every plan includes a 7-day free trial. No hidden fees.</p>
+          <div className="text-xs font-bold uppercase tracking-[.1em] text-[var(--p)] mb-3">{t('eyebrow')}</div>
+          <h2 className="text-[clamp(28px,4vw,44px)] font-black text-[var(--t1)] mb-4">{t('title')}</h2>
+          <p className="text-[var(--t3)] max-w-xl mx-auto mb-8">{t('sub')}</p>
           <div className="inline-flex rounded-xl border border-[var(--bd)] bg-[var(--white)] p-1 gap-1" role="group">
             <button onClick={() => setYearly(false)} aria-pressed={!yearly}
               className={`px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${!yearly ? 'bg-[var(--p)] text-white shadow-sm' : 'text-[var(--t2)] hover:bg-[var(--p2)]'}`}>
-              Monthly
+              {t('monthly')}
             </button>
             <button onClick={() => setYearly(true)} aria-pressed={yearly}
               className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${yearly ? 'bg-[var(--p)] text-white shadow-sm' : 'text-[var(--t2)] hover:bg-[var(--p2)]'}`}>
-              Yearly
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--cyan)] text-white">Save 17%</span>
+              {t('yearly')}
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--cyan)] text-white">{t('save')}</span>
             </button>
           </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-5 stagger items-center">
           {PLANS.map((plan, i) => {
-            const tPlan        = PLANS_TEXT[i]
+            const tPlan        = plans[i]
             const displayPrice = yearly ? plan.yearlyPrice : plan.monthlyPrice
             const isFree       = displayPrice === 0
             const priceLabel   = isFree ? '0' : `${displayPrice}`
             const periodLabel  = isFree
-              ? 'forever · no card needed'
+              ? period.free
               : yearly
-              ? `${displayPrice} TND / month · billed yearly`
-              : `${displayPrice} TND / month · 7-day free trial`
+              ? `${displayPrice} ${period.yearly}`
+              : `${displayPrice} ${period.monthly}`
 
             if (plan.featured) {
               return (
@@ -87,7 +83,7 @@ export function Pricing() {
                     <a href={`${APP_URL}/register`}
                       className="flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-[.98]"
                       style={{ background: '#fff', color: '#7c67f8' }}>
-                      Start 7-day free trial
+                      {t('ctaTrial')}
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                     </a>
                   </div>
@@ -106,7 +102,7 @@ export function Pricing() {
                 <div className="text-sm text-[var(--t3)] mb-6">{tPlan.desc}</div>
                 <div className="flex items-end gap-1 mb-1">
                   <span className="text-[46px] font-black leading-none text-[var(--t1)]">
-                    {isFree ? 'Free' : priceLabel}
+                    {isFree ? t('ctaFree').split(' ')[0] : priceLabel}
                   </span>
                   {!isFree && <span className="text-sm mb-3 text-[var(--t3)]">TND</span>}
                 </div>
@@ -129,7 +125,7 @@ export function Pricing() {
                 <a href={`${APP_URL}/register`}
                   className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all hover:bg-[var(--p)] hover:text-white hover:border-[var(--p)]"
                   style={{ background: 'var(--p2)', color: 'var(--p)', border: '1.5px solid var(--p3)' }}>
-                  {isFree ? 'Start for free' : 'Start 7-day free trial'}
+                  {isFree ? t('ctaFree') : t('ctaTrial')}
                 </a>
               </div>
             )

@@ -1,29 +1,23 @@
 'use client'
 import { useState } from 'react'
-
-const FAQS = [
-  { q: 'What makes Chabaqa different?',                           a: 'Chabaqa is the only all-in-one platform built specifically for creators in Tunisia and MENA. Courses, challenges, coaching, events — one dashboard, one payout, local support in Arabic and French.' },
-  { q: 'Is Chabaqa free to start?',                              a: 'Yes. The Starter plan is free with no credit card required. Every paid plan also includes a 7-day free trial.' },
-  { q: 'What is the difference between Courses and Challenges?', a: 'Courses are self-paced learning with chapters and videos. Challenges are time-bound programs designed to maximize engagement and community participation.' },
-  { q: 'Can I use Chabaqa if I\'m in Tunisia or MENA?',          a: 'Absolutely — Chabaqa was built for creators in Tunisia and across MENA. Pricing is in TND, support is in Arabic and French.' },
-  { q: 'How do I get paid?',                                      a: 'Revenue is collected through Chabaqa\'s secure checkout. Payouts are managed from your creator dashboard with transparent transaction fees (2.9%–7.9% depending on plan).' },
-  { q: 'Is there a money-back guarantee?',                        a: 'Yes — 30-day money-back guarantee on all paid plans, no questions asked.' },
-]
+import { useTranslations } from 'next-intl'
 
 export function FAQ() {
+  const t = useTranslations('landing.faq')
+  const faqs = t.raw('items') as { q: string; a: string }[]
   const [open, setOpen] = useState<number | null>(0)
 
   return (
     <section className="py-24 px-6 md:px-10 bg-[var(--bg)]" id="faq" aria-label="Frequently asked questions">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-14 reveal">
-          <div className="text-xs font-bold uppercase tracking-[.1em] text-[var(--p)] mb-3">FAQ</div>
-          <h2 className="text-[clamp(28px,4vw,44px)] font-black text-[var(--t1)] mb-4">Common questions</h2>
-          <p className="text-[var(--t3)]">Everything you need to know before getting started with Chabaqa.</p>
+          <div className="text-xs font-bold uppercase tracking-[.1em] text-[var(--p)] mb-3">{t('eyebrow')}</div>
+          <h2 className="text-[clamp(28px,4vw,44px)] font-black text-[var(--t1)] mb-4">{t('title')}</h2>
+          <p className="text-[var(--t3)]">{t('sub')}</p>
         </div>
 
         <div className="flex flex-col gap-3 stagger" role="list">
-          {FAQS.map((faq, i) => {
+          {faqs.map((faq, i) => {
             const isOpen     = open === i
             const answerId   = `faq-answer-${i}`
             const questionId = `faq-question-${i}`

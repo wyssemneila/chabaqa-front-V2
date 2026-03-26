@@ -1,25 +1,11 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 import { HERO_PILLS } from '@/lib/landing-data'
 
 const APP_URL = 'https://app.chabaqa.io'
-const TYPED_WORDS = ['business', 'community', 'courses', 'income', 'brand']
-const STATS = [
-  { val: 'Free',  label: 'To Start' },
-  { val: '9',     label: 'Creator Tools' },
-  { val: '1 min', label: 'To Build A Business' },
-  { val: '24/7',  label: 'Support' },
-]
 const STAT_COLORS = ['var(--p)', 'var(--orange)', 'var(--cyan)', 'var(--pink)']
-const PILLS_TEXT: Record<string, { label: string; title: string; desc: string }> = {
-  community:  { label: 'Community',     title: 'Community Feed',        desc: 'Build your private community with feed, reactions, announcements and direct messages.' },
-  courses:    { label: 'Online Courses', title: 'Online Courses',       desc: 'Create and sell structured courses with video chapters, progress tracking and certificates.' },
-  challenges: { label: 'Challenges',    title: 'Challenges',            desc: 'Run time-based competitive programs that maximize engagement and community activity.' },
-  products:   { label: 'Products',      title: 'Digital Products',      desc: 'Sell e-books, templates, presets and downloads with instant delivery.' },
-  events:     { label: 'Events',        title: 'Events',                desc: 'Host online and offline events with ticketing, RSVPs and automated reminders.' },
-  sessions:   { label: '1:1 Sessions',  title: '1:1 Coaching Sessions', desc: 'Let students book, pay and get meeting links — all automated from your calendar.' },
-}
 
 function PillPopup({ title, desc, image, side }: { title: string; desc: string; image: string; side: 'left' | 'right' }) {
   return (
@@ -42,7 +28,13 @@ function PillPopup({ title, desc, image, side }: { title: string; desc: string; 
 }
 
 export function Hero() {
-  const [typedWord,  setTypedWord]  = useState(TYPED_WORDS[0])
+  const t = useTranslations('landing.hero')
+
+  const typedWordsRaw = t.raw('typedWords') as string[]
+  const statsRaw      = t.raw('stats') as { val: string; label: string }[]
+  const pillsRaw      = t.raw('pills') as Record<string, { label: string; title: string; desc: string }>
+
+  const [typedWord,  setTypedWord]  = useState(typedWordsRaw[0] ?? '')
   const [activePill, setActivePill] = useState<string | null>(null)
   const wordIdx  = useRef(0)
   const charIdx  = useRef(0)
@@ -51,7 +43,7 @@ export function Hero() {
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>
     function type() {
-      const word = TYPED_WORDS[wordIdx.current]
+      const word = typedWordsRaw[wordIdx.current]
       if (!deleting.current) {
         charIdx.current++
         setTypedWord(word.slice(0, charIdx.current))
@@ -59,13 +51,13 @@ export function Hero() {
       } else {
         charIdx.current--
         setTypedWord(word.slice(0, charIdx.current))
-        if (charIdx.current === 0) { deleting.current = false; wordIdx.current = (wordIdx.current + 1) % TYPED_WORDS.length }
+        if (charIdx.current === 0) { deleting.current = false; wordIdx.current = (wordIdx.current + 1) % typedWordsRaw.length }
       }
       timeout = setTimeout(type, deleting.current ? 60 : 90)
     }
     timeout = setTimeout(type, 1400)
     return () => clearTimeout(timeout)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -101,7 +93,7 @@ export function Hero() {
       {/* Floating pills */}
       <div className="absolute inset-0 pointer-events-none z-[5]" aria-hidden="true">
         {HERO_PILLS.map((pill) => {
-          const pillT    = PILLS_TEXT[pill.id] ?? { label: pill.label, title: pill.label, desc: '' }
+          const pillT    = pillsRaw[pill.id] ?? { label: pill.label, title: pill.label, desc: '' }
           const isLeft   = pill.position.left !== undefined
           const isActive = activePill === pill.id
           const popupSide = isLeft ? 'right' : 'left'
@@ -131,16 +123,16 @@ export function Hero() {
         <div className="relative inline-flex items-center gap-2 rounded-full px-4 py-[6px] text-xs font-semibold mb-7 overflow-hidden" style={{ animation: 'fadeDown .7s ease both', background: 'linear-gradient(135deg, var(--p2) 0%, #ede9ff 50%, var(--p2) 100%)', border: '1.5px solid var(--p3)', color: 'var(--p)' }}>
           <span className="absolute inset-0 -translate-x-full" style={{ background: 'linear-gradient(105deg, transparent 40%, rgba(142,120,251,.35) 50%, transparent 60%)', animation: 'badgeShimmer 2.2s ease-in-out infinite' }} aria-hidden="true" />
           <div className="relative w-6 h-6 rounded-full bg-[var(--p)] text-white flex items-center justify-center text-[11px] font-extrabold" aria-hidden="true">✦</div>
-          <span className="relative font-bold tracking-wide">For Creators, By Creators</span>
+          <span className="relative font-bold tracking-wide">{t('badge')}</span>
         </div>
 
         <h1 className="text-[clamp(46px,7vw,88px)] font-black text-[var(--t1)] leading-[1.05] tracking-[-0.04em] mb-3" style={{ animation: 'fadeDown .7s .1s ease both' }}>
-          Turn your{' '}
+          {t('title1')}{' '}
           <span className="relative inline-block text-[var(--p)] after:content-[''] after:absolute after:bottom-[2px] after:left-0 after:right-0 after:h-[5px] after:rounded-[3px] after:bg-gradient-to-r after:from-[var(--cyan)] after:to-[var(--p)] after:opacity-50">
-            passion
+            {t('passion')}
           </span>
           <br />
-          into a{' '}
+          {t('title2')}{' '}
           <span className="bg-gradient-to-br from-[var(--orange)] to-[var(--pink)] bg-clip-text text-transparent" aria-live="polite">
             {typedWord}
           </span>
@@ -148,17 +140,17 @@ export function Hero() {
         </h1>
 
         <p className="text-[clamp(15px,2vw,19px)] text-[var(--t3)] leading-[1.65] max-w-[560px] mx-auto mb-9" style={{ animation: 'fadeDown .7s .2s ease both' }}>
-          Create, engage, and monetize your audience with the all-in-one platform built for ambitious creators. Courses, communities, coaching — all in one place.
+          {t('sub')}
         </p>
 
         <div className="flex items-center gap-3 justify-center flex-wrap mb-12" style={{ animation: 'fadeDown .7s .3s ease both' }}>
           <a href={`${APP_URL}/register`} className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-[15px] font-bold text-white bg-[var(--p)] hover:bg-[#7a64f0] hover:-translate-y-[3px] transition-all shadow-[0_8px_30px_rgba(142,120,251,.35)] hover:shadow-[0_14px_40px_rgba(142,120,251,.45)]">
             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            Start Free — No card needed
+            {t('ctaPrimary')}
           </a>
           <button type="button" onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })} className="inline-flex items-center gap-2 px-7 py-4 rounded-2xl text-[15px] font-semibold text-[var(--t2)] bg-[var(--white)] border-2 border-[var(--bd)] hover:border-[var(--p3)] hover:text-[var(--p)] hover:bg-[var(--p2)] transition-all">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
-            Watch demo
+            {t('ctaSecondary')}
           </button>
         </div>
 
@@ -168,12 +160,12 @@ export function Hero() {
               <div key={init} className="w-8 h-8 rounded-full border-[2.5px] border-[var(--bg)] -ml-2 first:ml-0 text-[10px] font-extrabold flex items-center justify-center" style={{ background: bg, color }}>{init}</div>
             ))}
           </div>
-          <span className="text-[13px] font-medium text-[var(--t3)]">Joined by creators across MENA — free to start</span>
+          <span className="text-[13px] font-medium text-[var(--t3)]">{t('proofText')}</span>
         </div>
 
         {/* Stats */}
         <div className="flex items-center bg-[var(--white)] border border-[var(--bd)] rounded-2xl overflow-hidden mt-8 md:mt-12 max-w-[680px] w-full mx-auto shadow-[0_4px_24px_rgba(142,120,251,.1)]" style={{ animation: 'fadeUp .7s .5s ease both' }} role="list" aria-label="Key stats">
-          {STATS.map((s, i) => (
+          {statsRaw.map((s, i) => (
             <div key={s.label} className="flex-1 py-3 px-3 md:py-4 md:px-5 text-center border-r border-[var(--bd)] last:border-r-0" role="listitem">
               <div className="text-[16px] md:text-[22px] font-black leading-none" style={{ color: STAT_COLORS[i] }}>{s.val}</div>
               <div className="text-[10px] md:text-[11px] font-semibold uppercase tracking-[.06em] text-[var(--t3)] mt-1">{s.label}</div>

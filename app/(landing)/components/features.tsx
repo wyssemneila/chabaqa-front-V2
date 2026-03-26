@@ -1,20 +1,14 @@
 'use client'
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { FEATURES, FEATURE_PLACEHOLDERS } from '@/lib/landing-data'
 import FeatureIcons from '@/components/ui/FeatureIcons'
 
-const ITEMS = [
-  { id: 'community',  name: 'Community',            desc: 'Build & engage your audience daily' },
-  { id: 'courses',    name: 'Online Courses',        desc: 'Create, sell & track structured learning' },
-  { id: 'challenges', name: 'Challenges',            desc: 'Drive daily engagement with time-based programs' },
-  { id: 'products',   name: 'Digital Products',      desc: 'Sell templates, presets & e-books instantly' },
-  { id: 'events',     name: 'Events',                desc: 'Host & sell tickets for online/offline events' },
-  { id: 'sessions',   name: '1:1 Coaching Sessions', desc: 'Book, pay & meet — all automated' },
-  { id: 'analytics',  name: 'Analytics',             desc: 'Revenue, growth & engagement in real time' },
-]
-
 export function Features() {
-  const [active, setActive] = useState('community')
+  const t = useTranslations('landing.features')
+  const items = t.raw('items') as { id: string; name: string; desc: string }[]
+
+  const [active, setActive] = useState(items[0]?.id ?? 'community')
   const feature      = FEATURES.find(f => f.id === active) ?? FEATURES[0]
   const currentVideo = FEATURE_PLACEHOLDERS[active]
 
@@ -22,15 +16,15 @@ export function Features() {
     <section className="py-24 px-6 md:px-10 bg-[var(--white)]" id="features" aria-label="Features">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14 reveal">
-          <div className="text-xs font-bold uppercase tracking-[.1em] text-[var(--p)] mb-3">Everything you need</div>
-          <h2 className="text-[clamp(28px,4vw,44px)] font-black text-[var(--t1)] mb-4">One platform. All your creator tools.</h2>
-          <p className="text-[var(--t3)] max-w-xl mx-auto">Click any feature to see it in action.</p>
+          <div className="text-xs font-bold uppercase tracking-[.1em] text-[var(--p)] mb-3">{t('eyebrow')}</div>
+          <h2 className="text-[clamp(28px,4vw,44px)] font-black text-[var(--t1)] mb-4">{t('title')}</h2>
+          <p className="text-[var(--t3)] max-w-xl mx-auto">{t('sub')}</p>
         </div>
 
         {/* Mobile: pill tabs row + centered video */}
         <div className="md:hidden mb-6">
           <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {ITEMS.map((f) => {
+            {items.map((f) => {
               const raw = FEATURES.find(r => r.id === f.id)!
               return (
                 <button key={f.id} onClick={() => setActive(f.id)}
@@ -61,7 +55,7 @@ export function Features() {
         {/* Desktop: sidebar tabs + video */}
         <div className="hidden md:grid md:grid-cols-[300px_1fr] gap-8 items-start">
           <div className="flex flex-col gap-2">
-            {ITEMS.map((f) => {
+            {items.map((f) => {
               const raw = FEATURES.find(r => r.id === f.id)!
               return (
                 <button key={f.id} onClick={() => setActive(f.id)}

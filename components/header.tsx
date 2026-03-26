@@ -95,17 +95,6 @@ export function Header() {
             ? "bg-[var(--nav-bg)] backdrop-blur-md border-b border-[var(--bd)] shadow-sm"
             : "bg-transparent"
         }`}
-        style={{
-          "--nav-bg": "rgba(255, 255, 255, 0.95)",
-          "--bd": "#e5e7eb",
-          "--p": "#8e78fb",
-          "--p2": "#ede9ff",
-          "--p3": "#c4b8fd",
-          "--t1": "#111827",
-          "--t2": "#6b7280",
-          "--white": "#ffffff",
-          "--p-dark": "#7c66e8",
-        } as React.CSSProperties}
       >
         {/* Logo */}
         <Link href={withLocale("/")} aria-label="Chabaqa — go to homepage" className="flex-shrink-0">
