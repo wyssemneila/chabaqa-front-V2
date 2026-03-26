@@ -116,13 +116,13 @@ export const FEATURES: Feature[] = [
 
 // ── Feature placeholder content ──
 export const FEATURE_PLACEHOLDERS: Record<string, { title: string; desc: string; video: string }> = {
-  community:  { title: 'Community',           desc: 'Posts, reactions, announcements & direct messages — your members connected every day.' , video: '/videos/communt.mp4' },
-  courses:    { title: 'Online Courses',       desc: 'Build structured courses with video chapters, progress tracking and certificates.', video: '/videos/course.mp4' },
-  challenges: { title: 'Challenges',           desc: 'Time-based competitive programs to drive daily engagement and retention.' , video: '/videos/challenge.mp4' },
-  products:   { title: 'Digital Products',     desc: 'Sell e-books, presets, templates — instant delivery, passive income.', video: '/videos/product.mp4' },
-  events:     { title: 'Events',               desc: 'Host online & offline events with ticketing, RSVPs and automated reminders.' , video: '/videos/event.mp4' },
-  sessions:   { title: '1:1 Coaching Sessions', desc: 'Students book, pay and get meeting links — all automated.' , video: '/videos/session.mp4' },
-  analytics:  { title: 'Analytics',            desc: 'Track revenue, members, engagement and course progress in real time.' , video: '/videos/analytics (1).mp4' },
+  community:  { title: 'Community',           desc: 'Posts, reactions, announcements & direct messages — your members connected every day.' , video: '/features-vds/communt.mp4' },
+  courses:    { title: 'Online Courses',       desc: 'Build structured courses with video chapters, progress tracking and certificates.', video: '/features-vds/course.mp4' },
+  challenges: { title: 'Challenges',           desc: 'Time-based competitive programs to drive daily engagement and retention.' , video: '/features-vds/challenge.mp4' },
+  products:   { title: 'Digital Products',     desc: 'Sell e-books, presets, templates — instant delivery, passive income.', video: '/features-vds/product.mp4' },
+  events:     { title: 'Events',               desc: 'Host online & offline events with ticketing, RSVPs and automated reminders.' , video: '/features-vds/event.mp4' },
+  sessions:   { title: '1:1 Coaching Sessions', desc: 'Students book, pay and get meeting links — all automated.' , video: '/features-vds/session.mp4' },
+  analytics:  { title: 'Analytics',            desc: 'Track revenue, members, engagement and course progress in real time.' , video: '/features-vds/analytics.mp4' },
 }
 
 // ── How it works ──

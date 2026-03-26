@@ -1,6 +1,7 @@
 'use client'
 import { useState, useMemo, useRef } from 'react'
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 
 import {
   EXPLORE_ITEMS, FEATURED_COMMUNITIES, CATEGORIES, CONTENT_TYPES,
@@ -27,6 +28,7 @@ const CTA_LABEL: Record<ContentType, string> = {
 function ExploreCard({
   item, featured = false,
 }: { item: ExploreItem; featured?: boolean }) {
+  const t    = useTranslations('exploreUI')
   const type = TYPE_CONFIG[item.type]
 
   return (
@@ -50,7 +52,7 @@ function ExploreCard({
               ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-white'
               : 'bg-black/65 text-white'
           }`}>
-            {item.price === 'free' ? 'Free' : `${item.price} ${item.currency}`}
+            {item.price === 'free' ? t('free') : `${item.price} ${item.currency}`}
           </span>
           {featured && (
             <span className="text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm text-white"
@@ -138,6 +140,7 @@ function ExploreCard({
 
 // ── List Row ───────────────────────────────────────────────────────────────
 function ExploreListRow({ item }: { item: ExploreItem }) {
+  const t    = useTranslations('exploreUI')
   const type = TYPE_CONFIG[item.type]
   return (
     <article className="group flex gap-4 bg-[var(--white)] border border-[var(--bd)] rounded-2xl overflow-hidden hover:shadow-[0_8px_32px_rgba(142,120,251,.13)] hover:-translate-y-[2px] transition-all duration-300 p-3">
@@ -145,7 +148,7 @@ function ExploreListRow({ item }: { item: ExploreItem }) {
         <Image src={item.banner} alt={item.title} fill className="object-cover" sizes="180px" />
         <div className="absolute top-2 end-2 flex gap-1">
           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${item.price === 'free' ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-white' : 'bg-black/60 text-white'}`}>
-            {item.price === 'free' ? 'Free' : `${item.price} ${item.currency}`}
+            {item.price === 'free' ? t('free') : `${item.price} ${item.currency}`}
           </span>
         </div>
       </div>
@@ -182,7 +185,7 @@ function ExploreListRow({ item }: { item: ExploreItem }) {
             </span>
           )}
           <span className={`ms-auto text-xs font-black flex-shrink-0 ${item.price === 'free' ? 'text-emerald-500' : 'text-[var(--t1)]'}`}>
-            {item.price === 'free' ? 'Free' : `${item.price} ${item.currency}`}
+            {item.price === 'free' ? t('free') : `${item.price} ${item.currency}`}
           </span>
         </div>
       </div>
@@ -194,7 +197,7 @@ const PER_PAGE = 12
 
 // ── Main ───────────────────────────────────────────────────────────────────
 export default function ExploreClient() {
-
+  const t = useTranslations('exploreUI')
 
   const [search,         setSearch]         = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('all')
@@ -236,12 +239,12 @@ export default function ExploreClient() {
   const hasFilters = search || activeCategory !== 'all' || activeTypes.length > 0
 
   const CATEGORY_LABELS: Record<string, string> = {
-    all: 'All', fitness: 'Fitness', education: 'Education',
-    technology: 'Technology', business: 'Business', creative: 'Creative', language: 'Language',
+    all: t('catAll'), fitness: t('catFitness'), education: t('catEducation'),
+    technology: t('catTechnology'), business: t('catBusiness'), creative: t('catCreative'), language: t('catLanguage'),
   }
   const TYPE_LABELS: Record<ContentType, string> = {
-    community: 'Community', course: 'Course', challenge: 'Challenge',
-    product: 'Product', session: '1:1 Session', event: 'Event',
+    community: t('typeCommunity'), course: t('typeCourse'), challenge: t('typeChallenge'),
+    product: t('typeProduct'), session: t('typeSession'), event: t('typeEvent'),
   }
 
   // page range for pagination
@@ -260,7 +263,7 @@ export default function ExploreClient() {
       {/* ════════════════════════════════════════════════════════════════
           SECTION 1 — Hero + Featured Communities (always visible)
       ════════════════════════════════════════════════════════════════ */}
-      <section className="relative pt-28 pb-12 overflow-hidden" aria-label={'Explore hero'}>
+      <section className="relative pt-28 pb-12 overflow-hidden" aria-label={t('heroLabel')}>
         {/* Grid bg */}
         <div className="absolute inset-0 opacity-40 pointer-events-none" aria-hidden="true"
           style={{ backgroundImage: 'linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px)', backgroundSize: '52px 52px', maskImage: 'radial-gradient(ellipse 90% 70% at 50% 0%,black 30%,transparent 100%)' }} />
@@ -274,13 +277,13 @@ export default function ExploreClient() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="12" height="12" aria-hidden="true">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            {'200+ Creators in Tunisia & MENA'}
+            {t('badge')}
           </div>
           <h1 className="text-[clamp(22px,4.8vw,52px)] font-black text-[var(--t1)] leading-tight tracking-[-0.03em] mb-4 whitespace-nowrap"
             style={{ animation: 'fadeDown .65s .08s ease both' }}>
-            {'Discover What'}{' '}
+            {t('heroTitle1')}{' '}
             <span className="relative inline-block">
-              <span className="relative z-10" style={{ color: 'var(--p)' }}>{'Moves You'}</span>
+              <span className="relative z-10" style={{ color: 'var(--p)' }}>{t('heroTitle2')}</span>
               {/* Animated curved underline */}
               <svg className="absolute -bottom-1 left-0 w-full overflow-visible" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
                 <path d="M0 7 Q25 2 50 6 Q75 10 100 5" fill="none" stroke="var(--orange)" strokeWidth="2"
@@ -291,7 +294,7 @@ export default function ExploreClient() {
           </h1>
           <p className="text-[var(--t3)] text-[clamp(14px,2vw,16px)] leading-relaxed max-w-xl mx-auto"
             style={{ animation: 'fadeDown .65s .16s ease both' }}>
-            {'Explore communities, courses, challenges, and more — all built by creators in Tunisia and MENA.'}
+            {t('heroSub')}
           </p>
         </div>
 
@@ -299,8 +302,8 @@ export default function ExploreClient() {
         <div className="relative px-6 md:px-10 max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-[.12em] text-[var(--p)] mb-0.5">{'Top Communities'}</div>
-              <h2 className="text-lg font-black text-[var(--t1)]">{'Featured Communities'}</h2>
+              <div className="text-[10px] font-bold uppercase tracking-[.12em] text-[var(--p)] mb-0.5">{t('featuredEyebrow')}</div>
+              <h2 className="text-lg font-black text-[var(--t1)]">{t('featuredTitle')}</h2>
             </div>
           </div>
 
@@ -330,7 +333,7 @@ export default function ExploreClient() {
       {/* ════════════════════════════════════════════════════════════════
           SECTION 2 — Search + Filters + Grid
       ════════════════════════════════════════════════════════════════ */}
-      <section className="pb-16 px-6 md:px-10" aria-label={'Explore content'}>
+      <section className="pb-16 px-6 md:px-10" aria-label={t('gridLabel')}>
         <div className="max-w-6xl mx-auto">
 
           {/* ── Smart filter block ── */}
@@ -348,11 +351,11 @@ export default function ExploreClient() {
                 <input
                   type="search" value={search}
                   onChange={e => { setSearch(e.target.value); setPage(1) }}
-                  placeholder={'Search communities, courses, creators...'} aria-label={'Search explore'}
+                  placeholder={t('searchPlaceholder')} aria-label={t('searchLabel')}
                   className="w-full ps-9 pe-9 py-2 rounded-xl bg-[var(--bg)] border border-[var(--bd)] focus:border-[var(--p)] focus:outline-none text-[var(--t1)] placeholder:text-[var(--t3)] text-xs sm:text-sm transition-colors"
                 />
                 {search && (
-                  <button onClick={() => { setSearch(''); setPage(1) }} aria-label={'Clear search'}
+                  <button onClick={() => { setSearch(''); setPage(1) }} aria-label={t('clearSearch')}
                     className="absolute inset-y-0 end-3 flex items-center text-[var(--t3)] hover:text-[var(--t1)] transition-colors">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" width="14" height="14" aria-hidden="true">
                       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -368,7 +371,7 @@ export default function ExploreClient() {
                   <select
                     value={activeCategory}
                     onChange={e => { setActiveCategory(e.target.value); setPage(1) }}
-                    aria-label={'Filter by category'}
+                    aria-label={t('categoryLabel')}
                     className="appearance-none w-full h-9 ps-2.5 pe-7 rounded-xl text-xs font-semibold bg-[var(--bg)] text-[var(--t2)] border border-[var(--bd)] focus:outline-none focus:border-[var(--p)] hover:border-[var(--p3)] cursor-pointer transition-colors"
                   >
                     {CATEGORIES.map(cat => (
@@ -387,7 +390,7 @@ export default function ExploreClient() {
                   <select
                     value={sort}
                     onChange={e => { setSort(e.target.value); setPage(1) }}
-                    aria-label={'Sort by'}
+                    aria-label={t('sortLabel')}
                     className="appearance-none w-full h-9 ps-2.5 pe-7 rounded-xl text-xs font-semibold bg-[var(--bg)] text-[var(--t2)] border border-[var(--bd)] focus:outline-none focus:border-[var(--p)] hover:border-[var(--p3)] cursor-pointer transition-colors"
                   >
                     {SORT_OPTIONS.map(opt => (
@@ -404,7 +407,7 @@ export default function ExploreClient() {
             </div>
 
             {/* Row 2: Type chips */}
-            <div className="flex gap-2 flex-wrap" role="group" aria-label={'Filter by type'}>
+            <div className="flex gap-2 flex-wrap" role="group" aria-label={t('typeLabel')}>
               {CONTENT_TYPES.map(type => {
                 const cfg    = TYPE_CONFIG[type]
                 const active = activeTypes.includes(type)
@@ -425,7 +428,7 @@ export default function ExploreClient() {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" width="11" height="11" aria-hidden="true">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
-                  {'Clear filters'}
+                  {t('clearAll')}
                 </button>
               )}
             </div>
@@ -435,9 +438,9 @@ export default function ExploreClient() {
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-[var(--t3)]">
               <span className="font-bold text-[var(--t1)]">{filtered.length}</span>{' '}
-              {'of'}{' '}
+              {t('resultsOf')}{' '}
               <span className="font-bold text-[var(--t1)]">{EXPLORE_ITEMS.length}</span>{' '}
-              {'results'}
+              {t('results')}
             </p>
             <div className="flex items-center border border-[var(--bd)] rounded-xl overflow-hidden">
               <button onClick={() => setViewMode('grid')} aria-pressed={viewMode === 'grid'} aria-label="Grid view"
@@ -531,10 +534,10 @@ export default function ExploreClient() {
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
               </div>
-              <h3 className="text-base font-bold text-[var(--t1)] mb-2">{'No results found'}</h3>
-              <p className="text-sm text-[var(--t3)] max-w-xs mb-5">{'Try adjusting your search or filters to find what you\'re looking for.'}</p>
+              <h3 className="text-base font-bold text-[var(--t1)] mb-2">{t('noResults')}</h3>
+              <p className="text-sm text-[var(--t3)] max-w-xs mb-5">{t('noResultsSub')}</p>
               <button onClick={clearFilters} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-[var(--p)] hover:bg-[#7a64f0] transition-colors">
-                {'Clear filters'}
+                {t('clearAll')}
               </button>
             </div>
           )}
@@ -544,7 +547,7 @@ export default function ExploreClient() {
       {/* ════════════════════════════════════════════════════════════════
           SECTION 3 — Light Promo
       ════════════════════════════════════════════════════════════════ */}
-      <section className="px-6 md:px-10 pb-20" aria-label={'Start building'}>
+      <section className="px-6 md:px-10 pb-20" aria-label={t('promoLabel')}>
         <div className="max-w-6xl mx-auto">
           <div className="relative rounded-3xl overflow-hidden border border-[var(--bd)]" style={{ background: 'var(--section-alt, #f0eefe)' }}>
 
@@ -566,22 +569,22 @@ export default function ExploreClient() {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="12" height="12" aria-hidden="true">
                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                     </svg>
-                    {'For Creators, By Creators'}
+                    {t('promoBadge')}
                   </div>
 
                   <h2 className="text-[clamp(22px,3.5vw,38px)] font-black text-[var(--t1)] leading-[1.1] tracking-[-0.02em] mb-3">
-                    {'Ready to Build Your Own Community?'}
+                    {t('promoTitle')}
                   </h2>
                   <p className="text-sm text-[var(--t2)] leading-relaxed mb-7 max-w-sm">
-                    {'Join hundreds of creators in Tunisia and MENA who are building, engaging, and monetizing their audience with Chabaqa.'}
+                    {t('promoSub')}
                   </p>
 
                   {/* Mini stats */}
                   <div className="flex items-center gap-6 flex-wrap mb-7">
                     {[
-                      { val: '200+', label: 'Creators', color: '#8e78fb' },
-                      { val: '500+', label: 'Courses & Products',  color: '#47c7ea' },
-                      { val: '50k+', label: 'Members',  color: '#ff9b28' },
+                      { val: '200+', label: t('statCreators'), color: '#8e78fb' },
+                      { val: '500+', label: t('statCourses'),  color: '#47c7ea' },
+                      { val: '50k+', label: t('statMembers'),  color: '#ff9b28' },
                     ].map(s => (
                       <div key={s.label} className="text-center">
                         <div className="text-2xl font-black leading-none mb-0.5" style={{ color: s.color }}>{s.val}</div>
@@ -598,12 +601,12 @@ export default function ExploreClient() {
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="13" height="13" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                       </svg>
-                      {'Start for free — no card needed'}
+                      {t('promoCTA')}
                     </a>
                     <a href={`${APP_URL}/explore`}
                       className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border hover:border-[var(--p3)] hover:text-[var(--p)] hover:bg-[var(--p2)]"
                       style={{ color: 'var(--t2)', borderColor: 'var(--bd)', background: 'var(--white)' }}>
-                      {'Explore more creators'}
+                      {t('promoSecondary')}
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="13" height="13" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                       </svg>
@@ -622,7 +625,7 @@ export default function ExploreClient() {
                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                           </svg>
                         ),
-                        color: '#8e78fb', bg: '#f0eefe', label: 'Build communities', sub: 'Build thriving communities around your expertise',
+                        color: '#8e78fb', bg: '#f0eefe', label: t('promoF1'), sub: t('promoF1Sub'),
                       },
                       {
                         icon: (
@@ -630,7 +633,7 @@ export default function ExploreClient() {
                             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                           </svg>
                         ),
-                        color: '#47c7ea', bg: '#e8f9fd', label: 'Sell courses', sub: 'Create and sell courses, challenges & digital products',
+                        color: '#47c7ea', bg: '#e8f9fd', label: t('promoF2'), sub: t('promoF2Sub'),
                       },
                       {
                         icon: (
@@ -638,7 +641,7 @@ export default function ExploreClient() {
                             <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                           </svg>
                         ),
-                        color: '#ff9b28', bg: '#fff4e5', label: 'Earn income', sub: 'Monetize your audience with multiple revenue streams',
+                        color: '#ff9b28', bg: '#fff4e5', label: t('promoF3'), sub: t('promoF3Sub'),
                       },
                       {
                         icon: (
@@ -646,7 +649,7 @@ export default function ExploreClient() {
                             <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
                           </svg>
                         ),
-                        color: '#f65887', bg: '#fff0f4', label: 'Run challenges', sub: 'Run competitions and gamify your community',
+                        color: '#f65887', bg: '#fff0f4', label: t('promoF4'), sub: t('promoF4Sub'),
                       },
                     ].map((f, i) => (
                       <div key={f.label}

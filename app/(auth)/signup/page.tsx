@@ -1,16 +1,18 @@
 import { redirect } from "next/navigation"
 import { getProfileServer } from "@/lib/auth.server"
 import Image from "next/image"
+import Link from "next/link"
 import SignUpForm from "../components/signup-form"
-import { getTranslations } from "next-intl/server"
+import { getTranslations, getLocale } from "next-intl/server"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LangToggle } from "@/components/lang-toggle"
 
 export const dynamic = "force-dynamic"
 
 export default async function SignUpPage() {
-  const t    = await getTranslations("auth.signupPage")
-  const user = await getProfileServer()
+  const t      = await getTranslations("auth.signupPage")
+  const locale = await getLocale()
+  const user   = await getProfileServer()
   if (user) redirect("/")
 
   return (
@@ -52,9 +54,9 @@ export default async function SignUpPage() {
 
           {/* Logo */}
           <div className="flex flex-col items-center mb-8 fade-up-1">
-            <div className="logo-breathe">
+            <Link href={`/${locale}`} className="logo-breathe">
               <Image src="/logo_chabaqa.png" alt="Chabaqa" width={190} height={76} priority />
-            </div>
+            </Link>
             <div
               className="w-10 h-[3px] rounded-full mt-4"
               style={{ background: "linear-gradient(90deg,#8e78fb,#c4b8fd)" }}

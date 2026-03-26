@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
+import Link from "next/link"
 import SignInForm from "../components/signin-form"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { localizeHref } from "@/lib/i18n/client"
@@ -76,9 +77,9 @@ export default function SignInPage() {
 
           {/* Logo */}
           <div className="flex flex-col items-center mb-8 fade-up-1">
-            <div className="logo-breathe">
+            <Link href={localizeHref(pathname, "/")} className="logo-breathe">
               <Image src="/logo_chabaqa.png" alt="Chabaqa" width={190} height={76} priority />
-            </div>
+            </Link>
             <div
               className="w-10 h-[3px] rounded-full mt-4"
               style={{ background: "linear-gradient(90deg,#8e78fb,#c4b8fd)" }}

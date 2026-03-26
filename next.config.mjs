@@ -14,74 +14,27 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react'],
   },
   images: {
-    unoptimized: true,
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'api.chabaqa.io',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'http',
-        hostname: '51.254.132.77',
-        port: '3000',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'http',
-        hostname: '51.254.132.77',
-        port: '3000',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '3000',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '3001',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'http',
-        hostname: '127.0.0.1',
-        port: '3000',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'http',
-        hostname: '127.0.0.1',
-        port: '3001',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-      },
-      {
-        protocol: 'https',
-        hostname: 'ui-avatars.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
+      { protocol: 'https', hostname: 'api.chabaqa.io',     pathname: '/uploads/**' },
+      { protocol: 'http',  hostname: '51.254.132.77',      port: '3000', pathname: '/uploads/**' },
+      { protocol: 'http',  hostname: 'localhost',          port: '3000', pathname: '/uploads/**' },
+      { protocol: 'http',  hostname: 'localhost',          port: '3001', pathname: '/uploads/**' },
+      { protocol: 'http',  hostname: '127.0.0.1',          port: '3000', pathname: '/uploads/**' },
+      { protocol: 'http',  hostname: '127.0.0.1',          port: '3001', pathname: '/uploads/**' },
+      { protocol: 'https', hostname: 'picsum.photos' },
+      { protocol: 'https', hostname: 'ui-avatars.com' },
+      { protocol: 'https', hostname: 'placehold.co' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
   },
   async headers() {
     const securityHeaders = [
-      { key: 'X-Content-Type-Options', value: 'nosniff' },
-      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-      { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
+      { key: 'X-Content-Type-Options',             value: 'nosniff' },
+      { key: 'X-Frame-Options',                    value: 'SAMEORIGIN' },
+      { key: 'Referrer-Policy',                    value: 'strict-origin-when-cross-origin' },
+      { key: 'Permissions-Policy',                 value: 'camera=(), microphone=(), geolocation=()' },
+      { key: 'X-Permitted-Cross-Domain-Policies',  value: 'none' },
+      { key: 'X-DNS-Prefetch-Control',             value: 'on' },
     ];
 
     if (process.env.NODE_ENV === 'production') {
