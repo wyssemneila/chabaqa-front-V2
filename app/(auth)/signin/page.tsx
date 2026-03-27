@@ -33,7 +33,7 @@ export default function SignInPage() {
     router.push(
       localizeHref(
         pathname,
-        role === "creator" ? "/dashboard/create-community" : role === "admin" ? "/admin" : "/explore"
+        role === "creator" ? "/creator" : role === "admin" ? "/admin" : "/explore"
       )
     )
   }, [isAuthenticated, user, router, searchParams, pathname])

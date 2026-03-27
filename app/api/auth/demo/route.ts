@@ -5,8 +5,8 @@ const LOCAL_DEV_SECRET = "local-dev-jwt-secret-change-me"
 
 const DEMO_USERS: Record<string, { _id: string; name: string; email: string; role: string; username: string; redirect: string }> = {
   learner: { _id: "demo-learner", name: "Demo Learner", email: "demo.learner@chabaqa.io", role: "user",    username: "demo_learner", redirect: "/explore" },
-  creator: { _id: "demo-creator", name: "Demo Creator", email: "demo.creator@chabaqa.io", role: "creator", username: "demo_creator", redirect: "/dashboard/create-community" },
-  admin:   { _id: "demo-admin",   name: "Demo Admin",   email: "demo.admin@chabaqa.io",   role: "admin",   username: "demo_admin",   redirect: "/dashboard/create-community" },
+  creator: { _id: "demo-creator", name: "Demo Creator", email: "demo.creator@chabaqa.io", role: "creator", username: "demo_creator", redirect: "/creator" },
+  admin:   { _id: "demo-admin",   name: "Demo Admin",   email: "demo.admin@chabaqa.io",   role: "admin",   username: "demo_admin",   redirect: "/creator" },
 }
 
 export async function GET(req: NextRequest) {
