@@ -1,3 +1,5 @@
+'use client'
+
 import { activityItems } from '@/lib/dashboard-data'
 
 const dotColor: Record<string, string> = {

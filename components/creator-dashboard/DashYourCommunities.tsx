@@ -1,3 +1,5 @@
+'use client'
+
 import { communities } from '@/lib/dashboard-data'
 import DashIcon from './DashIcon'
 
