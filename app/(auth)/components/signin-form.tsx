@@ -81,8 +81,22 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
   }
 
   const demoLogin = (demo: typeof DEMO_ACCOUNTS[number]) => {
-    const locale = pathname.split("/")[1] ?? "en"
-    window.location.href = `/api/auth/demo?role=${demo.role}&locale=${locale}`
+    const fakeToken = `demo-token-${demo.role}-${Date.now()}`
+    const demoUser = {
+      _id: `demo-${demo.role}`,
+      name: `Demo ${demo.label}`,
+      username: `demo_${demo.role}`,
+      email: `demo-${demo.role}@chabaqa.io`,
+      role: demo.role,
+    }
+    updateAuth(fakeToken, demoUser)
+    if (demo.role === "creator") {
+      router.push(localizeHref(pathname, "/creator/dashboard"))
+    } else if (demo.role === "admin") {
+      router.push(localizeHref(pathname, "/admin"))
+    } else {
+      router.push(localizeHref(pathname, "/explore"))
+    }
   }
 
   const googleLogin = () => {
