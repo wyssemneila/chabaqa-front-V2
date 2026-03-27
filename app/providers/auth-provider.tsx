@@ -8,6 +8,7 @@ import { registerBrowserPushForCurrentUser } from "@/lib/push-notifications"
 import { io, Socket } from "socket.io-client"
 import { resolveSocketBaseUrl } from "@/lib/socket-url"
 import { localizeHref } from "@/lib/i18n/client"
+import { isDemoToken, parseJwtPayload, userFromDemoPayload, readAccessTokenCookie } from "@/lib/demo-auth"
 
 export interface User {
   _id: string
@@ -141,7 +142,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchMe = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken') || localStorage.getItem('access_token')
+      // Read from localStorage first; fall back to cookie (set server-side after
+      // demo login or OAuth redirect before the client has had a chance to sync).
+      let token = localStorage.getItem('accessToken') || localStorage.getItem('access_token')
+      if (!token) {
+        const cookieToken = readAccessTokenCookie()
+        if (cookieToken) {
+          token = cookieToken
+          localStorage.setItem('accessToken', cookieToken)
+        }
+      }
+
       setToken(token)
       if (!token) {
         syncAccessTokenCookie(null)
@@ -150,20 +161,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null
       }
 
-      // Normalize legacy key to the middleware-consumed key.
+      // Normalize legacy key + keep cookie in sync
       localStorage.setItem('accessToken', token)
       localStorage.removeItem('access_token')
-
-      // Keep middleware-accessible cookie synced with local storage token.
       syncAccessTokenCookie(token)
 
-      // We can just use the stored user if we want to be super simple, 
-      // or verify token with backend. For now, let's verify.
+      // ── Demo token: build user from JWT payload, skip backend call ──────────
+      if (isDemoToken(token)) {
+        const payload = parseJwtPayload(token)
+        if (payload) {
+          const demoUser = userFromDemoPayload(payload)
+          localStorage.setItem('user', JSON.stringify(demoUser))
+          const normalizedUser = normalizeUser(demoUser)
+          setUser(normalizedUser)
+          return normalizedUser
+        }
+        setUser(null)
+        return null
+      }
+
+      // ── Real token: verify with backend ──────────────────────────────────────
       const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
       const res = await fetch(`${apiBase}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       })
 
       if (res.ok) {
@@ -173,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(normalizedUser)
         return normalizedUser
       } else {
-        // Token invalid
+        // Token invalid — clear everything
         localStorage.removeItem('accessToken')
         localStorage.removeItem('access_token')
         localStorage.removeItem('user')

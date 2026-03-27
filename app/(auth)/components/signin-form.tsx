@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { signInSchema } from "@/lib/validation/auth.validation"
 import { useToast } from "@/hooks/use-toast"
 import { useAuthContext } from "@/app/providers/auth-provider"
@@ -11,12 +11,7 @@ import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
 import { ChabaSpinner } from "@/components/ui/ChabaSpinner"
 import { inp, Err, EyeIcon } from "./form-helpers"
-
-const DEMO_ACCOUNTS = [
-  { label: "Learner", role: "learner", color: "#47c7ea", bg: "#e4f8fd" },
-  { label: "Creator", role: "creator", color: "#8e78fb", bg: "#ede9ff" },
-  { label: "Admin",   role: "admin",   color: "#f65887", bg: "#ffe4ee" },
-]
+import { DEMO_CREDENTIALS } from "@/lib/demo-auth"
 
 function isSafeRedirect(p: string | null): p is string {
   return !!p && p.startsWith("/") && !p.startsWith("//")
@@ -33,6 +28,14 @@ function GoogleIcon() {
   )
 }
 
+function ZapIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" stroke="none"/>
+    </svg>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const [email, setEmail]           = useState("")
@@ -44,17 +47,18 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
   const [fe, setFe]                 = useState<Record<string, string>>({})
   const [showPw, setShowPw]         = useState(false)
 
-  const router       = useRouter()
   const pathname     = usePathname()
   const searchParams = useSearchParams()
   const { toast }    = useToast()
-  const { login, updateAuth } = useAuthContext()
+  const { login }    = useAuthContext()
   const t            = useTranslations("auth.signinForm")
 
   useEffect(() => {
     const msg = searchParams.get("message")
     if (msg) setSuccess(msg)
   }, [searchParams])
+
+  const locale = pathname.split("/")[1] ?? "en"
 
   const validate = () => {
     setFe({})
@@ -68,6 +72,16 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError("")
+
+    // ── Demo credentials shortcut ────────────────────────────────────────────
+    if (
+      email.trim().toLowerCase() === DEMO_CREDENTIALS.email &&
+      password === DEMO_CREDENTIALS.password
+    ) {
+      window.location.href = `/api/auth/demo?role=creator&locale=${locale}`
+      return
+    }
+
     if (!validate()) return
     setLoading(true)
     try {
@@ -78,25 +92,6 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
       setError(msg)
       toast({ variant: "destructive", title: t("connectionError"), description: msg, duration: 5000 })
     } finally { setLoading(false) }
-  }
-
-  const demoLogin = (demo: typeof DEMO_ACCOUNTS[number]) => {
-    const fakeToken = `demo-token-${demo.role}-${Date.now()}`
-    const demoUser = {
-      _id: `demo-${demo.role}`,
-      name: `Demo ${demo.label}`,
-      username: `demo_${demo.role}`,
-      email: `demo-${demo.role}@chabaqa.io`,
-      role: demo.role,
-    }
-    updateAuth(fakeToken, demoUser)
-    if (demo.role === "creator") {
-      router.push(localizeHref(pathname, "/creator/dashboard"))
-    } else if (demo.role === "admin") {
-      router.push(localizeHref(pathname, "/admin"))
-    } else {
-      router.push(localizeHref(pathname, "/explore"))
-    }
   }
 
   const googleLogin = () => {
@@ -127,26 +122,39 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
         </div>
       )}
 
-      {/* ── Demo accounts ──────────────────────────────────────────── */}
-      <div className="rounded-xl border border-dashed p-3 space-y-2" style={{ borderColor: "var(--p3,#c4b8fd)", background: "var(--p2,#ede9ff)08" }}>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-center" style={{ color: "var(--p,#8e78fb)" }}>
-          ⚡ Demo accounts
-        </p>
-        <div className="flex gap-2 flex-wrap justify-center">
-          {DEMO_ACCOUNTS.map(demo => (
-            <button
-              key={demo.label}
-              type="button"
-              onClick={() => demoLogin(demo)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all hover:opacity-80 active:scale-95"
-              style={{ background: demo.bg, color: demo.color, border: `1.5px solid ${demo.color}30` }}
-            >
-              <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white" style={{ background: demo.color }}>
-                {demo.label[0]}
-              </span>
-              {demo.label}
-            </button>
-          ))}
+      {/* ── Try Demo banner ─────────────────────────────────────────────────── */}
+      <a
+        href={`/api/auth/demo?role=creator&locale=${locale}`}
+        className="flex items-center justify-between gap-3 w-full px-4 py-3 rounded-xl transition-all hover:opacity-90 active:scale-[.98]"
+        style={{
+          background: "linear-gradient(135deg,#8e78fb 0%,#6c52f0 100%)",
+          boxShadow: "0 4px 18px rgba(142,120,251,.35)",
+          textDecoration: "none",
+        }}
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-white">
+            <ZapIcon />
+          </span>
+          <div>
+            <p className="text-[13px] font-bold text-white leading-none">Try Demo</p>
+            <p className="text-[11px] text-white/70 mt-0.5">Explore the creator dashboard instantly</p>
+          </div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ opacity: 0.7, flexShrink: 0 }}>
+          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </a>
+
+      {/* ── Divider ─────────────────────────────────────────────────────────── */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" style={{ borderColor: "var(--bd,#e5e7eb)" }} />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="px-3 text-[11px] font-semibold uppercase tracking-wider" style={{ background: "var(--white,#fff)", color: "var(--t3,#9ca3af)" }}>
+            or sign in with your account
+          </span>
         </div>
       </div>
 
@@ -193,6 +201,11 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
           </div>
           <Err msg={fe.password} />
         </div>
+
+        {/* Demo hint */}
+        <p className="text-[11px]" style={{ color: "var(--t3,#9ca3af)" }}>
+          Demo credentials: <span className="font-mono font-semibold" style={{ color: "var(--p,#8e78fb)" }}>demo@demo.com</span> / <span className="font-mono font-semibold" style={{ color: "var(--p,#8e78fb)" }}>demo123</span>
+        </p>
 
         {/* Remember me */}
         <div className="flex items-center gap-2">

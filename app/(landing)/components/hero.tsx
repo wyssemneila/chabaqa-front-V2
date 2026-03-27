@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { HERO_PILLS } from '@/lib/landing-data'
 import { APP_URL } from '@/lib/config'
@@ -35,6 +36,8 @@ export function Hero() {
 
   const [typedWord,  setTypedWord]  = useState(typedWordsRaw[0] ?? '')
   const [activePill, setActivePill] = useState<string | null>(null)
+  const pathname = usePathname()
+  const locale   = pathname.split('/')[1] ?? 'en'
   const wordIdx  = useRef(0)
   const charIdx  = useRef(0)
   const deleting = useRef(false)
@@ -146,6 +149,14 @@ export function Hero() {
           <a href={`${APP_URL}/register`} className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-[15px] font-bold text-white bg-[var(--p)] hover:bg-[#7a64f0] hover:-translate-y-[3px] transition-all shadow-[0_8px_30px_rgba(142,120,251,.35)] hover:shadow-[0_14px_40px_rgba(142,120,251,.45)]">
             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             {t('ctaPrimary')}
+          </a>
+          <a
+            href={`/api/auth/demo?role=creator&locale=${locale}`}
+            className="inline-flex items-center gap-2 px-7 py-4 rounded-2xl text-[15px] font-semibold transition-all hover:-translate-y-[2px]"
+            style={{ color: "var(--p,#8e78fb)", background: "var(--p2,#ede9ff)", border: "2px solid var(--p3,#c4b8fd)" }}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Try Demo
           </a>
           <button type="button" onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })} className="inline-flex items-center gap-2 px-7 py-4 rounded-2xl text-[15px] font-semibold text-[var(--t2)] bg-[var(--white)] border-2 border-[var(--bd)] hover:border-[var(--p3)] hover:text-[var(--p)] hover:bg-[var(--p2)] transition-all">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
