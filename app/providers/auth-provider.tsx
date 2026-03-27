@@ -281,7 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Redirect based on role
       const role = user.role?.toLowerCase()
       if (role === 'creator') {
-        router.push(localizeHref(pathname || '/', '/creator/dashboard'))
+        router.push(localizeHref(pathname || '/', '/dashboard/create-community'))
       } else if (role === 'admin') {
         router.push(localizeHref(pathname || '/', '/admin'))
       } else {
@@ -339,7 +339,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const role = String(userData?.role || '').toLowerCase()
       if (role === 'creator') {
-        router.replace(localizeHref(pathname || '/', '/creator/dashboard'))
+        router.replace(localizeHref(pathname || '/', '/dashboard/create-community'))
       } else if (role === 'admin') {
         router.replace(localizeHref(pathname || '/', '/admin'))
       } else {
