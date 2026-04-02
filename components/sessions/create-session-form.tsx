@@ -194,81 +194,67 @@ function TimePicker({ value, onChange }: { value: string; onChange: (t: string) 
   const set = (k: keyof typeof state, v: any) => setState(p => ({ ...p, [k]: v }))
 
   return (
-    <div>
+    <div className="space-y-2.5">
       <style>{`
-        .tp-h:active,.tp-m:active { transform:scale(.88) !important; }
-        .tp-h,.tp-m { transition:background .12s ease,color .12s ease,transform .1s cubic-bezier(.34,1.56,.64,1),box-shadow .12s ease; }
+        .tp-b { transition:background .12s ease,color .12s ease; }
+        .tp-b:active { opacity:.75; }
       `}</style>
 
-      {/* ── BIG CLOCK DISPLAY ── */}
-      <div className="rounded-2xl mb-4 flex flex-col items-center justify-center py-5 gap-3"
-        style={{ background: "linear-gradient(135deg,var(--p) 0%,rgba(142,120,251,.7) 100%)", boxShadow: "0 8px 32px rgba(142,120,251,.4)" }}>
+      {/* preview badge */}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg w-fit"
+        style={{ background: "var(--p2)" }}>
+        <Clock className="w-3 h-3 shrink-0" style={{ color: "var(--p)" }} />
+        <span className="text-[13px] font-black tabular-nums" style={{ color: "var(--p)" }}>
+          {state.hour}:{String(state.minute).padStart(2,"0")} {state.period}
+        </span>
+      </div>
 
-        {/* time digits */}
-        <div className="flex items-end gap-1">
-          <span className="text-[52px] font-black leading-none tabular-nums text-white" style={{ letterSpacing: "-2px" }}>
-            {state.hour}:{String(state.minute).padStart(2,"0")}
-          </span>
-        </div>
-
-        {/* AM / PM big pill toggle */}
-        <div className="flex gap-2">
-          {(["AM","PM"] as const).map(p => {
-            const on = state.period === p
+      {/* hours 6×2 */}
+      <div>
+        <p className={`${LBL} mb-1`} style={{ color: "var(--t3)" }}>Hour</p>
+        <div className="grid grid-cols-6 gap-1">
+          {[1,2,3,4,5,6,7,8,9,10,11,12].map(h => {
+            const on = state.hour === h
             return (
-              <button key={p} type="button" onClick={() => set("period", p)}
-                className="px-6 py-1.5 rounded-full text-[13px] font-black cursor-pointer transition-all duration-150"
-                style={{
-                  background: on ? "rgba(255,255,255,.25)" : "rgba(255,255,255,.1)",
-                  color: "#fff",
-                  border: on ? "2px solid rgba(255,255,255,.6)" : "2px solid transparent",
-                  backdropFilter: "blur(4px)",
-                }}>
-                {p}
+              <button key={h} type="button" onClick={() => set("hour", h)}
+                className="tp-b h-9 rounded-lg text-[12px] font-bold cursor-pointer"
+                style={{ background: on ? "var(--p)" : "var(--bg)", color: on ? "#fff" : "var(--t2)" }}>
+                {h}
               </button>
             )
           })}
         </div>
       </div>
 
-      {/* ── HOUR GRID 4×3 ── */}
-      <p className="text-[9px] font-black uppercase tracking-[.14em] mb-2 pl-0.5" style={{ color: "var(--t3)" }}>Hour</p>
-      <div className="grid grid-cols-4 gap-2 mb-4">
-        {[1,2,3,4,5,6,7,8,9,10,11,12].map(h => {
-          const on = state.hour === h
-          return (
-            <button key={h} type="button" onClick={() => set("hour", h)}
-              className="tp-h h-12 rounded-2xl text-[14px] font-bold cursor-pointer"
-              style={{
-                background: on ? "var(--p)" : "var(--bg)",
-                color: on ? "#fff" : "var(--t2)",
-                boxShadow: on ? "0 4px 16px rgba(142,120,251,.4)" : "none",
-                transform: on ? "scale(1.04)" : "scale(1)",
-              }}>
-              {h}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* ── MINUTE ROW ── */}
-      <p className="text-[9px] font-black uppercase tracking-[.14em] mb-2 pl-0.5" style={{ color: "var(--t3)" }}>Minute</p>
-      <div className="grid grid-cols-4 gap-2">
-        {[0,15,30,45].map(m => {
-          const on = state.minute === m
-          return (
-            <button key={m} type="button" onClick={() => set("minute", m)}
-              className="tp-m h-12 rounded-2xl text-[14px] font-bold cursor-pointer"
-              style={{
-                background: on ? "var(--p)" : "var(--bg)",
-                color: on ? "#fff" : "var(--t2)",
-                boxShadow: on ? "0 4px 16px rgba(142,120,251,.4)" : "none",
-                transform: on ? "scale(1.04)" : "scale(1)",
-              }}>
-              :{String(m).padStart(2,"0")}
-            </button>
-          )
-        })}
+      {/* minutes + AM/PM in one row */}
+      <div>
+        <p className={`${LBL} mb-1`} style={{ color: "var(--t3)" }}>Minute &amp; Period</p>
+        <div className="flex gap-1">
+          {[0,15,30,45].map(m => {
+            const on = state.minute === m
+            return (
+              <button key={m} type="button" onClick={() => set("minute", m)}
+                className="tp-b flex-1 h-9 rounded-lg text-[12px] font-bold cursor-pointer"
+                style={{ background: on ? "var(--p)" : "var(--bg)", color: on ? "#fff" : "var(--t2)" }}>
+                :{String(m).padStart(2,"0")}
+              </button>
+            )
+          })}
+          <div className="w-px" style={{ background: "var(--bd)" }} />
+          {(["AM","PM"] as const).map(p => {
+            const on = state.period === p
+            return (
+              <button key={p} type="button" onClick={() => set("period", p)}
+                className="tp-b px-2.5 h-9 rounded-lg text-[11px] font-black cursor-pointer"
+                style={{
+                  background: on ? (p === "AM" ? "var(--cyan)" : "var(--orange)") : "var(--bg)",
+                  color: on ? "#fff" : "var(--t3)",
+                }}>
+                {p}
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -319,49 +305,43 @@ function CalendarView({
   const next = () => setCurrent(new Date(year, month + 1, 1))
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--bd)", background: "var(--white)", boxShadow: "0 4px 24px rgba(142,120,251,.1)" }}>
+    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--bd)", background: "var(--white)" }}>
       <style>{`
-        .cal-nav-btn { transition:opacity .15s ease,transform .12s cubic-bezier(.34,1.56,.64,1); }
-        .cal-nav-btn:hover { opacity:.85; }
-        .cal-nav-btn:active { transform:scale(.86); }
-        .cal-day { transition:background .12s ease,transform .1s cubic-bezier(.34,1.56,.64,1),box-shadow .12s ease; }
-        .cal-day:not(:disabled):hover { transform:scale(1.15) !important; }
-        .cal-day:not(:disabled):active { transform:scale(.88) !important; }
+        .cal-day { transition:background .12s ease,transform .1s ease; }
+        .cal-day:not(:disabled):hover { background:var(--p2) !important; transform:scale(1.06); }
+        .cal-day:not(:disabled):active { transform:scale(.92); }
+        .cal-nav { transition:background .12s ease; }
+        .cal-nav:hover { background:var(--p2) !important; }
       `}</style>
 
-      {/* ── GRADIENT HEADER ── */}
-      <div className="px-5 py-5" style={{ background: "linear-gradient(135deg,var(--p) 0%,rgba(142,120,251,.75) 100%)" }}>
-        <div className="flex items-center justify-between">
-          <button type="button" onClick={prev}
-            className="cal-nav-btn w-10 h-10 rounded-2xl flex items-center justify-center cursor-pointer"
-            style={{ background: "rgba(255,255,255,.2)", border: "1.5px solid rgba(255,255,255,.35)" }}>
-            <ChevronLeft className="w-5 h-5 text-white" />
-          </button>
-
-          <div className="text-center select-none">
-            <p className="text-[22px] font-black text-white leading-tight">{MONTH_NAMES[month]}</p>
-            <p className="text-[13px] font-bold text-white opacity-70">{year}</p>
-          </div>
-
-          <button type="button" onClick={next}
-            className="cal-nav-btn w-10 h-10 rounded-2xl flex items-center justify-center cursor-pointer"
-            style={{ background: "rgba(255,255,255,.2)", border: "1.5px solid rgba(255,255,255,.35)" }}>
-            <ChevronRight className="w-5 h-5 text-white" />
-          </button>
-        </div>
-
-        {/* day-of-week labels in header */}
-        <div className="grid grid-cols-7 mt-4">
-          {DAY_HEADERS.map(d => (
-            <div key={d} className="flex items-center justify-center text-[11px] font-black uppercase tracking-wider select-none"
-              style={{ color: "rgba(255,255,255,.65)" }}>{d}</div>
-          ))}
-        </div>
+      {/* header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--bd)" }}>
+        <button type="button" onClick={prev}
+          className="cal-nav w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
+          style={{ border: "1.5px solid var(--bd)", background: "transparent" }}>
+          <ChevronLeft className="w-3.5 h-3.5" style={{ color: "var(--t2)" }} />
+        </button>
+        <p className="text-[13px] font-black select-none" style={{ color: "var(--t1)" }}>
+          {MONTH_NAMES[month]} <span style={{ color: "var(--t3)", fontWeight: 600 }}>{year}</span>
+        </p>
+        <button type="button" onClick={next}
+          className="cal-nav w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
+          style={{ border: "1.5px solid var(--bd)", background: "transparent" }}>
+          <ChevronRight className="w-3.5 h-3.5" style={{ color: "var(--t2)" }} />
+        </button>
       </div>
 
-      {/* ── DATE GRID ── */}
-      <div className="p-4">
-        <div className="grid grid-cols-7 gap-1">
+      <div className="px-3 pt-2 pb-3">
+        {/* day headers */}
+        <div className="grid grid-cols-7 mb-1">
+          {DAY_HEADERS.map(d => (
+            <div key={d} className="h-6 flex items-center justify-center text-[10px] font-black uppercase tracking-wider select-none"
+              style={{ color: "var(--t3)" }}>{d}</div>
+          ))}
+        </div>
+
+        {/* cells */}
+        <div className="grid grid-cols-7 gap-0.5">
           {cells.map(cell => {
             const key         = fmtDate(cell)
             const inMonth     = cell.getMonth() === month
@@ -372,54 +352,34 @@ function CalendarView({
             const isSelected  = selectedDate === key
             const isToday     = fmtDate(cell) === fmtDate(today)
             const disabled    = isPast && !hasSlots
-            const isWeekend   = cell.getDay() === 0 || cell.getDay() === 6
 
             return (
               <button key={key} type="button"
                 disabled={disabled}
                 onClick={() => !disabled && onSelectDate(key)}
-                className="cal-day relative flex flex-col items-center justify-center rounded-full"
+                className="cal-day relative flex flex-col items-center justify-center h-9 rounded-xl"
                 style={{
-                  height: 46,
-                  background: isSelected
-                    ? "var(--p)"
-                    : isToday
-                      ? "var(--p2)"
-                      : hasSlots
-                        ? "rgba(142,120,251,.12)"
-                        : isRecurring
-                          ? "rgba(142,120,251,.06)"
-                          : "transparent",
-                  opacity:  !inMonth ? 0.2 : disabled ? 0.25 : 1,
+                  background: isSelected ? "var(--p)"
+                            : hasSlots   ? "var(--p2)"
+                            : isRecurring ? "rgba(142,120,251,.06)"
+                            : "transparent",
+                  opacity:  !inMonth ? 0.22 : disabled ? 0.28 : 1,
                   cursor:   disabled ? "default" : "pointer",
-                  boxShadow: isSelected ? "0 4px 18px rgba(142,120,251,.5)" : "none",
-                  outline:  isToday && !isSelected ? "2.5px solid var(--p)" : "none",
-                  outlineOffset: "1px",
+                  border:   isToday && !isSelected ? "1.5px solid var(--p)" : "1.5px solid transparent",
                 }}>
-                <span className="text-[13px] font-bold select-none"
-                  style={{
-                    color: isSelected
-                      ? "#fff"
-                      : isToday
-                        ? "var(--p)"
-                        : hasSlots
-                          ? "var(--p)"
-                          : isWeekend && inMonth
-                            ? "var(--t2)"
-                            : "var(--t1)",
-                  }}>
+                <span className="text-[12px] font-bold leading-none select-none"
+                  style={{ color: isSelected ? "#fff" : hasSlots ? "var(--p)" : "var(--t1)" }}>
                   {cell.getDate()}
                 </span>
-
                 {hasSlots && !isSelected && (
-                  <span className="absolute bottom-[4px] left-1/2 -translate-x-1/2 flex gap-[3px]">
+                  <span className="absolute bottom-[3px] left-1/2 -translate-x-1/2 flex gap-[2px]">
                     {entry!.slots.slice(0,3).map((_,i) => (
-                      <span key={i} className="w-[5px] h-[5px] rounded-full" style={{ background: "var(--p)" }} />
+                      <span key={i} className="w-[3px] h-[3px] rounded-full" style={{ background: "var(--p)" }} />
                     ))}
                   </span>
                 )}
                 {isRecurring && (
-                  <span className="absolute bottom-[4px] left-1/2 -translate-x-1/2 w-[5px] h-[5px] rounded-full"
+                  <span className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[3px] h-[3px] rounded-full"
                     style={{ background: "rgba(142,120,251,.5)" }} />
                 )}
               </button>
@@ -428,17 +388,17 @@ function CalendarView({
         </div>
       </div>
 
-      {/* ── LEGEND ── */}
-      <div className="flex items-center gap-5 px-5 pb-4">
+      {/* legend */}
+      <div className="flex items-center gap-4 px-4 py-2 border-t" style={{ borderColor: "var(--bd)" }}>
         {[
-          { color: "var(--p)", label: "Selected" },
-          { color: "rgba(142,120,251,.5)", label: "Recurring" },
-          { color: "var(--p)", label: "Today", outline: true },
+          { bg: "var(--p2)", label: "Has slots" },
+          { bg: "rgba(142,120,251,.4)", label: "Recurring" },
+          { border: "var(--p)", label: "Today" },
         ].map(item => (
-          <div key={item.label} className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full"
-              style={{ background: item.outline ? "transparent" : item.color, border: item.outline ? `2.5px solid ${item.color}` : "none" }} />
-            <span className="text-[10px] font-medium" style={{ color: "var(--t3)" }}>{item.label}</span>
+          <div key={item.label} className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-sm shrink-0"
+              style={{ background: (item as any).bg ?? "transparent", border: (item as any).border ? `1.5px solid ${(item as any).border}` : "none" }} />
+            <span className="text-[10px]" style={{ color: "var(--t3)" }}>{item.label}</span>
           </div>
         ))}
       </div>
@@ -479,109 +439,79 @@ function SlotPanel({
         .recur-btn:active { transform: scale(.98); }
       `}</style>
 
-      {/* date header — gradient matching calendar */}
-      <div className="px-5 py-4 shrink-0"
-        style={{ background: "linear-gradient(135deg,var(--p) 0%,rgba(142,120,251,.75) 100%)" }}>
-        <p className="text-[10px] font-black uppercase tracking-[.14em] text-white opacity-70 mb-1">Editing slots for</p>
-        <p className="text-[17px] font-black text-white leading-tight">
-          {parseDate(date).toLocaleDateString("en-US",{ weekday:"long", day:"numeric", month:"long" })}
-        </p>
-        <p className="text-[12px] font-bold text-white opacity-60 mt-0.5">
-          {parseDate(date).getFullYear()}
+      {/* date header */}
+      <div className="px-4 py-3 border-b shrink-0" style={{ borderColor: "var(--bd)" }}>
+        <p className="text-[10px] font-black uppercase tracking-widest mb-0.5" style={{ color: "var(--t3)" }}>Selected</p>
+        <p className="text-[13px] font-black" style={{ color: "var(--t1)" }}>
+          {parseDate(date).toLocaleDateString("en-US",{ weekday:"short", day:"numeric", month:"short", year:"numeric" })}
         </p>
       </div>
 
-      {/* recurring toggle */}
-      <div className="px-4 py-3 border-b shrink-0" style={{ borderColor: "var(--bd)" }}>
+      {/* recurring toggle — compact */}
+      <div className="px-4 py-2.5 border-b shrink-0" style={{ borderColor: "var(--bd)" }}>
         <button type="button" onClick={onToggleRecurring}
-          className="recur-btn w-full flex items-center justify-between px-4 py-3 rounded-2xl cursor-pointer"
+          className="recur-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer"
           style={{
             background: recur ? "var(--p2)" : "var(--bg)",
-            border: `2px solid ${recur ? "var(--p)" : "var(--bd)"}`,
+            border: `1.5px solid ${recur ? "var(--p)" : "var(--bd)"}`,
           }}>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-150"
-              style={{ background: recur ? "var(--p)" : "var(--bd)" }}>
-              <Repeat2 className="w-4 h-4" style={{ color: recur ? "#fff" : "var(--white)" }} />
-            </div>
+          <div className="flex items-center gap-2">
+            <Repeat2 className="w-3.5 h-3.5 shrink-0" style={{ color: recur ? "var(--p)" : "var(--t3)" }} />
             <div className="text-left">
-              <p className="text-[12px] font-bold" style={{ color: recur ? "var(--p)" : "var(--t1)" }}>
-                Every {weekday}
-              </p>
-              <p className="text-[10px] font-medium" style={{ color: "var(--t3)" }}>
-                {recur ? `Repeats weekly` : "One-time only"}
-              </p>
+              <p className="text-[12px] font-bold" style={{ color: recur ? "var(--p)" : "var(--t1)" }}>Every {weekday}</p>
+              <p className="text-[10px]" style={{ color: "var(--t3)" }}>{recur ? "Repeats weekly" : "One-time only"}</p>
             </div>
           </div>
-          {/* animated toggle pill */}
-          <div className="w-12 h-6 rounded-full relative shrink-0 transition-all duration-200"
-            style={{ background: recur ? "var(--p)" : "rgba(0,0,0,.12)" }}>
+          <div className="w-9 h-5 rounded-full relative shrink-0" style={{ background: recur ? "var(--p)" : "var(--bd)", transition: "background .2s" }}>
             <div className="rounded-full bg-white absolute top-[3px] transition-all duration-200"
-              style={{ width: 18, height: 18, left: recur ? "calc(100% - 21px)" : 3, boxShadow: "0 1px 4px rgba(0,0,0,.25)" }} />
+              style={{ width: 14, height: 14, left: recur ? "calc(100% - 17px)" : 3, boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
           </div>
         </button>
       </div>
 
       {/* slots list */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] font-black uppercase tracking-[.1em]" style={{ color: "var(--t3)" }}>
-            Time Slots
-          </p>
+          <p className={LBL} style={{ color: "var(--t3)" }}>Time Slots</p>
           {slots.length > 0 && (
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
-              style={{ background: "var(--p2)", color: "var(--p)" }}>
-              {slots.length}
-            </span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: "var(--p2)", color: "var(--p)" }}>{slots.length}</span>
           )}
         </div>
 
         {slots.length === 0 && (
-          <div className="flex flex-col items-center gap-2.5 py-10 text-center">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-              style={{ background: "var(--bg)" }}>
-              <Clock className="w-6 h-6 opacity-25" style={{ color: "var(--t2)" }} />
-            </div>
-            <p className="text-[12px] font-medium" style={{ color: "var(--t3)" }}>No slots yet</p>
-            <p className="text-[11px]" style={{ color: "var(--t3)", opacity: .7 }}>Tap "Add time slot" below</p>
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <Clock className="w-7 h-7 opacity-20" style={{ color: "var(--t3)" }} />
+            <p className="text-[11px]" style={{ color: "var(--t3)" }}>No slots — add one below</p>
           </div>
         )}
 
         {slots.map(slot => (
           <div key={slot.id}>
-            {/* slot card */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button type="button"
                 onClick={() => setEditingSlot(editingSlot === slot.id ? null : slot.id)}
-                className="slot-row flex-1 flex items-center gap-3 h-12 px-4 rounded-2xl border-2 cursor-pointer text-left"
+                className="slot-row flex-1 flex items-center gap-2 h-10 px-3 rounded-xl border-2 cursor-pointer text-left"
                 style={{
                   borderColor: editingSlot === slot.id ? "var(--p)" : "var(--bd)",
                   background:  editingSlot === slot.id ? "var(--p2)" : "var(--white)",
-                  boxShadow:   editingSlot === slot.id ? "0 2px 12px rgba(142,120,251,.2)" : "none",
                 }}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-150"
-                  style={{ background: editingSlot === slot.id ? "var(--p)" : "var(--p2)" }}>
-                  <Clock className="w-3.5 h-3.5" style={{ color: editingSlot === slot.id ? "#fff" : "var(--p)" }} />
-                </div>
-                <span className="text-[13px] font-bold flex-1 tabular-nums" style={{ color: "var(--t1)" }}>
+                <Clock className="w-3 h-3 shrink-0" style={{ color: "var(--p)" }} />
+                <span className="text-[12px] font-bold flex-1 tabular-nums" style={{ color: "var(--t1)" }}>
                   {fmtTime12(slot.time)}
                 </span>
-                <ChevronRight className="w-3.5 h-3.5 transition-transform duration-200 shrink-0"
-                  style={{
-                    color: editingSlot === slot.id ? "var(--p)" : "var(--t3)",
-                    transform: editingSlot === slot.id ? "rotate(90deg)" : "none",
-                  }} />
+                <ChevronRight className="w-3 h-3 shrink-0 transition-transform duration-200"
+                  style={{ color: "var(--t3)", transform: editingSlot === slot.id ? "rotate(90deg)" : "none" }} />
               </button>
               <button type="button" onClick={() => { onRemoveSlot(slot.id); if (editingSlot === slot.id) setEditingSlot(null) }}
-                className="slot-del w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer shrink-0"
+                className="slot-del w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer shrink-0"
                 style={{ background: "rgba(220,38,38,.07)", border: "1.5px solid rgba(220,38,38,.2)" }}>
-                <Trash2 className="w-3.5 h-3.5" style={{ color: "#dc2626" }} />
+                <Trash2 className="w-3 h-3" style={{ color: "#dc2626" }} />
               </button>
             </div>
 
-            {/* inline time picker */}
             {editingSlot === slot.id && (
-              <div className="mt-2 p-4 rounded-2xl" style={{ background: "var(--bg)", border: "2px solid var(--bd)" }}>
+              <div className="mt-1.5 p-3 rounded-xl" style={{ background: "var(--bg)", border: "1.5px solid var(--bd)" }}>
                 <TimePicker value={slot.time} onChange={t => onChangeSlot(slot.id, t)} />
               </div>
             )}
@@ -592,9 +522,9 @@ function SlotPanel({
       {/* add slot */}
       <div className="px-4 pb-4 shrink-0">
         <button type="button" onClick={() => { onAddSlot(); setEditingSlot(null) }}
-          className="add-slot-btn flex items-center justify-center gap-2 w-full h-12 rounded-2xl border-2 cursor-pointer font-bold text-sm"
+          className="add-slot-btn flex items-center justify-center gap-1.5 w-full h-10 rounded-xl border-2 cursor-pointer font-bold text-[12px]"
           style={{ borderColor: "var(--p)", color: "var(--p)", background: "transparent" }}>
-          <Plus className="w-4 h-4" /> Add time slot
+          <Plus className="w-3.5 h-3.5" /> Add time slot
         </button>
       </div>
     </div>
@@ -679,16 +609,13 @@ function StepAvailability({ data, set }: { data: FormData; set: (f: keyof FormDa
             onToggleRecurring={() => toggleRecurring(selectedDate)}
           />
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg,var(--p) 0%,rgba(142,120,251,.6) 100%)", boxShadow: "0 8px 24px rgba(142,120,251,.35)" }}>
-              <Calendar className="w-8 h-8 text-white" />
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: "var(--p2)" }}>
+              <Calendar className="w-5 h-5" style={{ color: "var(--p)" }} />
             </div>
             <div>
-              <p className="text-[14px] font-black mb-1" style={{ color: "var(--t1)" }}>Pick a date</p>
-              <p className="text-[11px] leading-relaxed" style={{ color: "var(--t3)" }}>
-                Click any date on the<br />calendar to add time slots
-              </p>
+              <p className="text-[13px] font-bold mb-0.5" style={{ color: "var(--t1)" }}>Pick a date</p>
+              <p className="text-[11px]" style={{ color: "var(--t3)" }}>Click a date to add time slots</p>
             </div>
           </div>
         )}
