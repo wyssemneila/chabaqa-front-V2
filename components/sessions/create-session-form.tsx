@@ -170,7 +170,35 @@ function ThumbnailUpload({ value, onChange }: { value: string; onChange: (url: s
   )
 }
 
-// TimePicker removed — replaced by native <input type="time"> inside SlotPanel
+// ─── time options (30-min increments, 6 AM → 11 PM) ─────────────────────────
+const TIME_OPTIONS = Array.from({ length: 35 }, (_, i) => {
+  const totalMins = 6 * 60 + i * 30
+  const h = Math.floor(totalMins / 60)
+  const m = totalMins % 60
+  const v = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`
+  return { value: v, label: fmtTime12(v) }
+})
+
+// ─── timezones ────────────────────────────────────────────────────────────────
+const TIMEZONES = [
+  { v: "UTC-12", l: "UTC−12:00" },
+  { v: "UTC-8",  l: "Pacific (UTC−08:00)" },
+  { v: "UTC-7",  l: "Mountain (UTC−07:00)" },
+  { v: "UTC-6",  l: "Central (UTC−06:00)" },
+  { v: "UTC-5",  l: "Eastern (UTC−05:00)" },
+  { v: "UTC-3",  l: "Brasília (UTC−03:00)" },
+  { v: "UTC+0",  l: "London / UTC±00:00" },
+  { v: "UTC+1",  l: "Central Europe (UTC+01:00)" },
+  { v: "UTC+2",  l: "Eastern Europe (UTC+02:00)" },
+  { v: "UTC+3",  l: "Tunis / Riyadh (UTC+03:00)" },
+  { v: "UTC+4",  l: "Gulf (UTC+04:00)" },
+  { v: "UTC+5.5",l: "India (UTC+05:30)" },
+  { v: "UTC+7",  l: "Bangkok (UTC+07:00)" },
+  { v: "UTC+8",  l: "China / Singapore (UTC+08:00)" },
+  { v: "UTC+9",  l: "Tokyo / Seoul (UTC+09:00)" },
+  { v: "UTC+10", l: "Sydney (UTC+10:00)" },
+  { v: "UTC+12", l: "Auckland (UTC+12:00)" },
+]
 
 // ════════════════════════════════════════════════════════════════════════════════
 // CALENDAR
@@ -189,27 +217,24 @@ function CalendarView({
   const year  = current.getFullYear()
   const month = current.getMonth()
 
-  // Build 42 cells starting from Monday of the first week
   const cells: Date[] = []
   const firstDay = new Date(year, month, 1)
-  const offset   = (firstDay.getDay() + 6) % 7  // Mon=0
+  const offset   = (firstDay.getDay() + 6) % 7
   const start    = new Date(year, month, 1 - offset)
   for (let i = 0; i < 42; i++) {
     cells.push(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i))
   }
 
-  const today = new Date(); today.setHours(0,0,0,0)
-
-  const slotMap = new Map(availability.map(a => [a.date, a]))
+  const today    = new Date(); today.setHours(0,0,0,0)
+  const slotMap  = new Map(availability.map(a => [a.date, a]))
 
   const recurringSet = new Set<string>()
   availability.filter(a => a.recurring).forEach(a => {
     const wd = weekdayOf(a.date)
     const anchor = parseDate(a.date)
     cells.forEach(cell => {
-      if (cell > anchor && cell.getDay() === wd && !slotMap.has(fmtDate(cell))) {
+      if (cell > anchor && cell.getDay() === wd && !slotMap.has(fmtDate(cell)))
         recurringSet.add(fmtDate(cell))
-      }
     })
   })
 
@@ -217,41 +242,44 @@ function CalendarView({
   const next = () => setCurrent(new Date(year, month + 1, 1))
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--bd)", background: "var(--white)" }}>
+    <div className="rounded-2xl overflow-hidden h-full flex flex-col"
+      style={{ border: "1px solid var(--bd)", background: "var(--white)" }}>
       <style>{`
-        .cal-day { transition:background .12s ease,transform .1s ease; }
-        .cal-day:not(:disabled):hover { background:var(--p2) !important; transform:scale(1.06); }
-        .cal-day:not(:disabled):active { transform:scale(.92); }
-        .cal-nav { transition:background .12s ease; }
-        .cal-nav:hover { background:var(--p2) !important; }
+        .cal-cell { transition: background .1s ease, transform .1s ease; }
+        .cal-cell:not(:disabled):hover { background: var(--p2) !important; transform: scale(1.08); }
+        .cal-cell:not(:disabled):active { transform: scale(.92); }
+        .cal-nav { transition: background .12s ease; border: 1.5px solid var(--bd); }
+        .cal-nav:hover { background: var(--p2) !important; border-color: var(--p) !important; }
       `}</style>
 
-      {/* header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--bd)" }}>
+      {/* month nav */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b shrink-0"
+        style={{ borderColor: "var(--bd)" }}>
         <button type="button" onClick={prev}
           className="cal-nav w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
-          style={{ border: "1.5px solid var(--bd)", background: "transparent" }}>
+          style={{ background: "transparent" }}>
           <ChevronLeft className="w-3.5 h-3.5" style={{ color: "var(--t2)" }} />
         </button>
         <p className="text-[13px] font-black select-none" style={{ color: "var(--t1)" }}>
-          {MONTH_NAMES[month]} <span style={{ color: "var(--t3)", fontWeight: 600 }}>{year}</span>
+          {MONTH_NAMES[month]}{" "}
+          <span className="font-semibold" style={{ color: "var(--t3)" }}>{year}</span>
         </p>
         <button type="button" onClick={next}
           className="cal-nav w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
-          style={{ border: "1.5px solid var(--bd)", background: "transparent" }}>
+          style={{ background: "transparent" }}>
           <ChevronRight className="w-3.5 h-3.5" style={{ color: "var(--t2)" }} />
         </button>
       </div>
 
-      <div className="px-3 pt-2 pb-3">
+      {/* grid */}
+      <div className="px-3 pt-2 pb-3 flex-1">
         {/* day headers */}
         <div className="grid grid-cols-7 mb-1">
           {DAY_HEADERS.map(d => (
-            <div key={d} className="h-6 flex items-center justify-center text-[10px] font-black uppercase tracking-wider select-none"
+            <div key={d} className="h-7 flex items-center justify-center text-[10px] font-black uppercase tracking-wider select-none"
               style={{ color: "var(--t3)" }}>{d}</div>
           ))}
         </div>
-
         {/* cells */}
         <div className="grid grid-cols-7 gap-0.5">
           {cells.map(cell => {
@@ -259,40 +287,45 @@ function CalendarView({
             const inMonth     = cell.getMonth() === month
             const isPast      = cell < today
             const entry       = slotMap.get(key)
-            const hasSlots    = !!entry
-            const isRecurring = recurringSet.has(key) && !hasSlots
+            const hasSlots    = !!entry && entry.slots.length > 0
+            const isRecurring = recurringSet.has(key)
             const isSelected  = selectedDate === key
-            const isToday     = fmtDate(cell) === fmtDate(today)
+            const isToday     = key === fmtDate(today)
             const disabled    = isPast && !hasSlots
 
             return (
               <button key={key} type="button"
                 disabled={disabled}
                 onClick={() => !disabled && onSelectDate(key)}
-                className="cal-day relative flex flex-col items-center justify-center h-9 rounded-xl"
+                className="cal-cell relative flex flex-col items-center justify-center rounded-xl"
                 style={{
-                  background: isSelected ? "var(--p)"
-                            : hasSlots   ? "var(--p2)"
-                            : isRecurring ? "rgba(142,120,251,.06)"
-                            : "transparent",
-                  opacity:  !inMonth ? 0.22 : disabled ? 0.28 : 1,
+                  height: 40,
+                  background: isSelected
+                    ? "var(--p)"
+                    : hasSlots ? "var(--p2)"
+                    : isRecurring ? "rgba(142,120,251,.06)"
+                    : "transparent",
+                  opacity:  !inMonth ? 0.2 : disabled ? 0.28 : 1,
                   cursor:   disabled ? "default" : "pointer",
-                  border:   isToday && !isSelected ? "1.5px solid var(--p)" : "1.5px solid transparent",
+                  border:   isToday && !isSelected
+                    ? "2px solid var(--p)"
+                    : isRecurring && !hasSlots
+                      ? "2px solid rgba(142,120,251,.22)"
+                      : "2px solid transparent",
+                  boxShadow: isSelected ? "0 2px 12px rgba(142,120,251,.4)" : "none",
                 }}>
-                <span className="text-[12px] font-bold leading-none select-none"
+                <span className="text-[12px] font-bold select-none leading-none"
                   style={{ color: isSelected ? "#fff" : hasSlots ? "var(--p)" : "var(--t1)" }}>
                   {cell.getDate()}
                 </span>
+                {/* slot dot */}
                 {hasSlots && !isSelected && (
-                  <span className="absolute bottom-[3px] left-1/2 -translate-x-1/2 flex gap-[2px]">
-                    {entry!.slots.slice(0,3).map((_,i) => (
-                      <span key={i} className="w-[3px] h-[3px] rounded-full" style={{ background: "var(--p)" }} />
-                    ))}
-                  </span>
+                  <span className="absolute bottom-[4px] w-[5px] h-[5px] rounded-full"
+                    style={{ background: "var(--p)" }} />
                 )}
-                {isRecurring && (
-                  <span className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[3px] h-[3px] rounded-full"
-                    style={{ background: "rgba(142,120,251,.5)" }} />
+                {isRecurring && !hasSlots && (
+                  <span className="absolute bottom-[4px] w-[4px] h-[4px] rounded-full"
+                    style={{ background: "rgba(142,120,251,.45)" }} />
                 )}
               </button>
             )
@@ -301,16 +334,19 @@ function CalendarView({
       </div>
 
       {/* legend */}
-      <div className="flex items-center gap-4 px-4 py-2 border-t" style={{ borderColor: "var(--bd)" }}>
+      <div className="flex items-center gap-4 px-4 py-2.5 border-t" style={{ borderColor: "var(--bd)" }}>
         {[
-          { bg: "var(--p2)", label: "Has slots" },
-          { bg: "rgba(142,120,251,.4)", label: "Recurring" },
-          { border: "var(--p)", label: "Today" },
+          { bg: "var(--p2)", dot: "var(--p)",              label: "Has slots"  },
+          { bg: "transparent", dot: "rgba(142,120,251,.45)", label: "Recurring" },
+          { bg: "transparent", outline: "var(--p)",          label: "Today"     },
         ].map(item => (
-          <div key={item.label} className="flex items-center gap-1">
+          <div key={item.label} className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm shrink-0"
-              style={{ background: (item as any).bg ?? "transparent", border: (item as any).border ? `1.5px solid ${(item as any).border}` : "none" }} />
-            <span className="text-[10px]" style={{ color: "var(--t3)" }}>{item.label}</span>
+              style={{
+                background: (item as any).bg,
+                border: (item as any).outline ? `1.5px solid ${(item as any).outline}` : "none",
+              }} />
+            <span className="text-[10px] font-medium" style={{ color: "var(--t3)" }}>{item.label}</span>
           </div>
         ))}
       </div>
@@ -319,7 +355,7 @@ function CalendarView({
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// SLOT PANEL — time chips + single add-time input
+// SLOT PANEL — premium redesign with time dropdown, chips, micro-animation
 // ════════════════════════════════════════════════════════════════════════════════
 function SlotPanel({
   date, entry, onAddSlot, onRemoveSlot, onToggleRecurring,
@@ -330,7 +366,10 @@ function SlotPanel({
   onRemoveSlot:      (id: string) => void
   onToggleRecurring: () => void
 }) {
-  const [newTime, setNewTime] = useState("09:00")
+  const [newTime,    setNewTime]    = useState("09:00")
+  const [timezone,   setTimezone]   = useState("UTC+1")
+  const [justAdded,  setJustAdded]  = useState(false)
+
   const weekday = parseDate(date).toLocaleDateString("en-US", { weekday: "long" })
   const slots   = entry?.slots ?? []
   const recur   = entry?.recurring ?? false
@@ -338,95 +377,132 @@ function SlotPanel({
   const handleAdd = () => {
     if (!newTime) return
     onAddSlot(newTime)
+    setJustAdded(true)
+    setTimeout(() => setJustAdded(false), 900)
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       <style>{`
-        .sp-chip { transition: background .12s ease, border-color .12s ease, transform .1s ease; }
-        .sp-chip:hover { border-color: rgba(220,38,38,.5) !important; background: rgba(220,38,38,.06) !important; }
-        .sp-chip-x { transition: color .12s ease; }
-        .sp-chip:hover .sp-chip-x { color: #dc2626 !important; }
-        .sp-add-btn { transition: background .15s ease, color .15s ease; }
-        .sp-add-btn:hover { background: var(--p) !important; color: #fff !important; }
-        .sp-time { color-scheme: light; }
-        .sp-time::-webkit-calendar-picker-indicator { opacity:.35; cursor:pointer; width:12px; height:12px; }
-        .sp-recur { transition: background .12s ease, border-color .12s ease; }
+        @keyframes chipIn { from{opacity:0;transform:scale(.7)} to{opacity:1;transform:scale(1)} }
+        @keyframes addPop { 0%{transform:scale(1)} 40%{transform:scale(.93)} 70%{transform:scale(1.05)} 100%{transform:scale(1)} }
+        .slot-chip { animation: chipIn .2s cubic-bezier(.34,1.56,.64,1) both; transition: box-shadow .12s ease; }
+        .slot-chip:hover { box-shadow: 0 0 0 2px rgba(220,38,38,.35) !important; }
+        .slot-chip:hover .chip-time { text-decoration: line-through; opacity: .6; }
+        .sp-tz { color-scheme: light; appearance: none; -webkit-appearance: none; }
+        .sp-select { color-scheme: light; appearance: none; -webkit-appearance: none; }
       `}</style>
 
-      {/* ── HEADER ── */}
+      {/* ── DATE HEADER ── */}
       <div className="px-5 py-4 border-b shrink-0" style={{ borderColor: "var(--bd)" }}>
-        <p className="text-[15px] font-black leading-tight" style={{ color: "var(--t1)" }}>
-          {parseDate(date).toLocaleDateString("en-US", { weekday: "long" })}
-        </p>
-        <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--t3)" }}>
-          {parseDate(date).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[16px] font-black leading-tight" style={{ color: "var(--t1)" }}>
+              {parseDate(date).toLocaleDateString("en-US", { weekday: "long" })}
+            </p>
+            <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--t3)" }}>
+              {parseDate(date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            </p>
+          </div>
+          {/* slot count badge */}
+          {slots.length > 0 && (
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0 mt-0.5"
+              style={{ background: "var(--p)", color: "#fff" }}>
+              {slots.length} {slots.length === 1 ? "slot" : "slots"}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── TIMEZONE ── */}
+      <div className="px-4 pt-3 pb-2 shrink-0">
+        <div className="flex items-center gap-2 px-3 h-9 rounded-xl relative"
+          style={{ border: "1.5px solid var(--bd)", background: "var(--bg)" }}>
+          <Globe className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--t3)" }} />
+          <select
+            value={timezone}
+            onChange={e => setTimezone(e.target.value)}
+            className="sp-tz flex-1 bg-transparent border-none outline-none text-[12px] font-semibold cursor-pointer pr-4"
+            style={{ color: "var(--t2)" }}>
+            {TIMEZONES.map(tz => (
+              <option key={tz.v} value={tz.v}>{tz.l}</option>
+            ))}
+          </select>
+          <ChevronRight className="w-3 h-3 shrink-0 rotate-90 absolute right-3 pointer-events-none"
+            style={{ color: "var(--t3)" }} />
+        </div>
       </div>
 
       {/* ── RECURRING TOGGLE ── */}
-      <div className="px-4 py-3 border-b shrink-0" style={{ borderColor: "var(--bd)" }}>
+      <div className="px-4 pb-3 shrink-0">
         <button type="button" onClick={onToggleRecurring}
-          className="sp-recur w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer"
+          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl cursor-pointer transition-all duration-150"
           style={{
             background: recur ? "var(--p2)" : "var(--bg)",
             border: `1.5px solid ${recur ? "var(--p)" : "var(--bd)"}`,
           }}>
-          <div className="flex items-center gap-2 min-w-0">
-            <Repeat2 className="w-3.5 h-3.5 shrink-0" style={{ color: recur ? "var(--p)" : "var(--t3)" }} />
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: recur ? "var(--p)" : "var(--bd)" }}>
+              <Repeat2 className="w-3.5 h-3.5" style={{ color: recur ? "#fff" : "var(--white)" }} />
+            </div>
             <div className="text-left">
               <p className="text-[12px] font-bold" style={{ color: recur ? "var(--p)" : "var(--t1)" }}>
-                Every {weekday}
+                {recur ? `Repeats every ${weekday}` : `Repeat weekly`}
               </p>
               <p className="text-[10px]" style={{ color: "var(--t3)" }}>
-                {recur ? "Repeats weekly" : "One-time only"}
+                {recur ? "Applied to all future weeks" : `One-time · ${parseDate(date).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`}
               </p>
             </div>
           </div>
-          <div className="w-9 h-5 rounded-full relative shrink-0 ml-3"
-            style={{ background: recur ? "var(--p)" : "var(--bd)", transition: "background .2s" }}>
+          {/* pill toggle */}
+          <div className="w-10 h-[22px] rounded-full relative shrink-0 ml-2"
+            style={{ background: recur ? "var(--p)" : "rgba(0,0,0,.12)", transition: "background .2s" }}>
             <div style={{
-              position: "absolute", top: 3, width: 14, height: 14, borderRadius: "50%",
-              background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.2)",
-              left: recur ? "calc(100% - 17px)" : 3,
+              position:"absolute", top:3, width:16, height:16, borderRadius:"50%",
+              background:"#fff", boxShadow:"0 1px 4px rgba(0,0,0,.25)",
+              left: recur ? "calc(100% - 19px)" : 3,
               transition: "left .2s cubic-bezier(.34,1.56,.64,1)",
             }} />
           </div>
         </button>
       </div>
 
-      {/* ── TIME CHIPS ── */}
-      <div className="flex-1 px-4 pt-4 pb-3 overflow-y-auto">
-        <div className="flex items-center justify-between mb-3">
-          <p className={LBL} style={{ color: "var(--t3)" }}>Available at</p>
-          {slots.length > 0 && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: "var(--p2)", color: "var(--p)" }}>
-              {slots.length}
-            </span>
-          )}
-        </div>
+      {/* ── DIVIDER ── */}
+      <div className="mx-4 border-t shrink-0" style={{ borderColor: "var(--bd)" }} />
+
+      {/* ── SLOTS CHIPS AREA ── */}
+      <div className="flex-1 overflow-y-auto px-4 pt-3 pb-2">
+        <p className={`${LBL} mb-2.5`} style={{ color: "var(--t3)" }}>
+          Available at
+        </p>
 
         {slots.length === 0 ? (
-          <p className="text-[11px]" style={{ color: "var(--t3)" }}>
-            No times yet — add one below
-          </p>
+          <div className="flex flex-col items-center gap-2 py-6 text-center rounded-xl"
+            style={{ background: "var(--bg)", border: "1.5px dashed var(--bd)" }}>
+            <Clock className="w-6 h-6 opacity-25" style={{ color: "var(--t3)" }} />
+            <p className="text-[11px] font-medium" style={{ color: "var(--t3)" }}>No times set yet</p>
+            <p className="text-[10px]" style={{ color: "var(--t3)", opacity: .7 }}>
+              Pick a time below and tap Add
+            </p>
+          </div>
         ) : (
           <div className="flex flex-wrap gap-2">
             {slots.map(slot => (
               <button key={slot.id} type="button"
                 onClick={() => onRemoveSlot(slot.id)}
                 title="Click to remove"
-                className="sp-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer"
+                className="slot-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer"
                 style={{
                   background: "var(--p2)",
-                  border: "1.5px solid rgba(142,120,251,.25)",
+                  border: "1.5px solid rgba(142,120,251,.3)",
+                  boxShadow: "0 1px 4px rgba(142,120,251,.12)",
                 }}>
                 <Clock className="w-3 h-3 shrink-0" style={{ color: "var(--p)" }} />
-                <span className="text-[12px] font-bold tabular-nums" style={{ color: "var(--p)" }}>
+                <span className="chip-time text-[12px] font-bold tabular-nums" style={{ color: "var(--p)" }}>
                   {fmtTime12(slot.time)}
                 </span>
-                <X className="sp-chip-x w-3 h-3 shrink-0" style={{ color: "var(--t3)" }} />
+                <X className="w-3 h-3 shrink-0 opacity-50" style={{ color: "var(--p)" }} />
               </button>
             ))}
           </div>
@@ -434,26 +510,40 @@ function SlotPanel({
       </div>
 
       {/* ── ADD TIME ── */}
-      <div className="px-4 pb-4 shrink-0 border-t pt-3" style={{ borderColor: "var(--bd)" }}>
+      <div className="px-4 pt-2 pb-4 shrink-0 border-t" style={{ borderColor: "var(--bd)" }}>
         <p className={`${LBL} mb-2`} style={{ color: "var(--t3)" }}>Add a time</p>
         <div className="flex gap-2">
-          <input
-            type="time"
-            value={newTime}
-            onChange={e => setNewTime(e.target.value)}
-            className="sp-time flex-1 h-10 px-3 rounded-xl text-[13px] font-bold cursor-pointer outline-none"
-            style={{
-              border: "1.5px solid var(--bd)",
-              background: "var(--bg)",
-              color: "var(--t1)",
-            }}
-            onFocus={e  => (e.currentTarget as HTMLElement).style.borderColor = "var(--p)"}
-            onBlur={e   => (e.currentTarget as HTMLElement).style.borderColor = "var(--bd)"}
-          />
+          {/* styled select dropdown */}
+          <div className="relative flex-1">
+            <select
+              value={newTime}
+              onChange={e => setNewTime(e.target.value)}
+              className="sp-select w-full h-10 pl-3 pr-8 rounded-xl text-[13px] font-bold cursor-pointer outline-none"
+              style={{
+                border: "1.5px solid var(--bd)",
+                background: "var(--bg)",
+                color: "var(--t1)",
+                transition: "border-color .12s",
+              }}
+              onFocus={e  => (e.currentTarget as HTMLElement).style.borderColor = "var(--p)"}
+              onBlur={e   => (e.currentTarget as HTMLElement).style.borderColor = "var(--bd)"}>
+              {TIME_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <ChevronRight className="w-3.5 h-3.5 rotate-90 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: "var(--t3)" }} />
+          </div>
+          {/* add button with success state */}
           <button type="button" onClick={handleAdd}
-            className="sp-add-btn h-10 px-4 rounded-xl text-[12px] font-bold cursor-pointer shrink-0"
-            style={{ background: "var(--p2)", color: "var(--p)", border: "1.5px solid rgba(142,120,251,.25)" }}>
-            + Add
+            className="h-10 px-4 rounded-xl text-[12px] font-bold cursor-pointer shrink-0 transition-all duration-150"
+            style={{
+              background: justAdded ? "#10b981" : "var(--p)",
+              color: "#fff",
+              boxShadow: justAdded ? "0 2px 12px rgba(16,185,129,.4)" : "0 2px 10px rgba(142,120,251,.35)",
+              animation: justAdded ? "addPop .4s ease both" : "none",
+            }}>
+            {justAdded ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           </button>
         </div>
       </div>
@@ -483,15 +573,8 @@ function StepAvailability({ data, set }: { data: FormData; set: (f: keyof FormDa
   }
 
   const removeSlot = (date: string, slotId: string) => {
-    const updated = data.availability.map(a =>
-      a.date !== date ? a : { ...a, slots: a.slots.filter(s => s.id !== slotId) }
-    )
-    set("availability", updated)
-  }
-
-  const changeSlot = (date: string, slotId: string, time: string) => {
     set("availability", data.availability.map(a =>
-      a.date === date ? { ...a, slots: a.slots.map(s => s.id === slotId ? { ...s, time } : s) } : a
+      a.date !== date ? a : { ...a, slots: a.slots.filter(s => s.id !== slotId) }
     ))
   }
 
@@ -502,88 +585,146 @@ function StepAvailability({ data, set }: { data: FormData; set: (f: keyof FormDa
   }
 
   const totalSlots = data.availability.reduce((n, a) => n + a.slots.length, 0)
+  const datesWithSlots = data.availability.filter(a => a.slots.length > 0).length
 
   return (
-    <div className="flex h-full gap-5">
+    <div className="flex flex-col h-full overflow-hidden">
 
-      {/* LEFT — calendar */}
-      <div className="flex-1 overflow-y-auto min-w-0">
-        <div className="mb-4">
-          <h3 className="text-[14px] font-bold mb-1" style={{ color: "var(--t1)" }}>Click a date to add availability</h3>
-          <p className="text-[12px]" style={{ color: "var(--t3)" }}>
-            {data.availability.length > 0
-              ? `${data.availability.length} date${data.availability.length !== 1 ? "s" : ""} · ${totalSlots} total slot${totalSlots !== 1 ? "s" : ""}`
-              : "Select dates when you're available for sessions"}
-          </p>
+      {/* ── SUMMARY BAR ── */}
+      <div className="px-6 py-3 shrink-0 border-b flex items-center gap-3"
+        style={{ borderColor: "var(--bd)", background: "var(--white)" }}>
+        <div className="flex items-center gap-2 flex-1 flex-wrap">
+          {datesWithSlots === 0 ? (
+            <span className="text-[12px]" style={{ color: "var(--t3)" }}>
+              Select a date on the calendar, then add your available times →
+            </span>
+          ) : (
+            <>
+              <span className="flex items-center gap-1.5 text-[12px] font-bold"
+                style={{ color: "var(--t1)" }}>
+                <Calendar className="w-3.5 h-3.5" style={{ color: "var(--p)" }} />
+                {datesWithSlots} date{datesWithSlots !== 1 ? "s" : ""}
+              </span>
+              <span style={{ color: "var(--bd)" }}>·</span>
+              <span className="flex items-center gap-1.5 text-[12px] font-bold"
+                style={{ color: "var(--t1)" }}>
+                <Clock className="w-3.5 h-3.5" style={{ color: "var(--p)" }} />
+                {totalSlots} slot{totalSlots !== 1 ? "s" : ""}
+              </span>
+              {data.availability.some(a => a.recurring) && (
+                <>
+                  <span style={{ color: "var(--bd)" }}>·</span>
+                  <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: "var(--p2)", color: "var(--p)" }}>
+                    <Repeat2 className="w-3 h-3" />
+                    {data.availability.filter(a => a.recurring).length} recurring
+                  </span>
+                </>
+              )}
+            </>
+          )}
         </div>
-        <CalendarView
-          availability={data.availability}
-          selectedDate={selectedDate}
-          onSelectDate={selectDate}
-        />
-      </div>
-
-      {/* RIGHT — slot panel */}
-      <div className="w-[300px] shrink-0 rounded-2xl overflow-hidden flex flex-col"
-        style={{ border: "1px solid var(--bd)", background: "var(--white)" }}>
-        {selectedDate ? (
-          <SlotPanel
-            date={selectedDate}
-            entry={entryFor(selectedDate)}
-            onAddSlot={t => addSlot(selectedDate, t)}
-            onRemoveSlot={id => removeSlot(selectedDate, id)}
-            onToggleRecurring={() => toggleRecurring(selectedDate)}
-          />
-        ) : (
-          <div className="flex flex-col h-full">
-            {/* header */}
-            <div className="px-4 py-3 border-b shrink-0" style={{ borderColor: "var(--bd)" }}>
-              <p className="text-[13px] font-black" style={{ color: "var(--t1)" }}>Schedule</p>
-              <p className="text-[10px] mt-0.5" style={{ color: "var(--t3)" }}>
-                {data.availability.length === 0
-                  ? "Click a date on the calendar"
-                  : `${data.availability.length} date${data.availability.length !== 1 ? "s" : ""} · ${totalSlots} slot${totalSlots !== 1 ? "s" : ""}`
-                }
-              </p>
-            </div>
-
-            {data.availability.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-2 p-5 text-center">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: "var(--p2)" }}>
-                  <Calendar className="w-5 h-5" style={{ color: "var(--p)" }} />
-                </div>
-                <p className="text-[12px] font-semibold" style={{ color: "var(--t2)" }}>No dates yet</p>
-                <p className="text-[11px]" style={{ color: "var(--t3)" }}>Click any date on the calendar to add availability</p>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5">
-                {data.availability.map(a => (
-                  <button key={a.date} type="button" onClick={() => setSelectedDate(a.date)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border-2 cursor-pointer transition-all text-left"
-                    style={{ borderColor: "var(--bd)", background: "var(--white)" }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--p)"; (e.currentTarget as HTMLElement).style.background = "var(--p2)"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--bd)"; (e.currentTarget as HTMLElement).style.background = "var(--white)"; }}>
-                    <div>
-                      <p className="text-[12px] font-bold" style={{ color: "var(--t1)" }}>
-                        {parseDate(a.date).toLocaleDateString("en-US", { weekday:"short", day:"numeric", month:"short" })}
-                      </p>
-                      <p className="text-[10px]" style={{ color: "var(--t3)" }}>
-                        {a.slots.map(s => fmtTime12(s.time)).join("  ·  ")}
-                        {a.recurring ? "  ↻" : ""}
-                      </p>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                      style={{ background: "var(--p2)", color: "var(--p)" }}>
-                      {a.slots.length}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+        {selectedDate && (
+          <button type="button" onClick={() => setSelectedDate(null)}
+            className="text-[11px] font-bold cursor-pointer px-2.5 py-1 rounded-lg transition-all"
+            style={{ color: "var(--t3)", background: "var(--bg)" }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "var(--t1)"}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "var(--t3)"}>
+            ← All dates
+          </button>
         )}
       </div>
 
+      {/* ── TWO PANELS ── */}
+      <div className="flex flex-1 overflow-hidden gap-0">
+
+        {/* LEFT — calendar */}
+        <div className="flex-1 overflow-y-auto p-5 min-w-0">
+          <CalendarView
+            availability={data.availability}
+            selectedDate={selectedDate}
+            onSelectDate={selectDate}
+          />
+        </div>
+
+        {/* divider */}
+        <div className="w-px shrink-0" style={{ background: "var(--bd)" }} />
+
+        {/* RIGHT — slot panel or date list */}
+        <div className="w-[290px] shrink-0 flex flex-col overflow-hidden">
+          {selectedDate ? (
+            <SlotPanel
+              date={selectedDate}
+              entry={entryFor(selectedDate)}
+              onAddSlot={t => addSlot(selectedDate, t)}
+              onRemoveSlot={id => removeSlot(selectedDate, id)}
+              onToggleRecurring={() => toggleRecurring(selectedDate)}
+            />
+          ) : (
+            <div className="flex flex-col h-full">
+              <div className="px-4 py-3.5 border-b shrink-0" style={{ borderColor: "var(--bd)" }}>
+                <p className="text-[12px] font-black" style={{ color: "var(--t1)" }}>Your schedule</p>
+                <p className="text-[10px] mt-0.5" style={{ color: "var(--t3)" }}>
+                  {data.availability.length === 0
+                    ? "No dates added yet"
+                    : `${data.availability.length} date${data.availability.length !== 1 ? "s" : ""} configured`}
+                </p>
+              </div>
+
+              {data.availability.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 px-5 text-center">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                    style={{ background: "var(--p2)" }}>
+                    <Calendar className="w-6 h-6" style={{ color: "var(--p)" }} />
+                  </div>
+                  <div>
+                    <p className="text-[12px] font-bold mb-1" style={{ color: "var(--t2)" }}>No dates yet</p>
+                    <p className="text-[11px] leading-relaxed" style={{ color: "var(--t3)" }}>
+                      Click any date on the calendar to start setting your availability
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+                  {data.availability.map(a => (
+                    <button key={a.date} type="button"
+                      onClick={() => setSelectedDate(a.date)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all text-left"
+                      style={{ border: "1.5px solid var(--bd)", background: "var(--white)" }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLElement).style.borderColor = "var(--p)"
+                        ;(e.currentTarget as HTMLElement).style.background = "var(--p2)"
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLElement).style.borderColor = "var(--bd)"
+                        ;(e.currentTarget as HTMLElement).style.background = "var(--white)"
+                      }}>
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-bold truncate" style={{ color: "var(--t1)" }}>
+                          {parseDate(a.date).toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric" })}
+                          {a.recurring && <span className="ml-1.5 text-[10px]" style={{ color: "var(--p)" }}>↻</span>}
+                        </p>
+                        <p className="text-[10px] truncate mt-0.5" style={{ color: "var(--t3)" }}>
+                          {a.slots.length === 0
+                            ? "No times — tap to add"
+                            : a.slots.map(s => fmtTime12(s.time)).join(" · ")}
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-2"
+                        style={{
+                          background: a.slots.length > 0 ? "var(--p2)" : "rgba(0,0,0,.05)",
+                          color: a.slots.length > 0 ? "var(--p)" : "var(--t3)",
+                        }}>
+                        {a.slots.length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
