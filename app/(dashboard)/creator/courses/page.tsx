@@ -4,11 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
-import DashIcon    from '@/components/creator-dashboard/DashIcon'
 import { CourseCard, type CourseCardData } from '@/components/courses/course-card'
-import { BookOpen, Plus, RefreshCw } from 'lucide-react'
+import { BookOpen, Plus, RefreshCw, Users, Activity, Zap } from 'lucide-react'
 
-// skeleton card for loading state
 function SkeletonCard() {
   return (
     <div className="rounded-2xl overflow-hidden animate-pulse" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
@@ -27,13 +25,13 @@ function SkeletonCard() {
 }
 
 export default function CoursesPage() {
-  const [courses,  setCourses]  = useState<CourseCardData[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState('')
+  const [courses, setCourses] = useState<CourseCardData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState('')
+  const [tab,     setTab]     = useState<'all'|'active'|'inactive'>('all')
 
   const load = () => {
     setLoading(true); setError('')
-    // ── Mock: load courses from localStorage only (no real API) ──────────────
     try {
       const stored = localStorage.getItem('chabaqa_mock_courses')
       const list: CourseCardData[] = stored ? JSON.parse(stored) : []
@@ -62,16 +60,40 @@ export default function CoursesPage() {
 
   useEffect(() => { load() }, [])
 
+  const totalCourses    = courses.length
+  const activeCourses   = courses.filter(c => c.isPublished).length
+  const totalEnrollment = courses.reduce((sum, c) => sum + (c.enrollmentsCount ?? 0), 0)
+
+  const STATS = [
+    { label:'Total Courses',      value: totalCourses,    icon: BookOpen,  color:'var(--p)',    bg:'var(--p2)' },
+    { label:'Active',             value: activeCourses,   icon: Zap,       color:'var(--pink)', bg:'rgba(236,72,153,.1)' },
+    { label:'Total Enrollments',  value: totalEnrollment, icon: Users,     color:'var(--cyan)', bg:'rgba(34,211,238,.12)' },
+  ]
+
+  const TABS: { key: 'all'|'active'|'inactive'; label: string }[] = [
+    { key:'all',      label:'All' },
+    { key:'active',   label:'Active' },
+    { key:'inactive', label:'Inactive' },
+  ]
+
+  const filtered = courses.filter(c => {
+    if (tab === 'active')   return c.isPublished
+    if (tab === 'inactive') return !c.isPublished
+    return true
+  })
+
+  const tabCounts = {
+    all:      courses.length,
+    active:   activeCourses,
+    inactive: courses.length - activeCourses,
+  }
+
   return (
     <>
       <style>{`
-        @keyframes dashFadeUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--p3); border-radius: 10px; }
+        @keyframes dashFadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        ::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-track{background:transparent}
+        ::-webkit-scrollbar-thumb{background:var(--p3);border-radius:10px}
       `}</style>
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -79,86 +101,116 @@ export default function CoursesPage() {
         <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title="Courses" subtitle="Manage your online courses" />
 
-          <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main className="p-7 flex-1 space-y-6" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
-            {/* header row */}
-            <div className="flex items-center justify-between mb-7">
+            {/* ── HEADER ── */}
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-[18px] font-bold" style={{ color: 'var(--t1)' }}>Your Courses</h2>
+                <h2 className="text-[20px] font-black" style={{ color: 'var(--t1)' }}>Your Courses</h2>
                 <p className="text-[13px] mt-0.5" style={{ color: 'var(--t3)' }}>
-                  {loading ? 'Loading…' : `${courses.length} course${courses.length !== 1 ? 's' : ''} created`}
+                  {loading ? 'Loading…' : `${totalCourses} course${totalCourses !== 1 ? 's' : ''} created`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={load}
-                  className="p-2 rounded-xl transition-all cursor-pointer"
+                <button onClick={load}
+                  className="p-2.5 rounded-xl cursor-pointer transition-all"
                   style={{ border: '1.5px solid var(--bd)', background: 'transparent', color: 'var(--t3)' }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--p2)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
-                  title="Refresh"
-                >
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
                   <RefreshCw className="w-4 h-4" />
                 </button>
-                <Link
-                  href="/creator/courses/create"
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-                  style={{ background: 'var(--p)', boxShadow: '0 4px 12px rgba(142,120,251,.35)' }}
-                >
-                  <Plus className="w-4 h-4" />
-                  Create Course
+                <Link href="/creator/courses/create"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90"
+                  style={{ background: 'var(--p)', boxShadow: '0 4px 14px rgba(142,120,251,.4)' }}>
+                  <Plus className="w-4 h-4" /> Create Course
                 </Link>
               </div>
             </div>
 
-            {/* error */}
-            {error && (
-              <div className="mb-6 px-4 py-3 rounded-xl text-sm" style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b83232' }}>
-                {error} —{' '}
-                <button onClick={load} className="font-semibold underline cursor-pointer">retry</button>
-              </div>
-            )}
-
-            {/* loading skeleton */}
-            {loading && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
-              </div>
-            )}
-
-            {/* empty state */}
-            {!loading && courses.length === 0 && !error && (
-              <div
-                className="rounded-2xl flex flex-col items-center justify-center py-20 text-center"
-                style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}
-              >
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-                  style={{ background: 'var(--p2)' }}>
-                  <BookOpen className="w-8 h-8" style={{ color: 'var(--p)' }} />
+            {/* ── STATS ROW ── */}
+            <div className="grid grid-cols-3 gap-4">
+              {STATS.map(s => (
+                <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4"
+                  style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 2px 8px rgba(0,0,0,.03)' }}>
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: s.bg }}>
+                    <s.icon className="w-6 h-6" style={{ color: s.color }} />
+                  </div>
+                  <div>
+                    <p className="text-[28px] font-black leading-none" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[12px] font-semibold mt-0.5" style={{ color: 'var(--t3)' }}>{s.label}</p>
+                  </div>
                 </div>
-                <h3 className="text-[15px] font-semibold mb-2" style={{ color: 'var(--t1)' }}>No courses yet</h3>
-                <p className="text-[13px] mb-5 max-w-xs" style={{ color: 'var(--t3)' }}>
-                  Create your first course and start sharing your knowledge with your community.
-                </p>
-                <Link
-                  href="/creator/courses/create"
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-                  style={{ background: 'var(--p)' }}
-                >
-                  <Plus className="w-4 h-4" />
-                  Create your first course
-                </Link>
-              </div>
-            )}
+              ))}
+            </div>
 
-            {/* course grid */}
-            {!loading && courses.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {courses.map((c, i) => (
-                  <CourseCard key={(c._id ?? c.id ?? i)} course={c} />
-                ))}
+            {/* ── COURSES GRID ── */}
+            <div>
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>All Courses</h3>
+                <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+                  {TABS.map(t => (
+                    <button key={t.key} onClick={() => setTab(t.key)}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[12px] font-bold cursor-pointer transition-all"
+                      style={{
+                        background: tab === t.key ? 'var(--p)' : 'transparent',
+                        color:      tab === t.key ? '#fff'     : 'var(--t3)',
+                      }}>
+                      {t.label}
+                      <span className="text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold"
+                        style={{
+                          background: tab === t.key ? 'rgba(255,255,255,.25)' : 'var(--bg)',
+                          color: tab === t.key ? '#fff' : 'var(--t3)',
+                        }}>
+                        {tabCounts[t.key]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
+
+              {error && (
+                <div className="mb-4 px-4 py-3 rounded-xl text-sm"
+                  style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b83232' }}>
+                  {error} — <button onClick={load} className="font-semibold underline cursor-pointer">retry</button>
+                </div>
+              )}
+
+              {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="rounded-2xl flex flex-col items-center justify-center py-20 text-center"
+                  style={{ background: 'var(--white)', border: '1.5px dashed var(--bd)' }}>
+                  <div className="w-16 h-16 rounded-3xl flex items-center justify-center mb-4"
+                    style={{ background: 'var(--p2)' }}>
+                    <BookOpen className="w-8 h-8" style={{ color: 'var(--p)' }} />
+                  </div>
+                  <h3 className="text-[16px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>
+                    {tab === 'all' ? 'No courses yet' : `No ${tab} courses`}
+                  </h3>
+                  <p className="text-[13px] mb-6 max-w-xs" style={{ color: 'var(--t3)' }}>
+                    {tab === 'all'
+                      ? 'Create your first course and start sharing your knowledge with your community.'
+                      : 'Switch the tab to see all your courses.'}
+                  </p>
+                  {tab === 'all' && (
+                    <Link href="/creator/courses/create"
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-bold text-white hover:opacity-90"
+                      style={{ background: 'var(--p)', boxShadow: '0 4px 14px rgba(142,120,251,.35)' }}>
+                      <Plus className="w-4 h-4" /> Create your first course
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {filtered.map((c, i) => (
+                    <CourseCard key={(c._id ?? c.id ?? i)} course={c} />
+                  ))}
+                </div>
+              )}
+            </div>
 
           </main>
         </div>
