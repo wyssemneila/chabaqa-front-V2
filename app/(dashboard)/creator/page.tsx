@@ -20,10 +20,10 @@ export default function CreatorDashboardPage() {
         }
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #d4d2ca; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: var(--p3); border-radius: 10px; }
       `}</style>
 
-      <div className="flex min-h-screen" style={{ background: '#f5f4f0' }}>
+      <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
 
         <div className="ml-[220px] flex-1 flex flex-col min-h-screen">

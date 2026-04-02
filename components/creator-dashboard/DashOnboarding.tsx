@@ -14,9 +14,9 @@ export default function DashOnboarding() {
 
   return (
     <div className="relative overflow-hidden rounded-[14px] p-5 mb-6 flex items-center gap-6"
-      style={{ background: 'linear-gradient(135deg,#1a1916 0%,#2d2c28 100%)', animation: 'dashFadeUp .4s ease both' }}>
-      <div className="absolute top-[-40px] right-[-40px] w-[180px] h-[180px] rounded-full opacity-[.07]"
-        style={{ background: '#2a5cff' }} />
+      style={{ background: 'linear-gradient(135deg,#8e78fb 0%,#6c52f0 100%)', animation: 'dashFadeUp .4s ease both' }}>
+      <div className="absolute top-[-40px] right-[-40px] w-[180px] h-[180px] rounded-full opacity-[.15]"
+        style={{ background: '#ffffff' }} />
 
       <div className="flex-1 relative z-10">
         <h3 className="text-sm font-semibold text-white mb-1">Launch your community in 3 steps</h3>

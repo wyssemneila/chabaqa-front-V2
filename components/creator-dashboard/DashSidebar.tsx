@@ -64,24 +64,24 @@ export default function DashSidebar() {
   const bare = pathname.replace(/^\/(en|ar)/, '') || '/'
 
   return (
-    <aside style={{ background: '#ffffff', borderRight: '1px solid #e4e2db' }}
+    <aside style={{ background: 'var(--white)', borderRight: '1px solid var(--bd)' }}
       className="fixed top-0 left-0 h-screen w-[220px] flex flex-col overflow-y-auto z-50">
 
       {/* Brand */}
-      <div style={{ borderBottom: '1px solid #e4e2db' }} className="px-4 pt-[18px] pb-[14px] flex items-center gap-2.5">
+      <div style={{ borderBottom: '1px solid var(--bd)' }} className="px-4 pt-[18px] pb-[14px] flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-semibold text-white shrink-0"
-          style={{ background: '#1a1916' }}>
+          style={{ background: 'var(--p)' }}>
           Ch
         </div>
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold truncate" style={{ color: '#1a1916' }}>Motion Masters</p>
-          <p className="text-[11px]" style={{ color: '#9a9890' }}>Demo Creator</p>
+          <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>Motion Masters</p>
+          <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Demo Creator</p>
         </div>
       </div>
 
       {/* Create button */}
       <button className="mx-3 mt-3 mb-2 px-3 py-2 rounded-[10px] text-xs font-medium flex items-center gap-1.5 transition-opacity hover:opacity-85 w-[calc(100%-24px)]"
-        style={{ background: '#1a1916', color: '#fff' }}>
+        style={{ background: 'var(--p)', color: '#fff' }}>
         <DashIcon name="plus" size={13} color="white" />
         Create Community
       </button>
@@ -91,7 +91,7 @@ export default function DashSidebar() {
         {navGroups.map((group) => (
           <div key={group.label} className="pt-2.5 pb-1">
             <p className="text-[10px] font-semibold tracking-[.07em] uppercase px-4 pb-1.5"
-              style={{ color: '#9a9890' }}>
+              style={{ color: 'var(--t3)' }}>
               {group.label}
             </p>
             {group.items.map((item) => {
@@ -100,20 +100,20 @@ export default function DashSidebar() {
                 <Link key={item.href} href={item.href}
                   className="flex items-center gap-2 px-4 py-[7px] text-[13px] relative transition-colors"
                   style={{
-                    background: active ? '#eef1ff' : 'transparent',
-                    color: active ? '#2a5cff' : '#5a5850',
+                    background: active ? 'var(--p2)' : 'transparent',
+                    color: active ? 'var(--p)' : 'var(--t2)',
                     fontWeight: active ? 500 : 400,
                   }}
-                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = '#f0efe9'; (e.currentTarget as HTMLElement).style.color = '#1a1916' } }}
-                  onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#5a5850' } }}
+                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'var(--bg)'; (e.currentTarget as HTMLElement).style.color = 'var(--t1)' } }}
+                  onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--t2)' } }}
                 >
-                  {active && <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-[3px]" style={{ background: '#2a5cff' }} />}
-                  <DashIcon name={item.icon} size={15} color={active ? '#2a5cff' : 'currentColor'}
+                  {active && <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-[3px]" style={{ background: 'var(--p)' }} />}
+                  <DashIcon name={item.icon} size={15} color={active ? 'var(--p)' : 'currentColor'}
                     className={active ? 'opacity-100' : 'opacity-70'} />
                   {item.label}
                   {item.soon && (
                     <span className="ml-auto text-[9px] font-semibold tracking-[.04em] px-1.5 py-0.5 rounded-full"
-                      style={{ background: '#f0efe9', color: '#9a9890', border: '1px solid #e4e2db' }}>
+                      style={{ background: 'var(--p2)', color: 'var(--t3)', border: '1px solid var(--bd)' }}>
                       soon
                     </span>
                   )}
@@ -125,13 +125,13 @@ export default function DashSidebar() {
       </div>
 
       {/* Footer */}
-      <div style={{ borderTop: '1px solid #e4e2db' }} className="py-2">
+      <div style={{ borderTop: '1px solid var(--bd)' }} className="py-2">
         {footerItems.map((item) => (
           <Link key={item.href} href={item.href}
             className="flex items-center gap-2 px-4 py-[7px] text-[13px] transition-colors"
-            style={{ color: '#5a5850' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f0efe9'; (e.currentTarget as HTMLElement).style.color = '#1a1916' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#5a5850' }}
+            style={{ color: 'var(--t2)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--p2)'; (e.currentTarget as HTMLElement).style.color = 'var(--t1)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--t2)' }}
           >
             <DashIcon name={item.icon} size={15} className="opacity-70" />
             {item.label}
