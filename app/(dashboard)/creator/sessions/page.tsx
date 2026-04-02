@@ -23,7 +23,10 @@ const TR = {
     noSessions: 'No sessions yet', noSessionsDesc: 'Create your first 1-on-1 coaching session and start booking with students.',
     createFirst: 'Create your first session', upcoming: 'Upcoming Sessions',
     noUpcoming: 'No upcoming confirmed sessions', join: 'Join', pending: 'Pending',
-    manage: 'Manage', free: 'Free', days: 'd', slots: 'slots/wk',
+    manage: 'Manage', free: 'Free', days: 'days', slots: 'slots/wk',
+    live: 'Live', draft: 'Draft', viewAll: 'View all',
+    upcomingNoMeet: 'No upcoming confirmed sessions', joinBtn: 'Join', pendingBadge: 'Pending',
+    noSessionsAlt: 'No sessions',
   },
   ar: {
     title: 'جلساتك', sub: (s: number, b: number) => `${s} جلسات · ${b} حجوزات`,
@@ -37,6 +40,9 @@ const TR = {
     createFirst: 'أنشئ جلستك الأولى', upcoming: 'الجلسات القادمة',
     noUpcoming: 'لا توجد جلسات قادمة مؤكدة', join: 'انضم', pending: 'معلّق',
     manage: 'إدارة', free: 'مجاني', days: 'أيام', slots: 'فتحة/أسبوع',
+    live: 'مباشر', draft: 'مسودة', viewAll: 'عرض الكل',
+    upcomingNoMeet: 'لا توجد جلسات قادمة مؤكدة', joinBtn: 'انضم', pendingBadge: 'معلّق',
+    noSessionsAlt: 'لا توجد جلسات',
   },
 }
 
@@ -79,7 +85,7 @@ function SkeletonCard() {
 }
 
 // ─── session card ─────────────────────────────────────────────────────────────
-function SessionCardUI({ session }: { session: SessionCard }) {
+function SessionCardUI({ session, t }: { session: SessionCard; t: typeof TR['en'] }) {
   const dur = session.duration >= 60 ? `${session.duration/60}h` : `${session.duration}min`
   return (
     <div className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200 group"
@@ -103,28 +109,27 @@ function SessionCardUI({ session }: { session: SessionCard }) {
             backdropFilter:'blur(4px)',
           }}>
           {session.isPublished ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-          {session.isPublished ? 'Live' : 'Draft'}
+          {session.isPublished ? t.live : t.draft}
         </span>
       </div>
       <div className="flex flex-col flex-1 p-5">
         <h3 className="text-[14px] font-bold leading-snug mb-3 line-clamp-2" style={{ color:'var(--t1)' }}>{session.title}</h3>
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color:'var(--t3)' }}>
-            <Calendar className="w-3 h-3" /> {session.availabilityDays} days
+            <Calendar className="w-3 h-3" /> {session.availabilityDays} {t.days}
           </span>
           <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color:'var(--t3)' }}>
-            <Clock className="w-3 h-3" /> {session.totalSlots} slots/week
+            <Clock className="w-3 h-3" /> {session.totalSlots} {t.slots}
           </span>
         </div>
         <div className="flex items-center justify-between pt-3.5 border-t mt-auto" style={{ borderColor:'var(--bd)' }}>
-          <span className="text-[13px] font-bold"
-            style={{ color: session.priceType==='free' ? 'var(--p)' : 'var(--p)' }}>
-            {session.priceType==='free' ? 'Free' : `${session.price ?? 0} TND`}
+          <span className="text-[13px] font-bold" style={{ color:'var(--p)' }}>
+            {session.priceType==='free' ? t.free : `${session.price ?? 0} TND`}
           </span>
           <Link href={`/creator/sessions/${session._id}/manage`}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold text-white transition-all hover:opacity-90"
             style={{ background:'var(--p)', boxShadow:'0 2px 8px rgba(142,120,251,.3)' }}>
-            Manage
+            {t.manage}
           </Link>
         </div>
       </div>
@@ -310,7 +315,7 @@ export default function SessionsPage() {
             {/* ── SESSIONS GRID ── */}
             <div>
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-[15px] font-bold" style={{ color:'var(--t1)' }}>All Sessions</h3>
+                <h3 className="text-[15px] font-bold" style={{ color:'var(--t1)' }}>{t.allSessions}</h3>
                 <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
                   {TABS.map(t => (
                     <button key={t.key} onClick={() => setTab(t.key)}
@@ -342,19 +347,17 @@ export default function SessionsPage() {
                   <div className="w-16 h-16 rounded-3xl flex items-center justify-center mb-4" style={{ background:'var(--p2)' }}>
                     <Calendar className="w-8 h-8" style={{ color:'var(--p)' }} />
                   </div>
-                  <h3 className="text-[16px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>No sessions yet</h3>
-                  <p className="text-[13px] mb-6 max-w-xs" style={{ color:'var(--t3)' }}>
-                    Create your first 1-on-1 coaching session and start booking with students.
-                  </p>
+                  <h3 className="text-[16px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>{t.noSessions}</h3>
+                  <p className="text-[13px] mb-6 max-w-xs" style={{ color:'var(--t3)' }}>{t.noSessionsDesc}</p>
                   <Link href="/creator/sessions/create"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-bold text-white hover:opacity-90"
                     style={{ background:'var(--p)', boxShadow:'0 4px 14px rgba(142,120,251,.35)' }}>
-                    <Plus className="w-4 h-4" /> Create your first session
+                    <Plus className="w-4 h-4" /> {t.createFirst}
                   </Link>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                  {filtered.map(s => <SessionCardUI key={s._id} session={s} />)}
+                  {filtered.map(s => <SessionCardUI key={s._id} session={s} t={t} />)}
                 </div>
               )}
             </div>
@@ -363,13 +366,13 @@ export default function SessionsPage() {
             <div className="rounded-2xl overflow-hidden" style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
               <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor:'var(--bd)' }}>
                 <div className="flex items-center gap-2">
-                  <p className="text-[14px] font-bold" style={{ color:'var(--t1)' }}>Upcoming Sessions</p>
+                  <p className="text-[14px] font-bold" style={{ color:'var(--t1)' }}>{t.upcoming}</p>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                     style={{ background:'var(--p2)', color:'var(--p)' }}>{upcoming.length}</span>
                 </div>
                 <Link href="/creator/sessions/bookings"
                   className="flex items-center gap-1 text-[12px] font-bold" style={{ color:'var(--p)' }}>
-                  View all <ChevronRight className="w-3.5 h-3.5" />
+                  {t.viewAll} <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
               {upcoming.length === 0 ? (
@@ -377,7 +380,7 @@ export default function SessionsPage() {
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background:'var(--p2)' }}>
                     <Calendar className="w-4 h-4" style={{ color:'var(--p)' }} />
                   </div>
-                  <p className="text-[13px]" style={{ color:'var(--t3)' }}>No upcoming confirmed sessions</p>
+                  <p className="text-[13px]" style={{ color:'var(--t3)' }}>{t.noUpcoming}</p>
                 </div>
               ) : (
                 <div className="divide-y" style={{ borderColor:'var(--bd)' }}>
@@ -399,12 +402,12 @@ export default function SessionsPage() {
                         <a href={b.meetLink} target="_blank" rel="noreferrer"
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 hover:opacity-90"
                           style={{ background:'var(--p)', color:'#fff', boxShadow:'0 2px 8px rgba(142,120,251,.3)' }}>
-                          <Video className="w-3 h-3" /> Join
+                          <Video className="w-3 h-3" /> {t.joinBtn}
                         </a>
                       ) : (
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0"
                           style={{ background:'rgba(251,146,60,.12)', color:'var(--orange)' }}>
-                          Pending
+                          {t.pendingBadge}
                         </span>
                       )}
                     </div>
