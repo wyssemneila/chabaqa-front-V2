@@ -4,30 +4,47 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
-import { Clock, Plus, RefreshCw, Globe, Lock, Calendar, DollarSign, Users } from 'lucide-react'
+import {
+  Clock, Plus, RefreshCw, Globe, Lock, Calendar, DollarSign,
+  Users, Video, CheckCircle, ChevronRight, ExternalLink,
+  BookOpen, TrendingUp, Zap, Star, Activity, Check, X,
+} from 'lucide-react'
 
+// ─── types ────────────────────────────────────────────────────────────────────
 interface SessionCard {
-  _id: string
-  title: string
-  banner?: string
-  duration: number
-  priceType: 'free' | 'paid'
-  price?: number
-  isPublished: boolean
-  availabilityDays: number
-  totalSlots: number
+  _id: string; title: string; banner?: string; duration: number
+  priceType: 'free'|'paid'; price?: number; isPublished: boolean
+  availabilityDays: number; totalSlots: number
+}
+interface Booking {
+  _id: string; studentName: string; studentEmail: string
+  sessionId: string; sessionTitle: string; duration: number
+  price: number; date: string
+  status: 'pending'|'confirmed'|'rejected'|'completed'
+  meetLink?: string
 }
 
+// ─── helpers ──────────────────────────────────────────────────────────────────
+function initials(name: string) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2)
+}
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US',{ weekday:'short', month:'short', day:'numeric' })
+}
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' })
+}
+
+// ─── sub-components ───────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl overflow-hidden animate-pulse" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-      <div className="aspect-video" style={{ background: 'var(--bg)' }} />
+    <div className="rounded-2xl overflow-hidden animate-pulse" style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
+      <div className="aspect-video" style={{ background:'var(--bg)' }} />
       <div className="p-5 space-y-3">
-        <div className="h-4 rounded-lg w-3/4" style={{ background: 'var(--bg)' }} />
-        <div className="h-3 rounded-lg w-full" style={{ background: 'var(--bg)' }} />
+        <div className="h-4 rounded-lg w-3/4" style={{ background:'var(--bg)' }} />
+        <div className="h-3 rounded-lg w-full" style={{ background:'var(--bg)' }} />
         <div className="flex gap-2 pt-2">
-          <div className="h-8 rounded-lg flex-1" style={{ background: 'var(--bg)' }} />
-          <div className="h-8 rounded-lg flex-1" style={{ background: 'var(--bg)' }} />
+          <div className="h-8 rounded-lg flex-1" style={{ background:'var(--bg)' }} />
         </div>
       </div>
     </div>
@@ -35,86 +52,178 @@ function SkeletonCard() {
 }
 
 function SessionCardUI({ session }: { session: SessionCard }) {
-  const durationLabel = session.duration >= 60
-    ? `${session.duration / 60}h`
-    : `${session.duration}min`
-
+  const dur = session.duration >= 60 ? `${session.duration/60}h` : `${session.duration}min`
   return (
     <div className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200 group"
-      style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 2px 8px rgba(0,0,0,.04)' }}
-      onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 12px 40px rgba(142,120,251,.16)'}
-      onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,.04)'}>
-
-      {/* banner */}
-      <div className="relative aspect-video overflow-hidden" style={{ background: 'var(--bg)' }}>
+      style={{ background:'var(--white)', border:'1px solid var(--bd)', boxShadow:'0 2px 8px rgba(0,0,0,.04)' }}
+      onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow='0 12px 40px rgba(142,120,251,.16)'}
+      onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow='0 2px 8px rgba(0,0,0,.04)'}>
+      <div className="relative aspect-video overflow-hidden" style={{ background:'var(--bg)' }}>
         {session.banner
           ? <img src={session.banner} alt={session.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
           : <div className="w-full h-full flex items-center justify-center">
-              <Calendar className="w-10 h-10 opacity-20" style={{ color: 'var(--t3)' }} />
-            </div>
-        }
+              <Calendar className="w-10 h-10 opacity-20" style={{ color:'var(--t3)' }} />
+            </div>}
         <span className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
-          style={{ background: 'var(--p)', color: '#fff' }}>
-          <Clock className="w-3 h-3" /> {durationLabel}
+          style={{ background:'var(--p)', color:'#fff' }}>
+          <Clock className="w-3 h-3" /> {dur}
         </span>
         <span className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold"
           style={{
             background: session.isPublished ? 'rgba(16,185,129,.15)' : 'rgba(0,0,0,.4)',
             color: session.isPublished ? '#10b981' : '#fff',
-            backdropFilter: 'blur(4px)',
+            backdropFilter:'blur(4px)',
           }}>
           {session.isPublished ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
           {session.isPublished ? 'Live' : 'Draft'}
         </span>
       </div>
-
-      {/* body */}
       <div className="flex flex-col flex-1 p-5">
-        <h3 className="text-[14px] font-bold leading-snug mb-3 line-clamp-2" style={{ color: 'var(--t1)' }}>
-          {session.title}
-        </h3>
-
+        <h3 className="text-[14px] font-bold leading-snug mb-3 line-clamp-2" style={{ color:'var(--t1)' }}>{session.title}</h3>
         <div className="flex items-center gap-3 mb-4 flex-wrap">
-          <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color: 'var(--t3)' }}>
+          <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color:'var(--t3)' }}>
             <Calendar className="w-3 h-3" /> {session.availabilityDays} days
           </span>
-          <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color: 'var(--t3)' }}>
+          <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color:'var(--t3)' }}>
             <Clock className="w-3 h-3" /> {session.totalSlots} slots/week
           </span>
         </div>
-
-        <div className="flex items-center justify-between pt-3.5 border-t mt-auto" style={{ borderColor: 'var(--bd)' }}>
+        <div className="flex items-center justify-between pt-3.5 border-t mt-auto" style={{ borderColor:'var(--bd)' }}>
           <span className="text-[13px] font-bold"
-            style={{ color: session.priceType === 'free' ? '#10b981' : 'var(--p)' }}>
-            {session.priceType === 'free' ? 'Free' : `${session.price ?? 0} TND`}
+            style={{ color: session.priceType==='free' ? '#10b981' : 'var(--p)' }}>
+            {session.priceType==='free' ? 'Free' : `${session.price ?? 0} TND`}
           </span>
-          <div className="flex items-center gap-2">
-            <Link href={`/creator/sessions/${session._id}/manage`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold text-white transition-all hover:opacity-90"
-              style={{ background: 'var(--p)', boxShadow: '0 2px 8px rgba(142,120,251,.3)' }}>
-              Manage
-            </Link>
-          </div>
+          <Link href={`/creator/sessions/${session._id}/manage`}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold text-white transition-all hover:opacity-90"
+            style={{ background:'var(--p)', boxShadow:'0 2px 8px rgba(142,120,251,.3)' }}>
+            Manage
+          </Link>
         </div>
       </div>
     </div>
   )
 }
 
+// ─── integration card ─────────────────────────────────────────────────────────
+function IntegrationCard({
+  icon: Icon, title, desc, connectedKey, connectedColor = '#10b981',
+}: {
+  icon: any; title: string; desc: string; connectedKey: string; connectedColor?: string
+}) {
+  const [connected, setConnected] = useState(false)
+  useEffect(() => {
+    setConnected(localStorage.getItem(connectedKey) === 'true')
+  }, [connectedKey])
+  const toggle = () => {
+    const next = !connected
+    localStorage.setItem(connectedKey, String(next))
+    setConnected(next)
+  }
+  return (
+    <div className="rounded-2xl p-5" style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: connected ? `${connectedColor}18` : 'var(--bg)' }}>
+          <Icon className="w-5 h-5" style={{ color: connected ? connectedColor : 'var(--t3)' }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold" style={{ color:'var(--t1)' }}>{title}</p>
+          <p className="text-[11px] mt-0.5" style={{ color:'var(--t3)' }}>{desc}</p>
+        </div>
+        {connected && (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+            style={{ background:`${connectedColor}18`, color: connectedColor }}>
+            Connected
+          </span>
+        )}
+      </div>
+      {connected ? (
+        <div className="flex gap-2">
+          <button onClick={toggle}
+            className="flex-1 h-8 rounded-xl text-[12px] font-bold cursor-pointer transition-all"
+            style={{ border:'1.5px solid var(--bd)', background:'transparent', color:'var(--t3)' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='var(--bg)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='transparent'}>
+            Disconnect
+          </button>
+          <button className="flex items-center gap-1 px-3 h-8 rounded-xl text-[12px] font-bold cursor-pointer transition-all"
+            style={{ background:'var(--p2)', color:'var(--p)', border:'1.5px solid rgba(142,120,251,.2)' }}>
+            <ExternalLink className="w-3 h-3" /> Open
+          </button>
+        </div>
+      ) : (
+        <button onClick={toggle}
+          className="w-full h-9 rounded-xl text-[12px] font-bold cursor-pointer transition-all hover:opacity-90"
+          style={{ background:'var(--p)', color:'#fff', boxShadow:'0 2px 10px rgba(142,120,251,.3)' }}>
+          Connect {title}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
 export default function SessionsPage() {
-  const [sessions, setSessions] = useState<SessionCard[]>([])
-  const [loading,  setLoading]  = useState(true)
+  const [sessions,  setSessions]  = useState<SessionCard[]>([])
+  const [bookings,  setBookings]  = useState<Booking[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [tab,       setTab]       = useState<'all'|'active'|'inactive'>('all')
 
   const load = () => {
     setLoading(true)
     try {
-      const stored: SessionCard[] = JSON.parse(localStorage.getItem('chabaqa_mock_sessions') ?? '[]')
-      setSessions(stored)
+      const s: SessionCard[] = JSON.parse(localStorage.getItem('chabaqa_mock_sessions') ?? '[]')
+      const b: Booking[]     = JSON.parse(localStorage.getItem('chabaqa_mock_bookings') ?? '[]')
+      setSessions(s)
+      setBookings(b)
     } catch {}
     finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])
+
+  // ── derived stats ────────────────────────────────────────────────────────────
+  const totalSessions   = sessions.length
+  const activeSessions  = sessions.filter(s => s.isPublished).length
+  const totalBookings   = bookings.length
+  const revenue         = bookings
+    .filter(b => b.status==='confirmed' || b.status==='completed')
+    .reduce((sum, b) => sum + (b.price || 0), 0)
+
+  const now = Date.now()
+  const upcoming = bookings.filter(b =>
+    (b.status==='confirmed' || b.status==='pending') && new Date(b.date).getTime() > now
+  ).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0,4)
+
+  // this-month stats
+  const nowDate = new Date()
+  const thisMonth = bookings.filter(b => {
+    const d = new Date(b.date)
+    return d.getMonth()===nowDate.getMonth() && d.getFullYear()===nowDate.getFullYear()
+  })
+  const completedThisMonth  = thisMonth.filter(b => b.status==='completed').length
+  const hoursThisMonth      = thisMonth.filter(b=>b.status==='completed').reduce((s,b)=>s+(b.duration/60),0)
+  const revenueThisMonth    = thisMonth.filter(b=>b.status==='confirmed'||b.status==='completed').reduce((s,b)=>s+b.price,0)
+
+  // filtered sessions
+  const filtered = sessions.filter(s => {
+    if (tab==='active')   return s.isPublished
+    if (tab==='inactive') return !s.isPublished
+    return true
+  })
+
+  const STATS = [
+    { label:'Total Sessions',  value: totalSessions,          icon: BookOpen,   color:'var(--p)',     bg:'var(--p2)' },
+    { label:'Active Sessions', value: activeSessions,         icon: Activity,   color:'#10b981',      bg:'rgba(16,185,129,.1)' },
+    { label:'Total Bookings',  value: totalBookings,          icon: Users,      color:'var(--orange)', bg:'rgba(251,146,60,.12)' },
+    { label:'Session Revenue', value: `${revenue} TND`,       icon: DollarSign, color:'var(--cyan)',   bg:'rgba(34,211,238,.12)' },
+  ]
+
+  const TABS: { key: 'all'|'active'|'inactive'; label: string; count: number }[] = [
+    { key:'all',      label:'All Sessions', count: totalSessions },
+    { key:'active',   label:'Active',       count: activeSessions },
+    { key:'inactive', label:'Inactive',     count: totalSessions - activeSessions },
+  ]
 
   return (
     <>
@@ -124,66 +233,199 @@ export default function SessionsPage() {
         ::-webkit-scrollbar-thumb{background:var(--p3);border-radius:10px}
       `}</style>
 
-      <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
+      <div className="flex min-h-screen" style={{ background:'var(--bg)' }}>
         <DashSidebar />
         <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
-          <DashTopbar title="Sessions" subtitle="Manage your 1-on-1 coaching sessions" />
+          <DashTopbar title="Session Manager" subtitle="Manage your 1-on-1 mentoring sessions" />
 
-          <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main className="p-7 flex-1 space-y-6" style={{ animation:'dashFadeUp .4s ease both' }}>
 
-            <div className="flex items-center justify-between mb-7">
+            {/* ── HEADER ROW ── */}
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-[18px] font-bold" style={{ color: 'var(--t1)' }}>Your Sessions</h2>
-                <p className="text-[13px] mt-0.5" style={{ color: 'var(--t3)' }}>
-                  {loading ? 'Loading…' : `${sessions.length} session${sessions.length !== 1 ? 's' : ''} created`}
+                <h2 className="text-[18px] font-bold" style={{ color:'var(--t1)' }}>Session Manager</h2>
+                <p className="text-[13px] mt-0.5" style={{ color:'var(--t3)' }}>
+                  {loading ? 'Loading…' : `${totalSessions} session${totalSessions!==1?'s':''} · ${totalBookings} booking${totalBookings!==1?'s':''}`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={load}
-                  className="p-2 rounded-xl transition-all cursor-pointer"
-                  style={{ border: '1.5px solid var(--bd)', background: 'transparent', color: 'var(--t3)' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--p2)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                  className="p-2 rounded-xl cursor-pointer transition-all"
+                  style={{ border:'1.5px solid var(--bd)', background:'transparent', color:'var(--t3)' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='var(--p2)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='transparent'}>
                   <RefreshCw className="w-4 h-4" />
                 </button>
+                <Link href="/creator/sessions/bookings"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-90"
+                  style={{ background:'var(--white)', color:'var(--t1)', border:'1.5px solid var(--bd)' }}>
+                  <Users className="w-4 h-4" /> Booking List
+                </Link>
                 <Link href="/creator/sessions/create"
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-                  style={{ background: 'var(--p)', boxShadow: '0 4px 12px rgba(142,120,251,.35)' }}>
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
+                  style={{ background:'var(--p)', boxShadow:'0 4px 12px rgba(142,120,251,.35)' }}>
                   <Plus className="w-4 h-4" /> Create Session
                 </Link>
               </div>
             </div>
 
-            {loading && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
-              </div>
-            )}
-
-            {!loading && sessions.length === 0 && (
-              <div className="rounded-2xl flex flex-col items-center justify-center py-20 text-center"
-                style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-                  style={{ background: 'var(--p2)' }}>
-                  <Calendar className="w-8 h-8" style={{ color: 'var(--p)' }} />
+            {/* ── STATS ROW ── */}
+            <div className="grid grid-cols-4 gap-4">
+              {STATS.map(s => (
+                <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4"
+                  style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: s.bg }}>
+                    <s.icon className="w-5 h-5" style={{ color: s.color }} />
+                  </div>
+                  <div>
+                    <p className="text-[20px] font-black leading-tight" style={{ color:'var(--t1)' }}>{s.value}</p>
+                    <p className="text-[11px] font-medium" style={{ color:'var(--t3)' }}>{s.label}</p>
+                  </div>
                 </div>
-                <h3 className="text-[15px] font-semibold mb-2" style={{ color: 'var(--t1)' }}>No sessions yet</h3>
-                <p className="text-[13px] mb-5 max-w-xs" style={{ color: 'var(--t3)' }}>
-                  Create your first 1-on-1 coaching session and start booking with students.
-                </p>
-                <Link href="/creator/sessions/create"
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-                  style={{ background: 'var(--p)' }}>
-                  <Plus className="w-4 h-4" /> Create your first session
-                </Link>
-              </div>
-            )}
+              ))}
+            </div>
 
-            {!loading && sessions.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {sessions.map(s => <SessionCardUI key={s._id} session={s} />)}
+            {/* ── INTEGRATIONS + UPCOMING ── */}
+            <div className="grid gap-5" style={{ gridTemplateColumns:'1fr 2fr' }}>
+
+              {/* integrations */}
+              <div className="space-y-4">
+                <IntegrationCard
+                  icon={Calendar} title="Google Calendar" connectedKey="chabaqa_gcal_connected"
+                  desc="Auto-create Meet links for your sessions" connectedColor="#10b981"
+                />
+                <IntegrationCard
+                  icon={Video} title="Google Meet" connectedKey="chabaqa_gmeet_connected"
+                  desc="Automatic video links for sessions" connectedColor="#4285F4"
+                />
+
+                {/* this month */}
+                <div className="rounded-2xl p-5" style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
+                  <p className="text-[12px] font-black mb-3" style={{ color:'var(--t1)' }}>This Month</p>
+                  <div className="space-y-2.5">
+                    {[
+                      { label:'Sessions Completed', value: completedThisMonth, color:'#10b981' },
+                      { label:'Hours Mentored',      value: hoursThisMonth.toFixed(1), color:'var(--p)' },
+                      { label:'Revenue',             value: `${revenueThisMonth} TND`, color:'var(--orange)' },
+                    ].map(item => (
+                      <div key={item.label} className="flex items-center justify-between">
+                        <span className="text-[11px]" style={{ color:'var(--t3)' }}>{item.label}</span>
+                        <span className="text-[13px] font-bold" style={{ color: item.color }}>{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
+
+              {/* upcoming sessions */}
+              <div className="rounded-2xl overflow-hidden" style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
+                <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor:'var(--bd)' }}>
+                  <div>
+                    <p className="text-[14px] font-bold" style={{ color:'var(--t1)' }}>Upcoming Sessions</p>
+                    <p className="text-[11px] mt-0.5" style={{ color:'var(--t3)' }}>{upcoming.length} confirmed upcoming</p>
+                  </div>
+                  <Link href="/creator/sessions/bookings"
+                    className="flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+                    style={{ color:'var(--p)' }}>
+                    View all <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+
+                {upcoming.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-5">
+                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background:'var(--p2)' }}>
+                      <Calendar className="w-5 h-5" style={{ color:'var(--p)' }} />
+                    </div>
+                    <p className="text-[12px] font-semibold" style={{ color:'var(--t2)' }}>No upcoming sessions</p>
+                    <p className="text-[11px]" style={{ color:'var(--t3)' }}>Confirmed bookings will appear here</p>
+                  </div>
+                ) : (
+                  <div className="divide-y" style={{ borderColor:'var(--bd)' }}>
+                    {upcoming.map(b => (
+                      <div key={b._id} className="flex items-center gap-4 px-5 py-3.5">
+                        {/* avatar */}
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-black"
+                          style={{ background:'var(--p2)', color:'var(--p)' }}>
+                          {initials(b.studentName)}
+                        </div>
+                        {/* info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-bold truncate" style={{ color:'var(--t1)' }}>{b.studentName}</p>
+                          <p className="text-[11px] truncate" style={{ color:'var(--t3)' }}>{b.sessionTitle}</p>
+                        </div>
+                        {/* date */}
+                        <div className="text-right shrink-0">
+                          <p className="text-[11px] font-bold" style={{ color:'var(--t1)' }}>{fmtDate(b.date)}</p>
+                          <p className="text-[10px]" style={{ color:'var(--t3)' }}>{fmtTime(b.date)}</p>
+                        </div>
+                        {/* action */}
+                        {b.meetLink ? (
+                          <a href={b.meetLink} target="_blank" rel="noreferrer"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold shrink-0 hover:opacity-90"
+                            style={{ background:'var(--p)', color:'#fff', boxShadow:'0 2px 8px rgba(142,120,251,.3)' }}>
+                            <Video className="w-3 h-3" /> Join
+                          </a>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0"
+                            style={{ background:'rgba(251,146,60,.12)', color:'var(--orange)' }}>
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── SESSIONS GRID ── */}
+            <div>
+              {/* tabs */}
+              <div className="flex items-center gap-1 mb-5">
+                {TABS.map(t => (
+                  <button key={t.key} onClick={() => setTab(t.key)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-bold cursor-pointer transition-all"
+                    style={{
+                      background: tab===t.key ? 'var(--p)' : 'var(--white)',
+                      color:      tab===t.key ? '#fff'     : 'var(--t2)',
+                      border:     tab===t.key ? 'none'     : '1.5px solid var(--bd)',
+                    }}>
+                    {t.label}
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                      style={{ background: tab===t.key ? 'rgba(255,255,255,.25)' : 'var(--bg)', color: tab===t.key ? '#fff' : 'var(--t3)' }}>
+                      {t.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {[1,2,3].map(i => <SkeletonCard key={i} />)}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="rounded-2xl flex flex-col items-center justify-center py-16 text-center"
+                  style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background:'var(--p2)' }}>
+                    <Calendar className="w-7 h-7" style={{ color:'var(--p)' }} />
+                  </div>
+                  <h3 className="text-[15px] font-semibold mb-2" style={{ color:'var(--t1)' }}>No sessions yet</h3>
+                  <p className="text-[13px] mb-5 max-w-xs" style={{ color:'var(--t3)' }}>
+                    Create your first 1-on-1 coaching session and start booking with students.
+                  </p>
+                  <Link href="/creator/sessions/create"
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90"
+                    style={{ background:'var(--p)' }}>
+                    <Plus className="w-4 h-4" /> Create your first session
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {filtered.map(s => <SessionCardUI key={s._id} session={s} />)}
+                </div>
+              )}
+            </div>
 
           </main>
         </div>
