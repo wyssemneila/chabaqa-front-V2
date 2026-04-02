@@ -9,6 +9,36 @@ import {
   Users, Video, BookOpen, Activity, ChevronRight,
   ExternalLink, Zap,
 } from 'lucide-react'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
+
+const TR = {
+  en: {
+    title: 'Your Sessions', sub: (s: number, b: number) => `${s} sessions · ${b} bookings`,
+    loading: 'Loading…', bookingList: 'Booking List', createSession: 'Create Session',
+    totalSessions: 'Total Sessions', active: 'Active', totalBookings: 'Total Bookings',
+    integrations: 'Integrations', gcalTitle: 'Google Calendar', gcalDesc: 'Sync your session slots automatically',
+    gmeetTitle: 'Google Meet', gmeetDesc: 'Auto-generate Meet links for sessions',
+    connect: 'Connect', disconnect: 'Disconnect', open: 'Open', connected: 'Connected',
+    allSessions: 'All Sessions', all: 'All', inactive: 'Inactive',
+    noSessions: 'No sessions yet', noSessionsDesc: 'Create your first 1-on-1 coaching session and start booking with students.',
+    createFirst: 'Create your first session', upcoming: 'Upcoming Sessions',
+    noUpcoming: 'No upcoming confirmed sessions', join: 'Join', pending: 'Pending',
+    manage: 'Manage', free: 'Free', days: 'd', slots: 'slots/wk',
+  },
+  ar: {
+    title: 'جلساتك', sub: (s: number, b: number) => `${s} جلسات · ${b} حجوزات`,
+    loading: 'جاري التحميل…', bookingList: 'قائمة الحجوزات', createSession: 'إنشاء جلسة',
+    totalSessions: 'إجمالي الجلسات', active: 'نشط', totalBookings: 'إجمالي الحجوزات',
+    integrations: 'التكاملات', gcalTitle: 'Google Calendar', gcalDesc: 'مزامنة فتحات جلساتك تلقائياً',
+    gmeetTitle: 'Google Meet', gmeetDesc: 'إنشاء روابط Meet تلقائياً للجلسات',
+    connect: 'ربط', disconnect: 'فصل', open: 'فتح', connected: 'متصل',
+    allSessions: 'جميع الجلسات', all: 'الكل', inactive: 'غير نشط',
+    noSessions: 'لا توجد جلسات بعد', noSessionsDesc: 'أنشئ أول جلسة تدريب فردية وابدأ في الحجز مع الطلاب.',
+    createFirst: 'أنشئ جلستك الأولى', upcoming: 'الجلسات القادمة',
+    noUpcoming: 'لا توجد جلسات قادمة مؤكدة', join: 'انضم', pending: 'معلّق',
+    manage: 'إدارة', free: 'مجاني', days: 'أيام', slots: 'فتحة/أسبوع',
+  },
+}
 
 // ─── types ────────────────────────────────────────────────────────────────────
 interface SessionCard {
@@ -105,8 +135,10 @@ function SessionCardUI({ session }: { session: SessionCard }) {
 // ─── integration button card ──────────────────────────────────────────────────
 function IntegrationCard({
   icon: Icon, title, desc, connectedKey, accentColor,
+  labelConnect = 'Connect', labelDisconnect = 'Disconnect', labelOpen = 'Open', labelConnected = 'Connected',
 }: {
   icon: any; title: string; desc: string; connectedKey: string; accentColor: string
+  labelConnect?: string; labelDisconnect?: string; labelOpen?: string; labelConnected?: string
 }) {
   const [on, setOn] = useState(false)
   useEffect(() => { setOn(localStorage.getItem(connectedKey) === 'true') }, [connectedKey])
@@ -123,7 +155,7 @@ function IntegrationCard({
           <p className="text-[13px] font-bold" style={{ color:'var(--t1)' }}>{title}</p>
           {on && (
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background:`${accentColor}15`, color: accentColor }}>Connected</span>
+              style={{ background:`${accentColor}15`, color: accentColor }}>{labelConnected}</span>
           )}
         </div>
         <p className="text-[11px] mt-0.5" style={{ color:'var(--t3)' }}>{desc}</p>
@@ -133,7 +165,7 @@ function IntegrationCard({
           <button onClick={() => window.open('#')}
             className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:opacity-80"
             style={{ background:'var(--bg)', border:'1.5px solid var(--bd)', color:'var(--t2)' }}>
-            <ExternalLink className="w-3 h-3" /> Open
+            <ExternalLink className="w-3 h-3" /> {labelOpen}
           </button>
         )}
         <button onClick={toggle}
@@ -142,7 +174,7 @@ function IntegrationCard({
             ? { background:'var(--bg)', border:'1.5px solid var(--bd)', color:'var(--t3)' }
             : { background: accentColor, color:'#fff', boxShadow:`0 3px 10px ${accentColor}45` }
           }>
-          {on ? 'Disconnect' : 'Connect'}
+          {on ? labelDisconnect : labelConnect}
         </button>
       </div>
     </div>
@@ -151,6 +183,8 @@ function IntegrationCard({
 
 // ════════════════════════════════════════════════════════════════════════════════
 export default function SessionsPage() {
+  const { lang } = useDashPrefs()
+  const t = TR[lang]
   const [sessions, setSessions] = useState<SessionCard[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading,  setLoading]  = useState(true)
@@ -184,15 +218,15 @@ export default function SessionsPage() {
   })
 
   const STATS = [
-    { label:'Total Sessions', value: totalSessions,  icon: BookOpen, color:'var(--p)',    bg:'var(--p2)' },
-    { label:'Active',         value: activeSessions, icon: Zap,      color:'var(--pink)', bg:'rgba(236,72,153,.1)' },
-    { label:'Total Bookings', value: totalBookings,  icon: Users,    color:'var(--cyan)', bg:'rgba(34,211,238,.12)' },
+    { label: t.totalSessions, value: totalSessions,  icon: BookOpen, color:'var(--p)',    bg:'var(--p2)' },
+    { label: t.active,        value: activeSessions, icon: Zap,      color:'var(--pink)', bg:'rgba(236,72,153,.1)' },
+    { label: t.totalBookings, value: totalBookings,  icon: Users,    color:'var(--cyan)', bg:'rgba(34,211,238,.12)' },
   ]
 
   const TABS: { key: 'all'|'active'|'inactive'; label: string; count: number }[] = [
-    { key:'all',      label:'All',      count: totalSessions },
-    { key:'active',   label:'Active',   count: activeSessions },
-    { key:'inactive', label:'Inactive', count: totalSessions - activeSessions },
+    { key:'all',      label: t.all,      count: totalSessions },
+    { key:'active',   label: t.active,   count: activeSessions },
+    { key:'inactive', label: t.inactive, count: totalSessions - activeSessions },
   ]
 
   return (
@@ -206,16 +240,16 @@ export default function SessionsPage() {
       <div className="flex min-h-screen" style={{ background:'var(--bg)' }}>
         <DashSidebar />
         <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
-          <DashTopbar title="Session Manager" subtitle="Manage your 1-on-1 mentoring sessions" />
+          <DashTopbar title={lang === 'ar' ? 'إدارة الجلسات' : 'Session Manager'} subtitle={lang === 'ar' ? 'إدارة جلسات التدريب الفردية' : 'Manage your 1-on-1 mentoring sessions'} />
 
           <main className="p-7 flex-1 space-y-6" style={{ animation:'dashFadeUp .4s ease both' }}>
 
             {/* ── HEADER ── */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-[20px] font-black" style={{ color:'var(--t1)' }}>Your Sessions</h2>
+                <h2 className="text-[20px] font-black" style={{ color:'var(--t1)' }}>{t.title}</h2>
                 <p className="text-[13px] mt-0.5" style={{ color:'var(--t3)' }}>
-                  {loading ? 'Loading…' : `${totalSessions} sessions · ${totalBookings} bookings`}
+                  {loading ? t.loading : t.sub(totalSessions, totalBookings)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -229,12 +263,12 @@ export default function SessionsPage() {
                 <Link href="/creator/sessions/bookings"
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold transition-all hover:opacity-80"
                   style={{ background:'var(--white)', color:'var(--t1)', border:'1.5px solid var(--bd)' }}>
-                  <Users className="w-4 h-4" /> Booking List
+                  <Users className="w-4 h-4" /> {t.bookingList}
                 </Link>
                 <Link href="/creator/sessions/create"
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90"
                   style={{ background:'var(--p)', boxShadow:'0 4px 14px rgba(142,120,251,.4)' }}>
-                  <Plus className="w-4 h-4" /> Create Session
+                  <Plus className="w-4 h-4" /> {t.createSession}
                 </Link>
               </div>
             </div>
@@ -258,15 +292,17 @@ export default function SessionsPage() {
 
             {/* ── INTEGRATIONS (above grid) ── */}
             <div>
-              <p className="text-[11px] font-black uppercase tracking-widest mb-3" style={{ color:'var(--t3)' }}>Integrations</p>
+              <p className="text-[11px] font-black uppercase tracking-widest mb-3" style={{ color:'var(--t3)' }}>{t.integrations}</p>
               <div className="grid grid-cols-2 gap-3">
                 <IntegrationCard
-                  icon={Calendar} title="Google Calendar" desc="Sync your session slots automatically"
+                  icon={Calendar} title={t.gcalTitle} desc={t.gcalDesc}
                   connectedKey="chabaqa_gcal_connected" accentColor="#10b981"
+                  labelConnect={t.connect} labelDisconnect={t.disconnect} labelOpen={t.open} labelConnected={t.connected}
                 />
                 <IntegrationCard
-                  icon={Video} title="Google Meet" desc="Auto-generate Meet links for sessions"
+                  icon={Video} title={t.gmeetTitle} desc={t.gmeetDesc}
                   connectedKey="chabaqa_gmeet_connected" accentColor="#4285F4"
+                  labelConnect={t.connect} labelDisconnect={t.disconnect} labelOpen={t.open} labelConnected={t.connected}
                 />
               </div>
             </div>

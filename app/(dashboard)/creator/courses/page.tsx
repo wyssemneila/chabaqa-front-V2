@@ -5,7 +5,35 @@ import Link from 'next/link'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import { CourseCard, type CourseCardData } from '@/components/courses/course-card'
-import { BookOpen, Plus, RefreshCw, Users, Activity, Zap } from 'lucide-react'
+import { BookOpen, Plus, RefreshCw, Users, Zap } from 'lucide-react'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
+
+const TR = {
+  en: {
+    pageTitle: 'Courses', pageSub: 'Manage your online courses',
+    heading: 'Your Courses', loading: 'Loading…',
+    count: (n: number) => `${n} course${n !== 1 ? 's' : ''} created`,
+    createCourse: 'Create Course', totalCourses: 'Total Courses',
+    active: 'Active', totalEnrollments: 'Total Enrollments',
+    allCourses: 'All Courses', all: 'All', inactive: 'Inactive',
+    noCourses: 'No courses yet', noCoursesDesc: 'Create your first course and start sharing your knowledge.',
+    noFiltered: (tab: string) => `No ${tab} courses`,
+    switchTab: 'Switch the tab to see all your courses.',
+    createFirst: 'Create your first course', retry: 'retry',
+  },
+  ar: {
+    pageTitle: 'الدورات', pageSub: 'إدارة دوراتك التعليمية',
+    heading: 'دوراتك', loading: 'جاري التحميل…',
+    count: (n: number) => `${n} دورة تم إنشاؤها`,
+    createCourse: 'إنشاء دورة', totalCourses: 'إجمالي الدورات',
+    active: 'نشط', totalEnrollments: 'إجمالي التسجيلات',
+    allCourses: 'جميع الدورات', all: 'الكل', inactive: 'غير نشط',
+    noCourses: 'لا توجد دورات بعد', noCoursesDesc: 'أنشئ أول دورة وابدأ في مشاركة معرفتك.',
+    noFiltered: (tab: string) => `لا توجد دورات ${tab}`,
+    switchTab: 'قم بتبديل التبويب لرؤية جميع دوراتك.',
+    createFirst: 'أنشئ دورتك الأولى', retry: 'إعادة المحاولة',
+  },
+}
 
 function SkeletonCard() {
   return (
@@ -25,6 +53,8 @@ function SkeletonCard() {
 }
 
 export default function CoursesPage() {
+  const { lang } = useDashPrefs()
+  const t = TR[lang]
   const [courses, setCourses] = useState<CourseCardData[]>([])
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
@@ -65,15 +95,15 @@ export default function CoursesPage() {
   const totalEnrollment = courses.reduce((sum, c) => sum + (c.enrollmentsCount ?? 0), 0)
 
   const STATS = [
-    { label:'Total Courses',      value: totalCourses,    icon: BookOpen,  color:'var(--p)',    bg:'var(--p2)' },
-    { label:'Active',             value: activeCourses,   icon: Zap,       color:'var(--pink)', bg:'rgba(236,72,153,.1)' },
-    { label:'Total Enrollments',  value: totalEnrollment, icon: Users,     color:'var(--cyan)', bg:'rgba(34,211,238,.12)' },
+    { label: t.totalCourses,     value: totalCourses,    icon: BookOpen, color:'var(--p)',    bg:'var(--p2)' },
+    { label: t.active,           value: activeCourses,   icon: Zap,      color:'var(--pink)', bg:'rgba(236,72,153,.1)' },
+    { label: t.totalEnrollments, value: totalEnrollment, icon: Users,    color:'var(--cyan)', bg:'rgba(34,211,238,.12)' },
   ]
 
   const TABS: { key: 'all'|'active'|'inactive'; label: string }[] = [
-    { key:'all',      label:'All' },
-    { key:'active',   label:'Active' },
-    { key:'inactive', label:'Inactive' },
+    { key:'all',      label: t.all      },
+    { key:'active',   label: t.active   },
+    { key:'inactive', label: t.inactive },
   ]
 
   const filtered = courses.filter(c => {
@@ -99,16 +129,16 @@ export default function CoursesPage() {
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
         <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
-          <DashTopbar title="Courses" subtitle="Manage your online courses" />
+          <DashTopbar title={t.pageTitle} subtitle={t.pageSub} />
 
           <main className="p-7 flex-1 space-y-6" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* ── HEADER ── */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-[20px] font-black" style={{ color: 'var(--t1)' }}>Your Courses</h2>
+                <h2 className="text-[20px] font-black" style={{ color: 'var(--t1)' }}>{t.heading}</h2>
                 <p className="text-[13px] mt-0.5" style={{ color: 'var(--t3)' }}>
-                  {loading ? 'Loading…' : `${totalCourses} course${totalCourses !== 1 ? 's' : ''} created`}
+                  {loading ? t.loading : t.count(totalCourses)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -122,7 +152,7 @@ export default function CoursesPage() {
                 <Link href="/creator/courses/create"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90"
                   style={{ background: 'var(--p)', boxShadow: '0 4px 14px rgba(142,120,251,.4)' }}>
-                  <Plus className="w-4 h-4" /> Create Course
+                  <Plus className="w-4 h-4" /> {t.createCourse}
                 </Link>
               </div>
             </div>
@@ -147,7 +177,7 @@ export default function CoursesPage() {
             {/* ── COURSES GRID ── */}
             <div>
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>All Courses</h3>
+                <h3 className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>{t.allCourses}</h3>
                 <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                   {TABS.map(t => (
                     <button key={t.key} onClick={() => setTab(t.key)}
@@ -172,7 +202,7 @@ export default function CoursesPage() {
               {error && (
                 <div className="mb-4 px-4 py-3 rounded-xl text-sm"
                   style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b83232' }}>
-                  {error} — <button onClick={load} className="font-semibold underline cursor-pointer">retry</button>
+                  {error} — <button onClick={load} className="font-semibold underline cursor-pointer">{t.retry}</button>
                 </div>
               )}
 
@@ -188,18 +218,16 @@ export default function CoursesPage() {
                     <BookOpen className="w-8 h-8" style={{ color: 'var(--p)' }} />
                   </div>
                   <h3 className="text-[16px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>
-                    {tab === 'all' ? 'No courses yet' : `No ${tab} courses`}
+                    {tab === 'all' ? t.noCourses : t.noFiltered(tab)}
                   </h3>
                   <p className="text-[13px] mb-6 max-w-xs" style={{ color: 'var(--t3)' }}>
-                    {tab === 'all'
-                      ? 'Create your first course and start sharing your knowledge with your community.'
-                      : 'Switch the tab to see all your courses.'}
+                    {tab === 'all' ? t.noCoursesDesc : t.switchTab}
                   </p>
                   {tab === 'all' && (
                     <Link href="/creator/courses/create"
                       className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-bold text-white hover:opacity-90"
                       style={{ background: 'var(--p)', boxShadow: '0 4px 14px rgba(142,120,251,.35)' }}>
-                      <Plus className="w-4 h-4" /> Create your first course
+                      <Plus className="w-4 h-4" /> {t.createFirst}
                     </Link>
                   )}
                 </div>

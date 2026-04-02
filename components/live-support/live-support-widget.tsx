@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { useEffect, useRef, useState, useMemo } from "react"
-import { X, Send, Loader2, LifeBuoy, Bot, GripVertical, BrainCircuit } from "lucide-react"
+import { X, Send, Loader2, LifeBuoy, Bot, GripVertical, Headphones } from "lucide-react"
 import { io, Socket } from "socket.io-client"
 import { api } from "@/lib/api"
 import { resolveSocketBaseUrl } from "@/lib/socket-url"
@@ -191,7 +191,7 @@ export function LiveSupportWidget() {
                 {/* AI icon badge */}
                 <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
                   style={{ background: "rgba(255,255,255,.15)", border: "1.5px solid rgba(255,255,255,.25)" }}>
-                  <BrainCircuit className="w-4 h-4 text-white" />
+                  <Headphones className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <p className="text-[14px] font-bold leading-none text-white">Chabaqa AI Support</p>
@@ -384,7 +384,7 @@ export function LiveSupportWidget() {
           )}
           {open
             ? <X className="w-5 h-5 relative z-10" />
-            : <BrainCircuit className="w-6 h-6 relative z-10" />
+            : <Headphones className="w-6 h-6 relative z-10" />
           }
         </button>
       </div>
