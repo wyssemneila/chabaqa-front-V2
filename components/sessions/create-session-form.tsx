@@ -319,73 +319,75 @@ function CalendarView({
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// SLOT PANEL  — native time input, no custom picker
+// SLOT PANEL — time chips + single add-time input
 // ════════════════════════════════════════════════════════════════════════════════
 function SlotPanel({
-  date, entry, onAddSlot, onRemoveSlot, onChangeSlot, onToggleRecurring,
+  date, entry, onAddSlot, onRemoveSlot, onToggleRecurring,
 }: {
   date:              string
   entry:             DateAvailability | undefined
-  onAddSlot:         () => void
+  onAddSlot:         (time: string) => void
   onRemoveSlot:      (id: string) => void
-  onChangeSlot:      (id: string, time: string) => void
   onToggleRecurring: () => void
 }) {
+  const [newTime, setNewTime] = useState("09:00")
   const weekday = parseDate(date).toLocaleDateString("en-US", { weekday: "long" })
   const slots   = entry?.slots ?? []
   const recur   = entry?.recurring ?? false
 
+  const handleAdd = () => {
+    if (!newTime) return
+    onAddSlot(newTime)
+  }
+
   return (
     <div className="flex flex-col h-full">
       <style>{`
-        .sp-time-input {
-          flex: 1; height: 100%; background: transparent; border: none; outline: none;
-          font-size: 13px; font-weight: 700; color: var(--t1);
-          cursor: pointer; color-scheme: light;
-        }
-        .sp-time-input::-webkit-datetime-edit { padding: 0; }
-        .sp-time-input::-webkit-calendar-picker-indicator { opacity: .4; cursor: pointer; width:14px; height:14px; }
-        .sp-slot-row { transition: border-color .12s ease, background .12s ease; }
-        .sp-slot-row:focus-within { border-color: var(--p) !important; background: var(--p2) !important; }
-        .sp-del { transition: background .12s ease; }
-        .sp-del:hover { background: rgba(220,38,38,.18) !important; }
-        .sp-add:hover { background: var(--p) !important; color: #fff !important; }
-        .sp-add { transition: background .15s ease, color .15s ease; }
+        .sp-chip { transition: background .12s ease, border-color .12s ease, transform .1s ease; }
+        .sp-chip:hover { border-color: rgba(220,38,38,.5) !important; background: rgba(220,38,38,.06) !important; }
+        .sp-chip-x { transition: color .12s ease; }
+        .sp-chip:hover .sp-chip-x { color: #dc2626 !important; }
+        .sp-add-btn { transition: background .15s ease, color .15s ease; }
+        .sp-add-btn:hover { background: var(--p) !important; color: #fff !important; }
+        .sp-time { color-scheme: light; }
+        .sp-time::-webkit-calendar-picker-indicator { opacity:.35; cursor:pointer; width:12px; height:12px; }
+        .sp-recur { transition: background .12s ease, border-color .12s ease; }
       `}</style>
 
-      {/* ── DATE HEADER ── */}
-      <div className="px-4 py-3 border-b shrink-0" style={{ borderColor: "var(--bd)" }}>
-        <p className="text-[9px] font-black uppercase tracking-[.12em] mb-0.5" style={{ color: "var(--t3)" }}>Editing</p>
-        <p className="text-[13px] font-black" style={{ color: "var(--t1)" }}>
-          {parseDate(date).toLocaleDateString("en-US", { weekday:"long", day:"numeric", month:"short", year:"numeric" })}
+      {/* ── HEADER ── */}
+      <div className="px-5 py-4 border-b shrink-0" style={{ borderColor: "var(--bd)" }}>
+        <p className="text-[15px] font-black leading-tight" style={{ color: "var(--t1)" }}>
+          {parseDate(date).toLocaleDateString("en-US", { weekday: "long" })}
+        </p>
+        <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--t3)" }}>
+          {parseDate(date).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })}
         </p>
       </div>
 
       {/* ── RECURRING TOGGLE ── */}
       <div className="px-4 py-3 border-b shrink-0" style={{ borderColor: "var(--bd)" }}>
         <button type="button" onClick={onToggleRecurring}
-          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150"
+          className="sp-recur w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer"
           style={{
             background: recur ? "var(--p2)" : "var(--bg)",
             border: `1.5px solid ${recur ? "var(--p)" : "var(--bd)"}`,
           }}>
           <div className="flex items-center gap-2 min-w-0">
             <Repeat2 className="w-3.5 h-3.5 shrink-0" style={{ color: recur ? "var(--p)" : "var(--t3)" }} />
-            <div className="text-left min-w-0">
-              <p className="text-[12px] font-bold truncate" style={{ color: recur ? "var(--p)" : "var(--t1)" }}>
+            <div className="text-left">
+              <p className="text-[12px] font-bold" style={{ color: recur ? "var(--p)" : "var(--t1)" }}>
                 Every {weekday}
               </p>
               <p className="text-[10px]" style={{ color: "var(--t3)" }}>
-                {recur ? "Repeats every week" : "One-time date"}
+                {recur ? "Repeats weekly" : "One-time only"}
               </p>
             </div>
           </div>
-          {/* toggle */}
-          <div className="w-9 h-5 rounded-full relative shrink-0 ml-2"
-            style={{ background: recur ? "var(--p)" : "var(--bd)", transition: "background .2s ease" }}>
+          <div className="w-9 h-5 rounded-full relative shrink-0 ml-3"
+            style={{ background: recur ? "var(--p)" : "var(--bd)", transition: "background .2s" }}>
             <div style={{
-              position:"absolute", top:3, width:14, height:14, borderRadius:"50%",
-              background:"#fff", boxShadow:"0 1px 3px rgba(0,0,0,.2)",
+              position: "absolute", top: 3, width: 14, height: 14, borderRadius: "50%",
+              background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.2)",
               left: recur ? "calc(100% - 17px)" : 3,
               transition: "left .2s cubic-bezier(.34,1.56,.64,1)",
             }} />
@@ -393,11 +395,10 @@ function SlotPanel({
         </button>
       </div>
 
-      {/* ── SLOTS — each row is a direct native time input ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
-
-        <div className="flex items-center justify-between mb-2.5">
-          <p className={LBL} style={{ color: "var(--t3)" }}>Time Slots</p>
+      {/* ── TIME CHIPS ── */}
+      <div className="flex-1 px-4 pt-4 pb-3 overflow-y-auto">
+        <div className="flex items-center justify-between mb-3">
+          <p className={LBL} style={{ color: "var(--t3)" }}>Available at</p>
           {slots.length > 0 && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
               style={{ background: "var(--p2)", color: "var(--p)" }}>
@@ -406,47 +407,55 @@ function SlotPanel({
           )}
         </div>
 
-        {slots.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-5 text-center">
-            <Clock className="w-6 h-6 opacity-20" style={{ color: "var(--t3)" }} />
-            <p className="text-[11px]" style={{ color: "var(--t3)" }}>No slots yet — add one below</p>
+        {slots.length === 0 ? (
+          <p className="text-[11px]" style={{ color: "var(--t3)" }}>
+            No times yet — add one below
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {slots.map(slot => (
+              <button key={slot.id} type="button"
+                onClick={() => onRemoveSlot(slot.id)}
+                title="Click to remove"
+                className="sp-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer"
+                style={{
+                  background: "var(--p2)",
+                  border: "1.5px solid rgba(142,120,251,.25)",
+                }}>
+                <Clock className="w-3 h-3 shrink-0" style={{ color: "var(--p)" }} />
+                <span className="text-[12px] font-bold tabular-nums" style={{ color: "var(--p)" }}>
+                  {fmtTime12(slot.time)}
+                </span>
+                <X className="sp-chip-x w-3 h-3 shrink-0" style={{ color: "var(--t3)" }} />
+              </button>
+            ))}
           </div>
         )}
-
-        <div className="space-y-1.5">
-          {slots.map((slot, i) => (
-            <div key={slot.id} className="sp-slot-row flex items-center gap-2 h-10 pl-3 pr-2 rounded-xl border-2"
-              style={{ borderColor: "var(--bd)", background: "var(--white)" }}>
-              {/* slot number */}
-              <span className="text-[10px] font-black w-4 text-center shrink-0" style={{ color: "var(--t3)" }}>
-                {i + 1}
-              </span>
-              <div className="w-px h-4 shrink-0" style={{ background: "var(--bd)" }} />
-              {/* native time input */}
-              <input
-                type="time"
-                value={slot.time}
-                onChange={e => e.target.value && onChangeSlot(slot.id, e.target.value)}
-                className="sp-time-input"
-              />
-              {/* delete */}
-              <button type="button" onClick={() => onRemoveSlot(slot.id)}
-                className="sp-del w-7 h-7 rounded-lg flex items-center justify-center shrink-0 cursor-pointer"
-                style={{ background: "rgba(220,38,38,.07)", border: "1.5px solid rgba(220,38,38,.15)" }}>
-                <X className="w-3 h-3" style={{ color: "#dc2626" }} />
-              </button>
-            </div>
-          ))}
-        </div>
       </div>
 
-      {/* ── ADD SLOT ── */}
-      <div className="px-4 pb-4 pt-1 shrink-0">
-        <button type="button" onClick={onAddSlot}
-          className="sp-add flex items-center justify-center gap-1.5 w-full h-9 rounded-xl border-2 cursor-pointer font-bold text-[12px]"
-          style={{ borderColor: "var(--p)", color: "var(--p)", background: "transparent" }}>
-          <Plus className="w-3.5 h-3.5" /> Add time slot
-        </button>
+      {/* ── ADD TIME ── */}
+      <div className="px-4 pb-4 shrink-0 border-t pt-3" style={{ borderColor: "var(--bd)" }}>
+        <p className={`${LBL} mb-2`} style={{ color: "var(--t3)" }}>Add a time</p>
+        <div className="flex gap-2">
+          <input
+            type="time"
+            value={newTime}
+            onChange={e => setNewTime(e.target.value)}
+            className="sp-time flex-1 h-10 px-3 rounded-xl text-[13px] font-bold cursor-pointer outline-none"
+            style={{
+              border: "1.5px solid var(--bd)",
+              background: "var(--bg)",
+              color: "var(--t1)",
+            }}
+            onFocus={e  => (e.currentTarget as HTMLElement).style.borderColor = "var(--p)"}
+            onBlur={e   => (e.currentTarget as HTMLElement).style.borderColor = "var(--bd)"}
+          />
+          <button type="button" onClick={handleAdd}
+            className="sp-add-btn h-10 px-4 rounded-xl text-[12px] font-bold cursor-pointer shrink-0"
+            style={{ background: "var(--p2)", color: "var(--p)", border: "1.5px solid rgba(142,120,251,.25)" }}>
+            + Add
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -463,24 +472,21 @@ function StepAvailability({ data, set }: { data: FormData; set: (f: keyof FormDa
   const selectDate = (date: string) => {
     setSelectedDate(date)
     if (!entryFor(date)) {
-      set("availability", [...data.availability, { date, slots: [{ id: uid(), time: "09:00" }], recurring: false }])
+      set("availability", [...data.availability, { date, slots: [], recurring: false }])
     }
   }
 
-  const addSlot = (date: string) => {
+  const addSlot = (date: string, time: string) => {
     set("availability", data.availability.map(a =>
-      a.date === date ? { ...a, slots: [...a.slots, { id: uid(), time: "10:00" }] } : a
+      a.date === date ? { ...a, slots: [...a.slots, { id: uid(), time }] } : a
     ))
   }
 
   const removeSlot = (date: string, slotId: string) => {
-    const updated = data.availability.map(a => {
-      if (a.date !== date) return a
-      if (a.slots.length === 1) return null  // remove whole entry
-      return { ...a, slots: a.slots.filter(s => s.id !== slotId) }
-    }).filter(Boolean) as DateAvailability[]
+    const updated = data.availability.map(a =>
+      a.date !== date ? a : { ...a, slots: a.slots.filter(s => s.id !== slotId) }
+    )
     set("availability", updated)
-    if (!updated.find(a => a.date === date)) setSelectedDate(null)
   }
 
   const changeSlot = (date: string, slotId: string, time: string) => {
@@ -524,9 +530,8 @@ function StepAvailability({ data, set }: { data: FormData; set: (f: keyof FormDa
           <SlotPanel
             date={selectedDate}
             entry={entryFor(selectedDate)}
-            onAddSlot={() => addSlot(selectedDate)}
+            onAddSlot={t => addSlot(selectedDate, t)}
             onRemoveSlot={id => removeSlot(selectedDate, id)}
-            onChangeSlot={(id, t) => changeSlot(selectedDate, id, t)}
             onToggleRecurring={() => toggleRecurring(selectedDate)}
           />
         ) : (
@@ -885,7 +890,8 @@ const STEP_BLOCKER: Record<number, (d: FormData) => string> = {
           : "",
   2: d => d.duration === 0                              ? "Select a session duration"
           : "",
-  3: d => d.availability.length === 0                   ? "Add at least one date with a time slot"
+  3: d => d.availability.length === 0                                   ? "Add at least one date with a time slot"
+          : d.availability.every(a => a.slots.length === 0)              ? "Add at least one time slot to a date"
           : "",
   4: d => d.priceType === "paid" && d.price <= 0        ? "Enter a price for your session"
           : "",
