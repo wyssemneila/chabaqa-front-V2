@@ -139,7 +139,8 @@ class ApiClient {
   }
 
   private buildUrl(endpoint: string, params?: Record<string, any>): string {
-    const url = new URL(`${this.baseURL}${endpoint}`);
+    const base = typeof window !== 'undefined' ? window.location.origin : undefined
+    const url = new URL(`${this.baseURL}${endpoint}`, base);
     if (params) {
       Object.keys(params).forEach((key) => {
         if (params[key] !== undefined && params[key] !== null) {
@@ -160,7 +161,12 @@ class ApiClient {
     if (typeof window !== 'undefined') {
       try {
         const { tokenStorage } = require('@/lib/token-storage');
-        const accessToken = tokenStorage.getAccessToken();
+        let accessToken = tokenStorage.getAccessToken();
+        // Fallback: read from cookie (used by demo auth flow)
+        if (!accessToken) {
+          const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]*)/)
+          if (match) accessToken = decodeURIComponent(match[1])
+        }
         if (accessToken) {
           headers['Authorization'] = `Bearer ${accessToken}`;
         }
