@@ -7,7 +7,7 @@ import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import {
   Clock, Plus, RefreshCw, Globe, Lock, Calendar,
   DollarSign, Users, Video, BookOpen, Activity,
-  ChevronRight, ExternalLink, Check, X,
+  ChevronRight, Check, TrendingUp,
 } from 'lucide-react'
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ function SessionCardUI({ session }: { session: SessionCard }) {
   )
 }
 
-// ─── compact integration toggle ───────────────────────────────────────────────
+// ─── integration toggle ───────────────────────────────────────────────────────
 function IntegrationToggle({
   icon: Icon, label, connectedKey, accentColor,
 }: {
@@ -118,23 +118,22 @@ function IntegrationToggle({
     setOn(next)
   }
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl"
+    <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
       style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
-      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
         style={{ background: on ? `${accentColor}18` : 'var(--bg)' }}>
-        <Icon className="w-3.5 h-3.5" style={{ color: on ? accentColor : 'var(--t3)' }} />
+        <Icon className="w-4 h-4" style={{ color: on ? accentColor : 'var(--t3)' }} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[12px] font-bold leading-none" style={{ color:'var(--t1)' }}>{label}</p>
-        <p className="text-[10px] mt-0.5" style={{ color: on ? accentColor : 'var(--t3)' }}>
+        <p className="text-[11px] mt-0.5" style={{ color: on ? accentColor : 'var(--t3)' }}>
           {on ? 'Connected' : 'Not connected'}
         </p>
       </div>
-      {/* pill toggle */}
       <button onClick={toggle}
         className="relative w-10 h-5 rounded-full transition-all duration-200 cursor-pointer shrink-0 focus:outline-none"
         style={{ background: on ? accentColor : 'var(--bd)' }}>
-        <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-200"
+        <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-200 shadow-sm"
           style={{ transform: on ? 'translateX(20px)' : 'translateX(0)' }} />
       </button>
     </div>
@@ -179,10 +178,10 @@ export default function SessionsPage() {
   })
 
   const STATS = [
-    { label:'Sessions',  value: totalSessions,    icon: BookOpen,   color:'var(--p)',      bg:'var(--p2)' },
-    { label:'Active',    value: activeSessions,   icon: Activity,   color:'#10b981',       bg:'rgba(16,185,129,.1)' },
-    { label:'Bookings',  value: totalBookings,    icon: Users,      color:'var(--orange)', bg:'rgba(251,146,60,.12)' },
-    { label:'Revenue',   value: `${revenue} TND`, icon: DollarSign, color:'var(--cyan)',   bg:'rgba(34,211,238,.12)' },
+    { label:'Total Sessions',  value: totalSessions,    icon: BookOpen,   color:'var(--p)',       bg:'var(--p2)' },
+    { label:'Active',          value: activeSessions,   icon: Activity,   color:'#10b981',        bg:'rgba(16,185,129,.1)' },
+    { label:'Total Bookings',  value: totalBookings,    icon: Users,      color:'var(--orange)',  bg:'rgba(251,146,60,.12)' },
+    { label:'Revenue',         value: `${revenue} TND`, icon: TrendingUp, color:'var(--cyan)',    bg:'rgba(34,211,238,.12)' },
   ]
 
   const TABS: { key: 'all'|'active'|'inactive'; label: string; count: number }[] = [
@@ -208,72 +207,74 @@ export default function SessionsPage() {
 
             {/* ── HEADER ── */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div>
-                  <h2 className="text-[18px] font-bold" style={{ color:'var(--t1)' }}>Your Sessions</h2>
-                  <p className="text-[12px] mt-0.5" style={{ color:'var(--t3)' }}>
-                    {totalSessions} session{totalSessions!==1?'s':''} · {totalBookings} booking{totalBookings!==1?'s':''}
-                  </p>
-                </div>
-                {/* inline stats pills */}
-                <div className="flex items-center gap-2 ml-2">
-                  {STATS.map(s => (
-                    <div key={s.label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
-                      style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
-                      <div className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ background: s.bg }}>
-                        <s.icon className="w-2.5 h-2.5" style={{ color: s.color }} />
-                      </div>
-                      <span className="text-[12px] font-black" style={{ color: s.color }}>{s.value}</span>
-                      <span className="text-[10px] font-medium" style={{ color:'var(--t3)' }}>{s.label}</span>
-                    </div>
-                  ))}
-                </div>
+              <div>
+                <h2 className="text-[20px] font-black" style={{ color:'var(--t1)' }}>Your Sessions</h2>
+                <p className="text-[13px] mt-0.5" style={{ color:'var(--t3)' }}>
+                  {loading ? 'Loading…' : `${totalSessions} sessions · ${totalBookings} bookings`}
+                </p>
               </div>
-
               <div className="flex items-center gap-2">
                 <button onClick={load}
-                  className="p-2 rounded-xl cursor-pointer transition-all"
+                  className="p-2.5 rounded-xl cursor-pointer transition-all"
                   style={{ border:'1.5px solid var(--bd)', background:'transparent', color:'var(--t3)' }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='var(--p2)'}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='transparent'}>
                   <RefreshCw className="w-4 h-4" />
                 </button>
                 <Link href="/creator/sessions/bookings"
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-80"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold transition-all hover:opacity-80"
                   style={{ background:'var(--white)', color:'var(--t1)', border:'1.5px solid var(--bd)' }}>
                   <Users className="w-4 h-4" /> Booking List
                 </Link>
                 <Link href="/creator/sessions/create"
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-                  style={{ background:'var(--p)', boxShadow:'0 4px 12px rgba(142,120,251,.35)' }}>
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90"
+                  style={{ background:'var(--p)', boxShadow:'0 4px 14px rgba(142,120,251,.4)' }}>
                   <Plus className="w-4 h-4" /> Create Session
                 </Link>
               </div>
             </div>
 
+            {/* ── STATS ROW ── */}
+            <div className="grid grid-cols-4 gap-4">
+              {STATS.map(s => (
+                <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4"
+                  style={{ background:'var(--white)', border:'1px solid var(--bd)', boxShadow:'0 2px 8px rgba(0,0,0,.03)' }}>
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: s.bg }}>
+                    <s.icon className="w-6 h-6" style={{ color: s.color }} />
+                  </div>
+                  <div>
+                    <p className="text-[26px] font-black leading-none" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[12px] font-semibold mt-0.5" style={{ color:'var(--t3)' }}>{s.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* ── SESSIONS GRID (MAIN) ── */}
             <div>
-              {/* tabs */}
-              <div className="flex items-center gap-1.5 mb-5">
-                {TABS.map(t => (
-                  <button key={t.key} onClick={() => setTab(t.key)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-bold cursor-pointer transition-all"
-                    style={{
-                      background: tab===t.key ? 'var(--p)' : 'var(--white)',
-                      color:      tab===t.key ? '#fff'     : 'var(--t2)',
-                      border:     tab===t.key ? 'none'     : '1.5px solid var(--bd)',
-                    }}>
-                    {t.label}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+              {/* section label + tabs */}
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-[15px] font-bold" style={{ color:'var(--t1)' }}>All Sessions</h3>
+                <div className="flex items-center gap-1.5 p-1 rounded-xl" style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
+                  {TABS.map(t => (
+                    <button key={t.key} onClick={() => setTab(t.key)}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[12px] font-bold cursor-pointer transition-all"
                       style={{
-                        background: tab===t.key ? 'rgba(255,255,255,.25)' : 'var(--bg)',
-                        color: tab===t.key ? '#fff' : 'var(--t3)',
+                        background: tab===t.key ? 'var(--p)' : 'transparent',
+                        color:      tab===t.key ? '#fff'     : 'var(--t3)',
                       }}>
-                      {t.count}
-                    </span>
-                  </button>
-                ))}
+                      {t.label}
+                      <span className="text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold"
+                        style={{
+                          background: tab===t.key ? 'rgba(255,255,255,.25)' : 'var(--bg)',
+                          color: tab===t.key ? '#fff' : 'var(--t3)',
+                        }}>
+                        {t.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {loading ? (
@@ -281,19 +282,18 @@ export default function SessionsPage() {
                   {[1,2,3].map(i => <SkeletonCard key={i} />)}
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="rounded-2xl flex flex-col items-center justify-center py-16 text-center"
-                  style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-                    style={{ background:'var(--p2)' }}>
-                    <Calendar className="w-7 h-7" style={{ color:'var(--p)' }} />
+                <div className="rounded-2xl flex flex-col items-center justify-center py-20 text-center"
+                  style={{ background:'var(--white)', border:'1.5px dashed var(--bd)' }}>
+                  <div className="w-16 h-16 rounded-3xl flex items-center justify-center mb-4" style={{ background:'var(--p2)' }}>
+                    <Calendar className="w-8 h-8" style={{ color:'var(--p)' }} />
                   </div>
-                  <h3 className="text-[15px] font-semibold mb-2" style={{ color:'var(--t1)' }}>No sessions yet</h3>
-                  <p className="text-[13px] mb-5 max-w-xs" style={{ color:'var(--t3)' }}>
+                  <h3 className="text-[16px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>No sessions yet</h3>
+                  <p className="text-[13px] mb-6 max-w-xs" style={{ color:'var(--t3)' }}>
                     Create your first 1-on-1 coaching session and start booking with students.
                   </p>
                   <Link href="/creator/sessions/create"
-                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90"
-                    style={{ background:'var(--p)' }}>
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-bold text-white hover:opacity-90"
+                    style={{ background:'var(--p)', boxShadow:'0 4px 14px rgba(142,120,251,.35)' }}>
                     <Plus className="w-4 h-4" /> Create your first session
                   </Link>
                 </div>
@@ -304,55 +304,53 @@ export default function SessionsPage() {
               )}
             </div>
 
-            {/* ── BOTTOM ROW: upcoming + integrations ── */}
-            <div className="grid gap-5" style={{ gridTemplateColumns:'1fr auto' }}>
+            {/* ── BOTTOM: upcoming + integrations ── */}
+            <div className="grid gap-5" style={{ gridTemplateColumns:'1fr 260px' }}>
 
-              {/* upcoming sessions */}
+              {/* upcoming */}
               <div className="rounded-2xl overflow-hidden" style={{ background:'var(--white)', border:'1px solid var(--bd)' }}>
-                <div className="flex items-center justify-between px-5 py-3.5 border-b" style={{ borderColor:'var(--bd)' }}>
-                  <p className="text-[13px] font-bold" style={{ color:'var(--t1)' }}>
-                    Upcoming Sessions
-                    <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background:'var(--p2)', color:'var(--p)' }}>
-                      {upcoming.length}
-                    </span>
-                  </p>
+                <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor:'var(--bd)' }}>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[14px] font-bold" style={{ color:'var(--t1)' }}>Upcoming Sessions</p>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background:'var(--p2)', color:'var(--p)' }}>{upcoming.length}</span>
+                  </div>
                   <Link href="/creator/sessions/bookings"
-                    className="flex items-center gap-1 text-[11px] font-bold" style={{ color:'var(--p)' }}>
+                    className="flex items-center gap-1 text-[12px] font-bold" style={{ color:'var(--p)' }}>
                     View all <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
                 {upcoming.length === 0 ? (
                   <div className="flex items-center gap-3 px-5 py-5">
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background:'var(--p2)' }}>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background:'var(--p2)' }}>
                       <Calendar className="w-4 h-4" style={{ color:'var(--p)' }} />
                     </div>
-                    <p className="text-[12px]" style={{ color:'var(--t3)' }}>No upcoming confirmed sessions</p>
+                    <p className="text-[13px]" style={{ color:'var(--t3)' }}>No upcoming confirmed sessions</p>
                   </div>
                 ) : (
                   <div className="divide-y" style={{ borderColor:'var(--bd)' }}>
                     {upcoming.map(b => (
-                      <div key={b._id} className="flex items-center gap-3 px-5 py-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black"
+                      <div key={b._id} className="flex items-center gap-4 px-5 py-3.5">
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-black"
                           style={{ background:'var(--p2)', color:'var(--p)' }}>
                           {initials(b.studentName)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-bold truncate" style={{ color:'var(--t1)' }}>{b.studentName}</p>
-                          <p className="text-[10px] truncate" style={{ color:'var(--t3)' }}>{b.sessionTitle}</p>
+                          <p className="text-[13px] font-bold truncate" style={{ color:'var(--t1)' }}>{b.studentName}</p>
+                          <p className="text-[11px] truncate" style={{ color:'var(--t3)' }}>{b.sessionTitle}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-[11px] font-semibold" style={{ color:'var(--t1)' }}>{fmtDate(b.date)}</p>
-                          <p className="text-[10px]" style={{ color:'var(--t3)' }}>{fmtTime(b.date)}</p>
+                          <p className="text-[12px] font-semibold" style={{ color:'var(--t1)' }}>{fmtDate(b.date)}</p>
+                          <p className="text-[11px]" style={{ color:'var(--t3)' }}>{fmtTime(b.date)}</p>
                         </div>
                         {b.meetLink ? (
                           <a href={b.meetLink} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold shrink-0 hover:opacity-90"
-                            style={{ background:'var(--p)', color:'#fff' }}>
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 hover:opacity-90"
+                            style={{ background:'var(--p)', color:'#fff', boxShadow:'0 2px 8px rgba(142,120,251,.3)' }}>
                             <Video className="w-3 h-3" /> Join
                           </a>
                         ) : (
-                          <span className="text-[10px] font-bold px-2 py-1 rounded-full shrink-0"
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0"
                             style={{ background:'rgba(251,146,60,.12)', color:'var(--orange)' }}>
                             Pending
                           </span>
@@ -363,19 +361,13 @@ export default function SessionsPage() {
                 )}
               </div>
 
-              {/* compact integrations */}
-              <div className="flex flex-col gap-2.5 w-[260px]">
-                <p className="text-[10px] font-black uppercase tracking-widest px-1" style={{ color:'var(--t3)' }}>
+              {/* integrations */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-black uppercase tracking-widest px-1" style={{ color:'var(--t3)' }}>
                   Integrations
                 </p>
-                <IntegrationToggle
-                  icon={Calendar} label="Google Calendar"
-                  connectedKey="chabaqa_gcal_connected" accentColor="#10b981"
-                />
-                <IntegrationToggle
-                  icon={Video} label="Google Meet"
-                  connectedKey="chabaqa_gmeet_connected" accentColor="#4285F4"
-                />
+                <IntegrationToggle icon={Calendar} label="Google Calendar" connectedKey="chabaqa_gcal_connected" accentColor="#10b981" />
+                <IntegrationToggle icon={Video}    label="Google Meet"     connectedKey="chabaqa_gmeet_connected" accentColor="#4285F4" />
               </div>
 
             </div>
