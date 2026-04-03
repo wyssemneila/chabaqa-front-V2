@@ -3,65 +3,67 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import DashIcon from './DashIcon'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
 
-interface NavItem  { label: string; href: string; icon: string; soon?: boolean }
-interface NavGroup { label: string; items: NavItem[] }
-
-const navGroups: NavGroup[] = [
+// ─── Nav data with translations ────────────────────────────────────────────────
+const navGroups = [
   {
-    label: 'Main',
+    label: { en: 'Main', ar: 'الرئيسية' },
     items: [
-      { label: 'Overview',    href: '/creator',            icon: 'grid'      },
-      { label: 'Communities', href: '/creator/communities', icon: 'users'     },
-      { label: 'Analytics',   href: '/creator/analytics',  icon: 'chart'     },
+      { label: { en: 'Overview',    ar: 'نظرة عامة'   }, href: '/creator',             icon: 'grid'      },
+      { label: { en: 'Communities', ar: 'المجتمعات'   }, href: '/creator/communities',  icon: 'users'     },
+      { label: { en: 'Analytics',   ar: 'التحليلات'   }, href: '/creator/analytics',   icon: 'chart'     },
     ],
   },
   {
-    label: 'Content',
+    label: { en: 'Content', ar: 'المحتوى' },
     items: [
-      { label: 'Courses',    href: '/creator/courses',    icon: 'book'     },
-      { label: 'Challenges', href: '/creator/challenges', icon: 'bolt'     },
-      { label: 'Sessions',   href: '/creator/sessions',   icon: 'calendar' },
-      { label: 'Events',     href: '/creator/events',     icon: 'event'    },
-      { label: 'Products',   href: '/creator/products',   icon: 'product'  },
+      { label: { en: 'Courses',    ar: 'الدورات'    }, href: '/creator/courses',    icon: 'book'     },
+      { label: { en: 'Challenges', ar: 'التحديات'   }, href: '/creator/challenges', icon: 'bolt'     },
+      { label: { en: 'Sessions',   ar: 'الجلسات'    }, href: '/creator/sessions',   icon: 'calendar' },
+      { label: { en: 'Events',     ar: 'الأحداث'    }, href: '/creator/events',     icon: 'event'    },
+      { label: { en: 'Products',   ar: 'المنتجات'   }, href: '/creator/products',   icon: 'product'  },
     ],
   },
   {
-    label: 'Revenue',
+    label: { en: 'Revenue', ar: 'الإيرادات' },
     items: [
-      { label: 'Subscriptions',   href: '/creator/subscriptions',   icon: 'creditcard' },
-      { label: 'Payouts',         href: '/creator/payouts',         icon: 'dollar'     },
-      { label: 'Manual Payments', href: '/creator/manual-payments', icon: 'creditcard' },
+      { label: { en: 'Subscriptions',   ar: 'الاشتراكات'    }, href: '/creator/subscriptions',   icon: 'creditcard' },
+      { label: { en: 'Payouts',         ar: 'المدفوعات'     }, href: '/creator/payouts',         icon: 'dollar'     },
+      { label: { en: 'Manual Payments', ar: 'المدفوعات اليدوية' }, href: '/creator/manual-payments', icon: 'creditcard' },
     ],
   },
   {
-    label: 'Marketing',
+    label: { en: 'Marketing', ar: 'التسويق' },
     items: [
-      { label: 'Email Campaigns', href: '/creator/email',      icon: 'mail'    },
-      { label: 'Affiliates',      href: '/creator/affiliates', icon: 'share'   },
-      { label: 'Messages',        href: '/creator/messages',   icon: 'message', soon: true },
-      { label: 'WhatsApp',        href: '/creator/whatsapp',   icon: 'message', soon: true },
+      { label: { en: 'Email Campaigns', ar: 'حملات البريد' }, href: '/creator/email',      icon: 'mail',    soon: true },
+      { label: { en: 'Affiliates',      ar: 'الإحالات'    }, href: '/creator/affiliates', icon: 'share',   soon: true },
+      { label: { en: 'Messages',        ar: 'الرسائل'     }, href: '/creator/messages',   icon: 'message', soon: true },
+      { label: { en: 'WhatsApp',        ar: 'واتساب'      }, href: '/creator/whatsapp',   icon: 'message', soon: true },
     ],
   },
   {
-    label: 'Settings',
+    label: { en: 'Settings', ar: 'الإعدادات' },
     items: [
-      { label: 'Team & Roles',  href: '/creator/team',         icon: 'team'     },
-      { label: 'Integrations',  href: '/creator/integrations', icon: 'settings', soon: true },
+      { label: { en: 'Team & Roles',  ar: 'الفريق والأدوار' }, href: '/creator/team',         icon: 'team'               },
+      { label: { en: 'Integrations',  ar: 'التكاملات'       }, href: '/creator/integrations', icon: 'settings', soon: true },
     ],
   },
 ]
 
-const footerItems: NavItem[] = [
-  { label: 'Help & Support', href: '/creator/help',    icon: 'help'   },
-  { label: 'Profile',        href: '/creator/profile', icon: 'user'   },
-  { label: 'Sign Out',       href: '/api/auth/signout', icon: 'logout' },
+const footerItems = [
+  { label: { en: 'Help & Support', ar: 'المساعدة والدعم' }, href: '/creator/help',     icon: 'help'   },
+  { label: { en: 'Profile',        ar: 'الملف الشخصي'    }, href: '/creator/profile',  icon: 'user'   },
+  { label: { en: 'Sign Out',       ar: 'تسجيل الخروج'   }, href: '/api/auth/signout', icon: 'logout' },
 ]
 
 export default function DashSidebar() {
   const pathname = usePathname()
-  // Strip locale prefix for comparison
+  const { lang } = useDashPrefs()
   const bare = pathname.replace(/^\/(en|ar)/, '') || '/'
+
+  const soon = lang === 'ar' ? 'قريباً' : 'soon'
+  const createCommunity = lang === 'ar' ? 'إنشاء مجتمع' : 'Create Community'
 
   return (
     <aside style={{ background: 'var(--white)', borderRight: '1px solid var(--bd)' }}
@@ -75,24 +77,26 @@ export default function DashSidebar() {
         </div>
         <div className="min-w-0">
           <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>Motion Masters</p>
-          <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Demo Creator</p>
+          <p className="text-[11px]" style={{ color: 'var(--t3)' }}>
+            {lang === 'ar' ? 'منشئ تجريبي' : 'Demo Creator'}
+          </p>
         </div>
       </div>
 
       {/* Create button */}
-      <button className="mx-3 mt-3 mb-2 px-3 py-2 rounded-[10px] text-xs font-medium flex items-center gap-1.5 transition-opacity hover:opacity-85 w-[calc(100%-24px)]"
+      <button className="mx-3 mt-3 mb-2 px-3 py-2 rounded-[10px] text-xs font-medium flex items-center gap-1.5 transition-opacity hover:opacity-85 w-[calc(100%-24px)] cursor-pointer"
         style={{ background: 'var(--p)', color: '#fff' }}>
         <DashIcon name="plus" size={13} color="white" />
-        Create Community
+        {createCommunity}
       </button>
 
       {/* Nav groups */}
       <div className="flex-1">
         {navGroups.map((group) => (
-          <div key={group.label} className="pt-2.5 pb-1">
+          <div key={group.label.en} className="pt-2.5 pb-1">
             <p className="text-[10px] font-semibold tracking-[.07em] uppercase px-4 pb-1.5"
               style={{ color: 'var(--t3)' }}>
-              {group.label}
+              {group.label[lang]}
             </p>
             {group.items.map((item) => {
               const active = bare === item.href || bare.startsWith(item.href + '/')
@@ -105,16 +109,15 @@ export default function DashSidebar() {
                     fontWeight: active ? 500 : 400,
                   }}
                   onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'var(--bg)'; (e.currentTarget as HTMLElement).style.color = 'var(--t1)' } }}
-                  onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--t2)' } }}
-                >
+                  onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--t2)' } }}>
                   {active && <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-[3px]" style={{ background: 'var(--p)' }} />}
                   <DashIcon name={item.icon} size={15} color={active ? 'var(--p)' : 'currentColor'}
                     className={active ? 'opacity-100' : 'opacity-70'} />
-                  {item.label}
-                  {item.soon && (
+                  {item.label[lang]}
+                  {'soon' in item && item.soon && (
                     <span className="ml-auto text-[9px] font-semibold tracking-[.04em] px-1.5 py-0.5 rounded-full"
                       style={{ background: 'var(--p2)', color: 'var(--t3)', border: '1px solid var(--bd)' }}>
-                      soon
+                      {soon}
                     </span>
                   )}
                 </Link>
@@ -131,10 +134,9 @@ export default function DashSidebar() {
             className="flex items-center gap-2 px-4 py-[7px] text-[13px] transition-colors"
             style={{ color: 'var(--t2)' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--p2)'; (e.currentTarget as HTMLElement).style.color = 'var(--t1)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--t2)' }}
-          >
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--t2)' }}>
             <DashIcon name={item.icon} size={15} className="opacity-70" />
-            {item.label}
+            {item.label[lang]}
           </Link>
         ))}
       </div>
