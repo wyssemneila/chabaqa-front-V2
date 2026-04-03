@@ -147,15 +147,16 @@ function Sidebar({ step, data, done }: { step: number; data: FormData; done: Set
         </div>
 
         {/* stats row */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {[
             { label: "Sections",  value: data.sections.length },
             { label: "Chapters",  value: total               },
+            { label: "Price",     value: data.priceType === "free" ? "Free" : data.price > 0 ? `${data.price}` : "—" },
           ].map(s => (
             <div key={s.label} className="rounded-xl px-3 py-2.5 text-center"
-              style={{ background: "var(--bg)", border: "1px solid var(--bd)" }}>
-              <p className="text-lg font-bold leading-none" style={{ color: "var(--p)" }}>{s.value}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: "var(--t3)" }}>{s.label}</p>
+              style={{ background: "var(--bg)" }}>
+              <p className="text-[16px] font-bold leading-none" style={{ color: "var(--p)" }}>{s.value}</p>
+              <p className="text-[9px] mt-0.5" style={{ color: "var(--t3)" }}>{s.label}</p>
             </div>
           ))}
         </div>
@@ -168,24 +169,22 @@ function Sidebar({ step, data, done }: { step: number; data: FormData; done: Set
           const isActive = step === s.id
           return (
             <div key={s.id}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 select-none"
+              className="flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-150 select-none"
               style={{
-                background:  isActive ? "var(--p2)" : "transparent",
-                borderLeft:  isActive ? "3px solid var(--p)" : "3px solid transparent",
+                background: isActive ? "var(--p2)" : "transparent",
               }}>
               <div
-                className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center"
+                className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center"
                 style={{
-                  background: isDone ? "#10b981" : isActive ? "var(--p)" : "var(--bg)",
-                  border:     !isDone && !isActive ? "1.5px solid var(--bd)" : "none",
+                  background: isDone ? "var(--p)" : isActive ? "var(--p)" : "var(--bg)",
                 }}>
                 {isDone
-                  ? <Check className="w-3 h-3 text-white" />
-                  : <s.icon className="w-3 h-3" style={{ color: isActive ? "#fff" : "var(--t3)" }} />
+                  ? <Check className="w-3.5 h-3.5 text-white" />
+                  : <s.icon className="w-3.5 h-3.5" style={{ color: isActive ? "#fff" : "var(--t3)" }} />
                 }
               </div>
               <div className="min-w-0">
-                <p className="text-[12px] font-semibold leading-tight"
+                <p className="text-[12px] font-bold leading-tight"
                   style={{ color: isActive ? "var(--p)" : isDone ? "var(--t1)" : "var(--t3)" }}>
                   {s.label}
                 </p>
