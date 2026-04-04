@@ -143,9 +143,9 @@ function WaPreview({ message, msgType, caption }: {
           {msgType !== 'text' && (
             <div className="flex items-center justify-center"
               style={{ background: '#b2dfb0', height: '120px' }}>
-              {msgType === 'image'    && <Image    className="w-8 h-8 opacity-50" style={{ color: '#075e54' }} strokeWidth={1.5} />}
-              {msgType === 'video'    && <Video    className="w-8 h-8 opacity-50" style={{ color: '#075e54' }} strokeWidth={1.5} />}
-              {msgType === 'document' && <Paperclip className="w-8 h-8 opacity-50" style={{ color: '#075e54' }} strokeWidth={1.5} />}
+              {msgType === 'image'    && <Image    className="w-8 h-8 opacity-50" style={{ color: '#075e54' }} strokeWidth={1.7} />}
+              {msgType === 'video'    && <Video    className="w-8 h-8 opacity-50" style={{ color: '#075e54' }} strokeWidth={1.7} />}
+              {msgType === 'document' && <Paperclip className="w-8 h-8 opacity-50" style={{ color: '#075e54' }} strokeWidth={1.7} />}
             </div>
           )}
           <div className="px-3 py-2">
@@ -157,7 +157,7 @@ function WaPreview({ message, msgType, caption }: {
             </p>
             <div className="flex items-center justify-end gap-1 mt-1">
               <p className="text-[10px]" style={{ color: '#777' }}>{now}</p>
-              <CheckCheck className="w-3 h-3" style={{ color: '#34b7f1' }} strokeWidth={2} />
+              <CheckCheck className="w-3 h-3" style={{ color: '#34b7f1' }} strokeWidth={1.7} />
             </div>
           </div>
         </div>
@@ -165,12 +165,12 @@ function WaPreview({ message, msgType, caption }: {
 
       {/* input bar */}
       <div className="flex items-center gap-2 px-3 py-2" style={{ background: '#f0f0f0' }}>
-        <Smile className="w-5 h-5 shrink-0" style={{ color: '#aaa' }} strokeWidth={1.5} />
+        <Smile className="w-5 h-5 shrink-0" style={{ color: '#aaa' }} strokeWidth={1.7} />
         <div className="flex-1 h-9 rounded-full px-4 flex items-center text-[12px]"
           style={{ background: '#fff', color: '#aaa' }}>Message</div>
         <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
           style={{ background: '#128c7e' }}>
-          <Send className="w-4 h-4 text-white" strokeWidth={2} style={{ marginLeft: '1px' }} />
+          <Send className="w-4 h-4 text-white" strokeWidth={1.7} style={{ marginLeft: '1px' }} />
         </div>
       </div>
     </div>
@@ -226,10 +226,10 @@ function CampaignCard({ c, onDelete, onPreview }: {
 
       <div className="px-4 py-3 flex items-center gap-4 flex-wrap">
         <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
-          <Users className="w-3 h-3" strokeWidth={1.8} />{c.audienceLabel} · {c.audienceCount.toLocaleString()}
+          <Users className="w-3 h-3" strokeWidth={1.7} />{c.audienceLabel} · {c.audienceCount.toLocaleString()}
         </span>
-        {c.sentAt && <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}><Send className="w-3 h-3" strokeWidth={1.8} />{c.sentAt}</span>}
-        {c.scheduledAt && <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--orange)' }}><Clock className="w-3 h-3" strokeWidth={1.8} />{c.scheduledAt}</span>}
+        {c.sentAt && <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}><Send className="w-3 h-3" strokeWidth={1.7} />{c.sentAt}</span>}
+        {c.scheduledAt && <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--orange)' }}><Clock className="w-3 h-3" strokeWidth={1.7} />{c.scheduledAt}</span>}
       </div>
 
       {c.status === 'sent' && (
@@ -255,7 +255,7 @@ function CampaignCard({ c, onDelete, onPreview }: {
         <div className="px-4 pb-4">
           <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
             style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
             <p className="text-[11px]" style={{ color: 'var(--t3)' }}>
               {c.status === 'draft' ? 'Draft — not sent yet.' : `Scheduled for ${c.scheduledAt}`}
             </p>
@@ -477,7 +477,7 @@ function CreateCampaignDrawer({ open, onClose, onSave }: {
                       {sel && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                     </div>
                     <p className="text-[13px] font-medium flex-1" style={{ color: sel ? '#25d366' : 'var(--t2)' }}>{a}</p>
-                    <Users className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+                    <Users className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
                   </button>
                 )
               })}
@@ -515,7 +515,7 @@ function CreateCampaignDrawer({ open, onClose, onSave }: {
             ) : (
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
                 style={{ background: 'rgba(37,211,102,.08)', border: '1px solid rgba(37,211,102,.3)' }}>
-                <Zap className="w-3.5 h-3.5 shrink-0" style={{ color: '#25d366' }} strokeWidth={1.8} />
+                <Zap className="w-3.5 h-3.5 shrink-0" style={{ color: '#25d366' }} strokeWidth={1.7} />
                 <p className="text-[12px]" style={{ color: '#25d366' }}>Sent immediately after confirmation</p>
               </div>
             )}
@@ -536,8 +536,8 @@ function CreateCampaignDrawer({ open, onClose, onSave }: {
             {saving
               ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
               : schedMode === 'later'
-                ? <><Calendar className="w-4 h-4" strokeWidth={2} /> Schedule</>
-                : <><Send className="w-4 h-4" strokeWidth={2} /> Send Now</>}
+                ? <><Calendar className="w-4 h-4" strokeWidth={1.7} /> Schedule</>
+                : <><Send className="w-4 h-4" strokeWidth={1.7} /> Send Now</>}
           </button>
         </div>
       </div>
@@ -642,7 +642,7 @@ function CreateAutoDrawer({ open, onClose, onSave }: {
                       <p className="text-[12px] font-semibold" style={{ color: sel ? '#25d366' : 'var(--t1)' }}>{t.label}</p>
                       <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{t.desc}</p>
                     </div>
-                    {sel && <Check className="w-4 h-4 shrink-0" style={{ color: '#25d366' }} strokeWidth={2.5} />}
+                    {sel && <Check className="w-4 h-4 shrink-0" style={{ color: '#25d366' }} strokeWidth={1.7} />}
                   </button>
                 )
               })}
@@ -670,7 +670,7 @@ function CreateAutoDrawer({ open, onClose, onSave }: {
             style={{ background: '#25d366' }}>
             {saving
               ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              : <><Zap className="w-4 h-4" strokeWidth={2} /> Create &amp; Activate</>}
+              : <><Zap className="w-4 h-4" strokeWidth={1.7} /> Create &amp; Activate</>}
           </button>
         </div>
       </div>
@@ -809,7 +809,7 @@ export default function WhatsAppPage() {
                   </div>
                   <div className="flex items-center gap-2 flex-1 min-w-[160px] h-9 px-3 rounded-xl"
                     style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-                    <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+                    <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
                     <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search campaigns…"
                       className="flex-1 bg-transparent text-[13px] outline-none" style={{ color: 'var(--t1)' }} />
                     {search && <button onClick={() => setSearch('')} style={{ color: 'var(--t3)' }}><X className="w-3.5 h-3.5" /></button>}
@@ -820,7 +820,7 @@ export default function WhatsAppPage() {
               <button onClick={() => view === 'campaigns' ? setCampDrawer(true) : setAutoDrawer(true)}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90 ml-auto"
                 style={{ background: '#25d366' }}>
-                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                <Plus className="w-4 h-4" strokeWidth={1.7} />
                 {view === 'campaigns' ? 'New Campaign' : 'New Automation'}
               </button>
             </div>
@@ -835,14 +835,14 @@ export default function WhatsAppPage() {
                 <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
                   style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'rgba(37,211,102,.1)' }}>
-                    <Inbox className="w-8 h-8" style={{ color: '#25d366' }} strokeWidth={1.5} />
+                    <Inbox className="w-8 h-8" style={{ color: '#25d366' }} strokeWidth={1.7} />
                   </div>
                   <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No campaigns yet</p>
                   <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Send your first WhatsApp campaign</p>
                   <button onClick={() => setCampDrawer(true)}
                     className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
                     style={{ background: '#25d366' }}>
-                    <Plus className="w-4 h-4" strokeWidth={2.5} /> New Campaign
+                    <Plus className="w-4 h-4" strokeWidth={1.7} /> New Campaign
                   </button>
                 </div>
               ) : (
@@ -859,14 +859,14 @@ export default function WhatsAppPage() {
                 <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
                   style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'rgba(37,211,102,.1)' }}>
-                    <Zap className="w-8 h-8" style={{ color: '#25d366' }} strokeWidth={1.5} />
+                    <Zap className="w-8 h-8" style={{ color: '#25d366' }} strokeWidth={1.7} />
                   </div>
                   <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No automations yet</p>
                   <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Set up automated WhatsApp flows</p>
                   <button onClick={() => setAutoDrawer(true)}
                     className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
                     style={{ background: '#25d366' }}>
-                    <Plus className="w-4 h-4" strokeWidth={2.5} /> New Automation
+                    <Plus className="w-4 h-4" strokeWidth={1.7} /> New Automation
                   </button>
                 </div>
               ) : (

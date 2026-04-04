@@ -221,7 +221,7 @@ function KpiCard({ icon, label, value, change, sub, color }: {
           style={up
             ? { background: 'rgba(74,222,128,.12)', color: '#16a34a' }
             : { background: 'rgba(239,68,68,.1)',   color: '#ef4444' }}>
-          {up ? <ArrowUpRight className="w-3 h-3" strokeWidth={2.5} /> : <ArrowDownRight className="w-3 h-3" strokeWidth={2.5} />}
+          {up ? <ArrowUpRight className="w-3 h-3" strokeWidth={1.7} /> : <ArrowDownRight className="w-3 h-3" strokeWidth={1.7} />}
           {Math.abs(change)}%
         </div>
       </div>
@@ -397,7 +397,7 @@ export default function AnalyticsPage() {
                   </div>
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[12px] font-semibold"
                     style={{ background: revChange >= 0 ? 'rgba(74,222,128,.12)' : 'rgba(239,68,68,.1)', color: revChange >= 0 ? '#16a34a' : '#ef4444' }}>
-                    {revChange >= 0 ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={2} /> : <TrendingDown className="w-3.5 h-3.5" strokeWidth={2} />}
+                    {revChange >= 0 ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={1.7} /> : <TrendingDown className="w-3.5 h-3.5" strokeWidth={1.7} />}
                     {revChange >= 0 ? '+' : ''}{revChange}% vs prev
                   </div>
                 </div>

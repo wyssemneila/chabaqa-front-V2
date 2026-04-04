@@ -232,7 +232,7 @@ function TicketForm({
           className="flex-[2] h-9 rounded-xl text-[12px] font-bold text-white flex items-center justify-center
                      gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           style={{ background: 'var(--p)' }}>
-          <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+          <Check className="w-3.5 h-3.5" strokeWidth={1.7} />
           {lang === 'ar' ? 'حفظ التذكرة' : 'Save Ticket'}
         </button>
       </div>
@@ -262,7 +262,7 @@ function TicketCard({
       {/* Icon */}
       <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
         style={{ background: clr.bg, border: `1px solid ${clr.border}` }}>
-        <Ticket className="w-4 h-4" style={{ color: clr.color }} strokeWidth={1.8} />
+        <Ticket className="w-4 h-4" style={{ color: clr.color }} strokeWidth={1.7} />
       </div>
 
       {/* Info */}
@@ -372,7 +372,7 @@ export default function TicketBuilder({ tickets, onChange, lang }: Props) {
           className="w-full h-10 rounded-xl border-2 border-dashed flex items-center justify-center gap-2
                      text-[12px] font-semibold cursor-pointer transition-all hover:opacity-80"
           style={{ borderColor: 'var(--p3)', color: 'var(--p)', background: 'var(--p2)' }}>
-          <Plus className="w-4 h-4" strokeWidth={2.5} />
+          <Plus className="w-4 h-4" strokeWidth={1.7} />
           {lang === 'ar' ? 'إضافة نوع تذكرة' : 'Add Ticket Type'}
         </button>
       )}

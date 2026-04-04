@@ -64,7 +64,7 @@ export default function ChallengesPage() {
               <button onClick={() => router.push('/creator/challenges/create')}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ background: 'var(--p)' }}>
-                <Plus className="w-4 h-4" strokeWidth={2.5} /> Create Challenge
+                <Plus className="w-4 h-4" strokeWidth={1.7} /> Create Challenge
               </button>
             </div>
 
@@ -77,14 +77,14 @@ export default function ChallengesPage() {
                 style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
                   style={{ background: 'var(--p2)' }}>
-                  <Trophy className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.5} />
+                  <Trophy className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                 </div>
                 <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No challenges yet</p>
                 <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Create your first challenge for the community</p>
                 <button onClick={() => router.push('/creator/challenges/create')}
                   className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
                   style={{ background: 'var(--p)' }}>
-                  <Plus className="w-4 h-4" strokeWidth={2.5} /> Create Challenge
+                  <Plus className="w-4 h-4" strokeWidth={1.7} /> Create Challenge
                 </button>
               </div>
             ) : (
@@ -104,7 +104,7 @@ export default function ChallengesPage() {
                         {(ch as any).banner
                           ? <img src={(ch as any).banner} alt="" className="w-full h-full object-cover" />
                           : <div className="absolute inset-0 flex items-center justify-center">
-                              <Trophy className="w-8 h-8 text-white opacity-40" strokeWidth={1.5} />
+                              <Trophy className="w-8 h-8 text-white opacity-40" strokeWidth={1.7} />
                             </div>
                         }
                       </div>
@@ -144,18 +144,18 @@ export default function ChallengesPage() {
                             {ch.difficulty}
                           </span>
                           <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
-                            <Clock className="w-3 h-3" strokeWidth={1.8} /> {ch.durationDays} days
+                            <Clock className="w-3 h-3" strokeWidth={1.7} /> {ch.durationDays} days
                           </span>
                           <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
-                            <Layers className="w-3 h-3" strokeWidth={1.8} /> {ch.steps?.length ?? 0} steps
+                            <Layers className="w-3 h-3" strokeWidth={1.7} /> {ch.steps?.length ?? 0} steps
                           </span>
                           <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
-                            <Users className="w-3 h-3" strokeWidth={1.8} />
+                            <Users className="w-3 h-3" strokeWidth={1.7} />
                             {ch.maxParticipants === 'unlimited' ? 'Unlimited' : ch.maxParticipants}
                           </span>
                           {ch.startDate && (
                             <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
-                              <Calendar className="w-3 h-3" strokeWidth={1.8} /> {ch.startDate}
+                              <Calendar className="w-3 h-3" strokeWidth={1.7} /> {ch.startDate}
                             </span>
                           )}
                         </div>

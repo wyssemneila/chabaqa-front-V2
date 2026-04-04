@@ -24,14 +24,14 @@ export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
           title="Go to landing page"
           className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:opacity-80"
           style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t2)' }}>
-          <Home className="w-3.5 h-3.5" strokeWidth={2} />
+          <Home className="w-3.5 h-3.5" strokeWidth={1.7} />
         </Link>
 
         {/* View Community */}
         <Link href="/communities/motion-masters" target="_blank"
           className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold cursor-pointer transition-all hover:opacity-80"
           style={{ background: 'var(--p)', color: '#fff' }}>
-          <ExternalLink className="w-3.5 h-3.5" strokeWidth={2} />
+          <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.7} />
           {lang === 'ar' ? 'عرض المجتمع' : 'View Community'}
         </Link>
 

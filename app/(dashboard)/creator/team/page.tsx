@@ -41,10 +41,10 @@ interface Invite {
 // ─── Role config ──────────────────────────────────────────────────────────────
 
 const ROLE_META: Record<Role, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
-  owner:     { label: 'Owner',     color: '#7c3aed', bg: '#f3f0ff', border: '#d8b4fe', icon: <Crown      className="w-3 h-3" strokeWidth={2} /> },
-  admin:     { label: 'Admin',     color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', icon: <Shield     className="w-3 h-3" strokeWidth={2} /> },
-  moderator: { label: 'Moderator', color: '#0891b2', bg: '#f0f9ff', border: '#bae6fd', icon: <UserCheck  className="w-3 h-3" strokeWidth={2} /> },
-  member:    { label: 'Member',    color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', icon: <Users      className="w-3 h-3" strokeWidth={2} /> },
+  owner:     { label: 'Owner',     color: '#7c3aed', bg: '#f3f0ff', border: '#d8b4fe', icon: <Crown      className="w-3 h-3" strokeWidth={1.7} /> },
+  admin:     { label: 'Admin',     color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', icon: <Shield     className="w-3 h-3" strokeWidth={1.7} /> },
+  moderator: { label: 'Moderator', color: '#0891b2', bg: '#f0f9ff', border: '#bae6fd', icon: <UserCheck  className="w-3 h-3" strokeWidth={1.7} /> },
+  member:    { label: 'Member',    color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', icon: <Users      className="w-3 h-3" strokeWidth={1.7} /> },
 }
 
 // ─── Permissions matrix ───────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ function RoleChangeModal({ member, onClose, onConfirm }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="w-full max-w-[460px] rounded-2xl"
+      <div className="w-full max-w-[440px] rounded-2xl"
         style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 24px 80px rgba(0,0,0,.2)' }}>
 
         {/* Header */}
@@ -161,7 +161,7 @@ function RoleChangeModal({ member, onClose, onConfirm }: {
             </div>
           </div>
           <button onClick={onClose} className="cursor-pointer hover:opacity-60 transition-opacity" style={{ color: 'var(--t3)' }}>
-            <X className="w-4 h-4" strokeWidth={1.8} />
+            <X className="w-4 h-4" strokeWidth={1.7} />
           </button>
         </div>
 
@@ -202,7 +202,7 @@ function RoleChangeModal({ member, onClose, onConfirm }: {
                 </p>
                 {gained.map(p => (
                   <div key={p.id} className="flex items-start gap-1.5 text-[11px] mb-0.5" style={{ color: '#166534' }}>
-                    <Check className="w-3 h-3 shrink-0 mt-px" strokeWidth={2.5} />
+                    <Check className="w-3 h-3 shrink-0 mt-px" strokeWidth={1.7} />
                     <span><span className="font-medium">{p.label}</span> — {p.desc}</span>
                   </div>
                 ))}
@@ -215,7 +215,7 @@ function RoleChangeModal({ member, onClose, onConfirm }: {
                 </p>
                 {lost.map(p => (
                   <div key={p.id} className="flex items-start gap-1.5 text-[11px] mb-0.5" style={{ color: '#991b1b' }}>
-                    <X className="w-3 h-3 shrink-0 mt-px" strokeWidth={2.5} />
+                    <X className="w-3 h-3 shrink-0 mt-px" strokeWidth={1.7} />
                     <span><span className="font-medium">{p.label}</span> — {p.desc}</span>
                   </div>
                 ))}
@@ -269,7 +269,7 @@ function RolePicker({ current, memberId, member, onSave }: {
       <button onClick={() => setOpen(true)}
         className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
         <RoleBadge role={current} />
-        <ChevronDown className="w-3 h-3" style={{ color: ROLE_META[current].color }} strokeWidth={2.5} />
+        <ChevronDown className="w-3 h-3" style={{ color: ROLE_META[current].color }} strokeWidth={1.7} />
       </button>
       {open && (
         <RoleChangeModal
@@ -309,12 +309,12 @@ function InviteModal({ onClose, onSend }: {
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--p2)' }}>
-              <UserPlus className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={2} />
+              <UserPlus className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
             </div>
             <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Invite Team Member</p>
           </div>
           <button onClick={onClose} className="cursor-pointer hover:opacity-60 transition-opacity" style={{ color: 'var(--t3)' }}>
-            <X className="w-4 h-4" strokeWidth={1.8} />
+            <X className="w-4 h-4" strokeWidth={1.7} />
           </button>
         </div>
         {/* Body */}
@@ -323,7 +323,7 @@ function InviteModal({ onClose, onSend }: {
           <div>
             <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>Email Address</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') submit() }}
                 placeholder="member@email.com"
@@ -359,7 +359,7 @@ function InviteModal({ onClose, onSend }: {
             <div className="space-y-0.5">
               {PERMISSIONS.filter(p => p[role]).map(p => (
                 <div key={p.id} className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--t2)' }}>
-                  <Check className="w-3 h-3 shrink-0" style={{ color: '#16a34a' }} strokeWidth={2.5} />
+                  <Check className="w-3 h-3 shrink-0" style={{ color: '#16a34a' }} strokeWidth={1.7} />
                   {p.label}
                 </div>
               ))}
@@ -380,10 +380,10 @@ function InviteModal({ onClose, onSend }: {
               opacity: (!email.trim() || !email.includes('@') || sending) ? .5 : 1,
             }}>
             {done
-              ? <span className="flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" strokeWidth={2.5} /> Invited!</span>
+              ? <span className="flex items-center justify-center gap-1.5"><Check className="w-3.5 h-3.5" strokeWidth={1.7} /> Invited!</span>
               : sending
               ? <span className="flex items-center justify-center gap-1.5"><div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Sending…</span>
-              : <span className="flex items-center justify-center gap-1.5"><Mail className="w-3.5 h-3.5" strokeWidth={1.8} /> Send Invitation</span>
+              : <span className="flex items-center justify-center gap-1.5"><Mail className="w-3.5 h-3.5" strokeWidth={1.7} /> Send Invitation</span>
             }
           </button>
         </div>
@@ -405,7 +405,7 @@ function RemoveModal({ member, onClose, onConfirm }: {
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
             style={{ background: '#fee2e2' }}>
-            <AlertTriangle className="w-5 h-5" style={{ color: '#dc2626' }} strokeWidth={1.8} />
+            <AlertTriangle className="w-5 h-5" style={{ color: '#dc2626' }} strokeWidth={1.7} />
           </div>
           <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>Remove Member</p>
         </div>
@@ -501,7 +501,7 @@ export default function TeamPage() {
     <button onClick={() => sortBy(k)} className="flex items-center gap-1 cursor-pointer hover:opacity-70 transition-opacity text-left"
       style={{ color: sortKey === k ? 'var(--p)' : 'var(--t3)' }}>
       {label}
-      <ArrowUpDown className="w-3 h-3" strokeWidth={2} />
+      <ArrowUpDown className="w-3 h-3" strokeWidth={1.7} />
     </button>
   )
 
@@ -521,10 +521,10 @@ export default function TeamPage() {
             {/* ── KPI row ── */}
             <div className="grid grid-cols-4 gap-4 mb-6">
               {[
-                { label: 'Total Members', value: members.length, color: 'var(--p)',      icon: <Users      className="w-4 h-4" strokeWidth={1.8} />, sub: 'in this community'    },
-                { label: 'Admins',        value: admins,         color: 'var(--orange)', icon: <Shield     className="w-4 h-4" strokeWidth={1.8} />, sub: 'full management access' },
-                { label: 'Moderators',    value: mods,           color: 'var(--cyan)',   icon: <UserCheck  className="w-4 h-4" strokeWidth={1.8} />, sub: 'content & member mgmt'  },
-                { label: 'Active Today',  value: activeNow,      color: '#16a34a',       icon: <CheckCircle className="w-4 h-4" strokeWidth={1.8} />, sub: 'logged in today'       },
+                { label: 'Total Members', value: members.length, color: 'var(--p)',      icon: <Users      className="w-4 h-4" strokeWidth={1.7} />, sub: 'in this community'    },
+                { label: 'Admins',        value: admins,         color: 'var(--orange)', icon: <Shield     className="w-4 h-4" strokeWidth={1.7} />, sub: 'full management access' },
+                { label: 'Moderators',    value: mods,           color: 'var(--cyan)',   icon: <UserCheck  className="w-4 h-4" strokeWidth={1.7} />, sub: 'content & member mgmt'  },
+                { label: 'Active Today',  value: activeNow,      color: '#16a34a',       icon: <CheckCircle className="w-4 h-4" strokeWidth={1.7} />, sub: 'logged in today'       },
               ].map(k => (
                 <div key={k.label} className="rounded-2xl p-5" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                   <div className="flex items-center justify-between mb-3">
@@ -559,7 +559,7 @@ export default function TeamPage() {
                 </div>
                 {/* Search */}
                 <div className="relative flex-1 min-w-[200px] max-w-xs">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
                   <input value={query} onChange={e => setQuery(e.target.value)}
                     placeholder="Search members…"
                     className="w-full h-8 pl-9 pr-3 rounded-xl text-[12px] outline-none"
@@ -569,7 +569,7 @@ export default function TeamPage() {
                 <button onClick={() => setInviteOpen(true)}
                   className="ml-auto flex items-center gap-1.5 px-4 h-9 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-85"
                   style={{ background: 'var(--p)', color: '#fff' }}>
-                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  <Plus className="w-3.5 h-3.5" strokeWidth={1.7} />
                   Invite Member
                 </button>
               </div>
@@ -636,7 +636,7 @@ export default function TeamPage() {
                           className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:opacity-80"
                           style={{ background: 'rgba(239,68,68,.08)', color: '#ef4444' }}
                           title="Remove member">
-                          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.8} />
+                          <Trash2 className="w-3.5 h-3.5" strokeWidth={1.7} />
                         </button>
                       )}
                     </div>
@@ -650,7 +650,7 @@ export default function TeamPage() {
               <button className="w-full flex items-center justify-between px-5 py-4 cursor-pointer"
                 onClick={() => setShowPerms(p => !p)}>
                 <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.8} />
+                  <Shield className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                   <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>Role Permissions</p>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
                     style={{ background: 'var(--p2)', color: 'var(--p)' }}>
@@ -658,7 +658,7 @@ export default function TeamPage() {
                   </span>
                 </div>
                 <ChevronDown className="w-4 h-4 transition-transform"
-                  style={{ color: 'var(--t3)', transform: showPerms ? 'rotate(180deg)' : 'none' }} strokeWidth={2} />
+                  style={{ color: 'var(--t3)', transform: showPerms ? 'rotate(180deg)' : 'none' }} strokeWidth={1.7} />
               </button>
 
               {showPerms && (
@@ -687,11 +687,11 @@ export default function TeamPage() {
                           {p[r]
                             ? <div className="w-6 h-6 rounded-full flex items-center justify-center"
                                 style={{ background: 'rgba(74,222,128,.12)' }}>
-                                <Check className="w-3 h-3" style={{ color: '#16a34a' }} strokeWidth={2.5} />
+                                <Check className="w-3 h-3" style={{ color: '#16a34a' }} strokeWidth={1.7} />
                               </div>
                             : <div className="w-6 h-6 rounded-full flex items-center justify-center"
                                 style={{ background: 'rgba(239,68,68,.08)' }}>
-                                <X className="w-3 h-3" style={{ color: '#ef4444' }} strokeWidth={2} />
+                                <X className="w-3 h-3" style={{ color: '#ef4444' }} strokeWidth={1.7} />
                               </div>
                           }
                         </div>
@@ -707,7 +707,7 @@ export default function TeamPage() {
               <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                 <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
                   <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.8} />
+                    <Mail className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                     <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>
                       Invitations
                       {pending > 0 && (
@@ -725,7 +725,7 @@ export default function TeamPage() {
                       {/* Avatar placeholder */}
                       <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                         style={{ background: 'var(--bg)', border: '1.5px dashed var(--bd)' }}>
-                        <Mail className="w-3.5 h-3.5" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+                        <Mail className="w-3.5 h-3.5" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>{inv.email}</p>
@@ -754,7 +754,7 @@ export default function TeamPage() {
                         <button onClick={() => cancelInvite(inv.id)}
                           className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
                           style={{ background: 'var(--bg)', border: '1px solid var(--bd)', color: 'var(--t3)' }}>
-                          <X className="w-3.5 h-3.5" strokeWidth={1.8} />
+                          <X className="w-3.5 h-3.5" strokeWidth={1.7} />
                         </button>
                       </div>
                     </div>

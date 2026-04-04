@@ -126,7 +126,7 @@ function AffiliateCard({ aff, idx, onToggle, onDelete }: {
         <div className="flex items-center gap-1 shrink-0 px-2.5 py-1 rounded-xl"
           style={{ background: 'var(--p2)', border: '1px solid var(--bd)' }}>
           {aff.commissionType === 'percent'
-            ? <Percent className="w-3 h-3" style={{ color: 'var(--p)' }} strokeWidth={2} />
+            ? <Percent className="w-3 h-3" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
             : <Coins className="w-3 h-3" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
           }
           <p className="text-[12px] font-bold" style={{ color: 'var(--p)' }}>
@@ -138,12 +138,12 @@ function AffiliateCard({ aff, idx, onToggle, onDelete }: {
       {/* link row */}
       <div className="mx-4 mb-3 flex items-center gap-2 px-3 py-2 rounded-xl"
         style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
-        <Link2 className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+        <Link2 className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
         <p className="text-[12px] flex-1 truncate" style={{ color: 'var(--t2)', fontFamily: 'monospace' }}>{link}</p>
         <button onClick={() => copy(link, aff.id)}
           className="flex items-center gap-1 text-[11px] font-semibold cursor-pointer hover:opacity-70 transition-opacity shrink-0"
           style={{ color: copied === aff.id ? '#16a34a' : 'var(--p)' }}>
-          {copied === aff.id ? <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> : <Copy className="w-3.5 h-3.5" strokeWidth={1.8} />}
+          {copied === aff.id ? <Check className="w-3.5 h-3.5" strokeWidth={1.7} /> : <Copy className="w-3.5 h-3.5" strokeWidth={1.7} />}
           {copied === aff.id ? 'Copied!' : 'Copy'}
         </button>
       </div>
@@ -169,7 +169,7 @@ function AffiliateCard({ aff, idx, onToggle, onDelete }: {
       {aff.stats.pendingPayout > 0 && (
         <div className="mx-4 mb-3 flex items-center gap-2 px-3 py-2 rounded-xl"
           style={{ background: 'rgba(251,146,60,.08)', border: '1px solid rgba(251,146,60,.25)' }}>
-          <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--orange)' }} strokeWidth={1.8} />
+          <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--orange)' }} strokeWidth={1.7} />
           <p className="text-[12px]" style={{ color: 'var(--orange)' }}>
             <span className="font-semibold">{aff.stats.pendingPayout} TND</span> pending payout
           </p>
@@ -372,7 +372,7 @@ function CreateDrawer({ open, onClose, onSave }: {
             style={{ background: 'var(--p)' }}>
             {saving
               ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              : <><Link2 className="w-4 h-4" strokeWidth={2} /> Create Affiliate Link</>}
+              : <><Link2 className="w-4 h-4" strokeWidth={1.7} /> Create Affiliate Link</>}
           </button>
         </div>
       </div>
@@ -476,7 +476,7 @@ export default function AffiliatesPage() {
 
               <div className="flex items-center gap-2 flex-1 min-w-[160px] h-9 px-3 rounded-xl"
                 style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-                <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+                <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search affiliates…"
                   className="flex-1 bg-transparent text-[13px] outline-none" style={{ color: 'var(--t1)' }} />
                 {search && <button onClick={() => setSearch('')} style={{ color: 'var(--t3)' }}><X className="w-3.5 h-3.5" /></button>}
@@ -485,7 +485,7 @@ export default function AffiliatesPage() {
               <button onClick={() => setDrawer(true)}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90"
                 style={{ background: 'var(--p)' }}>
-                <Plus className="w-4 h-4" strokeWidth={2.5} /> Add Affiliate
+                <Plus className="w-4 h-4" strokeWidth={1.7} /> Add Affiliate
               </button>
             </div>
 
@@ -498,7 +498,7 @@ export default function AffiliatesPage() {
               <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
                 style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'var(--p2)' }}>
-                  <Inbox className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.5} />
+                  <Inbox className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                 </div>
                 <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No affiliates found</p>
                 <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Add your first affiliate to start tracking</p>
@@ -506,7 +506,7 @@ export default function AffiliatesPage() {
                   <button onClick={() => setDrawer(true)}
                     className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
                     style={{ background: 'var(--p)' }}>
-                    <Plus className="w-4 h-4" strokeWidth={2.5} /> Add Affiliate
+                    <Plus className="w-4 h-4" strokeWidth={1.7} /> Add Affiliate
                   </button>
                 )}
               </div>

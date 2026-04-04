@@ -26,7 +26,7 @@ export default function FilterBar({ search,setSearch,view,setView,status,setStat
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" strokeWidth={1.8} />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" strokeWidth={1.7} />
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search by name or session..."
           style={DM}

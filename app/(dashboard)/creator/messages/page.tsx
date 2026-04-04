@@ -122,51 +122,51 @@ const INIT_AUTOMATIONS: AutoRule[] = [
     description: 'Sent automatically when someone joins your community',
     message: 'Welcome to Motion Masters! 🎉 We\'re so excited to have you here. Start with the fundamentals course and join our weekly live sessions. Any questions? Reply anytime!',
     active: true, sent: 1298,
-    icon: <UserPlus className="w-4 h-4" strokeWidth={1.8} />,
+    icon: <UserPlus className="w-4 h-4" strokeWidth={1.7} />,
   },
   {
     id: 2, trigger: 'course_complete', triggerLabel: 'Course Completed',
     description: 'Sent when a member finishes any course',
     message: 'Congrats on completing the course! 🏆 Your dedication is inspiring. Here\'s what I recommend as your next step...',
     active: true, sent: 342,
-    icon: <BookOpen className="w-4 h-4" strokeWidth={1.8} />,
+    icon: <BookOpen className="w-4 h-4" strokeWidth={1.7} />,
   },
   {
     id: 3, trigger: 'challenge_complete', triggerLabel: 'Challenge Completed',
     description: 'Sent when a member finishes a challenge',
     message: 'You did it! 💪 Completing a challenge takes real commitment. You should be proud. Ready for the next one?',
     active: true, sent: 218,
-    icon: <Trophy className="w-4 h-4" strokeWidth={1.8} />,
+    icon: <Trophy className="w-4 h-4" strokeWidth={1.7} />,
   },
   {
     id: 4, trigger: 'purchase', triggerLabel: 'New Purchase',
     description: 'Sent after any purchase or enrollment',
     message: 'Thank you for your purchase! 🙏 Here\'s everything you need to get started. Feel free to reply with any questions.',
     active: true, sent: 567,
-    icon: <ShoppingCart className="w-4 h-4" strokeWidth={1.8} />,
+    icon: <ShoppingCart className="w-4 h-4" strokeWidth={1.7} />,
   },
   {
     id: 5, trigger: 'inactive_7d', triggerLabel: 'Inactive 7 Days',
     description: 'Sent after 7 days of inactivity',
     message: 'Hey! Haven\'t seen you around in a while 👋 We just dropped new content you might love. Come check it out!',
     active: false, sent: 89,
-    icon: <Clock className="w-4 h-4" strokeWidth={1.8} />,
+    icon: <Clock className="w-4 h-4" strokeWidth={1.7} />,
   },
   {
     id: 6, trigger: 'inactive_30d', triggerLabel: 'Inactive 30 Days',
     description: 'Win-back message after 30 days of inactivity',
     message: 'We miss you! 😢 It\'s been a month since your last visit. Here\'s a special offer to welcome you back...',
     active: false, sent: 34,
-    icon: <UserX className="w-4 h-4" strokeWidth={1.8} />,
+    icon: <UserX className="w-4 h-4" strokeWidth={1.7} />,
   },
 ]
 
 const SEGMENTS = [
-  { id: 'all',      label: 'All Members',    sub: '1,298 members', icon: <Users      className="w-4 h-4" strokeWidth={1.8} />, color: 'var(--p)'      },
-  { id: 'new',      label: 'New Members',    sub: 'Joined last 30d', icon: <UserPlus  className="w-4 h-4" strokeWidth={1.8} />, color: 'var(--cyan)'   },
-  { id: 'inactive', label: 'Inactive',       sub: 'No activity 30d+', icon: <UserX   className="w-4 h-4" strokeWidth={1.8} />, color: 'var(--orange)' },
-  { id: 'top',      label: 'Top Members',    sub: 'Most engaged',   icon: <Star      className="w-4 h-4" strokeWidth={1.8} />, color: '#d97706'       },
-  { id: 'enrolled', label: 'Enrolled Only',  sub: 'Paid members',   icon: <UserCheck className="w-4 h-4" strokeWidth={1.8} />, color: '#16a34a'       },
+  { id: 'all',      label: 'All Members',    sub: '1,298 members', icon: <Users      className="w-4 h-4" strokeWidth={1.7} />, color: 'var(--p)'      },
+  { id: 'new',      label: 'New Members',    sub: 'Joined last 30d', icon: <UserPlus  className="w-4 h-4" strokeWidth={1.7} />, color: 'var(--cyan)'   },
+  { id: 'inactive', label: 'Inactive',       sub: 'No activity 30d+', icon: <UserX   className="w-4 h-4" strokeWidth={1.7} />, color: 'var(--orange)' },
+  { id: 'top',      label: 'Top Members',    sub: 'Most engaged',   icon: <Star      className="w-4 h-4" strokeWidth={1.7} />, color: '#d97706'       },
+  { id: 'enrolled', label: 'Enrolled Only',  sub: 'Paid members',   icon: <UserCheck className="w-4 h-4" strokeWidth={1.7} />, color: '#16a34a'       },
 ]
 
 // ─── Auto-save helper ─────────────────────────────────────────────────────────
@@ -232,11 +232,11 @@ function ConversationsView() {
             </p>
             <button className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity"
               style={{ background: 'var(--bg)', border: '1px solid var(--bd)', color: 'var(--p)' }}>
-              <Edit3 className="w-3.5 h-3.5" strokeWidth={2} />
+              <Edit3 className="w-3.5 h-3.5" strokeWidth={1.7} />
             </button>
           </div>
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
             <input value={query} onChange={e => setQuery(e.target.value)}
               placeholder="Search conversations…"
               className="w-full h-8 pl-8 pr-3 rounded-xl text-[12px] outline-none"
@@ -290,7 +290,7 @@ function ConversationsView() {
               <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{thread.member.handle}</p>
             </div>
             <button className="p-1.5 rounded-lg cursor-pointer hover:opacity-60 transition-opacity" style={{ color: 'var(--t3)' }}>
-              <MoreHorizontal className="w-4 h-4" strokeWidth={1.8} />
+              <MoreHorizontal className="w-4 h-4" strokeWidth={1.7} />
             </button>
           </div>
 
@@ -313,7 +313,7 @@ function ConversationsView() {
                   </div>
                   <p className={`text-[10px] mt-1 ${msg.from === 'creator' ? 'text-right' : 'text-left'}`}
                     style={{ color: 'var(--t3)' }}>
-                    {msg.time}{msg.from === 'creator' && <Check className="inline w-3 h-3 ml-1" strokeWidth={2.5} />}
+                    {msg.time}{msg.from === 'creator' && <Check className="inline w-3 h-3 ml-1" strokeWidth={1.7} />}
                   </p>
                 </div>
               </div>
@@ -337,14 +337,14 @@ function ConversationsView() {
               <button onClick={sendMessage}
                 className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80"
                 style={{ background: input.trim() ? 'var(--p)' : 'var(--bg)', color: input.trim() ? '#fff' : 'var(--t3)', border: '1px solid var(--bd)' }}>
-                <Send className="w-4 h-4" strokeWidth={1.8} />
+                <Send className="w-4 h-4" strokeWidth={1.7} />
               </button>
             </div>
           </div>
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center flex-col gap-3">
-          <MessageSquare className="w-12 h-12 opacity-20" style={{ color: 'var(--t3)' }} strokeWidth={1.5} />
+          <MessageSquare className="w-12 h-12 opacity-20" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
           <p className="text-[14px] font-medium" style={{ color: 'var(--t2)' }}>Select a conversation</p>
         </div>
       )}
@@ -434,10 +434,10 @@ function BroadcastsView() {
               cursor: (!message.trim() || sending) ? 'not-allowed' : 'pointer',
             }}>
             {sent
-              ? <><Check className="w-3.5 h-3.5" strokeWidth={2.5} /> Sent!</>
+              ? <><Check className="w-3.5 h-3.5" strokeWidth={1.7} /> Sent!</>
               : sending
               ? <><div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Sending…</>
-              : <><Megaphone className="w-3.5 h-3.5" strokeWidth={1.8} /> Send Broadcast</>
+              : <><Megaphone className="w-3.5 h-3.5" strokeWidth={1.7} /> Send Broadcast</>
             }
           </button>
         </div>
@@ -453,7 +453,7 @@ function BroadcastsView() {
             style={{ borderBottom: i < broadcasts.length - 1 ? '1px solid var(--bd)' : 'none' }}>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
               style={{ background: 'var(--p2)' }}>
-              <Megaphone className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.8} />
+              <Megaphone className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[12px] leading-relaxed truncate" style={{ color: 'var(--t1)' }}>{b.message}</p>
@@ -480,12 +480,12 @@ function AutomationsView() {
   const [draft, setDraft] = useState<AutoDraft>({ trigger: 'new_member', message: '', delay: 'immediate' })
 
   const TRIGGER_OPTS = [
-    { id: 'new_member',         label: 'New Member Joins',     icon: <UserPlus    className="w-3.5 h-3.5" strokeWidth={1.8} /> },
-    { id: 'course_complete',    label: 'Course Completed',     icon: <BookOpen    className="w-3.5 h-3.5" strokeWidth={1.8} /> },
-    { id: 'challenge_complete', label: 'Challenge Completed',  icon: <Trophy      className="w-3.5 h-3.5" strokeWidth={1.8} /> },
-    { id: 'purchase',           label: 'New Purchase',         icon: <ShoppingCart className="w-3.5 h-3.5" strokeWidth={1.8} /> },
-    { id: 'inactive_7d',        label: 'Inactive 7 Days',      icon: <Clock       className="w-3.5 h-3.5" strokeWidth={1.8} /> },
-    { id: 'inactive_30d',       label: 'Inactive 30 Days',     icon: <UserX       className="w-3.5 h-3.5" strokeWidth={1.8} /> },
+    { id: 'new_member',         label: 'New Member Joins',     icon: <UserPlus    className="w-3.5 h-3.5" strokeWidth={1.7} /> },
+    { id: 'course_complete',    label: 'Course Completed',     icon: <BookOpen    className="w-3.5 h-3.5" strokeWidth={1.7} /> },
+    { id: 'challenge_complete', label: 'Challenge Completed',  icon: <Trophy      className="w-3.5 h-3.5" strokeWidth={1.7} /> },
+    { id: 'purchase',           label: 'New Purchase',         icon: <ShoppingCart className="w-3.5 h-3.5" strokeWidth={1.7} /> },
+    { id: 'inactive_7d',        label: 'Inactive 7 Days',      icon: <Clock       className="w-3.5 h-3.5" strokeWidth={1.7} /> },
+    { id: 'inactive_30d',       label: 'Inactive 30 Days',     icon: <UserX       className="w-3.5 h-3.5" strokeWidth={1.7} /> },
   ]
 
   const DELAY_OPTS = [
@@ -517,21 +517,21 @@ function AutomationsView() {
       {/* Summary */}
       <div className="flex items-center gap-4 mb-5">
         <div className="rounded-2xl px-5 py-3.5 flex items-center gap-3" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-          <Zap className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.8} />
+          <Zap className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
           <div>
             <p className="text-[18px] font-bold" style={{ color: 'var(--t1)' }}>{rules.length}</p>
             <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Total Rules</p>
           </div>
         </div>
         <div className="rounded-2xl px-5 py-3.5 flex items-center gap-3" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-          <Play className="w-4 h-4" style={{ color: '#16a34a' }} strokeWidth={1.8} />
+          <Play className="w-4 h-4" style={{ color: '#16a34a' }} strokeWidth={1.7} />
           <div>
             <p className="text-[18px] font-bold" style={{ color: 'var(--t1)' }}>{active}</p>
             <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Active</p>
           </div>
         </div>
         <div className="rounded-2xl px-5 py-3.5 flex items-center gap-3" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-          <Send className="w-4 h-4" style={{ color: 'var(--cyan)' }} strokeWidth={1.8} />
+          <Send className="w-4 h-4" style={{ color: 'var(--cyan)' }} strokeWidth={1.7} />
           <div>
             <p className="text-[18px] font-bold" style={{ color: 'var(--t1)' }}>
               {rules.reduce((s, r) => s + r.sent, 0).toLocaleString()}
@@ -542,7 +542,7 @@ function AutomationsView() {
         <button onClick={() => setDrawerOpen(true)}
           className="ml-auto flex items-center gap-2 px-4 h-10 rounded-xl text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-85"
           style={{ background: 'var(--p)', color: '#fff' }}>
-          <Plus className="w-4 h-4" strokeWidth={2.5} />
+          <Plus className="w-4 h-4" strokeWidth={1.7} />
           New Automation
         </button>
       </div>
@@ -582,12 +582,12 @@ function AutomationsView() {
                 style={rule.active
                   ? { background: 'rgba(239,68,68,.08)', color: '#ef4444' }
                   : { background: 'rgba(74,222,128,.1)',  color: '#16a34a' }}>
-                {rule.active ? <><Pause className="w-3 h-3" strokeWidth={2} /> Pause</> : <><Play className="w-3 h-3" strokeWidth={2} /> Activate</>}
+                {rule.active ? <><Pause className="w-3 h-3" strokeWidth={1.7} /> Pause</> : <><Play className="w-3 h-3" strokeWidth={1.7} /> Activate</>}
               </button>
               <button onClick={() => deleteRule(rule.id)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold cursor-pointer transition-all hover:opacity-80 ml-auto"
                 style={{ background: 'var(--bg)', color: 'var(--t3)', border: '1px solid var(--bd)' }}>
-                <Trash2 className="w-3 h-3" strokeWidth={1.8} /> Delete
+                <Trash2 className="w-3 h-3" strokeWidth={1.7} /> Delete
               </button>
             </div>
           </div>
@@ -604,7 +604,7 @@ function AutomationsView() {
             <div className="flex items-center justify-between px-5 pt-5 pb-4" style={{ borderBottom: '1px solid var(--bd)' }}>
               <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>New Automation</p>
               <button onClick={() => setDrawerOpen(false)} className="cursor-pointer hover:opacity-60" style={{ color: 'var(--t3)' }}>
-                <X className="w-4 h-4" strokeWidth={1.8} />
+                <X className="w-4 h-4" strokeWidth={1.7} />
               </button>
             </div>
             <div className="px-5 py-4 space-y-4">
@@ -675,9 +675,9 @@ export default function MessagesPage() {
   const [view, setView] = useState<View>('conversations')
 
   const VIEWS: { id: View; label: string; icon: React.ReactNode }[] = [
-    { id: 'conversations', label: 'Conversations', icon: <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.8} /> },
-    { id: 'broadcasts',    label: 'Broadcasts',    icon: <Megaphone     className="w-3.5 h-3.5" strokeWidth={1.8} /> },
-    { id: 'automations',   label: 'Automations',   icon: <Zap           className="w-3.5 h-3.5" strokeWidth={1.8} /> },
+    { id: 'conversations', label: 'Conversations', icon: <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.7} /> },
+    { id: 'broadcasts',    label: 'Broadcasts',    icon: <Megaphone     className="w-3.5 h-3.5" strokeWidth={1.7} /> },
+    { id: 'automations',   label: 'Automations',   icon: <Zap           className="w-3.5 h-3.5" strokeWidth={1.7} /> },
   ]
 
   return (

@@ -505,7 +505,7 @@ function TicketForm({ initial, onSave, onCancel }: {
           className="flex-[2] h-10 rounded-xl text-[12px] font-bold text-white flex items-center justify-center
                      gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           style={{ background:"var(--p)" }}>
-          <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+          <Check className="w-3.5 h-3.5" strokeWidth={1.7} />
           Save Ticket
         </button>
       </div>
@@ -546,7 +546,7 @@ function StepPricing({ data, set }: { data:FormData; set:(f:keyof FormData, v:an
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow="none"}>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                   style={{ background:c.bg, border:`1px solid ${c.border}` }}>
-                  <Ticket className="w-4 h-4" style={{ color:c.color }} strokeWidth={1.8} />
+                  <Ticket className="w-4 h-4" style={{ color:c.color }} strokeWidth={1.7} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -602,7 +602,7 @@ function StepPricing({ data, set }: { data:FormData; set:(f:keyof FormData, v:an
               className="w-full h-11 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2
                          text-[12px] font-bold cursor-pointer transition-all hover:opacity-80"
               style={{ borderColor:"var(--p3)", color:"var(--p)", background:"var(--p2)" }}>
-              <Plus className="w-4 h-4" strokeWidth={2.5} />
+              <Plus className="w-4 h-4" strokeWidth={1.7} />
               Add Ticket Type
             </button>
           )}
@@ -708,7 +708,7 @@ function Sidebar({ data, step, done }: { data:FormData; step:number; done:Set<nu
           {/* Format chip */}
           <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md"
             style={{ background:"var(--p2)", color:"var(--p)" }}>
-            <FmtIcon className="w-2.5 h-2.5" strokeWidth={1.8} />
+            <FmtIcon className="w-2.5 h-2.5" strokeWidth={1.7} />
             {fmtLabel}
           </span>
           {/* Start date */}

@@ -137,7 +137,7 @@ function ArticleCard({ article }: { article: typeof ARTICLES[number] }) {
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd)' }}>
       <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
         style={{ background: 'var(--p2)' }}>
-        <BookOpen className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={1.8} />
+        <BookOpen className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-semibold leading-snug mb-1.5 group-hover:text-[var(--p)] transition-colors"
@@ -147,12 +147,12 @@ function ArticleCard({ article }: { article: typeof ARTICLES[number] }) {
         <div className="flex items-center gap-2">
           <CategoryBadge category={article.category} />
           <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
-            <Clock className="w-3 h-3" strokeWidth={1.8} />
+            <Clock className="w-3 h-3" strokeWidth={1.7} />
             {article.readTime} min read
           </span>
         </div>
       </div>
-      <ArrowRight className="w-4 h-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" style={{ color: 'var(--p)' }} strokeWidth={1.8} />
+      <ArrowRight className="w-4 h-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
     </div>
   )
 }
@@ -168,7 +168,7 @@ function VideoCard({ video }: { video: typeof VIDEOS[number] }) {
         style={{ aspectRatio: '16/9', background: 'linear-gradient(135deg, var(--p2) 0%, var(--bg) 100%)' }}>
         <div className="w-12 h-12 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
           style={{ background: 'var(--p)', boxShadow: '0 4px 16px rgba(124,58,237,.3)' }}>
-          <PlayCircle className="w-6 h-6 text-white" strokeWidth={1.5} />
+          <PlayCircle className="w-6 h-6 text-white" strokeWidth={1.7} />
         </div>
         <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg text-[11px] font-semibold text-white"
           style={{ background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)' }}>
@@ -201,7 +201,7 @@ function FaqItem({ faq, open, onToggle }: {
         <div className="flex items-start gap-3 min-w-0">
           <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
             style={{ background: open ? 'var(--p2)' : 'var(--bg)' }}>
-            <HelpCircle className="w-3.5 h-3.5" style={{ color: open ? 'var(--p)' : 'var(--t3)' }} strokeWidth={1.8} />
+            <HelpCircle className="w-3.5 h-3.5" style={{ color: open ? 'var(--p)' : 'var(--t3)' }} strokeWidth={1.7} />
           </div>
           <div className="min-w-0">
             <p className="text-[13px] font-semibold leading-snug" style={{ color: open ? 'var(--p)' : 'var(--t1)' }}>
@@ -211,7 +211,7 @@ function FaqItem({ faq, open, onToggle }: {
           </div>
         </div>
         <div className="shrink-0" style={{ color: open ? 'var(--p)' : 'var(--t3)' }}>
-          {open ? <ChevronUp className="w-4 h-4" strokeWidth={2} /> : <ChevronDown className="w-4 h-4" strokeWidth={2} />}
+          {open ? <ChevronUp className="w-4 h-4" strokeWidth={1.7} /> : <ChevronDown className="w-4 h-4" strokeWidth={1.7} />}
         </div>
       </button>
       {open && (
@@ -236,7 +236,7 @@ function ResourceCard({ resource }: { resource: typeof RESOURCES[number] }) {
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd)' }}>
       <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
         style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
-        <Icon className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.8} />
+        <Icon className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>{resource.title}</p>
@@ -250,8 +250,8 @@ function ResourceCard({ resource }: { resource: typeof RESOURCES[number] }) {
       <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
         style={{ background: 'var(--p2)' }}>
         {isLink
-          ? <ExternalLink className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={2} />
-          : <Download     className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={2} />
+          ? <ExternalLink className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+          : <Download     className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
         }
       </div>
     </div>
@@ -271,10 +271,10 @@ export default function HelpPage() {
   const filteredResources = filterByQuery(RESOURCES,  query)
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; count: number }[] = [
-    { id: 'articles',  label: 'Articles',  icon: <BookOpen  className="w-3.5 h-3.5" strokeWidth={1.8} />, count: filteredArticles.length  },
-    { id: 'videos',    label: 'Videos',    icon: <Video     className="w-3.5 h-3.5" strokeWidth={1.8} />, count: filteredVideos.length    },
-    { id: 'faqs',      label: 'FAQs',      icon: <HelpCircle className="w-3.5 h-3.5" strokeWidth={1.8} />, count: filteredFaqs.length      },
-    { id: 'resources', label: 'Resources', icon: <Download  className="w-3.5 h-3.5" strokeWidth={1.8} />, count: filteredResources.length },
+    { id: 'articles',  label: 'Articles',  icon: <BookOpen  className="w-3.5 h-3.5" strokeWidth={1.7} />, count: filteredArticles.length  },
+    { id: 'videos',    label: 'Videos',    icon: <Video     className="w-3.5 h-3.5" strokeWidth={1.7} />, count: filteredVideos.length    },
+    { id: 'faqs',      label: 'FAQs',      icon: <HelpCircle className="w-3.5 h-3.5" strokeWidth={1.7} />, count: filteredFaqs.length      },
+    { id: 'resources', label: 'Resources', icon: <Download  className="w-3.5 h-3.5" strokeWidth={1.7} />, count: filteredResources.length },
   ]
 
   return (
@@ -292,7 +292,7 @@ export default function HelpPage() {
 
             {/* ── Search bar ── */}
             <div className="relative mb-7 max-w-2xl">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
               <input
                 value={query}
                 onChange={e => setQuery(e.target.value)}
@@ -312,14 +312,14 @@ export default function HelpPage() {
                 onClick={() => setTab('videos')}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
                   style={{ background: 'rgba(255,255,255,.2)' }}>
-                  <PlayCircle className="w-5 h-5 text-white" strokeWidth={1.8} />
+                  <PlayCircle className="w-5 h-5 text-white" strokeWidth={1.7} />
                 </div>
                 <p className="text-[14px] font-bold text-white">Video Tutorials</p>
                 <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,.75)' }}>
                   Step-by-step walkthroughs for every feature
                 </p>
                 <div className="flex items-center gap-1 mt-3 text-[12px] font-semibold text-white">
-                  Watch now <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" strokeWidth={2.5} />
+                  Watch now <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" strokeWidth={1.7} />
                 </div>
               </div>
 
@@ -330,7 +330,7 @@ export default function HelpPage() {
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd)' }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
                   style={{ background: '#25d36618' }}>
-                  <MessageSquare className="w-5 h-5" style={{ color: '#25d366' }} strokeWidth={1.8} />
+                  <MessageSquare className="w-5 h-5" style={{ color: '#25d366' }} strokeWidth={1.7} />
                 </div>
                 <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Live Chat</p>
                 <p className="text-[12px] mt-1" style={{ color: 'var(--t3)' }}>
@@ -349,14 +349,14 @@ export default function HelpPage() {
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd)' }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
                   style={{ background: '#0077B518' }}>
-                  <Mail className="w-5 h-5" style={{ color: '#0077B5' }} strokeWidth={1.8} />
+                  <Mail className="w-5 h-5" style={{ color: '#0077B5' }} strokeWidth={1.7} />
                 </div>
                 <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Email Support</p>
                 <p className="text-[12px] mt-1" style={{ color: 'var(--t3)' }}>
                   We reply within 24 hours
                 </p>
                 <div className="flex items-center gap-1 mt-3 text-[12px] font-semibold" style={{ color: '#0077B5' }}>
-                  Send email <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" strokeWidth={2.5} />
+                  Send email <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" strokeWidth={1.7} />
                 </div>
               </div>
             </div>

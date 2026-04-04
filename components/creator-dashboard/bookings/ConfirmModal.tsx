@@ -79,7 +79,7 @@ export default function ConfirmModal({ booking, onConfirmed, onClose }: Props) {
               className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-semibold
                          flex items-center justify-center gap-2.5 cursor-pointer transition-colors"
               style={DM}>
-              <Sparkles className="w-4 h-4" strokeWidth={1.8} />
+              <Sparkles className="w-4 h-4" strokeWidth={1.7} />
               Create Meeting Link
             </button>
           )}
@@ -99,7 +99,7 @@ export default function ConfirmModal({ booking, onConfirmed, onClose }: Props) {
               <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
                 <div className="flex items-center gap-2.5 mb-3">
                   <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={2} />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={1.7} />
                   </div>
                   <div>
                     <p className="text-[13px] font-bold text-emerald-800" style={SORA}>Meeting Created!</p>
@@ -108,7 +108,7 @@ export default function ConfirmModal({ booking, onConfirmed, onClose }: Props) {
                 </div>
                 {/* Link row */}
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-emerald-100">
-                  <Video className="w-3 h-3 text-indigo-500 shrink-0" strokeWidth={1.8} />
+                  <Video className="w-3 h-3 text-indigo-500 shrink-0" strokeWidth={1.7} />
                   <span className="text-[11px] font-mono text-slate-600 truncate flex-1">{link}</span>
                   <a href={link} target="_blank" rel="noopener noreferrer"
                     className="shrink-0 text-indigo-500 hover:text-indigo-700 transition-colors">
@@ -118,13 +118,13 @@ export default function ConfirmModal({ booking, onConfirmed, onClose }: Props) {
                 {/* Context */}
                 <div className="mt-2.5 flex items-center gap-3 text-[11px] text-emerald-600" style={DM}>
                   <span className="flex items-center gap-1.5">
-                    <Video className="w-3 h-3" strokeWidth={1.8} />{booking.sessionTitle}
+                    <Video className="w-3 h-3" strokeWidth={1.7} />{booking.sessionTitle}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Calendar className="w-3 h-3" strokeWidth={1.8} />{booking.date}
+                    <Calendar className="w-3 h-3" strokeWidth={1.7} />{booking.date}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Clock className="w-3 h-3" strokeWidth={1.8} />{booking.duration}
+                    <Clock className="w-3 h-3" strokeWidth={1.7} />{booking.duration}
                   </span>
                 </div>
               </div>
@@ -141,7 +141,7 @@ export default function ConfirmModal({ booking, onConfirmed, onClose }: Props) {
                   className="flex-[2] h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold
                              flex items-center justify-center gap-2 cursor-pointer transition-colors"
                   style={DM}>
-                  <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
+                  <CheckCircle2 className="w-4 h-4" strokeWidth={1.7} />
                   OK, Confirm Booking
                 </button>
               </div>

@@ -143,7 +143,7 @@ export default function BookingsPage() {
                 onClick={() => router.push('/creator/sessions')}
                 className="flex items-center gap-1.5 text-[12px] font-medium text-slate-400
                            hover:text-slate-700 transition-colors cursor-pointer shrink-0">
-                <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2} />
+                <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.7} />
                 {lang === 'ar' ? 'رجوع' : 'Back'}
               </button>
               <div className="w-px h-4 bg-slate-200 shrink-0" />
@@ -163,7 +163,7 @@ export default function BookingsPage() {
                 onClick={toggleLang}
                 className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white
                            text-[12px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer">
-                <Globe className="w-3.5 h-3.5 text-slate-400" strokeWidth={1.8} />
+                <Globe className="w-3.5 h-3.5 text-slate-400" strokeWidth={1.7} />
                 {lang === 'ar' ? 'EN' : 'AR'}
               </button>
               <button
@@ -171,8 +171,8 @@ export default function BookingsPage() {
                 className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center
                            text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer">
                 {dark
-                  ? <Sun className="w-4 h-4" strokeWidth={1.8} />
-                  : <Moon className="w-4 h-4" strokeWidth={1.8} />
+                  ? <Sun className="w-4 h-4" strokeWidth={1.7} />
+                  : <Moon className="w-4 h-4" strokeWidth={1.7} />
                 }
               </button>
             </div>
@@ -201,7 +201,7 @@ export default function BookingsPage() {
 
               {/* Search */}
               <div className="relative flex-1 min-w-[220px]">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" strokeWidth={1.8} />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" strokeWidth={1.7} />
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}

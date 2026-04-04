@@ -99,7 +99,7 @@ export default function EventsPage() {
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white
                            cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ background:'var(--p)' }}>
-                <Plus className="w-4 h-4" strokeWidth={2.5} /> {T.create}
+                <Plus className="w-4 h-4" strokeWidth={1.7} /> {T.create}
               </button>
             </div>
 
@@ -114,7 +114,7 @@ export default function EventsPage() {
                 style={{ borderColor:'var(--bd)', background:'var(--white)' }}>
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
                   style={{ background:'var(--p2)' }}>
-                  <Calendar className="w-8 h-8" style={{ color:'var(--p)' }} strokeWidth={1.5} />
+                  <Calendar className="w-8 h-8" style={{ color:'var(--p)' }} strokeWidth={1.7} />
                 </div>
                 <p className="text-[15px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>{T.empty}</p>
                 <p className="text-[13px] mb-6" style={{ color:'var(--t3)' }}>{T.emptyDesc}</p>
@@ -122,7 +122,7 @@ export default function EventsPage() {
                   className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white
                              cursor-pointer hover:opacity-90 transition-opacity"
                   style={{ background:'var(--p)' }}>
-                  <Plus className="w-4 h-4" strokeWidth={2.5} /> {T.create}
+                  <Plus className="w-4 h-4" strokeWidth={1.7} /> {T.create}
                 </button>
               </div>
             ) : (
@@ -151,7 +151,7 @@ export default function EventsPage() {
                         {ev.coverPreview
                           ? <img src={ev.coverPreview} alt="" className="w-full h-full object-cover" />
                           : <div className="absolute inset-0 flex items-center justify-center">
-                              <Calendar className="w-8 h-8 text-white opacity-40" strokeWidth={1.5} />
+                              <Calendar className="w-8 h-8 text-white opacity-40" strokeWidth={1.7} />
                             </div>
                         }
                       </div>
@@ -191,13 +191,13 @@ export default function EventsPage() {
                           {/* Format */}
                           <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
                             style={{ background:fmtColor.bg, color:fmtColor.color }}>
-                            <FormatIcon className="w-2.5 h-2.5" strokeWidth={1.8} />
+                            <FormatIcon className="w-2.5 h-2.5" strokeWidth={1.7} />
                             {formatLabel[ev.format]}
                           </span>
                           {/* Date */}
                           {ev.startDate && (
                             <span className="flex items-center gap-1 text-[11px]" style={{ color:'var(--t3)' }}>
-                              <Calendar className="w-3 h-3" strokeWidth={1.8} />
+                              <Calendar className="w-3 h-3" strokeWidth={1.7} />
                               {ev.startDate}{ev.startTime && `, ${ev.startTime}`}
                             </span>
                           )}
@@ -205,14 +205,14 @@ export default function EventsPage() {
                           {ev.category && (
                             <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
                               style={{ background:'var(--p2)', color:'var(--p)' }}>
-                              <Tag className="w-2.5 h-2.5" strokeWidth={1.8} />
+                              <Tag className="w-2.5 h-2.5" strokeWidth={1.7} />
                               {ev.category}
                             </span>
                           )}
                           {/* Tickets */}
                           {ev.tickets.length > 0 && (
                             <span className="flex items-center gap-1 text-[11px]" style={{ color:'var(--t3)' }}>
-                              <Ticket className="w-3 h-3" strokeWidth={1.8} />
+                              <Ticket className="w-3 h-3" strokeWidth={1.7} />
                               {ev.tickets.length} {T.tickets}
                               {lowestPrice !== null && ` · ${lang==='ar'?'من':'from'} ${lowestPrice} ${lang==='ar'?'د.ت':'TND'}`}
                               {lowestPrice === null && ` · ${T.free}`}
@@ -220,7 +220,7 @@ export default function EventsPage() {
                           )}
                           {/* Capacity */}
                           <span className="flex items-center gap-1 text-[11px]" style={{ color:'var(--t3)' }}>
-                            <Users className="w-3 h-3" strokeWidth={1.8} />
+                            <Users className="w-3 h-3" strokeWidth={1.7} />
                             {ev.capacity==='unlimited' ? T.unlimited : `${ev.capacity} ${T.seats}s`}
                           </span>
                         </div>

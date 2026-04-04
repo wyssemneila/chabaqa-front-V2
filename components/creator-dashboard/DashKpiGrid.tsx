@@ -39,7 +39,7 @@ function KpiCardUI({ card, lang }: { card: KpiCard; lang: 'en' | 'ar' }) {
         style={{ color: 'var(--t3)' }}>
         <div className="w-7 h-7 rounded-[7px] flex items-center justify-center shrink-0"
           style={{ background: card.iconBg }}>
-          <Icon className="w-3.5 h-3.5" strokeWidth={1.8} style={{ color: card.iconColor }} />
+          <Icon className="w-3.5 h-3.5" strokeWidth={1.7} style={{ color: card.iconColor }} />
         </div>
         {label}
       </div>

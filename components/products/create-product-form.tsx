@@ -433,7 +433,7 @@ function StepFiles({ data, set }: { data:FormData; set:(f:keyof FormData, v:any)
         <button type="button" onClick={() => previewRef.current?.click()}
           className="flex items-center gap-2 h-10 px-4 rounded-xl text-[12px] font-bold cursor-pointer transition-all border-2"
           style={{ borderColor:"var(--p3)", color:"var(--p)", background:"var(--p2)" }}>
-          <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+          <Plus className="w-3.5 h-3.5" strokeWidth={1.7} />
           Add Screenshots
         </button>
       </Card>
@@ -463,7 +463,7 @@ function StepDetails({ data, set }: { data:FormData; set:(f:keyof FormData, v:an
           {data.whatIncluded.map((item, i) => (
             <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
               style={{ background:"var(--bg)", border:"1px solid var(--bd)" }}>
-              <Check className="w-3.5 h-3.5 shrink-0" style={{ color:"var(--p)" }} strokeWidth={2.5} />
+              <Check className="w-3.5 h-3.5 shrink-0" style={{ color:"var(--p)" }} strokeWidth={1.7} />
               <p className="flex-1 text-[13px]" style={{ color:"var(--t1)" }}>{item}</p>
               <button type="button" onClick={() => removeItem(i)}
                 className="w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
@@ -585,7 +585,7 @@ function TierEditor({ tier, onChange, onDelete }: {
           {tier.features.map((feat, i) => (
             <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl"
               style={{ background:"var(--bg)", border:"1px solid var(--bd)" }}>
-              <Check className="w-3 h-3 shrink-0" style={{ color:"var(--p)" }} strokeWidth={2.5} />
+              <Check className="w-3 h-3 shrink-0" style={{ color:"var(--p)" }} strokeWidth={1.7} />
               <p className="flex-1 text-[12px]" style={{ color:"var(--t1)" }}>{feat}</p>
               <button type="button" onClick={() => removeFeature(i)}
                 className="cursor-pointer hover:opacity-60" style={{ color:"var(--t3)" }}>
@@ -713,7 +713,7 @@ function StepPricing({ data, set }: { data:FormData; set:(f:keyof FormData, v:an
                 className="w-full h-11 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2
                            text-[12px] font-bold cursor-pointer transition-all hover:opacity-80"
                 style={{ borderColor:"var(--p3)", color:"var(--p)", background:"var(--p2)" }}>
-                <Plus className="w-4 h-4" strokeWidth={2.5} /> Add Pricing Tier
+                <Plus className="w-4 h-4" strokeWidth={1.7} /> Add Pricing Tier
               </button>
             </div>
           )}
@@ -775,7 +775,7 @@ function SuccessScreen() {
       `}</style>
       <div className="w-20 h-20 rounded-full flex items-center justify-center"
         style={{ background:"var(--p)", boxShadow:"0 12px 40px rgba(142,120,251,.5)", animation:"popIn .5s cubic-bezier(.34,1.56,.64,1) both" }}>
-        <Package className="w-10 h-10 text-white" strokeWidth={1.8} />
+        <Package className="w-10 h-10 text-white" strokeWidth={1.7} />
       </div>
       <div className="text-center" style={{ animation:"fadeUpS .5s .2s ease both" }}>
         <h2 className="text-2xl font-bold mb-1" style={{ color:"var(--t1)" }}>Product Published!</h2>

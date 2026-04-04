@@ -170,7 +170,7 @@ function ConnectForm({ current, onSave, onCancel }: {
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>{opt.desc}</p>
               </div>
               {method === opt.id && (
-                <Check className="w-4 h-4 self-end" style={{ color: opt.color }} strokeWidth={2.5} />
+                <Check className="w-4 h-4 self-end" style={{ color: opt.color }} strokeWidth={1.7} />
               )}
             </button>
           ))}
@@ -229,8 +229,8 @@ function ConnectForm({ current, onSave, onCancel }: {
             {saving
               ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
               : method === 'stripe'
-                ? <><Zap className="w-4 h-4" strokeWidth={2} /> Connect with Stripe</>
-                : <><Check className="w-4 h-4" strokeWidth={2.5} /> Save Bank Details</>
+                ? <><Zap className="w-4 h-4" strokeWidth={1.7} /> Connect with Stripe</>
+                : <><Check className="w-4 h-4" strokeWidth={1.7} /> Save Bank Details</>
             }
           </button>
         </div>
@@ -252,7 +252,7 @@ function ConnectedCard({ info, onEdit }: { info: BankInfo; onEdit: () => void })
         <button onClick={onEdit}
           className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-80"
           style={{ background: 'var(--bg)', color: 'var(--t2)', border: '1px solid var(--bd)' }}>
-          <Pencil className="w-3 h-3" strokeWidth={1.8} /> Edit
+          <Pencil className="w-3 h-3" strokeWidth={1.7} /> Edit
         </button>
       </div>
 
@@ -387,7 +387,7 @@ export default function PayoutsPage() {
                 </div>
                 <button className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90"
                   style={{ background: '#16a34a' }}>
-                  <ArrowDownToLine className="w-3.5 h-3.5" strokeWidth={2} /> Request Now
+                  <ArrowDownToLine className="w-3.5 h-3.5" strokeWidth={1.7} /> Request Now
                 </button>
               </div>
             )}

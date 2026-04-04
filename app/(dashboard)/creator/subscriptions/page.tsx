@@ -208,7 +208,7 @@ export default function SubscriptionsPage() {
 
               <div className="flex items-center gap-2 flex-1 min-w-[180px] h-9 px-3 rounded-xl ml-auto"
                 style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-                <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+                <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
                 <input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Search by name, email or content…"
                   className="flex-1 bg-transparent text-[13px] outline-none" style={{ color: 'var(--t1)' }} />

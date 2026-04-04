@@ -381,7 +381,7 @@ function StepPopup({ step, dayIndex, onSave, onClose }: {
               <button type="button" onClick={addResource}
                 className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] font-bold cursor-pointer transition-all"
                 style={{ background: "var(--p2)", color: "var(--p)", border: "1px solid var(--p3)" }}>
-                <Plus className="w-3 h-3" strokeWidth={2.5} /> Add Resource
+                <Plus className="w-3 h-3" strokeWidth={1.7} /> Add Resource
               </button>
             </div>
             {form.resources.length === 0 && (
@@ -414,7 +414,7 @@ function StepPopup({ step, dayIndex, onSave, onClose }: {
             className="flex items-center gap-2 h-10 px-6 rounded-xl text-[13px] font-bold text-white cursor-pointer
                        disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             style={{ background: "var(--p)", boxShadow: isFilled ? "0 4px 16px rgba(142,120,251,.35)" : "none" }}>
-            <Check className="w-4 h-4" strokeWidth={2.5} /> Save Step
+            <Check className="w-4 h-4" strokeWidth={1.7} /> Save Step
           </button>
         </div>
       </div>
@@ -662,7 +662,7 @@ function StepSteps({ data, set }: { data: FormData; set: (f: keyof FormData, v: 
         {filledCount === data.steps.length && data.steps.length > 0 && (
           <span className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full"
             style={{ background: "rgba(74,222,128,.12)", color: "#16a34a" }}>
-            <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> All done
+            <Check className="w-3.5 h-3.5" strokeWidth={1.7} /> All done
           </span>
         )}
       </div>
@@ -692,7 +692,7 @@ function StepSteps({ data, set }: { data: FormData; set: (f: keyof FormData, v: 
                   border: filled ? "1.5px solid rgba(74,222,128,.4)" : "1.5px solid var(--bd)",
                 }}>
                 {filled
-                  ? <Check className="w-4 h-4" style={{ color: "#16a34a" }} strokeWidth={2.5} />
+                  ? <Check className="w-4 h-4" style={{ color: "#16a34a" }} strokeWidth={1.7} />
                   : <span className="text-[12px] font-black tabular-nums" style={{ color: "var(--t3)" }}>{i + 1}</span>
                 }
               </div>
@@ -707,17 +707,17 @@ function StepSteps({ data, set }: { data: FormData; set: (f: keyof FormData, v: 
                   <div className="flex items-center gap-3 mt-0.5">
                     {points && (
                       <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--orange)" }}>
-                        <Star className="w-3 h-3" strokeWidth={1.8} /> {points}
+                        <Star className="w-3 h-3" strokeWidth={1.7} /> {points}
                       </span>
                     )}
                     {resCount > 0 && (
                       <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--t3)" }}>
-                        <Paperclip className="w-3 h-3" strokeWidth={1.8} /> {resCount} resource{resCount !== 1 ? "s" : ""}
+                        <Paperclip className="w-3 h-3" strokeWidth={1.7} /> {resCount} resource{resCount !== 1 ? "s" : ""}
                       </span>
                     )}
                     {s.deliverable && (
                       <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--t3)" }}>
-                        <Target className="w-3 h-3" strokeWidth={1.8} /> deliverable set
+                        <Target className="w-3 h-3" strokeWidth={1.7} /> deliverable set
                       </span>
                     )}
                   </div>
@@ -971,7 +971,7 @@ function SuccessScreen() {
       `}</style>
       <div className="w-20 h-20 rounded-full flex items-center justify-center"
         style={{ background:"var(--p)", boxShadow:"0 12px 40px rgba(142,120,251,.5)", animation:"popIn .5s cubic-bezier(.34,1.56,.64,1) both" }}>
-        <Trophy className="w-10 h-10 text-white" strokeWidth={1.8} />
+        <Trophy className="w-10 h-10 text-white" strokeWidth={1.7} />
       </div>
       <div className="text-center" style={{ animation:"fadeUpS .5s .2s ease both" }}>
         <h2 className="text-2xl font-bold mb-1" style={{ color:"var(--t1)" }}>Challenge Created!</h2>

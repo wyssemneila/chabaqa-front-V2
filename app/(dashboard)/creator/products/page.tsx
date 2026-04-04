@@ -60,7 +60,7 @@ export default function ProductsPage() {
               <button onClick={() => router.push('/creator/products/create')}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ background:'var(--p)' }}>
-                <Plus className="w-4 h-4" strokeWidth={2.5} /> New Product
+                <Plus className="w-4 h-4" strokeWidth={1.7} /> New Product
               </button>
             </div>
 
@@ -73,14 +73,14 @@ export default function ProductsPage() {
                 style={{ borderColor:'var(--bd)', background:'var(--white)' }}>
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
                   style={{ background:'var(--p2)' }}>
-                  <Package className="w-8 h-8" style={{ color:'var(--p)' }} strokeWidth={1.5} />
+                  <Package className="w-8 h-8" style={{ color:'var(--p)' }} strokeWidth={1.7} />
                 </div>
                 <p className="text-[15px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>No products yet</p>
                 <p className="text-[13px] mb-6" style={{ color:'var(--t3)' }}>Upload your first digital product</p>
                 <button onClick={() => router.push('/creator/products/create')}
                   className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
                   style={{ background:'var(--p)' }}>
-                  <Plus className="w-4 h-4" strokeWidth={2.5} /> New Product
+                  <Plus className="w-4 h-4" strokeWidth={1.7} /> New Product
                 </button>
               </div>
             ) : (
@@ -98,7 +98,7 @@ export default function ProductsPage() {
                       {p.thumbnail
                         ? <img src={p.thumbnail} alt="" className="w-full h-full object-cover" />
                         : <div className="absolute inset-0 flex items-center justify-center">
-                            <Package className="w-8 h-8 text-white opacity-40" strokeWidth={1.5} />
+                            <Package className="w-8 h-8 text-white opacity-40" strokeWidth={1.7} />
                           </div>
                       }
                     </div>
@@ -136,23 +136,23 @@ export default function ProductsPage() {
                         {p.category && (
                           <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
                             style={{ background:'var(--p2)', color:'var(--p)' }}>
-                            <Tag className="w-2.5 h-2.5" strokeWidth={1.8} /> {p.category}
+                            <Tag className="w-2.5 h-2.5" strokeWidth={1.7} /> {p.category}
                           </span>
                         )}
                         <span className="flex items-center gap-1 text-[11px]" style={{ color:'var(--t3)' }}>
-                          <FileArchive className="w-3 h-3" strokeWidth={1.8} />
+                          <FileArchive className="w-3 h-3" strokeWidth={1.7} />
                           {p.files?.length ?? 0} file{(p.files?.length ?? 0)!==1?'s':''}
                         </span>
                         <span className="flex items-center gap-1 text-[11px] font-semibold"
                           style={{ color: p.priceType==='free' ? 'var(--cyan)' : 'var(--orange)' }}>
-                          <DollarSign className="w-3 h-3" strokeWidth={1.8} />
+                          <DollarSign className="w-3 h-3" strokeWidth={1.7} />
                           {priceLabel(p)}
                           {p.hasTiers && p.tiers?.length > 0 && ` · ${p.tiers.length} tiers`}
                         </span>
                         {p.license && (
                           <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize"
                             style={{ background:'var(--bg)', color:'var(--t3)' }}>
-                            <ShieldCheck className="w-2.5 h-2.5" strokeWidth={1.8} /> {p.license}
+                            <ShieldCheck className="w-2.5 h-2.5" strokeWidth={1.7} /> {p.license}
                           </span>
                         )}
                       </div>

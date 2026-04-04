@@ -167,7 +167,7 @@ export default function CoursesPage() {
                     <s.icon className="w-6 h-6" style={{ color: s.color }} />
                   </div>
                   <div>
-                    <p className="text-[28px] font-black leading-none" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[24px] font-black leading-none" style={{ color: s.color }}>{s.value}</p>
                     <p className="text-[12px] font-semibold mt-0.5" style={{ color: 'var(--t3)' }}>{s.label}</p>
                   </div>
                 </div>

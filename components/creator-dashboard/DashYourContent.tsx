@@ -121,7 +121,7 @@ export default function DashYourContent() {
 
               <button className="flex items-center gap-1 text-[11px] font-medium transition-opacity hover:opacity-70 shrink-0 cursor-pointer"
                 style={{ color: 'var(--p)', background: 'transparent', border: 'none' }}>
-                {t.edit} <Pencil className="w-3 h-3" strokeWidth={1.8} />
+                {t.edit} <Pencil className="w-3 h-3" strokeWidth={1.7} />
               </button>
             </div>
           )

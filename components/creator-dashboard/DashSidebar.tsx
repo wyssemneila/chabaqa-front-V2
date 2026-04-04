@@ -80,7 +80,7 @@ export default function DashSidebar() {
 
       {/* Create button */}
       <Link href="/creator/create-community"
-        className="mx-3 mt-3 mb-2 px-3 py-2 rounded-[10px] text-xs font-medium flex items-center gap-1.5 transition-opacity hover:opacity-85 w-[calc(100%-24px)] shrink-0"
+        className="mx-3 mt-3 mb-2 px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-opacity hover:opacity-85 w-[calc(100%-24px)] shrink-0"
         style={{ background: 'var(--p)', color: '#fff' }}>
         <DashIcon name="plus" size={13} color="white" />
         {createCommunity}

@@ -156,7 +156,7 @@ function PreviewModal({ open, onClose, subject, previewText, body }: {
               {(['desktop', 'mobile'] as const).map(v => (
                 <button key={v} onClick={() => setView(v)}
                   className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[12px] font-semibold cursor-pointer transition-all"
-                  style={view === v ? { background: '#fff', color: '#111' } : { color: 'rgba(255,255,255,.7)' }}>
+                  style={view === v ? { background: '#fff', color: 'var(--t1)' } : { color: 'rgba(255,255,255,.7)' }}>
                   {v === 'desktop' ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
                   {v === 'desktop' ? 'Desktop' : 'Mobile'}
                 </button>
@@ -186,9 +186,9 @@ function PreviewModal({ open, onClose, subject, previewText, body }: {
 
             {/* email meta */}
             <div className="px-6 py-3 space-y-1" style={{ background: '#fafafa', borderBottom: '1px solid #eee' }}>
-              <p className="text-[12px]" style={{ color: '#555' }}><span className="font-semibold">From:</span> Motion Masters &lt;hello@chabaqa.com&gt;</p>
-              <p className="text-[12px]" style={{ color: '#555' }}><span className="font-semibold">Subject:</span> {subject || <span style={{ color: '#aaa' }}>(No subject)</span>}</p>
-              {previewText && <p className="text-[11px]" style={{ color: '#999' }}>{previewText}</p>}
+              <p className="text-[12px]" style={{ color: 'var(--t2)' }}><span className="font-semibold">From:</span> Motion Masters &lt;hello@chabaqa.com&gt;</p>
+              <p className="text-[12px]" style={{ color: 'var(--t2)' }}><span className="font-semibold">Subject:</span> {subject || <span style={{ color: 'var(--t3)' }}>(No subject)</span>}</p>
+              {previewText && <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{previewText}</p>}
             </div>
 
             {/* email body */}
@@ -207,7 +207,7 @@ function PreviewModal({ open, onClose, subject, previewText, body }: {
 
                 {/* content */}
                 <div className="px-8 py-6">
-                  {subject && <h2 className="text-[18px] font-bold mb-4" style={{ color: '#111' }}>{subject}</h2>}
+                  {subject && <h2 className="text-[18px] font-bold mb-4" style={{ color: 'var(--t1)' }}>{subject}</h2>}
                   {previewText && <p className="text-[13px] mb-4 italic" style={{ color: '#777' }}>{previewText}</p>}
                   {body
                     ? <p className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: '#333' }}>{body}</p>
@@ -221,8 +221,8 @@ function PreviewModal({ open, onClose, subject, previewText, body }: {
 
                 {/* footer */}
                 <div className="px-8 py-5 text-center" style={{ background: '#f9f9f9', borderTop: '1px solid #eee' }}>
-                  <p className="text-[11px]" style={{ color: '#aaa' }}>Motion Masters · Chabaqa Platform</p>
-                  <p className="text-[11px] mt-1" style={{ color: '#bbb' }}>
+                  <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Motion Masters · Chabaqa Platform</p>
+                  <p className="text-[11px] mt-1" style={{ color: 'var(--t3)' }}>
                     <span className="underline cursor-pointer">Unsubscribe</span> &nbsp;·&nbsp; <span className="underline cursor-pointer">Privacy Policy</span>
                   </p>
                 </div>
@@ -288,10 +288,10 @@ function CampaignCard({ c, onDelete, onPreview }: {
 
       <div className="px-4 py-3 flex items-center gap-4 flex-wrap">
         <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
-          <Users className="w-3 h-3" strokeWidth={1.8} />{c.audienceLabel} · {c.audienceCount.toLocaleString()}
+          <Users className="w-3 h-3" strokeWidth={1.7} />{c.audienceLabel} · {c.audienceCount.toLocaleString()}
         </span>
-        {c.sentAt && <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}><Send className="w-3 h-3" strokeWidth={1.8} />{c.sentAt}</span>}
-        {c.scheduledAt && <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--orange)' }}><Clock className="w-3 h-3" strokeWidth={1.8} />{c.scheduledAt}</span>}
+        {c.sentAt && <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}><Send className="w-3 h-3" strokeWidth={1.7} />{c.sentAt}</span>}
+        {c.scheduledAt && <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--orange)' }}><Clock className="w-3 h-3" strokeWidth={1.7} />{c.scheduledAt}</span>}
       </div>
 
       {c.status === 'sent' && (
@@ -314,7 +314,7 @@ function CampaignCard({ c, onDelete, onPreview }: {
         <div className="px-4 pb-4">
           <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
             style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
             <p className="text-[11px]" style={{ color: 'var(--t3)' }}>
               {c.status === 'draft' ? 'Draft — not sent yet. Edit and schedule to send.' : `Scheduled for ${c.scheduledAt}`}
             </p>
@@ -577,7 +577,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
                       {isCustom && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'var(--p2)', color: 'var(--p)' }}>CUSTOM</span>
                       )}
-                      <Users className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+                      <Users className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
                     </button>
                   )
                 })}
@@ -699,7 +699,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
             ) : (
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
                 style={{ background: 'rgba(74,222,128,.08)', border: '1px solid rgba(74,222,128,.25)' }}>
-                <Zap className="w-3.5 h-3.5 shrink-0" style={{ color: '#16a34a' }} strokeWidth={1.8} />
+                <Zap className="w-3.5 h-3.5 shrink-0" style={{ color: '#16a34a' }} strokeWidth={1.7} />
                 <p className="text-[12px]" style={{ color: '#16a34a' }}>Sent immediately after confirmation</p>
               </div>
             )}
@@ -721,8 +721,8 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
             {saving
               ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
               : schedMode === 'later'
-                ? <><Calendar className="w-4 h-4" strokeWidth={2} /> Schedule</>
-                : <><Send className="w-4 h-4" strokeWidth={2} /> Send Now</>}
+                ? <><Calendar className="w-4 h-4" strokeWidth={1.7} /> Schedule</>
+                : <><Send className="w-4 h-4" strokeWidth={1.7} /> Send Now</>}
           </button>
         </div>
       </div>
@@ -841,7 +841,7 @@ function CreateAutomationDrawer({ open, onClose, onSave }: {
                       <p className="text-[12px] font-semibold" style={{ color: sel ? 'var(--p)' : 'var(--t1)' }}>{t.label}</p>
                       <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{t.desc}</p>
                     </div>
-                    {sel && <Check className="w-4 h-4 shrink-0" style={{ color: 'var(--p)' }} strokeWidth={2.5} />}
+                    {sel && <Check className="w-4 h-4 shrink-0" style={{ color: 'var(--p)' }} strokeWidth={1.7} />}
                   </button>
                 )
               })}
@@ -888,7 +888,7 @@ function CreateAutomationDrawer({ open, onClose, onSave }: {
             style={{ background: 'var(--p)' }}>
             {saving
               ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              : <><Zap className="w-4 h-4" strokeWidth={2} /> Create &amp; Activate Automation</>}
+              : <><Zap className="w-4 h-4" strokeWidth={1.7} /> Create &amp; Activate Automation</>}
           </button>
         </div>
       </div>
@@ -1019,7 +1019,7 @@ export default function EmailMarketingPage() {
                   {/* search */}
                   <div className="flex items-center gap-2 flex-1 min-w-[160px] h-9 px-3 rounded-xl"
                     style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-                    <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+                    <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
                     <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search campaigns…"
                       className="flex-1 bg-transparent text-[13px] outline-none" style={{ color: 'var(--t1)' }} />
                     {search && <button onClick={() => setSearch('')} style={{ color: 'var(--t3)' }}><X className="w-3.5 h-3.5" /></button>}
@@ -1030,7 +1030,7 @@ export default function EmailMarketingPage() {
               <button onClick={() => view === 'campaigns' ? setCampDrawer(true) : setAutoDrawer(true)}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90 ml-auto"
                 style={{ background: 'var(--p)' }}>
-                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                <Plus className="w-4 h-4" strokeWidth={1.7} />
                 {view === 'campaigns' ? 'New Campaign' : 'New Automation'}
               </button>
             </div>
@@ -1045,7 +1045,7 @@ export default function EmailMarketingPage() {
                 <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
                   style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'var(--p2)' }}>
-                    <Inbox className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.5} />
+                    <Inbox className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                   </div>
                   <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>
                     {search ? 'No campaigns match your search' : 'No campaigns yet'}
@@ -1057,7 +1057,7 @@ export default function EmailMarketingPage() {
                     <button onClick={() => setCampDrawer(true)}
                       className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
                       style={{ background: 'var(--p)' }}>
-                      <Plus className="w-4 h-4" strokeWidth={2.5} /> New Campaign
+                      <Plus className="w-4 h-4" strokeWidth={1.7} /> New Campaign
                     </button>
                   )}
                 </div>
@@ -1076,14 +1076,14 @@ export default function EmailMarketingPage() {
                 <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
                   style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'var(--p2)' }}>
-                    <Zap className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.5} />
+                    <Zap className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                   </div>
                   <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No automations yet</p>
                   <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Set up your first trigger-based email</p>
                   <button onClick={() => setAutoDrawer(true)}
                     className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
                     style={{ background: 'var(--p)' }}>
-                    <Plus className="w-4 h-4" strokeWidth={2.5} /> New Automation
+                    <Plus className="w-4 h-4" strokeWidth={1.7} /> New Automation
                   </button>
                 </div>
               ) : (
