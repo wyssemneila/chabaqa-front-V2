@@ -435,83 +435,93 @@ export default function ProfilePage() {
         <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
 
           {/* ── Hero Card ── */}
-          <div className="rounded-2xl overflow-hidden"
+          <div className="rounded-2xl"
             style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 2px 16px rgba(0,0,0,.07)' }}>
-            <div style={{ height: 4, background: 'linear-gradient(90deg, var(--p), #a78bfa)' }} />
-            <div className="p-6 sm:p-8">
-              <div className="flex items-start gap-5 sm:gap-7">
-                {/* Avatar */}
-                <div className="relative shrink-0">
-                  <div className="w-[88px] h-[88px] rounded-full overflow-hidden"
-                    style={{ border: '3px solid var(--bd)', boxShadow: '0 0 0 2px var(--white)' }}>
-                    {profile.avatar
-                      ? <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />  // eslint-disable-line @next/next/no-img-element
-                      : <div className="w-full h-full flex items-center justify-center text-[30px] font-bold text-white"
-                          style={{ background: 'var(--p)' }}>
-                          {profile.name.charAt(0).toUpperCase()}
-                        </div>
-                    }
-                  </div>
-                </div>
+            {/* Edit button row */}
+            <div className="flex justify-end px-5 pt-5">
+              <button onClick={() => openEdit('profile')}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-medium cursor-pointer transition-opacity hover:opacity-70"
+                style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }}>
+                <Pencil className="w-3.5 h-3.5" strokeWidth={1.8} />
+                Edit Profile
+              </button>
+            </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h1 className="text-[20px] sm:text-[22px] font-bold leading-tight truncate"
-                        style={{ color: 'var(--t1)' }}>{profile.name}</h1>
-                      <p className="text-[13px] mt-0.5 font-mono" style={{ color: 'var(--t3)' }}>{profile.handle}</p>
+            {/* Centered content */}
+            <div className="flex flex-col items-center text-center px-6 pb-7 pt-2">
+              {/* Avatar */}
+              <div className="w-[100px] h-[100px] rounded-full overflow-hidden mb-4"
+                style={{ border: '3px solid var(--white)', boxShadow: '0 0 0 2.5px var(--p), 0 4px 16px rgba(0,0,0,.1)' }}>
+                {profile.avatar
+                  ? <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />  // eslint-disable-line @next/next/no-img-element
+                  : <div className="w-full h-full flex items-center justify-center text-[34px] font-bold text-white"
+                      style={{ background: 'var(--p)' }}>
+                      {profile.name.charAt(0).toUpperCase()}
                     </div>
-                    <button onClick={() => openEdit('profile')}
-                      className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-medium cursor-pointer transition-opacity hover:opacity-75"
-                      style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }}>
-                      <Pencil className="w-3.5 h-3.5" strokeWidth={1.8} />
-                      Edit Profile
-                    </button>
-                  </div>
-
-                  {/* Location + email */}
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-3">
-                    {profile.location && (
-                      <span className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--t2)' }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={`https://flagcdn.com/w20/${profile.location.code.toLowerCase()}.png`}
-                          width={18} height={14} alt={profile.location.name}
-                          style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />
-                        {profile.location.name}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--t2)' }}>
-                      <Mail className="w-3.5 h-3.5 shrink-0" strokeWidth={1.7} />
-                      {profile.email}
-                    </span>
-                  </div>
-
-                  {/* Bio */}
-                  {profile.bio && (
-                    <p className="mt-3 text-[13px] leading-relaxed"
-                      style={{ color: 'var(--t2)', maxWidth: 560 }}>
-                      {profile.bio}
-                    </p>
-                  )}
-
-                  {/* Social pills */}
-                  {activeSocials.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {activeSocials.map(s => (
-                        <a key={s.id}
-                          href={profile.socials[s.id as keyof SocialLinks]}
-                          target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-opacity hover:opacity-70 cursor-pointer"
-                          style={{ background: 'var(--bg)', border: '1px solid var(--bd)', color: s.color }}>
-                          <SocialSvg platform={s.id} size={13} />
-                          {s.label}
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                }
               </div>
+
+              {/* Name + handle */}
+              <h1 className="text-[22px] font-bold leading-tight" style={{ color: 'var(--t1)' }}>{profile.name}</h1>
+              <p className="text-[12px] mt-1 px-2.5 py-0.5 rounded-full font-mono"
+                style={{ color: 'var(--t3)', background: 'var(--bg)', border: '1px solid var(--bd)' }}>
+                {profile.handle}
+              </p>
+
+              {/* Location + email */}
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mt-3.5">
+                {profile.location && (
+                  <span className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--t2)' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`https://flagcdn.com/w20/${profile.location.code.toLowerCase()}.png`}
+                      width={18} height={14} alt={profile.location.name}
+                      style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />
+                    {profile.location.name}
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--t2)' }}>
+                  <Mail className="w-3.5 h-3.5 shrink-0" strokeWidth={1.7} />
+                  {profile.email}
+                </span>
+              </div>
+
+              {/* Bio */}
+              {profile.bio && (
+                <p className="mt-4 text-[13px] leading-relaxed" style={{ color: 'var(--t2)', maxWidth: 460 }}>
+                  {profile.bio}
+                </p>
+              )}
+
+              {/* Social icon buttons */}
+              {activeSocials.length > 0 && (
+                <>
+                  <div className="w-full mt-5 mb-4" style={{ borderTop: '1px solid var(--bd)' }} />
+                  <div className="flex items-center gap-2.5">
+                    {activeSocials.map(s => (
+                      <a key={s.id}
+                        href={profile.socials[s.id as keyof SocialLinks]}
+                        target="_blank" rel="noopener noreferrer"
+                        title={s.label}
+                        className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer"
+                        style={{ background: 'var(--bg)', border: '1.5px solid var(--bd)', color: 'var(--t3)', transition: 'all .15s' }}
+                        onMouseEnter={e => {
+                          const el = e.currentTarget as HTMLElement
+                          el.style.background = s.color + '15'
+                          el.style.borderColor = s.color
+                          el.style.color = s.color
+                        }}
+                        onMouseLeave={e => {
+                          const el = e.currentTarget as HTMLElement
+                          el.style.background = 'var(--bg)'
+                          el.style.borderColor = 'var(--bd)'
+                          el.style.color = 'var(--t3)'
+                        }}>
+                        <SocialSvg platform={s.id} size={16} />
+                      </a>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
