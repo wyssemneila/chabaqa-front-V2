@@ -698,19 +698,12 @@ function StepCurriculum({ data, set }: { data: FormData; set: (f: keyof FormData
         <div className="rounded-2xl overflow-hidden flex flex-col h-full"
           style={{ border: "1px solid var(--bd)", background: "var(--white)" }}>
 
-          {/* header + add button */}
+          {/* header */}
           <div className="px-3 py-2.5 border-b flex items-center justify-between"
             style={{ borderColor: "var(--bd)", background: "var(--bg)" }}>
             <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--t3)" }}>
               Sections <span style={{ color: "var(--p)" }}>({data.sections.length})</span>
             </p>
-            <button type="button" onClick={addSection}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all"
-              style={{ background: "var(--p)", color: "#fff" }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = "0.85"}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = "1"}>
-              <Plus className="w-3 h-3" /> Add
-            </button>
           </div>
 
           {/* section list */}
@@ -770,18 +763,16 @@ function StepCurriculum({ data, set }: { data: FormData; set: (f: keyof FormData
             })}
           </div>
 
-          {/* bottom add section — only when list has items */}
-          {data.sections.length > 0 && (
-            <div className="p-2 border-t" style={{ borderColor: "var(--bd)" }}>
-              <button type="button" onClick={addSection}
-                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold cursor-pointer transition-all"
-                style={{ border: "1.5px dashed var(--p3)", color: "var(--p)", background: "transparent" }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--p2)"}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
-                <Plus className="w-3 h-3" /> Add another section
-              </button>
-            </div>
-          )}
+          {/* add section — always visible at bottom */}
+          <div className="p-2 border-t shrink-0" style={{ borderColor: "var(--bd)" }}>
+            <button type="button" onClick={addSection}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold cursor-pointer transition-all"
+              style={{ border: "1.5px dashed var(--p3)", color: "var(--p)", background: "transparent" }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--p2)"}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
+              <Plus className="w-3 h-3" /> New Section
+            </button>
+          </div>
         </div>
       </div>
 
@@ -843,13 +834,24 @@ function StepCurriculum({ data, set }: { data: FormData; set: (f: keyof FormData
               </p>
             </div>
 
+            {/* add chapter — top */}
+            <div className="px-4 pt-3 pb-2 shrink-0">
+              <button type="button" onClick={() => addChapter(active.id)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-all"
+                style={{ border: "1.5px dashed var(--p3)", color: "var(--p)", background: "transparent" }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--p2)"}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
+                <Plus className="w-4 h-4" /> Add Chapter
+              </button>
+            </div>
+
             {/* chapter list — scrollable */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2.5">
               {active.chapters.length === 0 && (
-                <div className="flex flex-col items-center py-12 gap-2">
+                <div className="flex flex-col items-center py-10 gap-2">
                   <Video className="w-8 h-8 opacity-20" style={{ color: "var(--t3)" }} />
                   <p className="text-sm font-medium" style={{ color: "var(--t2)" }}>No chapters yet</p>
-                  <p className="text-xs" style={{ color: "var(--t3)" }}>Add your first chapter below</p>
+                  <p className="text-xs" style={{ color: "var(--t3)" }}>Click "Add Chapter" above to start</p>
                 </div>
               )}
               {active.chapters.map((ch, i) => (
@@ -859,17 +861,6 @@ function StepCurriculum({ data, set }: { data: FormData; set: (f: keyof FormData
                   onVideoFileChange={updateVideoFile}
                 />
               ))}
-            </div>
-
-            {/* add chapter */}
-            <div className="px-4 py-3 border-t shrink-0" style={{ borderColor: "var(--bd)" }}>
-              <button type="button" onClick={() => addChapter(active.id)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-all"
-                style={{ border: "1.5px dashed var(--p3)", color: "var(--p)", background: "transparent" }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--p2)"}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
-                <Plus className="w-4 h-4" /> Add Chapter to "{active.title || `Section ${data.sections.findIndex(s => s.id === active.id) + 1}`}"
-              </button>
             </div>
           </>
         )}
