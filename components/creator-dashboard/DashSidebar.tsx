@@ -53,7 +53,7 @@ const navGroups = [
 
 const footerItems = [
   { label: { en: 'Help & Support', ar: 'المساعدة والدعم' }, href: '/creator/help',     icon: 'help'   },
-  { label: { en: 'Profile',        ar: 'الملف الشخصي'    }, href: '/creator/profile',  icon: 'user'   },
+  { label: { en: 'Profile',        ar: 'الملف الشخصي'    }, href: '/profile',          icon: 'user'   },
   { label: { en: 'Sign Out',       ar: 'تسجيل الخروج'   }, href: '/api/auth/signout', icon: 'logout' },
 ]
 
