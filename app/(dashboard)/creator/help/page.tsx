@@ -163,9 +163,9 @@ function VideoCard({ video }: { video: typeof VIDEOS[number] }) {
       style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}
       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--p)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd)' }}>
-      {/* Thumbnail */}
-      <div className="relative h-32 flex items-center justify-center"
-        style={{ background: 'linear-gradient(135deg, var(--p2) 0%, var(--bg) 100%)' }}>
+      {/* Thumbnail — 16:9 (YouTube/1920×1080) */}
+      <div className="relative w-full flex items-center justify-center"
+        style={{ aspectRatio: '16/9', background: 'linear-gradient(135deg, var(--p2) 0%, var(--bg) 100%)' }}>
         <div className="w-12 h-12 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
           style={{ background: 'var(--p)', boxShadow: '0 4px 16px rgba(124,58,237,.3)' }}>
           <PlayCircle className="w-6 h-6 text-white" strokeWidth={1.5} />
