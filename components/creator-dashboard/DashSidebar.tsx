@@ -47,14 +47,9 @@ const navGroups = [
     items: [
       { label: { en: 'Team & Roles',  ar: 'الفريق والأدوار' }, href: '/creator/team',         icon: 'team'               },
       { label: { en: 'Integrations',  ar: 'التكاملات'       }, href: '/creator/integrations', icon: 'settings', soon: true },
+      { label: { en: 'Help & Support', ar: 'المساعدة والدعم' }, href: '/creator/help',        icon: 'help'               },
     ],
   },
-]
-
-const footerItems = [
-  { label: { en: 'Help & Support', ar: 'المساعدة والدعم' }, href: '/creator/help',     icon: 'help'   },
-  { label: { en: 'Profile',        ar: 'الملف الشخصي'    }, href: '/profile',          icon: 'user'   },
-  { label: { en: 'Sign Out',       ar: 'تسجيل الخروج'   }, href: '/api/auth/signout', icon: 'logout' },
 ]
 
 export default function DashSidebar() {
@@ -67,10 +62,10 @@ export default function DashSidebar() {
 
   return (
     <aside style={{ background: 'var(--white)', borderRight: '1px solid var(--bd)' }}
-      className="fixed top-0 left-0 h-screen w-[220px] flex flex-col overflow-y-auto z-50">
+      className="fixed top-0 left-0 h-screen w-[220px] flex flex-col z-50">
 
       {/* Brand */}
-      <div style={{ borderBottom: '1px solid var(--bd)' }} className="px-4 pt-[18px] pb-[14px] flex items-center gap-2.5">
+      <div style={{ borderBottom: '1px solid var(--bd)' }} className="px-4 pt-[18px] pb-[14px] flex items-center gap-2.5 shrink-0">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-semibold text-white shrink-0"
           style={{ background: 'var(--p)' }}>
           Ch
@@ -84,14 +79,14 @@ export default function DashSidebar() {
       </div>
 
       {/* Create button */}
-      <button className="mx-3 mt-3 mb-2 px-3 py-2 rounded-[10px] text-xs font-medium flex items-center gap-1.5 transition-opacity hover:opacity-85 w-[calc(100%-24px)] cursor-pointer"
+      <button className="mx-3 mt-3 mb-2 px-3 py-2 rounded-[10px] text-xs font-medium flex items-center gap-1.5 transition-opacity hover:opacity-85 w-[calc(100%-24px)] cursor-pointer shrink-0"
         style={{ background: 'var(--p)', color: '#fff' }}>
         <DashIcon name="plus" size={13} color="white" />
         {createCommunity}
       </button>
 
-      {/* Nav groups */}
-      <div className="flex-1">
+      {/* Nav groups — scrollable */}
+      <div className="flex-1 overflow-y-auto">
         {navGroups.map((group) => (
           <div key={group.label.en} className="pt-2.5 pb-1">
             <p className="text-[10px] font-semibold tracking-[.07em] uppercase px-4 pb-1.5"
@@ -127,18 +122,22 @@ export default function DashSidebar() {
         ))}
       </div>
 
-      {/* Footer */}
-      <div style={{ borderTop: '1px solid var(--bd)' }} className="py-2">
-        {footerItems.map((item) => (
-          <Link key={item.href} href={item.href}
-            className="flex items-center gap-2 px-4 py-[7px] text-[13px] transition-colors"
-            style={{ color: 'var(--t2)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--p2)'; (e.currentTarget as HTMLElement).style.color = 'var(--t1)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--t2)' }}>
-            <DashIcon name={item.icon} size={15} className="opacity-70" />
-            {item.label[lang]}
+      {/* Fixed footer — Profile + Sign Out side by side */}
+      <div className="shrink-0 p-3" style={{ borderTop: '1px solid var(--bd)' }}>
+        <div className="flex gap-2">
+          <Link href="/profile"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-80"
+            style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+            <DashIcon name="user" size={13} color="var(--p)" />
+            {lang === 'ar' ? 'الملف' : 'Profile'}
           </Link>
-        ))}
+          <Link href="/api/auth/signout"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(239,68,68,.09)', color: '#ef4444' }}>
+            <DashIcon name="logout" size={13} color="#ef4444" />
+            {lang === 'ar' ? 'خروج' : 'Sign Out'}
+          </Link>
+        </div>
       </div>
     </aside>
   )

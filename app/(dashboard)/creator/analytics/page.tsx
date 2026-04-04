@@ -79,11 +79,13 @@ function avgSeries(arr: number[]) { return Math.round(sumSeries(arr) / (arr.leng
 // ─── SVG Chart ────────────────────────────────────────────────────────────────
 
 function AreaChart({
-  data, labels, color, height = 120, showDots = false, xLabels = 5,
+  data, labels, color, height = 120, showDots = false, xLabels = 5, unit = '',
 }: {
   data: number[]; labels: string[]; color: string; height?: number
-  showDots?: boolean; xLabels?: number
+  showDots?: boolean; xLabels?: number; unit?: string
 }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+
   if (data.length < 2) return null
   const W = 600, H = height
   const min = Math.min(...data) * 0.9
@@ -106,9 +108,41 @@ function AreaChart({
   const step = Math.max(1, Math.floor(data.length / xLabels))
   const xTickIdx = Array.from({ length: data.length }, (_, i) => i).filter((_, i) => i === 0 || i === data.length - 1 || i % step === 0)
 
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+    const mouseX = ((e.clientX - rect.left) / rect.width) * W
+    let closest = 0, minDist = Infinity
+    for (let i = 0; i < data.length; i++) {
+      const dist = Math.abs(x(i) - mouseX)
+      if (dist < minDist) { minDist = dist; closest = i }
+    }
+    setHoverIdx(closest)
+  }
+
+  // Tooltip x% — clamped so it doesn't bleed off edges
+  const tipPct = hoverIdx !== null ? Math.max(5, Math.min(95, (x(hoverIdx) / W) * 100)) : 0
+
   return (
     <div style={{ position: 'relative' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: 'block', overflow: 'visible' }}>
+      {/* Hover tooltip */}
+      {hoverIdx !== null && (
+        <div className="absolute pointer-events-none z-10 flex flex-col items-center"
+          style={{ left: `${tipPct}%`, top: 0, transform: 'translateX(-50%)', transition: 'left .08s' }}>
+          <div className="px-3 py-2 rounded-xl shadow-xl"
+            style={{ background: 'var(--t1)', color: 'var(--white)', whiteSpace: 'nowrap', minWidth: 80, textAlign: 'center' }}>
+            <p className="text-[10px] leading-none mb-1.5" style={{ opacity: .6 }}>{labels[hoverIdx]}</p>
+            <p className="text-[14px] font-bold leading-none">
+              {data[hoverIdx].toLocaleString()}{unit && <span className="text-[10px] font-normal ml-1 opacity-70">{unit}</span>}
+            </p>
+          </div>
+          <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid var(--t1)' }} />
+        </div>
+      )}
+
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}
+        style={{ display: 'block', overflow: 'visible', cursor: 'crosshair', marginTop: hoverIdx !== null ? 0 : 0 }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoverIdx(null)}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%"   stopColor={color} stopOpacity="0.18" />
@@ -122,6 +156,20 @@ function AreaChart({
         ))}
         <path d={areaD} fill={`url(#${gradId})`} />
         <path d={lineD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Hover guide */}
+        {hoverIdx !== null && (
+          <>
+            <line
+              x1={x(hoverIdx).toFixed(1)} y1="0"
+              x2={x(hoverIdx).toFixed(1)} y2={H}
+              stroke={color} strokeWidth="1.5" strokeDasharray="4,3" opacity="0.55"
+            />
+            <circle
+              cx={x(hoverIdx).toFixed(1)} cy={y(data[hoverIdx]).toFixed(1)} r="5"
+              fill="var(--white)" stroke={color} strokeWidth="2.5"
+            />
+          </>
+        )}
         {showDots && data.map((v, i) => (
           <circle key={i} cx={x(i).toFixed(1)} cy={y(v).toFixed(1)} r="3"
             fill="var(--white)" stroke={color} strokeWidth="2" />
@@ -130,7 +178,7 @@ function AreaChart({
       {/* x-axis labels */}
       <div className="flex justify-between mt-1 px-0">
         {xTickIdx.map(i => (
-          <p key={i} className="text-[10px]" style={{ color: 'var(--t3)', minWidth: 0 }}>{labels[i]}</p>
+          <p key={i} className="text-[10px]" style={{ color: hoverIdx === i ? color : 'var(--t3)', fontWeight: hoverIdx === i ? 700 : 400, minWidth: 0, transition: 'color .1s' }}>{labels[i]}</p>
         ))}
       </div>
     </div>
@@ -353,7 +401,7 @@ export default function AnalyticsPage() {
                     {revChange >= 0 ? '+' : ''}{revChange}% vs prev
                   </div>
                 </div>
-                <AreaChart data={ds.revenue} labels={ds.labels} color="var(--p)" height={130} xLabels={6} />
+                <AreaChart data={ds.revenue} labels={ds.labels} color="var(--p)" height={130} xLabels={6} unit="TND" />
               </div>
 
               {/* Members chart — 1/3 width */}
@@ -364,7 +412,7 @@ export default function AnalyticsPage() {
                     <span className="font-semibold" style={{ color: 'var(--cyan)' }}>{totalMembers.toLocaleString()}</span> this period
                   </p>
                 </div>
-                <AreaChart data={ds.members} labels={ds.labels} color="var(--cyan)" height={130} xLabels={4} showDots />
+                <AreaChart data={ds.members} labels={ds.labels} color="var(--cyan)" height={130} xLabels={4} showDots unit="members" />
               </div>
             </div>
 
@@ -388,7 +436,7 @@ export default function AnalyticsPage() {
                 <p className="text-[12px] mb-4" style={{ color: 'var(--t3)' }}>
                   <span className="font-semibold" style={{ color: 'var(--orange)' }}>{totalEnrollments.toLocaleString()}</span> this period
                 </p>
-                <AreaChart data={ds.enrollments} labels={ds.labels} color="var(--orange)" height={130} xLabels={4} />
+                <AreaChart data={ds.enrollments} labels={ds.labels} color="var(--orange)" height={130} xLabels={4} unit="enrollments" />
               </div>
 
               {/* Member sources */}
