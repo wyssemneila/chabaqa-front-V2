@@ -4,196 +4,307 @@ import { useEffect, useRef, useState } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import {
-  Plus, Mail, Send, FileText, Clock, Users, BarChart2,
-  MousePointerClick, Eye, Trash2, ChevronRight, Upload,
-  X, Check, Calendar, AlertCircle, Inbox, TrendingUp,
-  Filter, Search, MoreHorizontal, Zap, RefreshCw,
+  Plus, Mail, Send, Clock, Users, MousePointerClick, Eye,
+  Trash2, Upload, X, Check, Calendar, AlertCircle, Inbox,
+  Search, Zap, Monitor, Smartphone, BookOpen, Trophy,
+  ShoppingBag, UserMinus, ToggleLeft, ToggleRight, Pencil,
+  ChevronDown, AtSign, Play, Pause,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface CampaignStats {
-  sent: number
-  opened: number
-  clicked: number
-}
-
 interface Campaign {
-  id: string
-  name: string
-  subject: string
-  previewText: string
+  id: string; name: string; subject: string; previewText: string; body: string
   status: 'sent' | 'draft' | 'scheduled'
-  audienceType: 'all' | 'community' | 'csv'
-  audienceLabel: string
-  audienceCount: number
-  sentAt?: string
-  scheduledAt?: string
-  createdAt: string
-  stats: CampaignStats
+  audienceType: 'all' | 'community' | 'custom'
+  audienceLabel: string; audienceCount: number
+  sentAt?: string; scheduledAt?: string; createdAt: string
+  stats: { sent: number; opened: number; clicked: number }
 }
 
-// ─── Mock seed data ───────────────────────────────────────────────────────────
+interface Automation {
+  id: string; name: string
+  trigger: string; triggerLabel: string; triggerIcon: string
+  delay: number
+  subject: string; body: string
+  isActive: boolean; triggered: number; createdAt: string
+}
 
-const SEED: Campaign[] = [
+interface CustomAudience {
+  id: string; name: string; emails: string[]; count: number; createdAt: string
+}
+
+// ─── Seed data ────────────────────────────────────────────────────────────────
+
+const CAMP_SEED: Campaign[] = [
   {
     id: 'c1', name: 'Welcome Series — Onboarding', subject: 'Welcome to Motion Masters! 🎉',
-    previewText: "Here's everything you need to get started...",
+    previewText: "Here's everything you need to get started", body: 'Hi there!\n\nWelcome to the Motion Masters community. We are thrilled to have you here.\n\nHere is what you can do right now:\n• Browse our course catalog\n• Join the community challenges\n• Connect with other members\n\nSee you inside!\nThe Motion Masters Team',
     status: 'sent', audienceType: 'all', audienceLabel: 'All Members', audienceCount: 1240,
     sentAt: '2026-03-28', createdAt: '2026-03-27',
     stats: { sent: 1240, opened: 748, clicked: 312 },
   },
   {
-    id: 'c2', name: 'New Course Launch — Motion Pro', subject: 'Our most advanced course is here 🚀',
-    previewText: 'Don\'t miss the early-bird discount…',
+    id: 'c2', name: 'New Course Launch — Motion Pro', subject: 'Our most advanced course is here',
+    previewText: "Don't miss the early-bird discount",
+    body: 'Hey!\n\nExciting news — Motion Pro is finally live.\n\nThis is our most comprehensive course yet, covering advanced techniques from industry professionals.\n\nEarly-bird pricing ends Friday. Grab your spot now.',
     status: 'sent', audienceType: 'community', audienceLabel: 'Paid Members', audienceCount: 384,
     sentAt: '2026-03-20', createdAt: '2026-03-19',
     stats: { sent: 384, opened: 291, clicked: 178 },
   },
   {
-    id: 'c3', name: 'Weekly Digest — April Week 1', subject: 'What\'s new this week in the community 📰',
-    previewText: 'Highlights, top posts and upcoming events…',
+    id: 'c3', name: 'Weekly Digest — April Week 1', subject: "What's new this week in the community",
+    previewText: 'Highlights, top posts and upcoming events',
+    body: 'Here is your weekly digest:\n\nTop posts this week...\nUpcoming events...\nNew courses added...',
     status: 'scheduled', audienceType: 'all', audienceLabel: 'All Members', audienceCount: 1298,
     scheduledAt: '2026-04-07 09:00', createdAt: '2026-04-03',
     stats: { sent: 0, opened: 0, clicked: 0 },
   },
   {
-    id: 'c4', name: 'Re-engagement — Inactive Users', subject: 'We miss you! Come back and see what\'s new',
-    previewText: 'A lot has changed since you last visited…',
-    status: 'draft', audienceType: 'csv', audienceLabel: 'Uploaded List', audienceCount: 210,
+    id: 'c4', name: 'Re-engagement — Inactive Users', subject: "We miss you! Come back and see what's new",
+    previewText: 'A lot has changed since you last visited',
+    body: 'Hey! We noticed you have not been around lately.\n\nHere is what you have been missing...',
+    status: 'draft', audienceType: 'custom', audienceLabel: 'Inactive Upload', audienceCount: 210,
     createdAt: '2026-04-02',
     stats: { sent: 0, opened: 0, clicked: 0 },
   },
+]
+
+const AUTO_SEED: Automation[] = [
   {
-    id: 'c5', name: 'Challenge Launch — 30-Day Fitness', subject: 'Join the 30-day challenge starting Monday 💪',
-    previewText: 'Limited spots — reserve yours now…',
-    status: 'sent', audienceType: 'community', audienceLabel: 'Free Members', audienceCount: 856,
-    sentAt: '2026-03-15', createdAt: '2026-03-14',
-    stats: { sent: 856, opened: 530, clicked: 244 },
+    id: 'a1', name: 'Welcome Email', trigger: 'new_member', triggerLabel: 'New member joins', triggerIcon: 'users',
+    delay: 0, subject: 'Welcome to Motion Masters!',
+    body: 'Hi {{first_name}},\n\nWelcome! We are so excited to have you here...',
+    isActive: true, triggered: 87, createdAt: '2026-03-01',
+  },
+  {
+    id: 'a2', name: 'Course Completion Congrats', trigger: 'course_completed', triggerLabel: 'Member completes a course', triggerIcon: 'book',
+    delay: 1, subject: 'Congratulations on finishing {{course_name}}!',
+    body: 'Hey {{first_name}},\n\nYou did it! You just completed {{course_name}}. Here is your certificate...',
+    isActive: true, triggered: 34, createdAt: '2026-03-05',
+  },
+  {
+    id: 'a3', name: '7-Day Re-engagement', trigger: 'inactive_7', triggerLabel: 'Member inactive 7 days', triggerIcon: 'clock',
+    delay: 0, subject: 'We miss you, {{first_name}}!',
+    body: 'Hi {{first_name}},\n\nIt has been a week since your last visit. Here is what you missed...',
+    isActive: false, triggered: 156, createdAt: '2026-03-10',
   },
 ]
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const pct = (a: number, b: number) => b === 0 ? 0 : Math.round((a / b) * 100)
+const BASE_COMMUNITIES = ['All Members', 'Paid Members', 'Free Members', 'VIP Members', 'Trial Members', 'Inactive Members']
 
-const STATUS_META: Record<Campaign['status'], { label: string; bg: string; color: string; border: string }> = {
-  sent:      { label: 'Sent',      bg: 'rgba(74,222,128,.12)',  color: '#16a34a', border: 'rgba(74,222,128,.3)' },
-  draft:     { label: 'Draft',     bg: 'var(--bg)',              color: 'var(--t3)', border: 'var(--bd)' },
+const TRIGGER_OPTIONS = [
+  { id: 'new_member',       label: 'New member joins',          desc: 'When anyone joins your community',            icon: Users       },
+  { id: 'purchase',         label: 'Purchase completed',        desc: 'When a member buys a product or course',      icon: ShoppingBag },
+  { id: 'course_enrolled',  label: 'Enrolled in course',        desc: 'When a member enrolls in a course',           icon: BookOpen    },
+  { id: 'course_completed', label: 'Completed a course',        desc: 'When a member finishes a course',             icon: Trophy      },
+  { id: 'challenge_joined', label: 'Joined a challenge',        desc: 'When a member joins a challenge',             icon: Zap         },
+  { id: 'event_registered', label: 'Registered for event',      desc: 'When a member registers for an event',        icon: Calendar    },
+  { id: 'inactive_7',       label: 'Inactive for 7 days',       desc: 'When a member has not visited in 7 days',     icon: UserMinus   },
+  { id: 'inactive_30',      label: 'Inactive for 30 days',      desc: 'When a member has not visited in 30 days',    icon: UserMinus   },
+]
+
+const DELAY_OPTIONS = [
+  { value: 0,   label: 'Immediately' },
+  { value: 1,   label: 'After 1 hour' },
+  { value: 6,   label: 'After 6 hours' },
+  { value: 24,  label: 'After 1 day' },
+  { value: 72,  label: 'After 3 days' },
+  { value: 168, label: 'After 1 week' },
+]
+
+const STATUS_META = {
+  sent:      { label: 'Sent',      bg: 'rgba(74,222,128,.12)',  color: '#16a34a',       border: 'rgba(74,222,128,.3)' },
+  draft:     { label: 'Draft',     bg: 'var(--bg)',              color: 'var(--t3)',     border: 'var(--bd)' },
   scheduled: { label: 'Scheduled', bg: 'rgba(251,146,60,.12)',  color: 'var(--orange)', border: 'rgba(251,146,60,.3)' },
 }
 
-const COMMUNITIES = ['All Members', 'Paid Members', 'Free Members', 'VIP Members', 'Trial Members']
-const TABS = [
-  { id: 'all',       label: 'All'       },
-  { id: 'sent',      label: 'Sent'      },
-  { id: 'scheduled', label: 'Scheduled' },
-  { id: 'draft',     label: 'Drafts'    },
-] as const
+const pct = (a: number, b: number) => b === 0 ? 0 : Math.round((a / b) * 100)
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function StatBar({ value, max, color }: { value: number; max: number; color: string }) {
-  const w = max === 0 ? 0 : Math.min(100, Math.round((value / max) * 100))
-  return (
-    <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--bd)' }}>
-      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${w}%`, background: color }} />
-    </div>
-  )
+const LBL = ({ text, req }: { text: string; req?: boolean }) => (
+  <p className="text-[12px] font-semibold mb-1.5" style={{ color: 'var(--t2)' }}>
+    {text}{req && <span style={{ color: 'var(--p)' }}> *</span>}
+  </p>
+)
+
+const focusStyle = {
+  onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => (e.target.style.borderColor = 'var(--p)'),
+  onBlur:  (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => (e.target.style.borderColor = 'var(--bd)'),
 }
 
-function KpiCard({ icon, label, value, sub, color }: {
-  icon: React.ReactNode; label: string; value: string; sub: string; color: string
+// ─── Email Preview Modal ──────────────────────────────────────────────────────
+
+function PreviewModal({ open, onClose, subject, previewText, body }: {
+  open: boolean; onClose: () => void
+  subject: string; previewText: string; body: string
 }) {
+  const [view, setView] = useState<'desktop' | 'mobile'>('desktop')
+  if (!open) return null
   return (
-    <div className="rounded-2xl p-5 flex gap-4 items-start"
-      style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-        style={{ background: color + '1a' }}>
-        <div style={{ color }}>{icon}</div>
+    <>
+      <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-[80] flex items-center justify-center p-6 pointer-events-none">
+        <div className="pointer-events-auto w-full flex flex-col" style={{ maxWidth: view === 'mobile' ? '420px' : '680px', maxHeight: '90vh' }}>
+
+          {/* toolbar */}
+          <div className="flex items-center justify-between mb-3 px-1">
+            <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'rgba(0,0,0,.4)' }}>
+              {(['desktop', 'mobile'] as const).map(v => (
+                <button key={v} onClick={() => setView(v)}
+                  className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[12px] font-semibold cursor-pointer transition-all"
+                  style={view === v ? { background: '#fff', color: '#111' } : { color: 'rgba(255,255,255,.7)' }}>
+                  {v === 'desktop' ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
+                  {v === 'desktop' ? 'Desktop' : 'Mobile'}
+                </button>
+              ))}
+            </div>
+            <p className="text-[12px] font-semibold" style={{ color: 'rgba(255,255,255,.8)' }}>Live Preview</p>
+            <button onClick={onClose}
+              className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer"
+              style={{ background: 'rgba(255,255,255,.15)', color: '#fff' }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* email client frame */}
+          <div className="rounded-2xl overflow-hidden flex-1" style={{ boxShadow: '0 32px 80px rgba(0,0,0,.5)', overflowY: 'auto' }}>
+            {/* client top bar */}
+            <div className="px-5 py-3 flex items-center gap-3" style={{ background: '#f0f0f0', borderBottom: '1px solid #ddd' }}>
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-400" />
+                <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                <div className="w-3 h-3 rounded-full bg-green-400" />
+              </div>
+              <div className="flex-1 h-6 rounded-md text-[11px] flex items-center px-2" style={{ background: '#e0e0e0', color: '#888' }}>
+                {subject || 'Email preview'}
+              </div>
+            </div>
+
+            {/* email meta */}
+            <div className="px-6 py-3 space-y-1" style={{ background: '#fafafa', borderBottom: '1px solid #eee' }}>
+              <p className="text-[12px]" style={{ color: '#555' }}><span className="font-semibold">From:</span> Motion Masters &lt;hello@chabaqa.com&gt;</p>
+              <p className="text-[12px]" style={{ color: '#555' }}><span className="font-semibold">Subject:</span> {subject || <span style={{ color: '#aaa' }}>(No subject)</span>}</p>
+              {previewText && <p className="text-[11px]" style={{ color: '#999' }}>{previewText}</p>}
+            </div>
+
+            {/* email body */}
+            <div style={{ background: '#f4f4f4', padding: '24px 0' }}>
+              <div style={{
+                background: '#fff', maxWidth: view === 'mobile' ? '100%' : '580px',
+                margin: '0 auto', borderRadius: '12px', overflow: 'hidden',
+                boxShadow: '0 2px 12px rgba(0,0,0,.08)',
+              }}>
+                {/* header */}
+                <div className="flex items-center gap-2.5 px-8 py-5" style={{ borderBottom: '2px solid var(--p)', background: 'var(--p)' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-bold"
+                    style={{ background: 'rgba(255,255,255,.25)', color: '#fff' }}>Ch</div>
+                  <p className="font-bold text-white text-[15px]">Motion Masters</p>
+                </div>
+
+                {/* content */}
+                <div className="px-8 py-6">
+                  {subject && <h2 className="text-[18px] font-bold mb-4" style={{ color: '#111' }}>{subject}</h2>}
+                  {previewText && <p className="text-[13px] mb-4 italic" style={{ color: '#777' }}>{previewText}</p>}
+                  {body
+                    ? <p className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: '#333' }}>{body}</p>
+                    : <div className="space-y-2">
+                        {[100, 90, 95, 70].map((w, i) => (
+                          <div key={i} className="h-3 rounded-full" style={{ background: '#f0f0f0', width: `${w}%` }} />
+                        ))}
+                      </div>
+                  }
+                </div>
+
+                {/* footer */}
+                <div className="px-8 py-5 text-center" style={{ background: '#f9f9f9', borderTop: '1px solid #eee' }}>
+                  <p className="text-[11px]" style={{ color: '#aaa' }}>Motion Masters · Chabaqa Platform</p>
+                  <p className="text-[11px] mt-1" style={{ color: '#bbb' }}>
+                    <span className="underline cursor-pointer">Unsubscribe</span> &nbsp;·&nbsp; <span className="underline cursor-pointer">Privacy Policy</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div>
-        <p className="text-[22px] font-bold leading-tight" style={{ color: 'var(--t1)' }}>{value}</p>
-        <p className="text-[12px] font-medium mt-0.5" style={{ color: 'var(--t2)' }}>{label}</p>
-        <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>{sub}</p>
-      </div>
+    </>
+  )
+}
+
+// ─── Campaign Card ────────────────────────────────────────────────────────────
+
+function StatBar({ value, color }: { value: number; color: string }) {
+  return (
+    <div className="flex-1 h-1 rounded-full overflow-hidden mt-1.5" style={{ background: 'var(--bd)' }}>
+      <div className="h-full rounded-full" style={{ width: `${Math.min(100, value)}%`, background: color }} />
     </div>
   )
 }
 
-function CampaignCard({ c, onDelete }: { c: Campaign; onDelete: (id: string) => void }) {
+function CampaignCard({ c, onDelete, onPreview }: {
+  c: Campaign; onDelete: (id: string) => void
+  onPreview: (c: Campaign) => void
+}) {
   const st = STATUS_META[c.status]
   const openRate  = pct(c.stats.opened,  c.stats.sent)
   const clickRate = pct(c.stats.clicked, c.stats.sent)
-
   return (
     <div className="rounded-2xl overflow-hidden transition-all duration-200"
       style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}
       onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(0,0,0,.07)'}
       onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'none'}>
 
-      {/* header row */}
       <div className="flex items-start gap-4 p-4 pb-3">
-        {/* icon */}
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: 'var(--p2)' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--p2)' }}>
           <Mail className="w-5 h-5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
         </div>
-
-        {/* name + subject */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-[14px] font-bold truncate" style={{ color: 'var(--t1)' }}>{c.name}</p>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
-              style={{ background: st.bg, color: st.color, borderColor: st.border }}>
-              {st.label}
-            </span>
+              style={{ background: st.bg, color: st.color, borderColor: st.border }}>{st.label}</span>
           </div>
           <p className="text-[12px] truncate mt-0.5" style={{ color: 'var(--t3)' }}>{c.subject}</p>
         </div>
-
-        {/* actions */}
-        <button onClick={() => onDelete(c.id)}
-          className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70 shrink-0"
-          style={{ background: 'rgba(239,68,68,.08)', color: '#ef4444' }}>
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex gap-1 shrink-0">
+          <button onClick={() => onPreview(c)}
+            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
+            style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+            <Eye className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => onDelete(c.id)}
+            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
+            style={{ background: 'rgba(239,68,68,.08)', color: '#ef4444' }}>
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
-      {/* divider */}
       <div style={{ borderTop: '1px solid var(--bd)' }} />
 
-      {/* meta + stats */}
       <div className="px-4 py-3 flex items-center gap-4 flex-wrap">
         <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
-          <Users className="w-3 h-3" strokeWidth={1.8} />
-          {c.audienceLabel} · {c.audienceCount.toLocaleString()}
+          <Users className="w-3 h-3" strokeWidth={1.8} />{c.audienceLabel} · {c.audienceCount.toLocaleString()}
         </span>
-        {c.sentAt && (
-          <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
-            <Send className="w-3 h-3" strokeWidth={1.8} /> {c.sentAt}
-          </span>
-        )}
-        {c.scheduledAt && (
-          <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--orange)' }}>
-            <Clock className="w-3 h-3" strokeWidth={1.8} /> {c.scheduledAt}
-          </span>
-        )}
+        {c.sentAt && <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}><Send className="w-3 h-3" strokeWidth={1.8} />{c.sentAt}</span>}
+        {c.scheduledAt && <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--orange)' }}><Clock className="w-3 h-3" strokeWidth={1.8} />{c.scheduledAt}</span>}
       </div>
 
-      {/* metrics */}
       {c.status === 'sent' && (
         <div className="px-4 pb-4 grid grid-cols-3 gap-3">
           {[
-            { label: 'Sent',       value: c.stats.sent.toLocaleString(), pct: 100,       color: 'var(--p)'     },
-            { label: 'Open Rate',  value: `${openRate}%`,                pct: openRate,  color: 'var(--cyan)'  },
-            { label: 'Click Rate', value: `${clickRate}%`,               pct: clickRate, color: 'var(--orange)'},
+            { label: 'Sent',       value: c.stats.sent.toLocaleString(), bar: 100,       color: 'var(--p)'     },
+            { label: 'Open Rate',  value: `${openRate}%`,                bar: openRate,  color: 'var(--cyan)'  },
+            { label: 'Click Rate', value: `${clickRate}%`,               bar: clickRate, color: 'var(--orange)'},
           ].map(m => (
-            <div key={m.label} className="rounded-xl p-3"
-              style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
+            <div key={m.label} className="rounded-xl p-3" style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
               <p className="text-[13px] font-bold" style={{ color: m.color }}>{m.value}</p>
-              <p className="text-[10px] mt-0.5 mb-2" style={{ color: 'var(--t3)' }}>{m.label}</p>
-              <StatBar value={m.pct} max={100} color={m.color} />
+              <p className="text-[10px] mt-0.5" style={{ color: 'var(--t3)' }}>{m.label}</p>
+              <StatBar value={m.bar} color={m.color} />
             </div>
           ))}
         </div>
@@ -214,171 +325,246 @@ function CampaignCard({ c, onDelete }: { c: Campaign; onDelete: (id: string) => 
   )
 }
 
-// ─── Create Campaign Drawer ────────────────────────────────────────────────────
+// ─── Automation Card ──────────────────────────────────────────────────────────
 
-interface DrawerProps {
-  open: boolean
-  onClose: () => void
-  onSave: (c: Campaign) => void
+function AutomationCard({ a, onToggle, onDelete }: {
+  a: Automation
+  onToggle: (id: string) => void
+  onDelete: (id: string) => void
+}) {
+  const TriggerIcon = TRIGGER_OPTIONS.find(t => t.id === a.trigger)?.icon ?? Zap
+  return (
+    <div className="rounded-2xl p-4 flex gap-4 items-start transition-all duration-200"
+      style={{ background: 'var(--white)', border: `1px solid ${a.isActive ? 'rgba(var(--p-rgb),.3)' : 'var(--bd)'}` }}
+      onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(0,0,0,.07)'}
+      onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'none'}>
+
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: a.isActive ? 'var(--p2)' : 'var(--bg)', border: '1px solid var(--bd)' }}>
+        <TriggerIcon className="w-5 h-5" style={{ color: a.isActive ? 'var(--p)' : 'var(--t3)' }} strokeWidth={1.7} />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+          <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{a.name}</p>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+            style={a.isActive
+              ? { background: 'rgba(74,222,128,.12)', color: '#16a34a', borderColor: 'rgba(74,222,128,.3)' }
+              : { background: 'var(--bg)', color: 'var(--t3)', borderColor: 'var(--bd)' }}>
+            {a.isActive ? 'Active' : 'Paused'}
+          </span>
+        </div>
+        <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
+          Trigger: {a.triggerLabel}{a.delay > 0 ? ` · Wait ${DELAY_OPTIONS.find(d => d.value === a.delay)?.label?.replace('After ', '')}` : ''}
+        </p>
+        <p className="text-[11px] mt-1" style={{ color: 'var(--t3)' }}>
+          Subject: <span style={{ color: 'var(--t2)' }}>{a.subject}</span>
+        </p>
+        <p className="text-[11px] mt-1.5 font-semibold" style={{ color: 'var(--p)' }}>
+          {a.triggered.toLocaleString()} emails sent
+        </p>
+      </div>
+
+      <div className="flex gap-1 shrink-0">
+        <button onClick={() => onToggle(a.id)}
+          className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
+          style={{ background: 'var(--bg)', color: a.isActive ? '#16a34a' : 'var(--t3)' }}>
+          {a.isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+        </button>
+        <button onClick={() => onDelete(a.id)}
+          className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
+          style={{ background: 'rgba(239,68,68,.08)', color: '#ef4444' }}>
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  )
 }
 
-function CreateDrawer({ open, onClose, onSave }: DrawerProps) {
-  const [name,        setName]        = useState('')
-  const [subject,     setSubject]     = useState('')
-  const [preview,     setPreview]     = useState('')
-  const [body,        setBody]        = useState('')
-  const [audienceMode, setAudienceMode] = useState<'community' | 'csv'>('community')
-  const [communities, setCommunities] = useState<string[]>(['All Members'])
-  const [csvName,     setCsvName]     = useState('')
-  const [csvCount,    setCsvCount]    = useState(0)
-  const [schedMode,   setSchedMode]   = useState<'now' | 'later'>('now')
-  const [schedDate,   setSchedDate]   = useState('')
-  const [schedTime,   setSchedTime]   = useState('')
-  const [saving,      setSaving]      = useState(false)
+// ─── Create Campaign Drawer ───────────────────────────────────────────────────
+
+function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAudience }: {
+  open: boolean; onClose: () => void
+  onSave: (c: Campaign) => void
+  customAudiences: CustomAudience[]
+  onSaveAudience: (a: CustomAudience) => void
+}) {
+  const [name,         setName]         = useState('')
+  const [subject,      setSubject]      = useState('')
+  const [preview,      setPreview]      = useState('')
+  const [body,         setBody]         = useState('')
+  const [audMode,      setAudMode]      = useState<'community' | 'custom'>('community')
+  const [communities,  setCommunities]  = useState<string[]>(['All Members'])
+  const [customAudId,  setCustomAudId]  = useState<string>('')
+  const [newAudName,   setNewAudName]   = useState('')
+  const [newAudEmails, setNewAudEmails] = useState<string[]>([])
+  const [emailInput,   setEmailInput]   = useState('')
+  const [csvName,      setCsvName]      = useState('')
+  const [csvMode,      setCsvMode]      = useState<'type' | 'upload'>('type')
+  const [schedMode,    setSchedMode]    = useState<'now' | 'later'>('now')
+  const [schedDate,    setSchedDate]    = useState('')
+  const [schedTime,    setSchedTime]    = useState('')
+  const [saving,       setSaving]       = useState(false)
+  const [previewOpen,  setPreviewOpen]  = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const toggleCommunity = (c: string) => {
-    setCommunities(prev =>
-      prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]
-    )
-  }
+  const allCommunities = [...BASE_COMMUNITIES, ...customAudiences.map(a => a.name)]
 
-  const handleCsv = (f: File) => {
-    setCsvName(f.name)
-    setCsvCount(Math.floor(Math.random() * 800) + 100)
-  }
+  const toggleCom = (c: string) =>
+    setCommunities(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])
 
-  const canSend = name.trim() && subject.trim() && (
-    audienceMode === 'community' ? communities.length > 0 : csvCount > 0
-  )
-
-  const buildCampaign = (status: Campaign['status']): Campaign => {
-    const audLabel = audienceMode === 'csv' ? 'Uploaded List' : communities.join(', ')
-    const audCount = audienceMode === 'csv' ? csvCount : Math.floor(Math.random() * 900) + 300
-    return {
-      id: Math.random().toString(36).slice(2),
-      name, subject, previewText: preview, status,
-      audienceType: audienceMode === 'csv' ? 'csv' : communities.includes('All Members') ? 'all' : 'community',
-      audienceLabel: audLabel, audienceCount: audCount,
-      sentAt:     status === 'sent'      ? new Date().toISOString().slice(0, 10) : undefined,
-      scheduledAt: status === 'scheduled' ? `${schedDate} ${schedTime}` : undefined,
-      createdAt:  new Date().toISOString().slice(0, 10),
-      stats: status === 'sent'
-        ? { sent: audCount, opened: Math.floor(audCount * (0.4 + Math.random() * 0.3)), clicked: Math.floor(audCount * (0.1 + Math.random() * 0.2)) }
-        : { sent: 0, opened: 0, clicked: 0 },
+  const addEmail = () => {
+    const e = emailInput.trim()
+    if (e && /\S+@\S+\.\S+/.test(e) && !newAudEmails.includes(e)) {
+      setNewAudEmails(p => [...p, e])
+      setEmailInput('')
     }
   }
+
+  const saveCustomAudience = () => {
+    if (!newAudName.trim() || newAudEmails.length === 0) return
+    const a: CustomAudience = {
+      id: Math.random().toString(36).slice(2),
+      name: newAudName.trim(),
+      emails: newAudEmails,
+      count: newAudEmails.length,
+      createdAt: new Date().toISOString().slice(0, 10),
+    }
+    onSaveAudience(a)
+    setNewAudName(''); setNewAudEmails([]); setCsvName(''); setCsvMode('type')
+    setCustomAudId(a.id)
+    setAudMode('community')
+    setCommunities([a.name])
+  }
+
+  const canSend = name.trim() && subject.trim() && communities.length > 0
 
   const submit = async (status: Campaign['status']) => {
     if (!canSend) return
     setSaving(true)
     await new Promise(r => setTimeout(r, 700))
-    onSave(buildCampaign(status))
+    const audLabel = communities.join(', ')
+    const audCount = communities.includes('All Members') ? 1298 : Math.floor(Math.random() * 600) + 100
+    onSave({
+      id: Math.random().toString(36).slice(2),
+      name, subject, previewText: preview, body, status,
+      audienceType: communities.includes('All Members') ? 'all' : 'community',
+      audienceLabel: audLabel, audienceCount: audCount,
+      sentAt:      status === 'sent'      ? new Date().toISOString().slice(0, 10) : undefined,
+      scheduledAt: status === 'scheduled' ? `${schedDate} ${schedTime}`           : undefined,
+      createdAt: new Date().toISOString().slice(0, 10),
+      stats: status === 'sent'
+        ? { sent: audCount, opened: Math.floor(audCount * (0.4 + Math.random() * 0.3)), clicked: Math.floor(audCount * (0.1 + Math.random() * 0.2)) }
+        : { sent: 0, opened: 0, clicked: 0 },
+    })
     setSaving(false)
     onClose()
-    // reset
     setName(''); setSubject(''); setPreview(''); setBody('')
-    setCommunities(['All Members']); setCsvName(''); setCsvCount(0)
-    setSchedMode('now'); setSchedDate(''); setSchedTime('')
+    setCommunities(['All Members']); setSchedMode('now'); setSchedDate(''); setSchedTime('')
   }
 
-  const LBL = ({ text, req }: { text: string; req?: boolean }) => (
-    <p className="text-[12px] font-semibold mb-1.5" style={{ color: 'var(--t2)' }}>
-      {text}{req && <span style={{ color: 'var(--p)' }}> *</span>}
-    </p>
-  )
   const inp = "w-full h-10 px-3 rounded-xl text-[13px] outline-none transition-colors"
+  const fieldStyle = { border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }
 
   return (
     <>
-      {/* backdrop */}
+      <PreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)}
+        subject={subject} previewText={preview} body={body} />
+
       <div className="fixed inset-0 z-40 transition-all duration-300"
         style={{ background: open ? 'rgba(0,0,0,.35)' : 'transparent', backdropFilter: open ? 'blur(2px)' : 'none', pointerEvents: open ? 'auto' : 'none' }}
         onClick={onClose} />
 
-      {/* drawer */}
       <div className="fixed top-0 right-0 h-full w-[480px] z-50 flex flex-col transition-transform duration-300 ease-out"
         style={{ background: 'var(--white)', borderLeft: '1px solid var(--bd)', transform: open ? 'translateX(0)' : 'translateX(100%)' }}>
 
-        {/* header */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
           <div>
             <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>New Campaign</p>
             <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Configure and send an email campaign</p>
           </div>
-          <button onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-70"
-            style={{ background: 'var(--bg)', color: 'var(--t3)' }}>
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPreviewOpen(true)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-80"
+              style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+              <Eye className="w-3.5 h-3.5" /> Preview
+            </button>
+            <button onClick={onClose}
+              className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-70"
+              style={{ background: 'var(--bg)', color: 'var(--t3)' }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-          {/* ── Campaign Details ── */}
+          {/* Campaign Details */}
           <section>
             <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Campaign Details</p>
-
             <div className="space-y-3">
               <div>
                 <LBL text="Campaign Name" req />
-                <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Weekly Digest — April"
-                  className={inp} style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }}
-                  onFocus={e => (e.target as HTMLInputElement).style.borderColor = 'var(--p)'}
-                  onBlur={e  => (e.target as HTMLInputElement).style.borderColor = 'var(--bd)'} />
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Weekly Digest"
+                  className={inp} style={fieldStyle} {...focusStyle} />
               </div>
               <div>
                 <LBL text="Subject Line" req />
                 <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="What's the email about?"
-                  className={inp} style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }}
-                  onFocus={e => (e.target as HTMLInputElement).style.borderColor = 'var(--p)'}
-                  onBlur={e  => (e.target as HTMLInputElement).style.borderColor = 'var(--bd)'} />
+                  className={inp} style={fieldStyle} {...focusStyle} />
               </div>
               <div>
                 <LBL text="Preview Text" />
                 <input value={preview} onChange={e => setPreview(e.target.value)} placeholder="Short summary shown in inbox…"
-                  className={inp} style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }}
-                  onFocus={e => (e.target as HTMLInputElement).style.borderColor = 'var(--p)'}
-                  onBlur={e  => (e.target as HTMLInputElement).style.borderColor = 'var(--bd)'} />
+                  className={inp} style={fieldStyle} {...focusStyle} />
               </div>
               <div>
-                <LBL text="Email Body" />
-                <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Write your email content here…" rows={5}
-                  className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none transition-colors resize-none"
-                  style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }}
+                <div className="flex items-center justify-between mb-1.5">
+                  <LBL text="Email Body" />
+                  <button onClick={() => setPreviewOpen(true)}
+                    className="text-[11px] font-semibold cursor-pointer hover:opacity-70 flex items-center gap-1"
+                    style={{ color: 'var(--p)' }}>
+                    <Eye className="w-3 h-3" /> Live preview
+                  </button>
+                </div>
+                <textarea value={body} onChange={e => setBody(e.target.value)}
+                  placeholder="Write your email content here..." rows={5}
+                  className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none resize-none"
+                  style={{ ...fieldStyle, border: '1.5px solid var(--bd)' as any }}
                   onFocus={e => (e.target as HTMLTextAreaElement).style.borderColor = 'var(--p)'}
                   onBlur={e  => (e.target as HTMLTextAreaElement).style.borderColor = 'var(--bd)'} />
-                <p className="text-[11px] mt-1" style={{ color: 'var(--t3)' }}>HTML and markdown supported</p>
+                <p className="text-[11px] mt-1" style={{ color: 'var(--t3)' }}>
+                  Use variables: {'{{first_name}}'}, {'{{community_name}}'}
+                </p>
               </div>
             </div>
           </section>
 
           <div style={{ borderTop: '1px solid var(--bd)' }} />
 
-          {/* ── Audience ── */}
+          {/* Audience */}
           <section>
             <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Audience</p>
 
-            {/* mode toggle */}
             <div className="flex gap-2 mb-4">
-              {([['community', 'Community Filter'], ['csv', 'Upload CSV']] as const).map(([mode, label]) => (
-                <button key={mode} onClick={() => setAudienceMode(mode)}
+              {(['community', 'custom'] as const).map(m => (
+                <button key={m} onClick={() => setAudMode(m)}
                   className="flex-1 h-9 rounded-xl text-[12px] font-semibold cursor-pointer transition-all"
-                  style={audienceMode === mode
+                  style={audMode === m
                     ? { background: 'var(--p)', color: '#fff' }
                     : { background: 'var(--bg)', color: 'var(--t2)', border: '1.5px solid var(--bd)' }}>
-                  {label}
+                  {m === 'community' ? 'Community Filter' : 'Custom Audience'}
                 </button>
               ))}
             </div>
 
-            {audienceMode === 'community' ? (
+            {audMode === 'community' ? (
               <div className="space-y-2">
-                {COMMUNITIES.map(c => {
+                {allCommunities.map(c => {
                   const sel = communities.includes(c)
+                  const isCustom = !BASE_COMMUNITIES.includes(c)
                   return (
-                    <button key={c} onClick={() => toggleCommunity(c)}
+                    <button key={c} onClick={() => toggleCom(c)}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-left"
                       style={sel
                         ? { background: 'var(--p2)', border: '1.5px solid var(--p)' }
@@ -388,30 +574,94 @@ function CreateDrawer({ open, onClose, onSave }: DrawerProps) {
                         {sel && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                       </div>
                       <p className="text-[13px] font-medium flex-1" style={{ color: sel ? 'var(--p)' : 'var(--t2)' }}>{c}</p>
-                      <Users className="w-3.5 h-3.5" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+                      {isCustom && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'var(--p2)', color: 'var(--p)' }}>CUSTOM</span>
+                      )}
+                      <Users className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
                     </button>
                   )
                 })}
               </div>
             ) : (
-              <div>
-                <input ref={fileRef} type="file" accept=".csv" className="hidden"
-                  onChange={e => { if (e.target.files?.[0]) handleCsv(e.target.files[0]) }} />
-                <button onClick={() => fileRef.current?.click()}
-                  className="w-full rounded-xl py-8 flex flex-col items-center gap-2 cursor-pointer transition-all"
-                  style={{ border: `2px dashed ${csvCount > 0 ? 'var(--p)' : 'var(--bd)'}`, background: csvCount > 0 ? 'var(--p2)' : 'var(--bg)' }}>
-                  {csvCount > 0
-                    ? <>
-                        <Check className="w-6 h-6" style={{ color: 'var(--p)' }} />
-                        <p className="text-[13px] font-semibold" style={{ color: 'var(--p)' }}>{csvName}</p>
-                        <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{csvCount} recipients detected</p>
-                      </>
-                    : <>
-                        <Upload className="w-6 h-6" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
-                        <p className="text-[13px] font-medium" style={{ color: 'var(--t2)' }}>Drop CSV or click to upload</p>
-                        <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Must have an "email" column</p>
-                      </>
-                  }
+              <div className="space-y-3">
+                <div>
+                  <LBL text="Audience Name" req />
+                  <input value={newAudName} onChange={e => setNewAudName(e.target.value)} placeholder="e.g. VIP Buyers"
+                    className={inp} style={fieldStyle} {...focusStyle} />
+                </div>
+
+                {/* CSV or manual */}
+                <div className="flex gap-2">
+                  {(['type', 'upload'] as const).map(m => (
+                    <button key={m} onClick={() => setCsvMode(m)}
+                      className="flex-1 h-8 rounded-xl text-[11px] font-semibold cursor-pointer transition-all"
+                      style={csvMode === m
+                        ? { background: 'var(--p2)', color: 'var(--p)', border: '1.5px solid var(--p)' }
+                        : { background: 'var(--bg)', color: 'var(--t3)', border: '1.5px solid var(--bd)' }}>
+                      {m === 'type' ? 'Type manually' : 'Upload CSV'}
+                    </button>
+                  ))}
+                </div>
+
+                {csvMode === 'type' ? (
+                  <div>
+                    <div className="flex gap-2">
+                      <input value={emailInput} onChange={e => setEmailInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addEmail())}
+                        placeholder="email@example.com" type="email"
+                        className="flex-1 h-10 px-3 rounded-xl text-[13px] outline-none"
+                        style={fieldStyle} {...focusStyle} />
+                      <button onClick={addEmail}
+                        className="h-10 px-3 rounded-xl text-[12px] font-bold cursor-pointer hover:opacity-80"
+                        style={{ background: 'var(--p)', color: '#fff' }}>
+                        Add
+                      </button>
+                    </div>
+                    {newAudEmails.length > 0 && (
+                      <div className="mt-2 rounded-xl p-2 max-h-[140px] overflow-y-auto space-y-1"
+                        style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
+                        {newAudEmails.map(e => (
+                          <div key={e} className="flex items-center justify-between px-2 py-1 rounded-lg"
+                            style={{ background: 'var(--white)' }}>
+                            <span className="text-[12px]" style={{ color: 'var(--t2)' }}>{e}</span>
+                            <button onClick={() => setNewAudEmails(p => p.filter(x => x !== e))}
+                              className="cursor-pointer" style={{ color: '#ef4444' }}>
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[11px] mt-1.5" style={{ color: 'var(--t3)' }}>
+                      {newAudEmails.length} email{newAudEmails.length !== 1 ? 's' : ''} added
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <input ref={fileRef} type="file" accept=".csv" className="hidden"
+                      onChange={e => {
+                        if (e.target.files?.[0]) {
+                          setCsvName(e.target.files[0].name)
+                          const count = Math.floor(Math.random() * 800) + 100
+                          setNewAudEmails(Array.from({ length: count }, (_, i) => `user${i + 1}@example.com`))
+                        }
+                      }} />
+                    <button onClick={() => fileRef.current?.click()}
+                      className="w-full rounded-xl py-6 flex flex-col items-center gap-2 cursor-pointer"
+                      style={{ border: `2px dashed ${csvName ? 'var(--p)' : 'var(--bd)'}`, background: csvName ? 'var(--p2)' : 'var(--bg)' }}>
+                      {csvName
+                        ? <><Check className="w-5 h-5" style={{ color: 'var(--p)' }} /><p className="text-[12px] font-semibold" style={{ color: 'var(--p)' }}>{csvName}</p><p className="text-[11px]" style={{ color: 'var(--t3)' }}>{newAudEmails.length} recipients</p></>
+                        : <><Upload className="w-5 h-5" style={{ color: 'var(--t3)' }} strokeWidth={1.7} /><p className="text-[12px]" style={{ color: 'var(--t2)' }}>Drop CSV or click to upload</p><p className="text-[11px]" style={{ color: 'var(--t3)' }}>Must have an "email" column</p></>
+                      }
+                    </button>
+                  </div>
+                )}
+
+                <button onClick={saveCustomAudience}
+                  disabled={!newAudName.trim() || newAudEmails.length === 0}
+                  className="w-full h-9 rounded-xl text-[12px] font-bold cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-40"
+                  style={{ background: 'var(--p)', color: '#fff' }}>
+                  Save &amp; Use This Audience
                 </button>
               </div>
             )}
@@ -419,46 +669,38 @@ function CreateDrawer({ open, onClose, onSave }: DrawerProps) {
 
           <div style={{ borderTop: '1px solid var(--bd)' }} />
 
-          {/* ── Schedule ── */}
+          {/* Schedule */}
           <section>
             <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Schedule</p>
-
             <div className="flex gap-2 mb-4">
-              {([['now', 'Send Now'], ['later', 'Schedule for Later']] as const).map(([mode, label]) => (
-                <button key={mode} onClick={() => setSchedMode(mode)}
+              {(['now', 'later'] as const).map(m => (
+                <button key={m} onClick={() => setSchedMode(m)}
                   className="flex-1 h-9 rounded-xl text-[12px] font-semibold cursor-pointer transition-all"
-                  style={schedMode === mode
+                  style={schedMode === m
                     ? { background: 'var(--p)', color: '#fff' }
                     : { background: 'var(--bg)', color: 'var(--t2)', border: '1.5px solid var(--bd)' }}>
-                  {label}
+                  {m === 'now' ? 'Send Now' : 'Schedule for Later'}
                 </button>
               ))}
             </div>
-
-            {schedMode === 'later' && (
+            {schedMode === 'later' ? (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <LBL text="Date" req />
                   <input type="date" value={schedDate} onChange={e => setSchedDate(e.target.value)}
-                    className={inp} style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }}
-                    onFocus={e => (e.target as HTMLInputElement).style.borderColor = 'var(--p)'}
-                    onBlur={e  => (e.target as HTMLInputElement).style.borderColor = 'var(--bd)'} />
+                    className={inp} style={fieldStyle} {...focusStyle} />
                 </div>
                 <div>
                   <LBL text="Time" req />
                   <input type="time" value={schedTime} onChange={e => setSchedTime(e.target.value)}
-                    className={inp} style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }}
-                    onFocus={e => (e.target as HTMLInputElement).style.borderColor = 'var(--p)'}
-                    onBlur={e  => (e.target as HTMLInputElement).style.borderColor = 'var(--bd)'} />
+                    className={inp} style={fieldStyle} {...focusStyle} />
                 </div>
               </div>
-            )}
-
-            {schedMode === 'now' && (
+            ) : (
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
                 style={{ background: 'rgba(74,222,128,.08)', border: '1px solid rgba(74,222,128,.25)' }}>
                 <Zap className="w-3.5 h-3.5 shrink-0" style={{ color: '#16a34a' }} strokeWidth={1.8} />
-                <p className="text-[12px]" style={{ color: '#16a34a' }}>Campaign will be sent immediately after confirmation</p>
+                <p className="text-[12px]" style={{ color: '#16a34a' }}>Sent immediately after confirmation</p>
               </div>
             )}
           </section>
@@ -466,23 +708,21 @@ function CreateDrawer({ open, onClose, onSave }: DrawerProps) {
           <div className="h-4" />
         </div>
 
-        {/* footer */}
         <div className="px-6 py-4 flex gap-2" style={{ borderTop: '1px solid var(--bd)' }}>
           <button onClick={() => submit('draft')} disabled={!name.trim() || saving}
-            className="flex-1 h-10 rounded-xl text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-40"
+            className="flex-1 h-10 rounded-xl text-[13px] font-semibold cursor-pointer hover:opacity-80 disabled:opacity-40"
             style={{ background: 'var(--bg)', color: 'var(--t2)', border: '1.5px solid var(--bd)' }}>
             Save Draft
           </button>
           <button onClick={() => submit(schedMode === 'later' ? 'scheduled' : 'sent')}
             disabled={!canSend || saving}
-            className="flex-1 h-10 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
+            className="flex-1 h-10 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ background: 'var(--p)' }}>
             {saving
               ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
               : schedMode === 'later'
                 ? <><Calendar className="w-4 h-4" strokeWidth={2} /> Schedule</>
-                : <><Send className="w-4 h-4" strokeWidth={2} /> Send Now</>
-            }
+                : <><Send className="w-4 h-4" strokeWidth={2} /> Send Now</>}
           </button>
         </div>
       </div>
@@ -490,150 +730,402 @@ function CreateDrawer({ open, onClose, onSave }: DrawerProps) {
   )
 }
 
+// ─── Create Automation Drawer ─────────────────────────────────────────────────
+
+function CreateAutomationDrawer({ open, onClose, onSave }: {
+  open: boolean; onClose: () => void; onSave: (a: Automation) => void
+}) {
+  const [name,    setName]    = useState('')
+  const [trigger, setTrigger] = useState('')
+  const [delay,   setDelay]   = useState(0)
+  const [subject, setSubject] = useState('')
+  const [body,    setBody]    = useState('')
+  const [preview, setPreview] = useState(false)
+  const [saving,  setSaving]  = useState(false)
+
+  const canSave = name.trim() && trigger && subject.trim()
+
+  const submit = async () => {
+    if (!canSave) return
+    setSaving(true)
+    await new Promise(r => setTimeout(r, 600))
+    const tOpt = TRIGGER_OPTIONS.find(t => t.id === trigger)!
+    onSave({
+      id: Math.random().toString(36).slice(2),
+      name, trigger, triggerLabel: tOpt.label, triggerIcon: trigger,
+      delay, subject, body, isActive: true, triggered: 0,
+      createdAt: new Date().toISOString().slice(0, 10),
+    })
+    setSaving(false); onClose()
+    setName(''); setTrigger(''); setDelay(0); setSubject(''); setBody('')
+  }
+
+  const inp = "w-full h-10 px-3 rounded-xl text-[13px] outline-none"
+  const fieldStyle = { border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }
+
+  return (
+    <>
+      <PreviewModal open={preview} onClose={() => setPreview(false)} subject={subject} previewText="" body={body} />
+
+      <div className="fixed inset-0 z-40 transition-all duration-300"
+        style={{ background: open ? 'rgba(0,0,0,.35)' : 'transparent', backdropFilter: open ? 'blur(2px)' : 'none', pointerEvents: open ? 'auto' : 'none' }}
+        onClick={onClose} />
+
+      <div className="fixed top-0 right-0 h-full w-[480px] z-50 flex flex-col transition-transform duration-300 ease-out"
+        style={{ background: 'var(--white)', borderLeft: '1px solid var(--bd)', transform: open ? 'translateX(0)' : 'translateX(100%)' }}>
+
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
+          <div>
+            <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>New Automation</p>
+            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Set up a trigger-based email flow</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPreview(true)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-80"
+              style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+              <Eye className="w-3.5 h-3.5" /> Preview
+            </button>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-70"
+              style={{ background: 'var(--bg)', color: 'var(--t3)' }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+          <section>
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Setup</p>
+            <div className="space-y-3">
+              <div>
+                <LBL text="Automation Name" req />
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Welcome New Members"
+                  className={inp} style={fieldStyle} {...focusStyle} />
+              </div>
+              <div>
+                <LBL text="Send Delay" />
+                <div className="flex flex-wrap gap-2">
+                  {DELAY_OPTIONS.map(d => (
+                    <button key={d.value} onClick={() => setDelay(d.value)}
+                      className="h-8 px-3 rounded-xl text-[11px] font-semibold cursor-pointer transition-all"
+                      style={delay === d.value
+                        ? { background: 'var(--p)', color: '#fff' }
+                        : { background: 'var(--bg)', color: 'var(--t2)', border: '1.5px solid var(--bd)' }}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div style={{ borderTop: '1px solid var(--bd)' }} />
+
+          <section>
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Trigger</p>
+            <div className="grid grid-cols-1 gap-2">
+              {TRIGGER_OPTIONS.map(t => {
+                const Icon = t.icon
+                const sel = trigger === t.id
+                return (
+                  <button key={t.id} onClick={() => setTrigger(t.id)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-left"
+                    style={sel
+                      ? { background: 'var(--p2)', border: '1.5px solid var(--p)' }
+                      : { background: 'var(--bg)', border: '1.5px solid var(--bd)' }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: sel ? 'var(--p)' : 'var(--white)' }}>
+                      <Icon className="w-3.5 h-3.5" style={{ color: sel ? '#fff' : 'var(--t3)' }} strokeWidth={1.7} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[12px] font-semibold" style={{ color: sel ? 'var(--p)' : 'var(--t1)' }}>{t.label}</p>
+                      <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{t.desc}</p>
+                    </div>
+                    {sel && <Check className="w-4 h-4 shrink-0" style={{ color: 'var(--p)' }} strokeWidth={2.5} />}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          <div style={{ borderTop: '1px solid var(--bd)' }} />
+
+          <section>
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Email Content</p>
+            <div className="space-y-3">
+              <div>
+                <LBL text="Subject Line" req />
+                <input value={subject} onChange={e => setSubject(e.target.value)}
+                  placeholder="e.g. Welcome {{first_name}}!"
+                  className={inp} style={fieldStyle} {...focusStyle} />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <LBL text="Email Body" />
+                  <button onClick={() => setPreview(true)} className="text-[11px] font-semibold cursor-pointer hover:opacity-70 flex items-center gap-1" style={{ color: 'var(--p)' }}>
+                    <Eye className="w-3 h-3" /> Preview
+                  </button>
+                </div>
+                <textarea value={body} onChange={e => setBody(e.target.value)}
+                  placeholder={'Hi {{first_name}},\n\nYour message here...'} rows={5}
+                  className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none resize-none"
+                  style={{ ...fieldStyle, border: '1.5px solid var(--bd)' as any }}
+                  onFocus={e => (e.target as HTMLTextAreaElement).style.borderColor = 'var(--p)'}
+                  onBlur={e  => (e.target as HTMLTextAreaElement).style.borderColor = 'var(--bd)'} />
+                <p className="text-[11px] mt-1" style={{ color: 'var(--t3)' }}>
+                  Variables: {'{{first_name}}'}, {'{{community_name}}'}, {'{{course_name}}'}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <div className="h-4" />
+        </div>
+
+        <div className="px-6 py-4" style={{ borderTop: '1px solid var(--bd)' }}>
+          <button onClick={submit} disabled={!canSave || saving}
+            className="w-full h-10 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
+            style={{ background: 'var(--p)' }}>
+            {saving
+              ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              : <><Zap className="w-4 h-4" strokeWidth={2} /> Create &amp; Activate Automation</>}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
+
+function KpiCard({ icon, label, value, sub, color }: {
+  icon: React.ReactNode; label: string; value: string; sub: string; color: string
+}) {
+  return (
+    <div className="rounded-2xl p-5 flex gap-4 items-start"
+      style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: color + '1a' }}>
+        <div style={{ color }}>{icon}</div>
+      </div>
+      <div>
+        <p className="text-[22px] font-bold leading-tight" style={{ color: 'var(--t1)' }}>{value}</p>
+        <p className="text-[12px] font-medium mt-0.5" style={{ color: 'var(--t2)' }}>{label}</p>
+        <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>{sub}</p>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+const CAMP_TABS = [
+  { id: 'all', label: 'All' }, { id: 'sent', label: 'Sent' },
+  { id: 'scheduled', label: 'Scheduled' }, { id: 'draft', label: 'Drafts' },
+] as const
+
 export default function EmailMarketingPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [tab,       setTab]       = useState<typeof TABS[number]['id']>('all')
-  const [search,    setSearch]    = useState('')
-  const [drawer,    setDrawer]    = useState(false)
+  const [campaigns,       setCampaigns]       = useState<Campaign[]>([])
+  const [automations,     setAutomations]     = useState<Automation[]>([])
+  const [customAudiences, setCustomAudiences] = useState<CustomAudience[]>([])
+  const [loading,         setLoading]         = useState(true)
+  const [view,            setView]            = useState<'campaigns' | 'automations'>('campaigns')
+  const [tab,             setTab]             = useState<typeof CAMP_TABS[number]['id']>('all')
+  const [search,          setSearch]          = useState('')
+  const [campDrawer,      setCampDrawer]      = useState(false)
+  const [autoDrawer,      setAutoDrawer]      = useState(false)
+  const [previewCamp,     setPreviewCamp]     = useState<Campaign | null>(null)
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('chabaqa_campaigns')
-      setCampaigns(raw ? JSON.parse(raw) : SEED)
-    } catch { setCampaigns(SEED) }
+      setCampaigns(JSON.parse(localStorage.getItem('chabaqa_campaigns')   || 'null') ?? CAMP_SEED)
+      setAutomations(JSON.parse(localStorage.getItem('chabaqa_automations') || 'null') ?? AUTO_SEED)
+      setCustomAudiences(JSON.parse(localStorage.getItem('chabaqa_custom_audiences') || '[]'))
+    } catch { setCampaigns(CAMP_SEED); setAutomations(AUTO_SEED) }
     finally { setLoading(false) }
   }, [])
 
-  const save = (list: Campaign[]) => {
-    setCampaigns(list)
-    localStorage.setItem('chabaqa_campaigns', JSON.stringify(list))
-  }
-
-  const addCampaign = (c: Campaign) => save([c, ...campaigns])
-  const delCampaign = (id: string) => save(campaigns.filter(c => c.id !== id))
+  const saveCamps = (list: Campaign[]) => { setCampaigns(list); localStorage.setItem('chabaqa_campaigns', JSON.stringify(list)) }
+  const saveAutos = (list: Automation[]) => { setAutomations(list); localStorage.setItem('chabaqa_automations', JSON.stringify(list)) }
+  const saveAuds  = (list: CustomAudience[]) => { setCustomAudiences(list); localStorage.setItem('chabaqa_custom_audiences', JSON.stringify(list)) }
 
   const filtered = campaigns
     .filter(c => tab === 'all' || c.status === tab)
     .filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.subject.toLowerCase().includes(search.toLowerCase()))
 
-  const sent = campaigns.filter(c => c.status === 'sent')
-  const totalSent   = sent.reduce((s, c) => s + c.stats.sent,   0)
-  const totalOpened = sent.reduce((s, c) => s + c.stats.opened, 0)
+  const sent        = campaigns.filter(c => c.status === 'sent')
+  const totalSent   = sent.reduce((s, c) => s + c.stats.sent,    0)
+  const totalOpened = sent.reduce((s, c) => s + c.stats.opened,  0)
   const totalClicked = sent.reduce((s, c) => s + c.stats.clicked, 0)
-  const avgOpen  = pct(totalOpened,  totalSent)
-  const avgClick = pct(totalClicked, totalSent)
-
-  const tabCount = (id: string) => id === 'all' ? campaigns.length : campaigns.filter(c => c.status === id).length
 
   return (
     <>
       <style>{`
-        @keyframes dashFadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-        ::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-thumb{background:var(--p3);border-radius:10px}
+        @keyframes dashFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--p3);border-radius:10px}
       `}</style>
+
+      {previewCamp && (
+        <PreviewModal open onClose={() => setPreviewCamp(null)}
+          subject={previewCamp.subject} previewText={previewCamp.previewText} body={previewCamp.body} />
+      )}
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
         <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
-          <DashTopbar title="Email Marketing" subtitle="Send campaigns and track audience engagement" />
+          <DashTopbar title="Email Marketing" subtitle="Campaigns, automations and audience analytics" />
 
           <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
-            {/* ── KPI row ── */}
+            {/* KPIs */}
             <div className="grid grid-cols-4 gap-4 mb-7">
-              <KpiCard icon={<Mail className="w-5 h-5" />}      label="Total Campaigns" value={String(campaigns.length)}      sub={`${tabCount('sent')} sent · ${tabCount('draft')} drafts`} color="var(--p)" />
-              <KpiCard icon={<Send className="w-5 h-5" />}      label="Emails Sent"     value={totalSent.toLocaleString()}     sub="across all campaigns"       color="var(--cyan)" />
-              <KpiCard icon={<Eye className="w-5 h-5" />}       label="Avg Open Rate"   value={`${avgOpen}%`}                  sub={`${totalOpened.toLocaleString()} opens`}  color="var(--orange)" />
-              <KpiCard icon={<MousePointerClick className="w-5 h-5" />} label="Avg Click Rate" value={`${avgClick}%`}         sub={`${totalClicked.toLocaleString()} clicks`} color="var(--pink)" />
+              <KpiCard icon={<Mail className="w-5 h-5" />}             label="Total Campaigns" value={String(campaigns.length)}      sub={`${campaigns.filter(c=>c.status==='sent').length} sent · ${campaigns.filter(c=>c.status==='draft').length} drafts`} color="var(--p)" />
+              <KpiCard icon={<Send className="w-5 h-5" />}             label="Emails Sent"     value={totalSent.toLocaleString()}     sub="across all campaigns"  color="var(--cyan)" />
+              <KpiCard icon={<Eye className="w-5 h-5" />}              label="Avg Open Rate"   value={`${pct(totalOpened, totalSent)}%`}  sub={`${totalOpened.toLocaleString()} opens`}  color="var(--orange)" />
+              <KpiCard icon={<MousePointerClick className="w-5 h-5" />} label="Avg Click Rate"  value={`${pct(totalClicked, totalSent)}%`} sub={`${totalClicked.toLocaleString()} clicks`} color="var(--pink)" />
             </div>
 
-            {/* ── Toolbar ── */}
+            {/* View toggle + actions */}
             <div className="flex items-center gap-3 mb-5 flex-wrap">
-              {/* tabs */}
               <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-                {TABS.map(t => (
-                  <button key={t.id} onClick={() => setTab(t.id)}
-                    className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[12px] font-semibold cursor-pointer transition-all"
-                    style={tab === t.id
-                      ? { background: 'var(--p)', color: '#fff' }
-                      : { color: 'var(--t3)' }}>
-                    {t.label}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full"
-                      style={tab === t.id
-                        ? { background: 'rgba(255,255,255,.25)', color: '#fff' }
-                        : { background: 'var(--bg)', color: 'var(--t3)' }}>
-                      {tabCount(t.id)}
-                    </span>
+                {(['campaigns', 'automations'] as const).map(v => (
+                  <button key={v} onClick={() => setView(v)}
+                    className="h-7 px-4 rounded-lg text-[12px] font-semibold cursor-pointer transition-all capitalize"
+                    style={view === v ? { background: 'var(--p)', color: '#fff' } : { color: 'var(--t3)' }}>
+                    {v === 'automations' ? `Automations · ${automations.filter(a => a.isActive).length} active` : 'Campaigns'}
                   </button>
                 ))}
               </div>
 
-              {/* search */}
-              <div className="flex items-center gap-2 flex-1 min-w-[180px] h-9 px-3 rounded-xl"
-                style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-                <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
-                <input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Search campaigns…" className="flex-1 bg-transparent text-[13px] outline-none"
-                  style={{ color: 'var(--t1)' }} />
-                {search && (
-                  <button onClick={() => setSearch('')} className="cursor-pointer" style={{ color: 'var(--t3)' }}>
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
+              {view === 'campaigns' && (
+                <>
+                  {/* status tabs */}
+                  <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+                    {CAMP_TABS.map(t => {
+                      const cnt = t.id === 'all' ? campaigns.length : campaigns.filter(c => c.status === t.id).length
+                      return (
+                        <button key={t.id} onClick={() => setTab(t.id)}
+                          className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[12px] font-semibold cursor-pointer transition-all"
+                          style={tab === t.id ? { background: 'var(--p)', color: '#fff' } : { color: 'var(--t3)' }}>
+                          {t.label}
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                            style={tab === t.id ? { background: 'rgba(255,255,255,.25)', color: '#fff' } : { background: 'var(--bg)', color: 'var(--t3)' }}>
+                            {cnt}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {/* search */}
+                  <div className="flex items-center gap-2 flex-1 min-w-[160px] h-9 px-3 rounded-xl"
+                    style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+                    <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search campaigns…"
+                      className="flex-1 bg-transparent text-[13px] outline-none" style={{ color: 'var(--t1)' }} />
+                    {search && <button onClick={() => setSearch('')} style={{ color: 'var(--t3)' }}><X className="w-3.5 h-3.5" /></button>}
+                  </div>
+                </>
+              )}
 
-              {/* new campaign */}
-              <button onClick={() => setDrawer(true)}
-                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
+              <button onClick={() => view === 'campaigns' ? setCampDrawer(true) : setAutoDrawer(true)}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90 ml-auto"
                 style={{ background: 'var(--p)' }}>
-                <Plus className="w-4 h-4" strokeWidth={2.5} /> New Campaign
+                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                {view === 'campaigns' ? 'New Campaign' : 'New Automation'}
               </button>
             </div>
 
-            {/* ── Content ── */}
+            {/* Content */}
             {loading ? (
               <div className="flex items-center justify-center py-32">
                 <div className="w-8 h-8 rounded-full border-2 border-[var(--p3)] border-t-[var(--p)] animate-spin" />
               </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
-                style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-                  style={{ background: 'var(--p2)' }}>
-                  <Inbox className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.5} />
+            ) : view === 'campaigns' ? (
+              filtered.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
+                  style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'var(--p2)' }}>
+                    <Inbox className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.5} />
+                  </div>
+                  <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>
+                    {search ? 'No campaigns match your search' : 'No campaigns yet'}
+                  </p>
+                  <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>
+                    {search ? 'Try a different keyword' : 'Create your first email campaign'}
+                  </p>
+                  {!search && (
+                    <button onClick={() => setCampDrawer(true)}
+                      className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
+                      style={{ background: 'var(--p)' }}>
+                      <Plus className="w-4 h-4" strokeWidth={2.5} /> New Campaign
+                    </button>
+                  )}
                 </div>
-                <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>
-                  {search ? 'No campaigns match your search' : 'No campaigns yet'}
-                </p>
-                <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>
-                  {search ? 'Try a different keyword' : 'Create your first email campaign'}
-                </p>
-                {!search && (
-                  <button onClick={() => setDrawer(true)}
+              ) : (
+                <div className="grid grid-cols-1 gap-4 max-w-4xl">
+                  {filtered.map((c, i) => (
+                    <div key={c.id} style={{ animation: `dashFadeUp .3s ${i * 50}ms ease both` }}>
+                      <CampaignCard c={c} onDelete={id => saveCamps(campaigns.filter(x => x.id !== id))} onPreview={setPreviewCamp} />
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : (
+              /* Automations view */
+              automations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
+                  style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'var(--p2)' }}>
+                    <Zap className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.5} />
+                  </div>
+                  <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No automations yet</p>
+                  <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Set up your first trigger-based email</p>
+                  <button onClick={() => setAutoDrawer(true)}
                     className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
                     style={{ background: 'var(--p)' }}>
-                    <Plus className="w-4 h-4" strokeWidth={2.5} /> New Campaign
+                    <Plus className="w-4 h-4" strokeWidth={2.5} /> New Automation
                   </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 max-w-4xl">
-                {filtered.map((c, i) => (
-                  <div key={c.id} style={{ animation: `dashFadeUp .3s ${i * 50}ms ease both` }}>
-                    <CampaignCard c={c} onDelete={delCampaign} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 max-w-4xl">
+                  {/* summary bar */}
+                  <div className="grid grid-cols-3 gap-3 mb-1">
+                    {[
+                      { label: 'Total',  value: automations.length, color: 'var(--p)' },
+                      { label: 'Active', value: automations.filter(a=>a.isActive).length, color: '#16a34a' },
+                      { label: 'Emails sent', value: automations.reduce((s,a)=>s+a.triggered,0).toLocaleString(), color: 'var(--cyan)' },
+                    ].map(s => (
+                      <div key={s.label} className="rounded-xl p-3 flex items-center gap-3"
+                        style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+                        <p className="text-[18px] font-bold" style={{ color: s.color }}>{s.value}</p>
+                        <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{s.label}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                  {automations.map((a, i) => (
+                    <div key={a.id} style={{ animation: `dashFadeUp .3s ${i * 50}ms ease both` }}>
+                      <AutomationCard a={a}
+                        onToggle={id => saveAutos(automations.map(x => x.id === id ? { ...x, isActive: !x.isActive } : x))}
+                        onDelete={id => saveAutos(automations.filter(x => x.id !== id))} />
+                    </div>
+                  ))}
+                </div>
+              )
             )}
 
           </main>
         </div>
       </div>
 
-      <CreateDrawer open={drawer} onClose={() => setDrawer(false)} onSave={addCampaign} />
+      <CreateCampaignDrawer
+        open={campDrawer} onClose={() => setCampDrawer(false)}
+        onSave={c => saveCamps([c, ...campaigns])}
+        customAudiences={customAudiences}
+        onSaveAudience={a => saveAuds([...customAudiences, a])} />
+
+      <CreateAutomationDrawer
+        open={autoDrawer} onClose={() => setAutoDrawer(false)}
+        onSave={a => saveAutos([a, ...automations])} />
     </>
   )
 }
