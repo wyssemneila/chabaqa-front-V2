@@ -65,11 +65,10 @@ const TIERS: { id:TicketTier; label:string }[] = [
 ]
 
 const STEPS = [
-  { id:1, label:"Event Info",   icon:FileText,   desc:"Title, description & banner"   },
-  { id:2, label:"Format",       icon:Globe,      desc:"Online, in-person or hybrid"    },
-  { id:3, label:"Date & Time",  icon:Calendar,   desc:"Schedule & capacity"            },
-  { id:4, label:"Tickets",      icon:Ticket,     desc:"Ticket types & pricing"         },
-  { id:5, label:"Visibility",   icon:DollarSign, desc:"Publish or save as draft"       },
+  { id:1, label:"Event Info", icon:FileText,   desc:"Title, description & banner"  },
+  { id:2, label:"Format",     icon:Globe,      desc:"Online, in-person or hybrid"  },
+  { id:3, label:"Schedule",   icon:Calendar,   desc:"Date, time & capacity"        },
+  { id:4, label:"Pricing",    icon:DollarSign, desc:"Tickets & publish"            },
 ] as const
 
 // ─── shared styles ─────────────────────────────────────────────────────────────
@@ -515,9 +514,9 @@ function TicketForm({ initial, onSave, onCancel }: {
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// STEP 4 — TICKETS
+// STEP 4 — PRICING (tickets + visibility)
 // ════════════════════════════════════════════════════════════════════════════════
-function StepTickets({ data, set }: { data:FormData; set:(f:keyof FormData, v:any)=>void }) {
+function StepPricing({ data, set }: { data:FormData; set:(f:keyof FormData, v:any)=>void }) {
   const [formState, setFormState] = useState<"closed"|"adding"|string>("closed")
   const editing = typeof formState === "string" && formState !== "closed" && formState !== "adding"
     ? data.tickets.find(t => t.id === formState) ?? null
@@ -609,17 +608,8 @@ function StepTickets({ data, set }: { data:FormData; set:(f:keyof FormData, v:an
           )}
         </div>
       </Card>
-    </div>
-  )
-}
 
-// ════════════════════════════════════════════════════════════════════════════════
-// STEP 5 — VISIBILITY
-// ════════════════════════════════════════════════════════════════════════════════
-function StepVisibility({ data, set }: { data:FormData; set:(f:keyof FormData, v:any)=>void }) {
-  return (
-    <div className="space-y-5">
-      <Card title="Visibility" sub="Who can see and register for this event?">
+      <Card title="Publishing" sub="Who can see and register for this event?">
         <div className="grid grid-cols-2 gap-3">
           {([
             { val:true,  Icon:Globe, label:"Published", desc:"Visible to everyone"        },
@@ -636,33 +626,11 @@ function StepVisibility({ data, set }: { data:FormData; set:(f:keyof FormData, v
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-bold" style={{ color:on?"var(--p)":"var(--t1)" }}>{opt.label}</p>
-                  <p className="text-[11px]"        style={{ color:"var(--t3)" }}>{opt.desc}</p>
+                  <p className="text-[11px]" style={{ color:"var(--t3)" }}>{opt.desc}</p>
                 </div>
               </button>
             )
           })}
-        </div>
-      </Card>
-
-      {/* Summary */}
-      <Card title="Event Summary" sub="Review before publishing">
-        <div className="space-y-3">
-          {[
-            { icon:FileText,  label:"Title",    val: data.title         || "—"                    },
-            { icon:Tag,       label:"Category", val: data.category      || "—"                    },
-            { icon:Globe,     label:"Format",   val: FORMAT_OPTS.find(f=>f.id===data.format)?.label ?? "—" },
-            { icon:Calendar,  label:"Start",    val: data.startDate && data.startTime ? `${data.startDate} at ${data.startTime}` : "—" },
-            { icon:Users,     label:"Capacity", val: data.capacity==="unlimited" ? "Unlimited" : `${data.capacity} attendees` },
-            { icon:Ticket,    label:"Tickets",  val: data.tickets.length === 0 ? "No tickets" : `${data.tickets.length} type${data.tickets.length!==1?"s":""}` },
-          ].map(row => (
-            <div key={row.label} className="flex items-center gap-3 py-2 border-b last:border-0" style={{ borderColor:"var(--bd)" }}>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background:"var(--p2)" }}>
-                <row.icon className="w-3.5 h-3.5" style={{ color:"var(--p)" }} strokeWidth={1.8} />
-              </div>
-              <span className="text-[11px] font-bold w-20 shrink-0 uppercase tracking-wide" style={{ color:"var(--t3)" }}>{row.label}</span>
-              <span className="text-[13px] font-semibold flex-1 truncate" style={{ color:"var(--t1)" }}>{row.val}</span>
-            </div>
-          ))}
         </div>
       </Card>
     </div>
@@ -785,8 +753,8 @@ function Sidebar({ data, step, done }: { data:FormData; step:number; done:Set<nu
             { n: data.startDate ? 1 : 0,                                      label:"Date"     },
           ].map(item => (
             <div key={item.label} className="px-2 py-2.5 rounded-xl text-center" style={{ background:"var(--bg)" }}>
-              <p className="text-[16px] font-black tabular-nums" style={{ color:"var(--t1)" }}>{item.n}</p>
-              <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:"var(--t3)" }}>{item.label}</p>
+              <p className="text-[16px] font-bold leading-none tabular-nums" style={{ color:"var(--p)" }}>{item.n}</p>
+              <p className="text-[9px] mt-0.5" style={{ color:"var(--t3)" }}>{item.label}</p>
             </div>
           ))}
         </div>
@@ -809,7 +777,7 @@ function Sidebar({ data, step, done }: { data:FormData; step:number; done:Set<nu
               </div>
               <div className="min-w-0">
                 <p className="text-[12px] font-bold truncate"
-                  style={{ color: active||complete ? "var(--p)" : "var(--t2)" }}>{s.label}</p>
+                  style={{ color: active ? "var(--p)" : complete ? "var(--t1)" : "var(--t2)" }}>{s.label}</p>
                 <p className="text-[10px] truncate" style={{ color:"var(--t3)" }}>{s.desc}</p>
               </div>
             </div>
@@ -824,29 +792,27 @@ function Sidebar({ data, step, done }: { data:FormData; step:number; done:Set<nu
 // MAIN FORM
 // ════════════════════════════════════════════════════════════════════════════════
 const STEP_META: Record<number,{ title:string; sub:string }> = {
-  1: { title:"Event Info",       sub:"Title, description, category & banner"     },
-  2: { title:"Format & Location",sub:"How and where your event will take place"  },
-  3: { title:"Date & Time",      sub:"Schedule and attendance capacity"           },
-  4: { title:"Tickets",          sub:"Add ticket types and set pricing"           },
-  5: { title:"Visibility",       sub:"Review and publish your event"             },
+  1: { title:"Event Info",        sub:"Title, description, category & banner"    },
+  2: { title:"Format & Location", sub:"How and where your event will take place" },
+  3: { title:"Schedule",          sub:"Date, time and attendance capacity"       },
+  4: { title:"Pricing",           sub:"Ticket types and event visibility"        },
 }
 
 const STEP_BLOCKER: Record<number,(d:FormData)=>string> = {
-  1: d => !d.title.trim()                    ? "Add an event title to continue"
-        : !d.description.trim()              ? "Add a description to continue"
-        : !d.category                        ? "Select a category to continue"
+  1: d => !d.title.trim()       ? "Add an event title to continue"
+        : !d.description.trim() ? "Add a description to continue"
+        : !d.category           ? "Select a category to continue"
         : "",
   2: d => (d.format==="offline"||d.format==="hybrid") && !d.venueName.trim()
-                                             ? "Add a venue name for in-person events"
+                                ? "Add a venue name for in-person events"
         : "",
-  3: d => !d.startDate                       ? "Set a start date"
-        : !d.startTime                       ? "Set a start time"
-        : !d.endDate                         ? "Set an end date"
-        : !d.endTime                         ? "Set an end time"
+  3: d => !d.startDate          ? "Set a start date"
+        : !d.startTime          ? "Set a start time"
+        : !d.endDate            ? "Set an end date"
+        : !d.endTime            ? "Set an end time"
         : "",
-  4: d => d.tickets.length === 0             ? "Add at least one ticket type"
+  4: d => d.tickets.length === 0 ? "Add at least one ticket type"
         : "",
-  5: _ => "",
 }
 
 export function CreateEventForm() {
@@ -928,11 +894,10 @@ export function CreateEventForm() {
 
         {/* content */}
         <div className="flex-1 overflow-y-auto px-8 py-7">
-          {step === 1 && <StepInfo       data={data} set={set} />}
-          {step === 2 && <StepFormat     data={data} set={set} />}
-          {step === 3 && <StepDateTime   data={data} set={set} />}
-          {step === 4 && <StepTickets    data={data} set={set} />}
-          {step === 5 && <StepVisibility data={data} set={set} />}
+          {step === 1 && <StepInfo     data={data} set={set} />}
+          {step === 2 && <StepFormat   data={data} set={set} />}
+          {step === 3 && <StepDateTime data={data} set={set} />}
+          {step === 4 && <StepPricing  data={data} set={set} />}
         </div>
 
         {/* bottom nav */}

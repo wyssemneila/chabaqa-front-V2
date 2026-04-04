@@ -11,8 +11,6 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const slugify = (t: string) =>
   t.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "")
@@ -29,18 +27,20 @@ interface Section {
 }
 interface FormData {
   title: string; slug: string; description: string; thumbnail: string
-  communityId: string; level: "beginner" | "intermediate" | "advanced" | ""
+  category: string; level: "beginner" | "intermediate" | "advanced" | ""
   duration: number; sections: Section[]; priceType: "free" | "paid"
   price: number; isPublished: boolean
 }
 
 
 const STEPS = [
-  { id: 1, label: "Course Info",  icon: BookOpen,   desc: "Title, level & thumbnail" },
-  { id: 2, label: "Curriculum",   icon: FileText,   desc: "Sections & chapters"       },
-  { id: 3, label: "Pricing",      icon: DollarSign, desc: "Free or paid"              },
-  { id: 4, label: "Review",       icon: Globe,      desc: "Publish your course"       },
+  { id: 1, label: "Info",       icon: BookOpen,   desc: "Title, category & thumbnail" },
+  { id: 2, label: "Curriculum", icon: FileText,   desc: "Sections & chapters"          },
+  { id: 3, label: "Settings",   icon: Zap,        desc: "Level & duration"             },
+  { id: 4, label: "Pricing",    icon: DollarSign, desc: "Free, paid & publish"         },
 ] as const
+
+const CATEGORIES = ["Technology","Business","Design","Marketing","Education","Health","Music","Arts","Sports","Other"]
 
 // ─── label / field helpers ────────────────────────────────────────────────────
 const LBL = "block text-[10px] font-bold uppercase tracking-[.08em] mb-1.5 select-none"
@@ -109,17 +109,18 @@ function Sidebar({ step, data, done }: { step: number; data: FormData; done: Set
           {data.title || "Untitled Course"}
         </p>
 
-        {(data.level || data.communityId) && (
+        {(data.category || data.level) && (
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-            {data.level && (
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
+            {data.category && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
                 style={{ background: "var(--p2)", color: "var(--p)" }}>
-                {data.level}
+                {data.category}
               </span>
             )}
-            {data.duration > 0 && (
-              <span className="text-[10px] font-medium" style={{ color: "var(--t3)" }}>
-                {data.duration}h
+            {data.level && (
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
+                style={{ background: "var(--bg)", color: "var(--t3)" }}>
+                {data.level}
               </span>
             )}
           </div>
@@ -428,11 +429,7 @@ const LEVELS = [
   { id: "advanced",     label: "Advanced",     desc: "Experienced learners",  icon: Star,     color: "var(--pink)"   },
 ]
 
-function StepInfo({ data, set, communities }: {
-  data: FormData
-  set: (f: keyof FormData, v: any) => void
-  communities: { id: string; name: string }[]
-}) {
+function StepInfo({ data, set }: { data: FormData; set: (f: keyof FormData, v: any) => void }) {
   return (
     <div className="space-y-5">
       <Card title="Basic Details" sub="How students will find and understand your course">
@@ -455,33 +452,6 @@ function StepInfo({ data, set, communities }: {
             </div>
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Community" required>
-              <Select value={data.communityId} onValueChange={v => set("communityId", v)}>
-                <SelectTrigger className={inp} style={{ height: 44 }}>
-                  <SelectValue placeholder={communities.length === 0 ? "No communities found" : "Pick a community"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {communities.length === 0
-                    ? <SelectItem value="_none" disabled>No communities — create one first</SelectItem>
-                    : communities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
-                  }
-                </SelectContent>
-              </Select>
-            </Field>
-
-            <Field label="Total Duration (hours)" required>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
-                  style={{ color: "var(--t3)" }} />
-                <Input type="number" min={1} placeholder="e.g. 8"
-                  value={data.duration || ""}
-                  onChange={e => set("duration", parseInt(e.target.value) || 0)}
-                  className={`${inp} pl-9`} />
-              </div>
-            </Field>
-          </div>
-
           <Field label="Description" required hint={`${data.description.length} / 1000`}>
             <Textarea
               placeholder="What will students learn? Who is it for?"
@@ -493,13 +463,41 @@ function StepInfo({ data, set, communities }: {
               onBlur={e => (e.target as HTMLElement).style.borderColor = "var(--bd)"}
             />
           </Field>
+
+          <Field label="Category" required>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map(c => {
+                const on = data.category === c
+                return (
+                  <button key={c} type="button" onClick={() => set("category", c)}
+                    className="h-8 px-3.5 rounded-full text-[12px] font-semibold cursor-pointer transition-all border-2"
+                    style={{
+                      background:  on ? "var(--p)"  : "var(--white)",
+                      borderColor: on ? "var(--p)"  : "var(--bd)",
+                      color:       on ? "#fff"       : "var(--t2)",
+                    }}>
+                    {c}
+                  </button>
+                )
+              })}
+            </div>
+          </Field>
         </div>
       </Card>
 
       <Card title="Thumbnail" sub="16:9 ratio · max 3 MB">
         <ThumbnailUpload value={data.thumbnail} onChange={url => set("thumbnail", url)} />
       </Card>
+    </div>
+  )
+}
 
+// ════════════════════════════════════════════════════════════════════════════════
+// STEP 3 — SETTINGS
+// ════════════════════════════════════════════════════════════════════════════════
+function StepSettings({ data, set }: { data: FormData; set: (f: keyof FormData, v: any) => void }) {
+  return (
+    <div className="space-y-5">
       <Card title="Difficulty Level" sub="Who is this course designed for?">
         <div className="grid grid-cols-3 gap-3">
           {LEVELS.map(lvl => {
@@ -508,10 +506,7 @@ function StepInfo({ data, set, communities }: {
               <button key={lvl.id} type="button" onClick={() => set("level", lvl.id)}
                 className="relative flex flex-col gap-3 p-4 rounded-2xl border-2 text-left cursor-pointer transition-all duration-150"
                 style={{ borderColor: on ? "var(--p)" : "var(--bd)", background: on ? "var(--p2)" : "var(--white)" }}>
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center"
-                  style={{ background: lvl.color }}
-                >
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: lvl.color }}>
                   <lvl.icon className="w-4 h-4 text-white" />
                 </div>
                 <div>
@@ -527,6 +522,20 @@ function StepInfo({ data, set, communities }: {
               </button>
             )
           })}
+        </div>
+      </Card>
+
+      <Card title="Total Duration" sub="Approximate course length in hours">
+        <div className="flex items-center gap-4">
+          <div className="relative" style={{ width: 180 }}>
+            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+              style={{ color: "var(--t3)" }} />
+            <Input type="number" min={1} placeholder="e.g. 8"
+              value={data.duration || ""}
+              onChange={e => set("duration", parseInt(e.target.value) || 0)}
+              className={`${inp} pl-9`} />
+          </div>
+          <p className="text-[11px]" style={{ color: "var(--t3)" }}>hours total for students to complete</p>
         </div>
       </Card>
     </div>
@@ -929,75 +938,13 @@ function StepPricing({ data, set }: { data: FormData; set: (f: keyof FormData, v
           </div>
         </Card>
       )}
-    </div>
-  )
-}
 
-// ════════════════════════════════════════════════════════════════════════════════
-// STEP 4 — REVIEW
-// ════════════════════════════════════════════════════════════════════════════════
-function StepReview({ data, set, communities }: { data: FormData; set: (f: keyof FormData, v: any) => void; communities: { id: string; name: string }[] }) {
-  const community    = communities.find(c => c.id === data.communityId)?.name ?? data.communityId ?? "—"
-  const totalChapters = data.sections.reduce((n, s) => n + s.chapters.length, 0)
-
-  const rows = [
-    { label: "Title",      value: data.title || "—" },
-    { label: "Community",  value: community },
-    { label: "Level",      value: data.level ? data.level.charAt(0).toUpperCase() + data.level.slice(1) : "—" },
-    { label: "Duration",   value: data.duration ? `${data.duration}h` : "—" },
-    { label: "Curriculum", value: `${data.sections.length} section${data.sections.length !== 1 ? "s" : ""} · ${totalChapters} chapter${totalChapters !== 1 ? "s" : ""}` },
-    { label: "Price",      value: data.priceType === "free" ? "Free" : `${data.price} TND` },
-  ]
-
-  return (
-    <div className="space-y-5">
-      <Card title="Course Preview" sub="How your course will appear to students">
-        <div className="grid grid-cols-[180px_1fr] gap-5">
-          {/* thumbnail — small, left column */}
-          <div className="rounded-xl overflow-hidden border shrink-0" style={{ borderColor: "var(--bd)" }}>
-            {data.thumbnail
-              ? <img src={data.thumbnail} alt="" className="w-full aspect-video object-cover block" />
-              : <div className="w-full aspect-video flex items-center justify-center"
-                  style={{ background: "var(--bg)" }}>
-                  <ImageIcon className="w-6 h-6 opacity-30" style={{ color: "var(--t3)" }} />
-                </div>
-            }
-          </div>
-          {/* title + description — right column */}
-          <div className="min-w-0">
-            <p className="text-base font-bold mb-1 leading-tight" style={{ color: "var(--t1)" }}>
-              {data.title || "Untitled"}
-            </p>
-            <p className="text-xs leading-relaxed line-clamp-4" style={{ color: "var(--t2)" }}>
-              {data.description || "No description provided."}
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      <Card title="Summary">
-        <div className="rounded-xl overflow-hidden border" style={{ borderColor: "var(--bd)" }}>
-          {rows.map((row, i) => (
-            <div key={row.label} className="flex items-center justify-between px-5 py-3"
-              style={{
-                borderBottom: i < rows.length - 1 ? "1px solid var(--bd)" : "none",
-                background: i % 2 === 0 ? "var(--white)" : "var(--bg)",
-              }}>
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--t3)" }}>
-                {row.label}
-              </span>
-              <span className="text-sm font-semibold" style={{ color: "var(--t1)" }}>{row.value}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card title="Publishing">
+      <Card title="Publishing" sub="Choose when students can access your course">
         <div className="grid grid-cols-2 gap-3">
-          {[
-            { val: true,  icon: Globe, label: "Publish Now",    desc: "Live immediately after creation" },
-            { val: false, icon: Lock,  label: "Save as Draft",  desc: "Publish manually when ready"    },
-          ].map(opt => {
+          {([
+            { val: true,  icon: Globe, label: "Publish Now",   desc: "Live immediately after creation" },
+            { val: false, icon: Lock,  label: "Save as Draft", desc: "Publish manually when ready"    },
+          ] as const).map(opt => {
             const on = data.isPublished === opt.val
             return (
               <button key={String(opt.val)} type="button" onClick={() => set("isPublished", opt.val)}
@@ -1020,14 +967,15 @@ function StepReview({ data, set, communities }: { data: FormData; set: (f: keyof
   )
 }
 
+
 // ════════════════════════════════════════════════════════════════════════════════
 // MAIN
 // ════════════════════════════════════════════════════════════════════════════════
 const STEP_META: Record<number, { title: string; sub: string }> = {
-  1: { title: "Course Info",   sub: "Define your course identity and audience"  },
-  2: { title: "Curriculum",    sub: "Build sections and chapters"               },
-  3: { title: "Pricing",       sub: "Choose how to monetize"                    },
-  4: { title: "Review",        sub: "Final check before publishing"             },
+  1: { title: "Course Info",  sub: "Define your course identity and category"  },
+  2: { title: "Curriculum",   sub: "Build sections and chapters"               },
+  3: { title: "Settings",     sub: "Difficulty level and duration"             },
+  4: { title: "Pricing",      sub: "Monetize and publish your course"          },
 }
 
 function SuccessScreen() {
@@ -1086,16 +1034,9 @@ export function CreateCourseForm() {
   const [submitting, setSubmitting]     = useState(false)
   const [submitStatus, setSubmitStatus] = useState("")
   const [done]                          = useState<Set<number>>(new Set())
-  const communities = [
-    { id: "comm_1", name: "Motion Masters" },
-    { id: "comm_2", name: "Design Academy" },
-    { id: "comm_3", name: "Code & Create" },
-    { id: "comm_4", name: "Tech & Dev" },
-  ]
-
   const [data, setData] = useState<FormData>({
     title: "", slug: "", description: "", thumbnail: "",
-    communityId: "", level: "", duration: 0,
+    category: "", level: "", duration: 0,
     sections: [], priceType: "free", price: 0, isPublished: true,
   })
 
@@ -1117,10 +1058,10 @@ export function CreateCourseForm() {
 
   const canContinue = () => {
     switch (step) {
-      case 1: return !!(data.title.trim() && data.description.trim() && data.communityId && data.level && data.duration > 0)
+      case 1: return !!(data.title.trim() && data.description.trim() && data.category)
       case 2: return step2Blocker() === null
-      case 3: return data.priceType === "free" || (data.priceType === "paid" && data.price > 0)
-      case 4: return true
+      case 3: return !!(data.level && data.duration > 0)
+      case 4: return data.priceType === "free" || (data.priceType === "paid" && data.price > 0)
       default: return false
     }
   }
@@ -1209,10 +1150,10 @@ export function CreateCourseForm() {
 
         {/* scrollable content */}
         <div className={`flex-1 overflow-y-auto ${isCurriculum ? "p-6" : "px-8 py-7"}`}>
-          {step === 1 && <StepInfo       data={data} set={set} communities={communities} />}
+          {step === 1 && <StepInfo       data={data} set={set} />}
           {step === 2 && <StepCurriculum data={data} set={set} />}
-          {step === 3 && <StepPricing    data={data} set={set} />}
-          {step === 4 && <StepReview     data={data} set={set} communities={communities} />}
+          {step === 3 && <StepSettings   data={data} set={set} />}
+          {step === 4 && <StepPricing    data={data} set={set} />}
         </div>
 
         {/* sticky bottom nav bar */}
@@ -1242,7 +1183,7 @@ export function CreateCourseForm() {
             : <div />
           }
 
-          {!canContinue() && step < 4 && !error && (
+          {!canContinue() && step < STEPS.length && !error && (
             <div className="flex items-center gap-2">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" style={{ color: "#f59e0b" }} />
               <p className="text-[11px] font-medium" style={{ color: "#92400e" }}>
@@ -1250,7 +1191,7 @@ export function CreateCourseForm() {
               </p>
             </div>
           )}
-          {(canContinue() || step === 4) && !error && <div />}
+          {(canContinue() || step === STEPS.length) && !error && <div />}
 
           <button type="button"
             onClick={step === STEPS.length ? submit : goNext}
