@@ -36,7 +36,7 @@ const navGroups = [
   {
     label: { en: 'Marketing', ar: 'التسويق' },
     items: [
-      { label: { en: 'Email Campaigns', ar: 'حملات البريد' }, href: '/creator/email',      icon: 'mail',    soon: true },
+      { label: { en: 'Email Campaigns', ar: 'حملات البريد' }, href: '/creator/email',      icon: 'mail' },
       { label: { en: 'Affiliates',      ar: 'الإحالات'    }, href: '/creator/affiliates', icon: 'share',   soon: true },
       { label: { en: 'Messages',        ar: 'الرسائل'     }, href: '/creator/messages',   icon: 'message', soon: true },
       { label: { en: 'WhatsApp',        ar: 'واتساب'      }, href: '/creator/whatsapp',   icon: 'message', soon: true },
