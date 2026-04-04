@@ -79,11 +79,12 @@ export default function DashSidebar() {
       </div>
 
       {/* Create button */}
-      <button className="mx-3 mt-3 mb-2 px-3 py-2 rounded-[10px] text-xs font-medium flex items-center gap-1.5 transition-opacity hover:opacity-85 w-[calc(100%-24px)] cursor-pointer shrink-0"
+      <Link href="/creator/create-community"
+        className="mx-3 mt-3 mb-2 px-3 py-2 rounded-[10px] text-xs font-medium flex items-center gap-1.5 transition-opacity hover:opacity-85 w-[calc(100%-24px)] shrink-0"
         style={{ background: 'var(--p)', color: '#fff' }}>
         <DashIcon name="plus" size={13} color="white" />
         {createCommunity}
-      </button>
+      </Link>
 
       {/* Nav groups — scrollable */}
       <div className="flex-1 overflow-y-auto">

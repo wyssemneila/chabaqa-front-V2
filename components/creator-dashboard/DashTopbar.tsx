@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Moon, Sun, Languages, ExternalLink } from 'lucide-react'
+import { Moon, Sun, Languages, ExternalLink, Home } from 'lucide-react'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 
 interface DashTopbarProps { title: string; subtitle: string }
@@ -18,6 +18,14 @@ export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
       </div>
 
       <div className="flex items-center gap-2">
+
+        {/* Home — landing page */}
+        <Link href="/"
+          title="Go to landing page"
+          className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:opacity-80"
+          style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t2)' }}>
+          <Home className="w-3.5 h-3.5" strokeWidth={2} />
+        </Link>
 
         {/* View Community */}
         <Link href="/communities/motion-masters" target="_blank"
