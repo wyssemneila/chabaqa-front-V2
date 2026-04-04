@@ -1,6 +1,7 @@
 'use client'
 
-import { Moon, Sun, Languages } from 'lucide-react'
+import Link from 'next/link'
+import { Moon, Sun, Languages, ExternalLink } from 'lucide-react'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 
 interface DashTopbarProps { title: string; subtitle: string }
@@ -17,6 +18,14 @@ export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
       </div>
 
       <div className="flex items-center gap-2">
+
+        {/* View Community */}
+        <Link href="/communities/motion-masters" target="_blank"
+          className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold cursor-pointer transition-all hover:opacity-80"
+          style={{ background: 'var(--p)', color: '#fff' }}>
+          <ExternalLink className="w-3.5 h-3.5" strokeWidth={2} />
+          {lang === 'ar' ? 'عرض المجتمع' : 'View Community'}
+        </Link>
 
         {/* AR / EN toggle */}
         <button

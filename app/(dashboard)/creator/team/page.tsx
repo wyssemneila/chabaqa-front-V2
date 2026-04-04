@@ -115,48 +115,170 @@ function RoleBadge({ role, size = 'md' }: { role: Role; size?: 'sm' | 'md' }) {
   )
 }
 
-// ─── Role picker dropdown ─────────────────────────────────────────────────────
+// ─── Role change modal ────────────────────────────────────────────────────────
 
-function RolePicker({ current, memberId, onSave }: {
-  current: Role; memberId: string; onSave: (id: string, r: Role) => void
+function RoleChangeModal({ member, onClose, onConfirm }: {
+  member: Member
+  onClose: () => void
+  onConfirm: (id: string, role: Role) => void
+}) {
+  const [selected, setSelected] = useState<Role>(member.role)
+  const changeable: Role[] = ['admin', 'moderator', 'member']
+
+  const isPromotion = (from: Role, to: Role) => {
+    const order: Role[] = ['member', 'moderator', 'admin', 'owner']
+    return order.indexOf(to) > order.indexOf(from)
+  }
+
+  const gained = selected !== member.role
+    ? PERMISSIONS.filter(p => p[selected] && !p[member.role as keyof typeof p])
+    : []
+  const lost = selected !== member.role
+    ? PERMISSIONS.filter(p => !p[selected] && p[member.role as keyof typeof p])
+    : []
+
+  const promoting = selected !== member.role && isPromotion(member.role, selected)
+  const demoting  = selected !== member.role && !isPromotion(member.role, selected)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="w-full max-w-[460px] rounded-2xl"
+        style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 24px 80px rgba(0,0,0,.2)' }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
+          <div className="flex items-center gap-2.5">
+            {/* Avatar */}
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+              style={{ background: member.color }}>
+              {member.initials}
+            </div>
+            <div>
+              <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Change Role</p>
+              <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{member.name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="cursor-pointer hover:opacity-60 transition-opacity" style={{ color: 'var(--t3)' }}>
+            <X className="w-4 h-4" strokeWidth={1.8} />
+          </button>
+        </div>
+
+        {/* Role selector */}
+        <div className="px-6 pt-5 pb-3">
+          <p className="text-[12px] font-medium mb-2.5" style={{ color: 'var(--t2)' }}>Select new role</p>
+          <div className="grid grid-cols-3 gap-2">
+            {changeable.map(r => {
+              const m = ROLE_META[r]
+              const active = selected === r
+              const isCurrent = member.role === r
+              return (
+                <button key={r} onClick={() => setSelected(r)}
+                  className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl cursor-pointer transition-all text-center relative"
+                  style={{
+                    border: `1.5px solid ${active ? m.color : 'var(--bd)'}`,
+                    background: active ? m.bg : 'var(--bg)',
+                  }}>
+                  {isCurrent && (
+                    <span className="absolute top-1.5 right-1.5 text-[8px] font-bold px-1 rounded"
+                      style={{ background: 'var(--p2)', color: 'var(--p)' }}>now</span>
+                  )}
+                  <span style={{ color: m.color }}>{m.icon}</span>
+                  <p className="text-[11px] font-semibold" style={{ color: active ? m.color : 'var(--t1)' }}>{m.label}</p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Permissions diff */}
+        {selected !== member.role && (
+          <div className="mx-6 mb-4 rounded-xl overflow-hidden" style={{ border: '1px solid var(--bd)' }}>
+            {gained.length > 0 && (
+              <div className="px-4 py-3" style={{ background: '#f0fdf4' }}>
+                <p className="text-[11px] font-semibold mb-1.5" style={{ color: '#16a34a' }}>
+                  {promoting ? '✓ Will gain access to' : '✓ Keeps access to'}
+                </p>
+                {gained.map(p => (
+                  <div key={p.id} className="flex items-start gap-1.5 text-[11px] mb-0.5" style={{ color: '#166534' }}>
+                    <Check className="w-3 h-3 shrink-0 mt-px" strokeWidth={2.5} />
+                    <span><span className="font-medium">{p.label}</span> — {p.desc}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {lost.length > 0 && (
+              <div className="px-4 py-3" style={{ background: '#fff1f2', borderTop: gained.length > 0 ? '1px solid var(--bd)' : 'none' }}>
+                <p className="text-[11px] font-semibold mb-1.5" style={{ color: '#dc2626' }}>
+                  ✕ This member will lose access to
+                </p>
+                {lost.map(p => (
+                  <div key={p.id} className="flex items-start gap-1.5 text-[11px] mb-0.5" style={{ color: '#991b1b' }}>
+                    <X className="w-3 h-3 shrink-0 mt-px" strokeWidth={2.5} />
+                    <span><span className="font-medium">{p.label}</span> — {p.desc}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Same role notice */}
+        {selected === member.role && (
+          <div className="mx-6 mb-4 px-4 py-3 rounded-xl text-[12px]"
+            style={{ background: 'var(--bg)', border: '1px solid var(--bd)', color: 'var(--t3)' }}>
+            Select a different role to see permission changes.
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-6 pb-5 flex gap-3">
+          <button onClick={onClose}
+            className="flex-1 h-10 rounded-xl text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-80"
+            style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t2)' }}>
+            Cancel
+          </button>
+          <button
+            onClick={() => { if (selected !== member.role) { onConfirm(member.id, selected); onClose() } }}
+            disabled={selected === member.role}
+            className="flex-1 h-10 rounded-xl text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-85 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              background: demoting ? '#dc2626' : 'var(--p)',
+              color: '#fff',
+            }}>
+            {demoting ? 'Confirm & Remove Permissions' : 'Confirm & Apply Role'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Role picker trigger ──────────────────────────────────────────────────────
+
+function RolePicker({ current, memberId, member, onSave }: {
+  current: Role; memberId: string; member: Member; onSave: (id: string, r: Role) => void
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const fn = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', fn)
-    return () => document.removeEventListener('mousedown', fn)
-  }, [])
 
   if (current === 'owner') return <RoleBadge role="owner" />
 
-  const changeable: Role[] = ['admin', 'moderator', 'member']
-
   return (
-    <div ref={ref} className="relative inline-block">
-      <button onClick={() => setOpen(o => !o)}
+    <>
+      <button onClick={() => setOpen(true)}
         className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
         <RoleBadge role={current} />
         <ChevronDown className="w-3 h-3" style={{ color: ROLE_META[current].color }} strokeWidth={2.5} />
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 z-30 rounded-xl overflow-hidden shadow-xl"
-          style={{ background: 'var(--white)', border: '1.5px solid var(--p)', minWidth: 160 }}>
-          {changeable.map(r => (
-            <button key={r} onClick={() => { onSave(memberId, r); setOpen(false) }}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-left cursor-pointer transition-colors"
-              style={{ color: current === r ? 'var(--p)' : 'var(--t1)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-              <span style={{ color: ROLE_META[r].color }}>{ROLE_META[r].icon}</span>
-              {ROLE_META[r].label}
-              {current === r && <Check className="w-3 h-3 ml-auto" strokeWidth={2.5} style={{ color: 'var(--p)' }} />}
-            </button>
-          ))}
-        </div>
+        <RoleChangeModal
+          member={member}
+          onClose={() => setOpen(false)}
+          onConfirm={onSave}
+        />
       )}
-    </div>
+    </>
   )
 }
 
@@ -490,7 +612,7 @@ export default function TeamPage() {
                     </div>
                     {/* Role */}
                     <div>
-                      <RolePicker current={m.role} memberId={m.id} onSave={changeRole} />
+                      <RolePicker current={m.role} memberId={m.id} member={m} onSave={changeRole} />
                     </div>
                     {/* Joined */}
                     <p className="text-[12px]" style={{ color: 'var(--t2)' }}>
