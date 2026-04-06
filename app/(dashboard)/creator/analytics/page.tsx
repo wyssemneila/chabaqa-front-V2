@@ -227,7 +227,7 @@ function KpiCard({ icon, label, value, change, sub, color }: {
       </div>
       <p className="text-[24px] font-bold leading-tight" style={{ color: 'var(--t1)' }}>{value}</p>
       <p className="text-[12px] font-medium mt-0.5" style={{ color: 'var(--t2)' }}>{label}</p>
-      <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>{sub}</p>
+      <p className="text-[11px] mt-0.5" style={{ color: 'var(--t2)' }}>{sub}</p>
     </div>
   )
 }
@@ -391,7 +391,7 @@ export default function AnalyticsPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Revenue Over Time</p>
-                    <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>
+                    <p className="text-[12px] mt-0.5" style={{ color: 'var(--t2)' }}>
                       Total: <span className="font-semibold" style={{ color: 'var(--p)' }}>{totalRevenue.toLocaleString()} TND</span>
                     </p>
                   </div>
@@ -408,7 +408,7 @@ export default function AnalyticsPage() {
               <div className="rounded-2xl p-5" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                 <div className="mb-4">
                   <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>New Members</p>
-                  <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>
+                  <p className="text-[12px] mt-0.5" style={{ color: 'var(--t2)' }}>
                     <span className="font-semibold" style={{ color: 'var(--cyan)' }}>{totalMembers.toLocaleString()}</span> this period
                   </p>
                 </div>

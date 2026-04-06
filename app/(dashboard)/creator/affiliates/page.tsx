@@ -160,7 +160,7 @@ function AffiliateCard({ aff, idx, onToggle, onDelete }: {
         ].map(s => (
           <div key={s.label} className="rounded-xl p-2.5" style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
             <p className="text-[13px] font-bold" style={{ color: s.color }}>{s.value}</p>
-            <p className="text-[10px] mt-0.5" style={{ color: 'var(--t3)' }}>{s.label}</p>
+            <p className="text-[10px] mt-0.5" style={{ color: 'var(--t2)' }}>{s.label}</p>
           </div>
         ))}
       </div>
@@ -264,7 +264,7 @@ function CreateDrawer({ open, onClose, onSave }: {
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
           <div>
             <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>Add Affiliate</p>
-            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Create a tracked referral link</p>
+            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t2)' }}>Create a tracked referral link</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-70"
             style={{ background: 'var(--bg)', color: 'var(--t3)' }}>
@@ -395,7 +395,7 @@ function KpiCard({ icon, label, value, sub, color }: {
       <div>
         <p className="text-[22px] font-bold leading-tight" style={{ color: 'var(--t1)' }}>{value}</p>
         <p className="text-[12px] font-medium mt-0.5" style={{ color: 'var(--t2)' }}>{label}</p>
-        <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>{sub}</p>
+        <p className="text-[11px] mt-0.5" style={{ color: 'var(--t2)' }}>{sub}</p>
       </div>
     </div>
   )
@@ -501,7 +501,7 @@ export default function AffiliatesPage() {
                   <Inbox className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                 </div>
                 <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No affiliates found</p>
-                <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Add your first affiliate to start tracking</p>
+                <p className="text-[13px] mb-6" style={{ color: 'var(--t2)' }}>Add your first affiliate to start tracking</p>
                 {!search && (
                   <button onClick={() => setDrawer(true)}
                     className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"

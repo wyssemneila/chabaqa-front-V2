@@ -220,7 +220,7 @@ export default function CoursesPage() {
                   <h3 className="text-[16px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>
                     {tab === 'all' ? t.noCourses : t.noFiltered(tab)}
                   </h3>
-                  <p className="text-[13px] mb-6 max-w-xs" style={{ color: 'var(--t3)' }}>
+                  <p className="text-[13px] mb-6 max-w-xs" style={{ color: 'var(--t2)' }}>
                     {tab === 'all' ? t.noCoursesDesc : t.switchTab}
                   </p>
                   {tab === 'all' && (

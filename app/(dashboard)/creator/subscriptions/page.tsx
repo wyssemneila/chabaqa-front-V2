@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import {
   Users, DollarSign, TrendingUp, RefreshCw,
   BookOpen, Calendar, Trophy, Zap, Package,
@@ -87,12 +88,18 @@ function KpiCard({ icon, label, value, sub, color }: {
 
 // ─── Subscription Row ─────────────────────────────────────────────────────────
 
-function SubRow({ sub, idx }: { sub: Subscription; idx: number }) {
+const STATUS_LABELS_AR: Record<Subscription['status'], string> = {
+  active:    'نشط',
+  cancelled: 'ملغى',
+  expired:   'منتهي',
+}
+
+function SubRow({ sub, idx, lang }: { sub: Subscription; idx: number; lang: string }) {
   const st  = STATUS_META[sub.status]
   const tm  = TYPE_META[sub.contentType]
 
   return (
-    <div className="grid items-center px-5 py-3.5 transition-colors"
+    <div className="grid items-center px-5 py-3.5 transition-colors cursor-pointer"
       style={{
         gridTemplateColumns: '2.5fr 2fr 90px 90px 110px 100px',
         borderBottom: '1px solid var(--bd)',
@@ -129,14 +136,14 @@ function SubRow({ sub, idx }: { sub: Subscription; idx: number }) {
       {/* status */}
       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border w-fit"
         style={{ background: st.bg, color: st.color, borderColor: st.border }}>
-        {st.label}
+        {lang === 'ar' ? STATUS_LABELS_AR[sub.status] : st.label}
       </span>
 
       {/* date */}
       <div>
-        <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Since {sub.startDate}</p>
+        <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{lang === 'ar' ? 'منذ' : 'Since'} {sub.startDate}</p>
         {sub.renewalDate && (
-          <p className="text-[10px]" style={{ color: 'var(--t3)' }}>Renews {sub.renewalDate}</p>
+          <p className="text-[10px]" style={{ color: 'var(--t3)' }}>{lang === 'ar' ? 'يتجدد' : 'Renews'} {sub.renewalDate}</p>
         )}
       </div>
 
@@ -149,6 +156,7 @@ function SubRow({ sub, idx }: { sub: Subscription; idx: number }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SubscriptionsPage() {
+  const { lang } = useDashPrefs()
   const [tab,    setTab]    = useState<typeof TABS[number]>('all')
   const [search, setSearch] = useState('')
 
@@ -178,39 +186,50 @@ export default function SubscriptionsPage() {
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
         <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
-          <DashTopbar title="Subscriptions" subtitle="Track every subscriber, payment and renewal" />
+          <DashTopbar
+            title={lang === 'ar' ? 'الاشتراكات' : 'Subscriptions'}
+            subtitle={lang === 'ar' ? 'تتبع كل مشترك ودفعة وتجديد' : 'Track every subscriber, payment and renewal'}
+          />
 
           <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* KPIs */}
             <div className="grid grid-cols-4 gap-4 mb-7">
-              <KpiCard icon={<RefreshCw   className="w-5 h-5" />} label="Monthly Recurring"   value={`${mrr} TND`}            sub="MRR from active plans"        color="var(--p)"      />
-              <KpiCard icon={<Users       className="w-5 h-5" />} label="Active Subscribers"  value={String(totalSubs)}        sub={`${SEED.filter(s=>s.status==='cancelled').length} cancelled`} color="var(--cyan)"   />
-              <KpiCard icon={<DollarSign  className="w-5 h-5" />} label="Total Collected"     value={`${totalRev} TND`}        sub="all time"                     color="#16a34a"       />
-              <KpiCard icon={<TrendingUp  className="w-5 h-5" />} label="Avg. Order Value"    value={`${avgAmount} TND`}       sub="per paid subscription"        color="var(--orange)" />
+              <KpiCard icon={<RefreshCw   className="w-5 h-5" />} label={lang === 'ar' ? 'الإيرادات الشهرية'  : 'Monthly Recurring'}   value={`${mrr} TND`}       sub={lang === 'ar' ? 'من الخطط النشطة'               : 'MRR from active plans'}                                                              color="var(--p)"      />
+              <KpiCard icon={<Users       className="w-5 h-5" />} label={lang === 'ar' ? 'المشتركون النشطون' : 'Active Subscribers'}   value={String(totalSubs)}  sub={`${SEED.filter(s=>s.status==='cancelled').length} ${lang === 'ar' ? 'ملغى' : 'cancelled'}`}                                                color="var(--cyan)"   />
+              <KpiCard icon={<DollarSign  className="w-5 h-5" />} label={lang === 'ar' ? 'إجمالي المحصّل'    : 'Total Collected'}      value={`${totalRev} TND`}  sub={lang === 'ar' ? 'منذ البداية'                   : 'all time'}                                                                          color="#16a34a"       />
+              <KpiCard icon={<TrendingUp  className="w-5 h-5" />} label={lang === 'ar' ? 'متوسط قيمة الطلب'  : 'Avg. Order Value'}     value={`${avgAmount} TND`} sub={lang === 'ar' ? 'لكل اشتراك مدفوع'             : 'per paid subscription'}                                                             color="var(--orange)" />
             </div>
 
             {/* Toolbar */}
             <div className="flex items-center gap-3 mb-5 flex-wrap">
               <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-                {TABS.map(t => (
-                  <button key={t} onClick={() => setTab(t)}
-                    className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[12px] font-semibold cursor-pointer transition-all capitalize"
-                    style={tab === t ? { background: 'var(--p)', color: '#fff' } : { color: 'var(--t3)' }}>
-                    {t}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full"
-                      style={tab === t ? { background: 'rgba(255,255,255,.25)', color: '#fff' } : { background: 'var(--bg)', color: 'var(--t3)' }}>
-                      {tabCount(t)}
-                    </span>
-                  </button>
-                ))}
+                {TABS.map(t => {
+                  const tabLabel: Record<typeof t, string> = {
+                    all:       lang === 'ar' ? 'الكل'    : 'All',
+                    active:    lang === 'ar' ? 'نشط'     : 'Active',
+                    cancelled: lang === 'ar' ? 'ملغى'    : 'Cancelled',
+                    expired:   lang === 'ar' ? 'منتهي'   : 'Expired',
+                  }
+                  return (
+                    <button key={t} onClick={() => setTab(t)}
+                      className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[12px] font-semibold cursor-pointer transition-all"
+                      style={tab === t ? { background: 'var(--p)', color: '#fff' } : { color: 'var(--t3)' }}>
+                      {tabLabel[t]}
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                        style={tab === t ? { background: 'rgba(255,255,255,.25)', color: '#fff' } : { background: 'var(--bg)', color: 'var(--t3)' }}>
+                        {tabCount(t)}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
 
               <div className="flex items-center gap-2 flex-1 min-w-[180px] h-9 px-3 rounded-xl ml-auto"
                 style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                 <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
                 <input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Search by name, email or content…"
+                  placeholder={lang === 'ar' ? 'ابحث بالاسم أو البريد أو المحتوى…' : 'Search by name, email or content…'}
                   className="flex-1 bg-transparent text-[13px] outline-none" style={{ color: 'var(--t1)' }} />
                 {search && (
                   <button onClick={() => setSearch('')} style={{ color: 'var(--t3)' }}><X className="w-3.5 h-3.5" /></button>
@@ -218,7 +237,7 @@ export default function SubscriptionsPage() {
               </div>
 
               <p className="text-[12px] font-medium shrink-0" style={{ color: 'var(--t3)' }}>
-                {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+                {filtered.length} {lang === 'ar' ? 'نتيجة' : filtered.length !== 1 ? 'results' : 'result'}
               </p>
             </div>
 
@@ -227,18 +246,28 @@ export default function SubscriptionsPage() {
               {/* header */}
               <div className="grid px-5 py-3"
                 style={{ gridTemplateColumns: '2.5fr 2fr 90px 90px 110px 100px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)' }}>
-                {['Subscriber', 'Content', 'Amount', 'Status', 'Dates', 'Payment'].map(h => (
+                {([
+                  lang === 'ar' ? 'المشترك'  : 'Subscriber',
+                  lang === 'ar' ? 'المحتوى'  : 'Content',
+                  lang === 'ar' ? 'المبلغ'   : 'Amount',
+                  lang === 'ar' ? 'الحالة'   : 'Status',
+                  lang === 'ar' ? 'التواريخ' : 'Dates',
+                  lang === 'ar' ? 'الدفع'    : 'Payment',
+                ] as string[]).map(h => (
                   <p key={h} className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>{h}</p>
                 ))}
               </div>
 
               {filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <p className="text-[14px] font-semibold mb-1" style={{ color: 'var(--t2)' }}>No subscriptions found</p>
-                  <p className="text-[12px]" style={{ color: 'var(--t3)' }}>Try a different filter or search term</p>
+                <div className="flex flex-col items-center py-16 gap-3 text-center">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--p2)' }}>
+                    <Users className="w-7 h-7" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+                  </div>
+                  <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'لا توجد اشتراكات' : 'No subscriptions yet'}</p>
+                  <p className="text-[12px]" style={{ color: 'var(--t2)' }}>{lang === 'ar' ? 'ستظهر الاشتراكات هنا عند انضمام الأعضاء' : 'Subscriptions will appear here when members join'}</p>
                 </div>
               ) : (
-                filtered.map((s, i) => <SubRow key={s.id} sub={s} idx={i} />)
+                filtered.map((s, i) => <SubRow key={s.id} sub={s} idx={i} lang={lang} />)
               )}
             </div>
 

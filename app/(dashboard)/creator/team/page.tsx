@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import {
   Users, Shield, UserCheck, Search, Plus, Mail, X, Check,
   ChevronDown, Trash2, MoreHorizontal, Crown, AlertTriangle,
@@ -117,10 +118,11 @@ function RoleBadge({ role, size = 'md' }: { role: Role; size?: 'sm' | 'md' }) {
 
 // ─── Role change modal ────────────────────────────────────────────────────────
 
-function RoleChangeModal({ member, onClose, onConfirm }: {
+function RoleChangeModal({ member, onClose, onConfirm, lang }: {
   member: Member
   onClose: () => void
   onConfirm: (id: string, role: Role) => void
+  lang: string
 }) {
   const [selected, setSelected] = useState<Role>(member.role)
   const changeable: Role[] = ['admin', 'moderator', 'member']
@@ -156,7 +158,7 @@ function RoleChangeModal({ member, onClose, onConfirm }: {
               {member.initials}
             </div>
             <div>
-              <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Change Role</p>
+              <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'تغيير الدور' : 'Change Role'}</p>
               <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{member.name}</p>
             </div>
           </div>
@@ -227,8 +229,8 @@ function RoleChangeModal({ member, onClose, onConfirm }: {
         {/* Same role notice */}
         {selected === member.role && (
           <div className="mx-6 mb-4 px-4 py-3 rounded-xl text-[12px]"
-            style={{ background: 'var(--bg)', border: '1px solid var(--bd)', color: 'var(--t3)' }}>
-            Select a different role to see permission changes.
+            style={{ background: 'var(--bg)', border: '1px solid var(--bd)', color: 'var(--t2)' }}>
+            {lang === 'ar' ? 'اختر دورًا مختلفًا لمعرفة تغييرات الصلاحيات.' : 'Select a different role to see permission changes.'}
           </div>
         )}
 
@@ -237,7 +239,7 @@ function RoleChangeModal({ member, onClose, onConfirm }: {
           <button onClick={onClose}
             className="flex-1 h-10 rounded-xl text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-80"
             style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t2)' }}>
-            Cancel
+            {lang === 'ar' ? 'إلغاء' : 'Cancel'}
           </button>
           <button
             onClick={() => { if (selected !== member.role) { onConfirm(member.id, selected); onClose() } }}
@@ -247,7 +249,9 @@ function RoleChangeModal({ member, onClose, onConfirm }: {
               background: demoting ? '#dc2626' : 'var(--p)',
               color: '#fff',
             }}>
-            {demoting ? 'Confirm & Remove Permissions' : 'Confirm & Apply Role'}
+            {demoting
+              ? (lang === 'ar' ? 'تأكيد وإزالة الصلاحيات' : 'Confirm & Remove Permissions')
+              : (lang === 'ar' ? 'تأكيد وتطبيق الدور' : 'Confirm & Apply Role')}
           </button>
         </div>
       </div>
@@ -257,8 +261,8 @@ function RoleChangeModal({ member, onClose, onConfirm }: {
 
 // ─── Role picker trigger ──────────────────────────────────────────────────────
 
-function RolePicker({ current, memberId, member, onSave }: {
-  current: Role; memberId: string; member: Member; onSave: (id: string, r: Role) => void
+function RolePicker({ current, memberId, member, onSave, lang }: {
+  current: Role; memberId: string; member: Member; onSave: (id: string, r: Role) => void; lang: string
 }) {
   const [open, setOpen] = useState(false)
 
@@ -276,6 +280,7 @@ function RolePicker({ current, memberId, member, onSave }: {
           member={member}
           onClose={() => setOpen(false)}
           onConfirm={onSave}
+          lang={lang}
         />
       )}
     </>
@@ -284,9 +289,10 @@ function RolePicker({ current, memberId, member, onSave }: {
 
 // ─── Invite modal ─────────────────────────────────────────────────────────────
 
-function InviteModal({ onClose, onSend }: {
+function InviteModal({ onClose, onSend, lang }: {
   onClose: () => void
   onSend: (email: string, role: Exclude<Role, 'owner'>) => void
+  lang: string
 }) {
   const [email,   setEmail]   = useState('')
   const [role,    setRole]    = useState<Exclude<Role, 'owner'>>('member')
@@ -311,7 +317,7 @@ function InviteModal({ onClose, onSend }: {
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--p2)' }}>
               <UserPlus className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
             </div>
-            <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Invite Team Member</p>
+            <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'دعوة عضو الفريق' : 'Invite Team Member'}</p>
           </div>
           <button onClick={onClose} className="cursor-pointer hover:opacity-60 transition-opacity" style={{ color: 'var(--t3)' }}>
             <X className="w-4 h-4" strokeWidth={1.7} />
@@ -371,7 +377,7 @@ function InviteModal({ onClose, onSend }: {
           <button onClick={onClose}
             className="flex-1 h-10 rounded-xl text-[12px] font-medium cursor-pointer hover:opacity-70"
             style={{ border: '1px solid var(--bd)', color: 'var(--t2)' }}>
-            Cancel
+            {lang === 'ar' ? 'إلغاء' : 'Cancel'}
           </button>
           <button onClick={submit} disabled={!email.trim() || !email.includes('@') || sending}
             className="flex-1 h-10 rounded-xl text-[12px] font-semibold cursor-pointer transition-all"
@@ -394,8 +400,8 @@ function InviteModal({ onClose, onSend }: {
 
 // ─── Remove confirm modal ─────────────────────────────────────────────────────
 
-function RemoveModal({ member, onClose, onConfirm }: {
-  member: Member; onClose: () => void; onConfirm: () => void
+function RemoveModal({ member, onClose, onConfirm, lang }: {
+  member: Member; onClose: () => void; onConfirm: () => void; lang: string
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -407,22 +413,24 @@ function RemoveModal({ member, onClose, onConfirm }: {
             style={{ background: '#fee2e2' }}>
             <AlertTriangle className="w-5 h-5" style={{ color: '#dc2626' }} strokeWidth={1.7} />
           </div>
-          <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>Remove Member</p>
+          <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'إزالة العضو' : 'Remove Member'}</p>
         </div>
         <p className="text-[13px] leading-relaxed mb-4" style={{ color: 'var(--t2)' }}>
-          Are you sure you want to remove <strong style={{ color: 'var(--t1)' }}>{member.name}</strong> from the community?
-          They will lose access to all content and their role will be revoked.
+          {lang === 'ar'
+            ? <>{' '}هل أنت متأكد من إزالة <strong style={{ color: 'var(--t1)' }}>{member.name}</strong> من المجتمع؟ سيفقد الوصول إلى جميع المحتوى وسيتم إلغاء دوره.</>
+            : <>Are you sure you want to remove <strong style={{ color: 'var(--t1)' }}>{member.name}</strong> from the community? They will lose access to all content and their role will be revoked.</>
+          }
         </p>
         <div className="flex gap-3">
           <button onClick={onClose}
             className="flex-1 h-10 rounded-xl text-[12px] font-medium cursor-pointer hover:opacity-70"
             style={{ border: '1px solid var(--bd)', color: 'var(--t2)' }}>
-            Cancel
+            {lang === 'ar' ? 'إلغاء' : 'Cancel'}
           </button>
           <button onClick={onConfirm}
             className="flex-1 h-10 rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-85"
             style={{ background: '#dc2626', color: '#fff' }}>
-            Remove
+            {lang === 'ar' ? 'إزالة' : 'Remove'}
           </button>
         </div>
       </div>
@@ -433,6 +441,7 @@ function RemoveModal({ member, onClose, onConfirm }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function TeamPage() {
+  const { lang } = useDashPrefs()
   const [members, setMembers] = useLocalList<Member>('chabaq_team', INIT_MEMBERS)
   const [invites, setInvites] = useLocalList<Invite>('chabaq_invites', INIT_INVITES)
 
@@ -491,10 +500,10 @@ export default function TeamPage() {
   const cancelInvite = (id: string) => setInvites(prev => prev.filter(i => i.id !== id))
 
   const TABS: { id: Tab; label: string; count: number }[] = [
-    { id: 'all',       label: 'All',        count: members.length },
-    { id: 'admin',     label: 'Admins',     count: admins         },
-    { id: 'moderator', label: 'Moderators', count: mods           },
-    { id: 'member',    label: 'Members',    count: members.filter(m => m.role === 'member').length },
+    { id: 'all',       label: lang === 'ar' ? 'الكل'               : 'All',        count: members.length },
+    { id: 'admin',     label: lang === 'ar' ? 'المشرفون'           : 'Admins',     count: admins         },
+    { id: 'moderator', label: lang === 'ar' ? 'المشرفو المحتوى'   : 'Moderators', count: mods           },
+    { id: 'member',    label: lang === 'ar' ? 'الأعضاء'            : 'Members',    count: members.filter(m => m.role === 'member').length },
   ]
 
   const SortBtn = ({ k, label }: { k: SortKey; label: string }) => (
@@ -521,10 +530,10 @@ export default function TeamPage() {
             {/* ── KPI row ── */}
             <div className="grid grid-cols-4 gap-4 mb-6">
               {[
-                { label: 'Total Members', value: members.length, color: 'var(--p)',      icon: <Users      className="w-4 h-4" strokeWidth={1.7} />, sub: 'in this community'    },
-                { label: 'Admins',        value: admins,         color: 'var(--orange)', icon: <Shield     className="w-4 h-4" strokeWidth={1.7} />, sub: 'full management access' },
-                { label: 'Moderators',    value: mods,           color: 'var(--cyan)',   icon: <UserCheck  className="w-4 h-4" strokeWidth={1.7} />, sub: 'content & member mgmt'  },
-                { label: 'Active Today',  value: activeNow,      color: '#16a34a',       icon: <CheckCircle className="w-4 h-4" strokeWidth={1.7} />, sub: 'logged in today'       },
+                { label: lang === 'ar' ? 'إجمالي الأعضاء' : 'Total Members', value: members.length, color: 'var(--p)',      icon: <Users      className="w-4 h-4" strokeWidth={1.7} />, sub: lang === 'ar' ? 'في هذا المجتمع'        : 'in this community'     },
+                { label: lang === 'ar' ? 'المشرفون'       : 'Admins',        value: admins,         color: 'var(--orange)', icon: <Shield     className="w-4 h-4" strokeWidth={1.7} />, sub: lang === 'ar' ? 'صلاحيات إدارة كاملة'  : 'full management access' },
+                { label: lang === 'ar' ? 'المشرفو المحتوى': 'Moderators',    value: mods,           color: 'var(--cyan)',   icon: <UserCheck  className="w-4 h-4" strokeWidth={1.7} />, sub: lang === 'ar' ? 'إدارة المحتوى والأعضاء': 'content & member mgmt'  },
+                { label: lang === 'ar' ? 'نشط اليوم'      : 'Active Today',  value: activeNow,      color: '#16a34a',       icon: <CheckCircle className="w-4 h-4" strokeWidth={1.7} />, sub: lang === 'ar' ? 'سجل الدخول اليوم'     : 'logged in today'        },
               ].map(k => (
                 <div key={k.label} className="rounded-2xl p-5" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                   <div className="flex items-center justify-between mb-3">
@@ -570,26 +579,29 @@ export default function TeamPage() {
                   className="ml-auto flex items-center gap-1.5 px-4 h-9 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-85"
                   style={{ background: 'var(--p)', color: '#fff' }}>
                   <Plus className="w-3.5 h-3.5" strokeWidth={1.7} />
-                  Invite Member
+                  {lang === 'ar' ? 'دعوة عضو' : 'Invite Member'}
                 </button>
               </div>
 
               {/* Table header */}
               <div className="grid px-5 py-2.5 text-[11px] font-semibold"
                 style={{ gridTemplateColumns: '2.5fr 1.5fr 1fr 1fr 90px 80px', color: 'var(--t3)', borderBottom: '1px solid var(--bd)' }}>
-                <SortBtn k="name" label="Member" />
-                <SortBtn k="role" label="Role" />
-                <SortBtn k="joined" label="Joined" />
-                <SortBtn k="lastActive" label="Last Active" />
-                <span>Status</span>
-                <span>Actions</span>
+                <SortBtn k="name" label={lang === 'ar' ? 'العضو' : 'Member'} />
+                <SortBtn k="role" label={lang === 'ar' ? 'الدور' : 'Role'} />
+                <SortBtn k="joined" label={lang === 'ar' ? 'تاريخ الانضمام' : 'Joined'} />
+                <SortBtn k="lastActive" label={lang === 'ar' ? 'آخر نشاط' : 'Last Active'} />
+                <span>{lang === 'ar' ? 'الحالة' : 'Status'}</span>
+                <span>{lang === 'ar' ? 'إجراءات' : 'Actions'}</span>
               </div>
 
               {/* Rows */}
               {filtered.length === 0 ? (
-                <div className="py-12 text-center">
-                  <Users className="w-10 h-10 mx-auto mb-2 opacity-20" style={{ color: 'var(--t3)' }} />
-                  <p className="text-[13px]" style={{ color: 'var(--t2)' }}>No members found</p>
+                <div className="flex flex-col items-center py-16 gap-3 text-center">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--p2)' }}>
+                    <Users className="w-7 h-7" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+                  </div>
+                  <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'لم يتم العثور على أعضاء' : 'No members found'}</p>
+                  <p className="text-[12px]" style={{ color: 'var(--t2)' }}>{lang === 'ar' ? 'جرب تعديل بحثك أو الفلتر' : 'Try adjusting your search or filter'}</p>
                 </div>
               ) : (
                 filtered.map((m, i) => (
@@ -612,7 +624,7 @@ export default function TeamPage() {
                     </div>
                     {/* Role */}
                     <div>
-                      <RolePicker current={m.role} memberId={m.id} member={m} onSave={changeRole} />
+                      <RolePicker current={m.role} memberId={m.id} member={m} onSave={changeRole} lang={lang} />
                     </div>
                     {/* Joined */}
                     <p className="text-[12px]" style={{ color: 'var(--t2)' }}>
@@ -626,7 +638,7 @@ export default function TeamPage() {
                         ? { background: 'rgba(74,222,128,.1)', color: '#16a34a' }
                         : { background: 'var(--bg)', color: 'var(--t3)', border: '1px solid var(--bd)' }}>
                       <span className="w-1.5 h-1.5 rounded-full" style={{ background: m.status === 'active' ? '#16a34a' : 'var(--t3)' }} />
-                      {m.status === 'active' ? 'Active' : 'Inactive'}
+                      {m.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
                     </span>
                     {/* Actions */}
                     <div className="flex items-center gap-1">
@@ -651,10 +663,10 @@ export default function TeamPage() {
                 onClick={() => setShowPerms(p => !p)}>
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
-                  <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>Role Permissions</p>
+                  <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'صلاحيات الأدوار' : 'Role Permissions'}</p>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
                     style={{ background: 'var(--p2)', color: 'var(--p)' }}>
-                    {PERMISSIONS.length} permissions
+                    {PERMISSIONS.length} {lang === 'ar' ? 'صلاحية' : 'permissions'}
                   </span>
                 </div>
                 <ChevronDown className="w-4 h-4 transition-transform"
@@ -680,7 +692,7 @@ export default function TeamPage() {
                       style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', background: i % 2 === 0 ? 'transparent' : 'var(--bg)', borderBottom: i < PERMISSIONS.length - 1 ? '1px solid var(--bd)' : 'none' }}>
                       <div>
                         <p className="text-[12px] font-semibold" style={{ color: 'var(--t1)' }}>{p.label}</p>
-                        <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{p.desc}</p>
+                        <p className="text-[11px]" style={{ color: 'var(--t2)' }}>{p.desc}</p>
                       </div>
                       {(['owner', 'admin', 'moderator', 'member'] as Role[]).map(r => (
                         <div key={r} className="flex justify-center">
@@ -709,7 +721,7 @@ export default function TeamPage() {
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                     <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>
-                      Invitations
+                      {lang === 'ar' ? 'الدعوات المعلقة' : 'Pending Invitations'}
                       {pending > 0 && (
                         <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white"
                           style={{ background: 'var(--p)' }}>{pending}</span>
@@ -748,7 +760,7 @@ export default function TeamPage() {
                             onClick={() => setInvites(prev => prev.map(x => x.id === inv.id ? { ...x, status: 'pending', sentAt: 'Just now' } : x))}
                             className="px-3 h-7 rounded-lg text-[11px] font-semibold cursor-pointer transition-opacity hover:opacity-80"
                             style={{ background: 'var(--p2)', color: 'var(--p)' }}>
-                            Resend
+                            {lang === 'ar' ? 'إعادة الإرسال' : 'Resend'}
                           </button>
                         )}
                         <button onClick={() => cancelInvite(inv.id)}
@@ -768,12 +780,13 @@ export default function TeamPage() {
       </div>
 
       {/* Modals */}
-      {inviteOpen  && <InviteModal onClose={() => setInviteOpen(false)} onSend={addInvite} />}
+      {inviteOpen  && <InviteModal onClose={() => setInviteOpen(false)} onSend={addInvite} lang={lang} />}
       {removeTarget && (
         <RemoveModal
           member={removeTarget}
           onClose={() => setRemoveTarget(null)}
           onConfirm={() => removeMember(removeTarget.id)}
+          lang={lang}
         />
       )}
     </>

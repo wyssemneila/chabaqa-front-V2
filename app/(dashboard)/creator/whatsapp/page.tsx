@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import {
   Plus, Users, Trash2, Upload, X, Check, Clock,
   Search, Zap, Image, FileText, Video, Link2,
@@ -110,11 +111,18 @@ const MSG_TYPES = [
 
 const pct = (a: number, b: number) => b === 0 ? 0 : Math.round((a / b) * 100)
 
-const STATUS_META = {
-  sent:      { label: 'Sent',      bg: 'rgba(74,222,128,.12)',  color: '#16a34a',       border: 'rgba(74,222,128,.3)' },
-  draft:     { label: 'Draft',     bg: 'var(--bg)',              color: 'var(--t3)',     border: 'var(--bd)' },
-  scheduled: { label: 'Scheduled', bg: 'rgba(251,146,60,.12)',  color: 'var(--orange)', border: 'rgba(251,146,60,.3)' },
+const STATUS_META_RAW = {
+  sent:      { bg: 'rgba(74,222,128,.12)',  color: '#16a34a',       border: 'rgba(74,222,128,.3)' },
+  draft:     { bg: 'var(--bg)',              color: 'var(--t3)',     border: 'var(--bd)' },
+  scheduled: { bg: 'rgba(251,146,60,.12)',  color: 'var(--orange)', border: 'rgba(251,146,60,.3)' },
 }
+const getStatusMeta = (status: 'sent' | 'draft' | 'scheduled', lang: string) => ({
+  ...STATUS_META_RAW[status],
+  label: status === 'sent'      ? (lang === 'ar' ? 'مُرسَل'   : 'Sent')
+       : status === 'draft'     ? (lang === 'ar' ? 'مسودة'    : 'Draft')
+       :                          (lang === 'ar' ? 'مجدول'    : 'Scheduled'),
+})
+const STATUS_META = STATUS_META_RAW as Record<string, { bg: string; color: string; border: string }>
 
 // ─── WhatsApp Preview ─────────────────────────────────────────────────────────
 
@@ -179,10 +187,10 @@ function WaPreview({ message, msgType, caption }: {
 
 // ─── Campaign Card ────────────────────────────────────────────────────────────
 
-function CampaignCard({ c, onDelete, onPreview }: {
-  c: WaCampaign; onDelete: (id: string) => void; onPreview: (c: WaCampaign) => void
+function CampaignCard({ c, onDelete, onPreview, lang = 'en' }: {
+  c: WaCampaign; onDelete: (id: string) => void; onPreview: (c: WaCampaign) => void; lang?: string
 }) {
-  const st = STATUS_META[c.status]
+  const st = getStatusMeta(c.status, lang)
   const TypeIcon = MSG_TYPES.find(t => t.id === c.messageType)?.icon ?? FileText
 
   return (
@@ -707,6 +715,7 @@ const CAMP_TABS = [
 ] as const
 
 export default function WhatsAppPage() {
+  const { lang } = useDashPrefs()
   const [campaigns,   setCampaigns]   = useState<WaCampaign[]>([])
   const [automations, setAutomations] = useState<WaAutomation[]>([])
   const [loading,     setLoading]     = useState(true)
@@ -765,16 +774,16 @@ export default function WhatsAppPage() {
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
         <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
-          <DashTopbar title="WhatsApp" subtitle="Broadcast messages and automate WhatsApp flows" />
+          <DashTopbar title={lang==='ar'?'حملات واتساب':'WhatsApp Campaign'} subtitle={lang==='ar'?'أرسل رسائل جماعية وأتمت تدفقات واتساب':'Broadcast messages and automate WhatsApp flows'} />
 
           <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* KPIs */}
             <div className="grid grid-cols-4 gap-4 mb-7">
-              <KpiCard icon={<Send className="w-5 h-5" />}       label="Messages Sent"   value={totalSent.toLocaleString()}              sub={`${sent.length} campaigns`}              color="#25d366" />
-              <KpiCard icon={<CheckCheck className="w-5 h-5" />} label="Delivery Rate"   value={`${pct(totalDeliv, totalSent)}%`}        sub={`${totalDeliv.toLocaleString()} delivered`} color="var(--p)" />
-              <KpiCard icon={<Eye className="w-5 h-5" />}        label="Read Rate"       value={`${pct(totalRead, totalSent)}%`}         sub={`${totalRead.toLocaleString()} read`}       color="var(--cyan)" />
-              <KpiCard icon={<Users className="w-5 h-5" />}      label="Reply Rate"      value={`${pct(totalReplied, totalSent)}%`}      sub={`${totalReplied.toLocaleString()} replied`} color="var(--orange)" />
+              <KpiCard icon={<Send className="w-5 h-5" />}       label={lang==='ar'?'الرسائل المُرسَلة':'Messages Sent'}   value={totalSent.toLocaleString()}              sub={`${sent.length} ${lang==='ar'?'حملة':'campaigns'}`}              color="#25d366" />
+              <KpiCard icon={<CheckCheck className="w-5 h-5" />} label={lang==='ar'?'نسبة التسليم':'Delivery Rate'}   value={`${pct(totalDeliv, totalSent)}%`}        sub={`${totalDeliv.toLocaleString()} ${lang==='ar'?'تم تسليمها':'delivered'}`} color="var(--p)" />
+              <KpiCard icon={<Eye className="w-5 h-5" />}        label={lang==='ar'?'نسبة القراءة':'Read Rate'}       value={`${pct(totalRead, totalSent)}%`}         sub={`${totalRead.toLocaleString()} ${lang==='ar'?'تمت قراءتها':'read'}`}       color="var(--cyan)" />
+              <KpiCard icon={<Users className="w-5 h-5" />}      label={lang==='ar'?'نسبة الرد':'Reply Rate'}      value={`${pct(totalReplied, totalSent)}%`}      sub={`${totalReplied.toLocaleString()} ${lang==='ar'?'ردًا':'replied'}`} color="var(--orange)" />
             </div>
 
             {/* View toggle + toolbar */}
@@ -784,7 +793,7 @@ export default function WhatsAppPage() {
                   <button key={v} onClick={() => setView(v)}
                     className="h-7 px-4 rounded-lg text-[12px] font-semibold cursor-pointer transition-all capitalize"
                     style={view === v ? { background: '#25d366', color: '#fff' } : { color: 'var(--t3)' }}>
-                    {v === 'automations' ? `Automations · ${automations.filter(a => a.isActive).length} active` : 'Campaigns'}
+                    {v === 'automations' ? `${lang==='ar'?'الأتمتة':'Automations'} · ${automations.filter(a => a.isActive).length} ${lang==='ar'?'نشط':'active'}` : (lang==='ar'?'الحملات':'Campaigns')}
                   </button>
                 ))}
               </div>
@@ -810,7 +819,7 @@ export default function WhatsAppPage() {
                   <div className="flex items-center gap-2 flex-1 min-w-[160px] h-9 px-3 rounded-xl"
                     style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                     <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search campaigns…"
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder={lang==='ar'?'بحث في الحملات…':'Search campaigns…'}
                       className="flex-1 bg-transparent text-[13px] outline-none" style={{ color: 'var(--t1)' }} />
                     {search && <button onClick={() => setSearch('')} style={{ color: 'var(--t3)' }}><X className="w-3.5 h-3.5" /></button>}
                   </div>
@@ -821,7 +830,7 @@ export default function WhatsAppPage() {
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90 ml-auto"
                 style={{ background: '#25d366' }}>
                 <Plus className="w-4 h-4" strokeWidth={1.7} />
-                {view === 'campaigns' ? 'New Campaign' : 'New Automation'}
+                {view === 'campaigns' ? (lang==='ar'?'حملة جديدة':'New Campaign') : (lang==='ar'?'أتمتة جديدة':'New Automation')}
               </button>
             </div>
 
@@ -837,19 +846,19 @@ export default function WhatsAppPage() {
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'rgba(37,211,102,.1)' }}>
                     <Inbox className="w-8 h-8" style={{ color: '#25d366' }} strokeWidth={1.7} />
                   </div>
-                  <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No campaigns yet</p>
-                  <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Send your first WhatsApp campaign</p>
+                  <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>{lang==='ar'?'لا توجد حملات بعد':'No campaigns yet'}</p>
+                  <p className="text-[13px] mb-6" style={{ color: 'var(--t2)' }}>{lang==='ar'?'أرسل أول حملة واتساب':'Send your first WhatsApp campaign'}</p>
                   <button onClick={() => setCampDrawer(true)}
                     className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
                     style={{ background: '#25d366' }}>
-                    <Plus className="w-4 h-4" strokeWidth={1.7} /> New Campaign
+                    <Plus className="w-4 h-4" strokeWidth={1.7} /> {lang==='ar'?'حملة جديدة':'New Campaign'}
                   </button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4 max-w-4xl">
                   {filtered.map((c, i) => (
                     <div key={c.id} style={{ animation: `dashFadeUp .3s ${i * 50}ms ease both` }}>
-                      <CampaignCard c={c} onDelete={id => saveCamps(campaigns.filter(x => x.id !== id))} onPreview={setPreviewCamp} />
+                      <CampaignCard c={c} lang={lang} onDelete={id => saveCamps(campaigns.filter(x => x.id !== id))} onPreview={setPreviewCamp} />
                     </div>
                   ))}
                 </div>
@@ -861,12 +870,12 @@ export default function WhatsAppPage() {
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'rgba(37,211,102,.1)' }}>
                     <Zap className="w-8 h-8" style={{ color: '#25d366' }} strokeWidth={1.7} />
                   </div>
-                  <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No automations yet</p>
-                  <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Set up automated WhatsApp flows</p>
+                  <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>{lang==='ar'?'لا توجد أتمتة بعد':'No automations yet'}</p>
+                  <p className="text-[13px] mb-6" style={{ color: 'var(--t2)' }}>{lang==='ar'?'أعدّ تدفقات واتساب الآلية':'Set up automated WhatsApp flows'}</p>
                   <button onClick={() => setAutoDrawer(true)}
                     className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
                     style={{ background: '#25d366' }}>
-                    <Plus className="w-4 h-4" strokeWidth={1.7} /> New Automation
+                    <Plus className="w-4 h-4" strokeWidth={1.7} /> {lang==='ar'?'أتمتة جديدة':'New Automation'}
                   </button>
                 </div>
               ) : (

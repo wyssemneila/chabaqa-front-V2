@@ -168,7 +168,7 @@ export default function EventsPage() {
                                 {ev.status==='published'?T.published:T.draft}
                               </span>
                             </div>
-                            <p className="text-[12px] truncate" style={{ color:'var(--t3)' }}>{ev.description}</p>
+                            <p className="text-[12px] truncate" style={{ color:'var(--t2)' }}>{ev.description}</p>
                           </div>
 
                           {/* Actions */}

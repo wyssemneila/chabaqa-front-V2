@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import {
   Plus, Trophy, Zap, Star, BookOpen, Target,
   Users, Calendar, Clock, Pencil, Trash2, Inbox, Layers,
@@ -27,6 +28,7 @@ const DIFF_COLOR: Record<string, { bg: string; color: string }> = {
 
 export default function ChallengesPage() {
   const router = useRouter()
+  const { lang } = useDashPrefs()
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [loading,    setLoading]    = useState(true)
 
@@ -119,10 +121,10 @@ export default function ChallengesPage() {
                                 style={ch.isPublished
                                   ? { background:'rgba(74,222,128,.12)', color:'#16a34a', borderColor:'rgba(74,222,128,.3)' }
                                   : { background:'var(--bg)', color:'var(--t3)', borderColor:'var(--bd)' }}>
-                                {ch.isPublished ? 'Published' : 'Draft'}
+                                {ch.isPublished ? (lang==='ar'?'منشور':'Published') : (lang==='ar'?'مسودة':'Draft')}
                               </span>
                             </div>
-                            <p className="text-[12px] truncate" style={{ color: 'var(--t3)' }}>{ch.description}</p>
+                            <p className="text-[12px] truncate" style={{ color: 'var(--t2)' }}>{ch.description}</p>
                           </div>
                           <div className="flex gap-1 shrink-0">
                             <button onClick={() => router.push(`/creator/challenges/${ch.id}/edit`)}

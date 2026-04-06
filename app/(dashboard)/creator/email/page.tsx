@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import {
   Plus, Mail, Send, Clock, Users, MousePointerClick, Eye,
   Trash2, Upload, X, Check, Calendar, AlertCircle, Inbox,
@@ -115,11 +116,19 @@ const DELAY_OPTIONS = [
   { value: 168, label: 'After 1 week' },
 ]
 
-const STATUS_META = {
-  sent:      { label: 'Sent',      bg: 'rgba(74,222,128,.12)',  color: '#16a34a',       border: 'rgba(74,222,128,.3)' },
-  draft:     { label: 'Draft',     bg: 'var(--bg)',              color: 'var(--t3)',     border: 'var(--bd)' },
-  scheduled: { label: 'Scheduled', bg: 'rgba(251,146,60,.12)',  color: 'var(--orange)', border: 'rgba(251,146,60,.3)' },
+const STATUS_META_RAW = {
+  sent:      { bg: 'rgba(74,222,128,.12)',  color: '#16a34a',       border: 'rgba(74,222,128,.3)' },
+  draft:     { bg: 'var(--bg)',              color: 'var(--t3)',     border: 'var(--bd)' },
+  scheduled: { bg: 'rgba(251,146,60,.12)',  color: 'var(--orange)', border: 'rgba(251,146,60,.3)' },
 }
+const getStatusMeta = (status: 'sent' | 'draft' | 'scheduled', lang: string) => ({
+  ...STATUS_META_RAW[status],
+  label: status === 'sent'      ? (lang === 'ar' ? 'مُرسَل'   : 'Sent')
+       : status === 'draft'     ? (lang === 'ar' ? 'مسودة'    : 'Draft')
+       :                          (lang === 'ar' ? 'مجدول'    : 'Scheduled'),
+})
+// keep backward compat reference used in CampaignCard
+const STATUS_META = STATUS_META_RAW as Record<string, { bg: string; color: string; border: string }>
 
 const pct = (a: number, b: number) => b === 0 ? 0 : Math.round((a / b) * 100)
 
@@ -245,11 +254,11 @@ function StatBar({ value, color }: { value: number; color: string }) {
   )
 }
 
-function CampaignCard({ c, onDelete, onPreview }: {
+function CampaignCard({ c, onDelete, onPreview, lang = 'en' }: {
   c: Campaign; onDelete: (id: string) => void
-  onPreview: (c: Campaign) => void
+  onPreview: (c: Campaign) => void; lang?: string
 }) {
-  const st = STATUS_META[c.status]
+  const st = getStatusMeta(c.status, lang)
   const openRate  = pct(c.stats.opened,  c.stats.sent)
   const clickRate = pct(c.stats.clicked, c.stats.sent)
   return (
@@ -268,7 +277,7 @@ function CampaignCard({ c, onDelete, onPreview }: {
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
               style={{ background: st.bg, color: st.color, borderColor: st.border }}>{st.label}</span>
           </div>
-          <p className="text-[12px] truncate mt-0.5" style={{ color: 'var(--t3)' }}>{c.subject}</p>
+          <p className="text-[12px] truncate mt-0.5" style={{ color: 'var(--t2)' }}>{c.subject}</p>
         </div>
         <div className="flex gap-1 shrink-0">
           <button onClick={() => onPreview(c)}
@@ -297,9 +306,9 @@ function CampaignCard({ c, onDelete, onPreview }: {
       {c.status === 'sent' && (
         <div className="px-4 pb-4 grid grid-cols-3 gap-3">
           {[
-            { label: 'Sent',       value: c.stats.sent.toLocaleString(), bar: 100,       color: 'var(--p)'     },
-            { label: 'Open Rate',  value: `${openRate}%`,                bar: openRate,  color: 'var(--cyan)'  },
-            { label: 'Click Rate', value: `${clickRate}%`,               bar: clickRate, color: 'var(--orange)'},
+            { label: lang === 'ar' ? 'مُرسَل'     : 'Sent',       value: c.stats.sent.toLocaleString(), bar: 100,       color: 'var(--p)'     },
+            { label: lang === 'ar' ? 'معدل الفتح'  : 'Open Rate',  value: `${openRate}%`,                bar: openRate,  color: 'var(--cyan)'  },
+            { label: lang === 'ar' ? 'معدل النقر'  : 'Click Rate', value: `${clickRate}%`,               bar: clickRate, color: 'var(--orange)'},
           ].map(m => (
             <div key={m.label} className="rounded-xl p-3" style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
               <p className="text-[13px] font-bold" style={{ color: m.color }}>{m.value}</p>
@@ -316,7 +325,9 @@ function CampaignCard({ c, onDelete, onPreview }: {
             style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
             <AlertCircle className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
             <p className="text-[11px]" style={{ color: 'var(--t3)' }}>
-              {c.status === 'draft' ? 'Draft — not sent yet. Edit and schedule to send.' : `Scheduled for ${c.scheduledAt}`}
+              {c.status === 'draft'
+                ? (lang === 'ar' ? 'مسودة — لم تُرسَل بعد. عدّل وجدول للإرسال.' : 'Draft — not sent yet. Edit and schedule to send.')
+                : (lang === 'ar' ? `مجدول في ${c.scheduledAt}` : `Scheduled for ${c.scheduledAt}`)}
             </p>
           </div>
         </div>
@@ -327,10 +338,11 @@ function CampaignCard({ c, onDelete, onPreview }: {
 
 // ─── Automation Card ──────────────────────────────────────────────────────────
 
-function AutomationCard({ a, onToggle, onDelete }: {
+function AutomationCard({ a, onToggle, onDelete, lang = 'en' }: {
   a: Automation
   onToggle: (id: string) => void
   onDelete: (id: string) => void
+  lang?: string
 }) {
   const TriggerIcon = TRIGGER_OPTIONS.find(t => t.id === a.trigger)?.icon ?? Zap
   return (
@@ -351,17 +363,17 @@ function AutomationCard({ a, onToggle, onDelete }: {
             style={a.isActive
               ? { background: 'rgba(74,222,128,.12)', color: '#16a34a', borderColor: 'rgba(74,222,128,.3)' }
               : { background: 'var(--bg)', color: 'var(--t3)', borderColor: 'var(--bd)' }}>
-            {a.isActive ? 'Active' : 'Paused'}
+            {a.isActive ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'متوقف' : 'Paused')}
           </span>
         </div>
-        <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
-          Trigger: {a.triggerLabel}{a.delay > 0 ? ` · Wait ${DELAY_OPTIONS.find(d => d.value === a.delay)?.label?.replace('After ', '')}` : ''}
+        <p className="text-[12px]" style={{ color: 'var(--t2)' }}>
+          {lang === 'ar' ? 'المحفّز:' : 'Trigger:'} {a.triggerLabel}{a.delay > 0 ? ` · ${lang === 'ar' ? 'انتظار' : 'Wait'} ${DELAY_OPTIONS.find(d => d.value === a.delay)?.label?.replace('After ', '')}` : ''}
         </p>
         <p className="text-[11px] mt-1" style={{ color: 'var(--t3)' }}>
-          Subject: <span style={{ color: 'var(--t2)' }}>{a.subject}</span>
+          {lang === 'ar' ? 'الموضوع:' : 'Subject:'} <span style={{ color: 'var(--t2)' }}>{a.subject}</span>
         </p>
         <p className="text-[11px] mt-1.5 font-semibold" style={{ color: 'var(--p)' }}>
-          {a.triggered.toLocaleString()} emails sent
+          {a.triggered.toLocaleString()} {lang === 'ar' ? 'إيميل مُرسَل' : 'emails sent'}
         </p>
       </div>
 
@@ -383,11 +395,12 @@ function AutomationCard({ a, onToggle, onDelete }: {
 
 // ─── Create Campaign Drawer ───────────────────────────────────────────────────
 
-function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAudience }: {
+function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAudience, lang = 'en' }: {
   open: boolean; onClose: () => void
   onSave: (c: Campaign) => void
   customAudiences: CustomAudience[]
   onSaveAudience: (a: CustomAudience) => void
+  lang?: string
 }) {
   const [name,         setName]         = useState('')
   const [subject,      setSubject]      = useState('')
@@ -480,14 +493,14 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
 
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
           <div>
-            <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>New Campaign</p>
-            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Configure and send an email campaign</p>
+            <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'حملة جديدة' : 'New Campaign'}</p>
+            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t2)' }}>{lang === 'ar' ? 'إعداد وإرسال حملة بريد إلكتروني' : 'Configure and send an email campaign'}</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setPreviewOpen(true)}
               className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-80"
               style={{ background: 'var(--p2)', color: 'var(--p)' }}>
-              <Eye className="w-3.5 h-3.5" /> Preview
+              <Eye className="w-3.5 h-3.5" /> {lang === 'ar' ? 'معاينة' : 'Preview'}
             </button>
             <button onClick={onClose}
               className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-70"
@@ -501,34 +514,34 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
 
           {/* Campaign Details */}
           <section>
-            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Campaign Details</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>{lang === 'ar' ? 'تفاصيل الحملة' : 'Campaign Details'}</p>
             <div className="space-y-3">
               <div>
-                <LBL text="Campaign Name" req />
-                <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Weekly Digest"
+                <LBL text={lang === 'ar' ? 'اسم الحملة' : 'Campaign Name'} req />
+                <input value={name} onChange={e => setName(e.target.value)} placeholder={lang === 'ar' ? 'مثال: النشرة الأسبوعية' : 'e.g. Weekly Digest'}
                   className={inp} style={fieldStyle} {...focusStyle} />
               </div>
               <div>
-                <LBL text="Subject Line" req />
-                <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="What's the email about?"
+                <LBL text={lang === 'ar' ? 'سطر الموضوع' : 'Subject Line'} req />
+                <input value={subject} onChange={e => setSubject(e.target.value)} placeholder={lang === 'ar' ? 'ما موضوع الإيميل؟' : "What's the email about?"}
                   className={inp} style={fieldStyle} {...focusStyle} />
               </div>
               <div>
-                <LBL text="Preview Text" />
-                <input value={preview} onChange={e => setPreview(e.target.value)} placeholder="Short summary shown in inbox…"
+                <LBL text={lang === 'ar' ? 'نص المعاينة' : 'Preview Text'} />
+                <input value={preview} onChange={e => setPreview(e.target.value)} placeholder={lang === 'ar' ? 'ملخص قصير يظهر في صندوق الوارد…' : 'Short summary shown in inbox…'}
                   className={inp} style={fieldStyle} {...focusStyle} />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <LBL text="Email Body" />
+                  <LBL text={lang === 'ar' ? 'محتوى الإيميل' : 'Email Body'} />
                   <button onClick={() => setPreviewOpen(true)}
                     className="text-[11px] font-semibold cursor-pointer hover:opacity-70 flex items-center gap-1"
                     style={{ color: 'var(--p)' }}>
-                    <Eye className="w-3 h-3" /> Live preview
+                    <Eye className="w-3 h-3" /> {lang === 'ar' ? 'معاينة مباشرة' : 'Live preview'}
                   </button>
                 </div>
                 <textarea value={body} onChange={e => setBody(e.target.value)}
-                  placeholder="Write your email content here..." rows={5}
+                  placeholder={lang === 'ar' ? 'اكتب محتوى الإيميل هنا...' : 'Write your email content here...'} rows={5}
                   className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none resize-none"
                   style={{ ...fieldStyle, border: '1.5px solid var(--bd)' as any }}
                   onFocus={e => (e.target as HTMLTextAreaElement).style.borderColor = 'var(--p)'}
@@ -544,7 +557,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
 
           {/* Audience */}
           <section>
-            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Audience</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>{lang === 'ar' ? 'الجمهور' : 'Audience'}</p>
 
             <div className="flex gap-2 mb-4">
               {(['community', 'custom'] as const).map(m => (
@@ -553,7 +566,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
                   style={audMode === m
                     ? { background: 'var(--p)', color: '#fff' }
                     : { background: 'var(--bg)', color: 'var(--t2)', border: '1.5px solid var(--bd)' }}>
-                  {m === 'community' ? 'Community Filter' : 'Custom Audience'}
+                  {m === 'community' ? (lang === 'ar' ? 'تصفية المجتمع' : 'Community Filter') : (lang === 'ar' ? 'جمهور مخصص' : 'Custom Audience')}
                 </button>
               ))}
             </div>
@@ -585,8 +598,8 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
             ) : (
               <div className="space-y-3">
                 <div>
-                  <LBL text="Audience Name" req />
-                  <input value={newAudName} onChange={e => setNewAudName(e.target.value)} placeholder="e.g. VIP Buyers"
+                  <LBL text={lang === 'ar' ? 'اسم الجمهور' : 'Audience Name'} req />
+                  <input value={newAudName} onChange={e => setNewAudName(e.target.value)} placeholder={lang === 'ar' ? 'مثال: كبار المشترين' : 'e.g. VIP Buyers'}
                     className={inp} style={fieldStyle} {...focusStyle} />
                 </div>
 
@@ -598,7 +611,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
                       style={csvMode === m
                         ? { background: 'var(--p2)', color: 'var(--p)', border: '1.5px solid var(--p)' }
                         : { background: 'var(--bg)', color: 'var(--t3)', border: '1.5px solid var(--bd)' }}>
-                      {m === 'type' ? 'Type manually' : 'Upload CSV'}
+                      {m === 'type' ? (lang === 'ar' ? 'إدخال يدوي' : 'Type manually') : (lang === 'ar' ? 'رفع CSV' : 'Upload CSV')}
                     </button>
                   ))}
                 </div>
@@ -671,7 +684,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
 
           {/* Schedule */}
           <section>
-            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Schedule</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>{lang === 'ar' ? 'الجدولة' : 'Schedule'}</p>
             <div className="flex gap-2 mb-4">
               {(['now', 'later'] as const).map(m => (
                 <button key={m} onClick={() => setSchedMode(m)}
@@ -679,19 +692,19 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
                   style={schedMode === m
                     ? { background: 'var(--p)', color: '#fff' }
                     : { background: 'var(--bg)', color: 'var(--t2)', border: '1.5px solid var(--bd)' }}>
-                  {m === 'now' ? 'Send Now' : 'Schedule for Later'}
+                  {m === 'now' ? (lang === 'ar' ? 'إرسال الآن' : 'Send Now') : (lang === 'ar' ? 'جدولة لاحقاً' : 'Schedule for Later')}
                 </button>
               ))}
             </div>
             {schedMode === 'later' ? (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <LBL text="Date" req />
+                  <LBL text={lang === 'ar' ? 'التاريخ' : 'Date'} req />
                   <input type="date" value={schedDate} onChange={e => setSchedDate(e.target.value)}
                     className={inp} style={fieldStyle} {...focusStyle} />
                 </div>
                 <div>
-                  <LBL text="Time" req />
+                  <LBL text={lang === 'ar' ? 'الوقت' : 'Time'} req />
                   <input type="time" value={schedTime} onChange={e => setSchedTime(e.target.value)}
                     className={inp} style={fieldStyle} {...focusStyle} />
                 </div>
@@ -712,7 +725,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
           <button onClick={() => submit('draft')} disabled={!name.trim() || saving}
             className="flex-1 h-10 rounded-xl text-[13px] font-semibold cursor-pointer hover:opacity-80 disabled:opacity-40"
             style={{ background: 'var(--bg)', color: 'var(--t2)', border: '1.5px solid var(--bd)' }}>
-            Save Draft
+            {lang === 'ar' ? 'حفظ مسودة' : 'Save Draft'}
           </button>
           <button onClick={() => submit(schedMode === 'later' ? 'scheduled' : 'sent')}
             disabled={!canSend || saving}
@@ -721,8 +734,8 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
             {saving
               ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
               : schedMode === 'later'
-                ? <><Calendar className="w-4 h-4" strokeWidth={1.7} /> Schedule</>
-                : <><Send className="w-4 h-4" strokeWidth={1.7} /> Send Now</>}
+                ? <><Calendar className="w-4 h-4" strokeWidth={1.7} /> {lang === 'ar' ? 'جدولة' : 'Schedule'}</>
+                : <><Send className="w-4 h-4" strokeWidth={1.7} /> {lang === 'ar' ? 'إرسال الآن' : 'Send Now'}</>}
           </button>
         </div>
       </div>
@@ -732,8 +745,8 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
 
 // ─── Create Automation Drawer ─────────────────────────────────────────────────
 
-function CreateAutomationDrawer({ open, onClose, onSave }: {
-  open: boolean; onClose: () => void; onSave: (a: Automation) => void
+function CreateAutomationDrawer({ open, onClose, onSave, lang = 'en' }: {
+  open: boolean; onClose: () => void; onSave: (a: Automation) => void; lang?: string
 }) {
   const [name,    setName]    = useState('')
   const [trigger, setTrigger] = useState('')
@@ -776,14 +789,14 @@ function CreateAutomationDrawer({ open, onClose, onSave }: {
 
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
           <div>
-            <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>New Automation</p>
-            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>Set up a trigger-based email flow</p>
+            <p className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'أتمتة جديدة' : 'New Automation'}</p>
+            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t2)' }}>{lang === 'ar' ? 'إعداد سير عمل بريدي مبني على محفّز' : 'Set up a trigger-based email flow'}</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setPreview(true)}
               className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-80"
               style={{ background: 'var(--p2)', color: 'var(--p)' }}>
-              <Eye className="w-3.5 h-3.5" /> Preview
+              <Eye className="w-3.5 h-3.5" /> {lang === 'ar' ? 'معاينة' : 'Preview'}
             </button>
             <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-70"
               style={{ background: 'var(--bg)', color: 'var(--t3)' }}>
@@ -795,15 +808,15 @@ function CreateAutomationDrawer({ open, onClose, onSave }: {
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
           <section>
-            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Setup</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>{lang === 'ar' ? 'الإعداد' : 'Setup'}</p>
             <div className="space-y-3">
               <div>
-                <LBL text="Automation Name" req />
-                <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Welcome New Members"
+                <LBL text={lang === 'ar' ? 'اسم الأتمتة' : 'Automation Name'} req />
+                <input value={name} onChange={e => setName(e.target.value)} placeholder={lang === 'ar' ? 'مثال: ترحيب بالأعضاء الجدد' : 'e.g. Welcome New Members'}
                   className={inp} style={fieldStyle} {...focusStyle} />
               </div>
               <div>
-                <LBL text="Send Delay" />
+                <LBL text={lang === 'ar' ? 'تأخير الإرسال' : 'Send Delay'} />
                 <div className="flex flex-wrap gap-2">
                   {DELAY_OPTIONS.map(d => (
                     <button key={d.value} onClick={() => setDelay(d.value)}
@@ -822,7 +835,7 @@ function CreateAutomationDrawer({ open, onClose, onSave }: {
           <div style={{ borderTop: '1px solid var(--bd)' }} />
 
           <section>
-            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Trigger</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>{lang === 'ar' ? 'المحفّز' : 'Trigger'}</p>
             <div className="grid grid-cols-1 gap-2">
               {TRIGGER_OPTIONS.map(t => {
                 const Icon = t.icon
@@ -839,7 +852,7 @@ function CreateAutomationDrawer({ open, onClose, onSave }: {
                     </div>
                     <div className="flex-1">
                       <p className="text-[12px] font-semibold" style={{ color: sel ? 'var(--p)' : 'var(--t1)' }}>{t.label}</p>
-                      <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{t.desc}</p>
+                      <p className="text-[11px]" style={{ color: 'var(--t2)' }}>{t.desc}</p>
                     </div>
                     {sel && <Check className="w-4 h-4 shrink-0" style={{ color: 'var(--p)' }} strokeWidth={1.7} />}
                   </button>
@@ -851,19 +864,19 @@ function CreateAutomationDrawer({ open, onClose, onSave }: {
           <div style={{ borderTop: '1px solid var(--bd)' }} />
 
           <section>
-            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>Email Content</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>{lang === 'ar' ? 'محتوى الإيميل' : 'Email Content'}</p>
             <div className="space-y-3">
               <div>
-                <LBL text="Subject Line" req />
+                <LBL text={lang === 'ar' ? 'سطر الموضوع' : 'Subject Line'} req />
                 <input value={subject} onChange={e => setSubject(e.target.value)}
-                  placeholder="e.g. Welcome {{first_name}}!"
+                  placeholder={lang === 'ar' ? 'مثال: مرحباً {{first_name}}!' : 'e.g. Welcome {{first_name}}!'}
                   className={inp} style={fieldStyle} {...focusStyle} />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <LBL text="Email Body" />
+                  <LBL text={lang === 'ar' ? 'محتوى الإيميل' : 'Email Body'} />
                   <button onClick={() => setPreview(true)} className="text-[11px] font-semibold cursor-pointer hover:opacity-70 flex items-center gap-1" style={{ color: 'var(--p)' }}>
-                    <Eye className="w-3 h-3" /> Preview
+                    <Eye className="w-3 h-3" /> {lang === 'ar' ? 'معاينة' : 'Preview'}
                   </button>
                 </div>
                 <textarea value={body} onChange={e => setBody(e.target.value)}
@@ -888,7 +901,7 @@ function CreateAutomationDrawer({ open, onClose, onSave }: {
             style={{ background: 'var(--p)' }}>
             {saving
               ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              : <><Zap className="w-4 h-4" strokeWidth={1.7} /> Create &amp; Activate Automation</>}
+              : <><Zap className="w-4 h-4" strokeWidth={1.7} /> {lang === 'ar' ? 'إنشاء وتفعيل الأتمتة' : 'Create & Activate Automation'}</>}
           </button>
         </div>
       </div>
@@ -925,6 +938,7 @@ const CAMP_TABS = [
 ] as const
 
 export default function EmailMarketingPage() {
+  const { lang } = useDashPrefs()
   const [campaigns,       setCampaigns]       = useState<Campaign[]>([])
   const [automations,     setAutomations]     = useState<Automation[]>([])
   const [customAudiences, setCustomAudiences] = useState<CustomAudience[]>([])
@@ -979,10 +993,10 @@ export default function EmailMarketingPage() {
 
             {/* KPIs */}
             <div className="grid grid-cols-4 gap-4 mb-7">
-              <KpiCard icon={<Mail className="w-5 h-5" />}             label="Total Campaigns" value={String(campaigns.length)}      sub={`${campaigns.filter(c=>c.status==='sent').length} sent · ${campaigns.filter(c=>c.status==='draft').length} drafts`} color="var(--p)" />
-              <KpiCard icon={<Send className="w-5 h-5" />}             label="Emails Sent"     value={totalSent.toLocaleString()}     sub="across all campaigns"  color="var(--cyan)" />
-              <KpiCard icon={<Eye className="w-5 h-5" />}              label="Avg Open Rate"   value={`${pct(totalOpened, totalSent)}%`}  sub={`${totalOpened.toLocaleString()} opens`}  color="var(--orange)" />
-              <KpiCard icon={<MousePointerClick className="w-5 h-5" />} label="Avg Click Rate"  value={`${pct(totalClicked, totalSent)}%`} sub={`${totalClicked.toLocaleString()} clicks`} color="var(--pink)" />
+              <KpiCard icon={<Mail className="w-5 h-5" />}             label={lang === 'ar' ? 'إجمالي الحملات' : 'Total Campaigns'} value={String(campaigns.length)}      sub={`${campaigns.filter(c=>c.status==='sent').length} ${lang==='ar'?'مُرسَلة':'sent'} · ${campaigns.filter(c=>c.status==='draft').length} ${lang==='ar'?'مسودات':'drafts'}`} color="var(--p)" />
+              <KpiCard icon={<Send className="w-5 h-5" />}             label={lang === 'ar' ? 'إيميلات مُرسَلة' : 'Emails Sent'}     value={totalSent.toLocaleString()}     sub={lang === 'ar' ? 'عبر كل الحملات' : 'across all campaigns'}  color="var(--cyan)" />
+              <KpiCard icon={<Eye className="w-5 h-5" />}              label={lang === 'ar' ? 'متوسط معدل الفتح' : 'Avg Open Rate'}   value={`${pct(totalOpened, totalSent)}%`}  sub={`${totalOpened.toLocaleString()} ${lang==='ar'?'فتح':'opens'}`}  color="var(--orange)" />
+              <KpiCard icon={<MousePointerClick className="w-5 h-5" />} label={lang === 'ar' ? 'متوسط معدل النقر' : 'Avg Click Rate'}  value={`${pct(totalClicked, totalSent)}%`} sub={`${totalClicked.toLocaleString()} ${lang==='ar'?'نقرة':'clicks'}`} color="var(--pink)" />
             </div>
 
             {/* View toggle + actions */}
@@ -992,7 +1006,7 @@ export default function EmailMarketingPage() {
                   <button key={v} onClick={() => setView(v)}
                     className="h-7 px-4 rounded-lg text-[12px] font-semibold cursor-pointer transition-all capitalize"
                     style={view === v ? { background: 'var(--p)', color: '#fff' } : { color: 'var(--t3)' }}>
-                    {v === 'automations' ? `Automations · ${automations.filter(a => a.isActive).length} active` : 'Campaigns'}
+                    {v === 'automations' ? `${lang === 'ar' ? 'أتمتة' : 'Automations'} · ${automations.filter(a => a.isActive).length} ${lang === 'ar' ? 'نشطة' : 'active'}` : (lang === 'ar' ? 'الحملات' : 'Campaigns')}
                   </button>
                 ))}
               </div>
@@ -1007,7 +1021,10 @@ export default function EmailMarketingPage() {
                         <button key={t.id} onClick={() => setTab(t.id)}
                           className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[12px] font-semibold cursor-pointer transition-all"
                           style={tab === t.id ? { background: 'var(--p)', color: '#fff' } : { color: 'var(--t3)' }}>
-                          {t.label}
+                          {t.id === 'all'       ? (lang === 'ar' ? 'الكل'     : 'All')
+                           : t.id === 'sent'      ? (lang === 'ar' ? 'مُرسَل'   : 'Sent')
+                           : t.id === 'scheduled' ? (lang === 'ar' ? 'مجدول'   : 'Scheduled')
+                           :                        (lang === 'ar' ? 'مسودات'   : 'Drafts')}
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full"
                             style={tab === t.id ? { background: 'rgba(255,255,255,.25)', color: '#fff' } : { background: 'var(--bg)', color: 'var(--t3)' }}>
                             {cnt}
@@ -1020,7 +1037,7 @@ export default function EmailMarketingPage() {
                   <div className="flex items-center gap-2 flex-1 min-w-[160px] h-9 px-3 rounded-xl"
                     style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                     <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search campaigns…"
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder={lang === 'ar' ? 'بحث في الحملات…' : 'Search campaigns…'}
                       className="flex-1 bg-transparent text-[13px] outline-none" style={{ color: 'var(--t1)' }} />
                     {search && <button onClick={() => setSearch('')} style={{ color: 'var(--t3)' }}><X className="w-3.5 h-3.5" /></button>}
                   </div>
@@ -1031,7 +1048,7 @@ export default function EmailMarketingPage() {
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90 ml-auto"
                 style={{ background: 'var(--p)' }}>
                 <Plus className="w-4 h-4" strokeWidth={1.7} />
-                {view === 'campaigns' ? 'New Campaign' : 'New Automation'}
+                {view === 'campaigns' ? (lang === 'ar' ? 'حملة جديدة' : 'New Campaign') : (lang === 'ar' ? 'أتمتة جديدة' : 'New Automation')}
               </button>
             </div>
 
@@ -1042,22 +1059,17 @@ export default function EmailMarketingPage() {
               </div>
             ) : view === 'campaigns' ? (
               filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
-                  style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'var(--p2)' }}>
-                    <Inbox className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+                <div className="flex flex-col items-center py-16 gap-3 text-center">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--p2)' }}>
+                    <Mail className="w-7 h-7" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                   </div>
-                  <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>
-                    {search ? 'No campaigns match your search' : 'No campaigns yet'}
-                  </p>
-                  <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>
-                    {search ? 'Try a different keyword' : 'Create your first email campaign'}
-                  </p>
+                  <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? (search ? 'لا توجد نتائج مطابقة' : 'لا توجد حملات بعد') : (search ? 'No campaigns match your search' : 'No campaigns yet')}</p>
+                  <p className="text-[12px]" style={{ color: 'var(--t2)' }}>{lang === 'ar' ? (search ? 'جرّب كلمة مختلفة' : 'أنشئ أول حملة بريد إلكتروني') : (search ? 'Try a different keyword' : 'Create your first email campaign')}</p>
                   {!search && (
                     <button onClick={() => setCampDrawer(true)}
-                      className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
+                      className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 mt-1"
                       style={{ background: 'var(--p)' }}>
-                      <Plus className="w-4 h-4" strokeWidth={1.7} /> New Campaign
+                      <Plus className="w-4 h-4" strokeWidth={1.7} /> {lang === 'ar' ? 'حملة جديدة' : 'New Campaign'}
                     </button>
                   )}
                 </div>
@@ -1065,7 +1077,7 @@ export default function EmailMarketingPage() {
                 <div className="grid grid-cols-1 gap-4 max-w-4xl">
                   {filtered.map((c, i) => (
                     <div key={c.id} style={{ animation: `dashFadeUp .3s ${i * 50}ms ease both` }}>
-                      <CampaignCard c={c} onDelete={id => saveCamps(campaigns.filter(x => x.id !== id))} onPreview={setPreviewCamp} />
+                      <CampaignCard c={c} onDelete={id => saveCamps(campaigns.filter(x => x.id !== id))} onPreview={setPreviewCamp} lang={lang} />
                     </div>
                   ))}
                 </div>
@@ -1073,17 +1085,16 @@ export default function EmailMarketingPage() {
             ) : (
               /* Automations view */
               automations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
-                  style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'var(--p2)' }}>
-                    <Zap className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+                <div className="flex flex-col items-center py-16 gap-3 text-center">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--p2)' }}>
+                    <Zap className="w-7 h-7" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                   </div>
-                  <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No automations yet</p>
-                  <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Set up your first trigger-based email</p>
+                  <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'لا توجد أتمتة بعد' : 'No automations yet'}</p>
+                  <p className="text-[12px]" style={{ color: 'var(--t2)' }}>{lang === 'ar' ? 'أعدّ أول سير عمل بريدي مبني على محفّز' : 'Set up your first trigger-based email'}</p>
                   <button onClick={() => setAutoDrawer(true)}
-                    className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
+                    className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 mt-1"
                     style={{ background: 'var(--p)' }}>
-                    <Plus className="w-4 h-4" strokeWidth={1.7} /> New Automation
+                    <Plus className="w-4 h-4" strokeWidth={1.7} /> {lang === 'ar' ? 'أتمتة جديدة' : 'New Automation'}
                   </button>
                 </div>
               ) : (
@@ -1091,9 +1102,9 @@ export default function EmailMarketingPage() {
                   {/* summary bar */}
                   <div className="grid grid-cols-3 gap-3 mb-1">
                     {[
-                      { label: 'Total',  value: automations.length, color: 'var(--p)' },
-                      { label: 'Active', value: automations.filter(a=>a.isActive).length, color: '#16a34a' },
-                      { label: 'Emails sent', value: automations.reduce((s,a)=>s+a.triggered,0).toLocaleString(), color: 'var(--cyan)' },
+                      { label: lang === 'ar' ? 'الإجمالي'      : 'Total',       value: automations.length, color: 'var(--p)' },
+                      { label: lang === 'ar' ? 'نشطة'          : 'Active',      value: automations.filter(a=>a.isActive).length, color: '#16a34a' },
+                      { label: lang === 'ar' ? 'إيميلات مُرسَلة' : 'Emails sent', value: automations.reduce((s,a)=>s+a.triggered,0).toLocaleString(), color: 'var(--cyan)' },
                     ].map(s => (
                       <div key={s.label} className="rounded-xl p-3 flex items-center gap-3"
                         style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
@@ -1106,7 +1117,8 @@ export default function EmailMarketingPage() {
                     <div key={a.id} style={{ animation: `dashFadeUp .3s ${i * 50}ms ease both` }}>
                       <AutomationCard a={a}
                         onToggle={id => saveAutos(automations.map(x => x.id === id ? { ...x, isActive: !x.isActive } : x))}
-                        onDelete={id => saveAutos(automations.filter(x => x.id !== id))} />
+                        onDelete={id => saveAutos(automations.filter(x => x.id !== id))}
+                        lang={lang} />
                     </div>
                   ))}
                 </div>
@@ -1121,11 +1133,13 @@ export default function EmailMarketingPage() {
         open={campDrawer} onClose={() => setCampDrawer(false)}
         onSave={c => saveCamps([c, ...campaigns])}
         customAudiences={customAudiences}
-        onSaveAudience={a => saveAuds([...customAudiences, a])} />
+        onSaveAudience={a => saveAuds([...customAudiences, a])}
+        lang={lang} />
 
       <CreateAutomationDrawer
         open={autoDrawer} onClose={() => setAutoDrawer(false)}
-        onSave={a => saveAutos([a, ...automations])} />
+        onSave={a => saveAutos([a, ...automations])}
+        lang={lang} />
     </>
   )
 }

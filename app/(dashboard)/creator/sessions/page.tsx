@@ -348,7 +348,7 @@ export default function SessionsPage() {
                     <Calendar className="w-8 h-8" style={{ color:'var(--p)' }} />
                   </div>
                   <h3 className="text-[16px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>{t.noSessions}</h3>
-                  <p className="text-[13px] mb-6 max-w-xs" style={{ color:'var(--t3)' }}>{t.noSessionsDesc}</p>
+                  <p className="text-[13px] mb-6 max-w-xs" style={{ color:'var(--t2)' }}>{t.noSessionsDesc}</p>
                   <Link href="/creator/sessions/create"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-bold text-white hover:opacity-90"
                     style={{ background:'var(--p)', boxShadow:'0 4px 14px rgba(142,120,251,.35)' }}>
@@ -380,7 +380,7 @@ export default function SessionsPage() {
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background:'var(--p2)' }}>
                     <Calendar className="w-4 h-4" style={{ color:'var(--p)' }} />
                   </div>
-                  <p className="text-[13px]" style={{ color:'var(--t3)' }}>{t.noUpcoming}</p>
+                  <p className="text-[13px]" style={{ color:'var(--t2)' }}>{t.noUpcoming}</p>
                 </div>
               ) : (
                 <div className="divide-y" style={{ borderColor:'var(--bd)' }}>

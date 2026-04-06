@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import { Plus, Package, Pencil, Trash2, ShieldCheck, FileArchive, DollarSign, Tag, Layers } from 'lucide-react'
 
 interface Product {
@@ -15,6 +16,7 @@ interface Product {
 
 export default function ProductsPage() {
   const router = useRouter()
+  const { lang } = useDashPrefs()
   const [products, setProducts] = useState<Product[]>([])
   const [loading,  setLoading]  = useState(true)
 
@@ -113,10 +115,10 @@ export default function ProductsPage() {
                               style={p.isPublished
                                 ? { background:'rgba(74,222,128,.12)', color:'#16a34a', borderColor:'rgba(74,222,128,.3)' }
                                 : { background:'var(--bg)', color:'var(--t3)', borderColor:'var(--bd)' }}>
-                              {p.isPublished ? 'Published' : 'Draft'}
+                              {p.isPublished ? (lang==='ar'?'منشور':'Published') : (lang==='ar'?'مسودة':'Draft')}
                             </span>
                           </div>
-                          <p className="text-[12px] truncate" style={{ color:'var(--t3)' }}>{p.description}</p>
+                          <p className="text-[12px] truncate" style={{ color:'var(--t2)' }}>{p.description}</p>
                         </div>
                         <div className="flex gap-1 shrink-0">
                           <button onClick={() => router.push(`/creator/products/${p.id}/edit`)}

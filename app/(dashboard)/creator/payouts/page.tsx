@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import {
   DollarSign, TrendingUp, Clock, CheckCircle2,
   Building2, CreditCard, Zap, Shield, Check,
@@ -43,10 +44,10 @@ const PAYOUT_HISTORY: PayoutRecord[] = [
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUS_META: Record<PayoutRecord['status'], { label: string; bg: string; color: string; border: string }> = {
-  paid:       { label: 'Paid',       bg: 'rgba(74,222,128,.12)',  color: '#16a34a',       border: 'rgba(74,222,128,.3)'  },
-  processing: { label: 'Processing', bg: 'rgba(251,146,60,.12)',  color: 'var(--orange)', border: 'rgba(251,146,60,.3)'  },
-  pending:    { label: 'Pending',    bg: 'var(--p2)',              color: 'var(--p)',      border: 'var(--bd)'            },
+const STATUS_META: Record<PayoutRecord['status'], { label: string; labelAr: string; bg: string; color: string; border: string }> = {
+  paid:       { label: 'Paid',       labelAr: 'مدفوع',      bg: 'rgba(74,222,128,.12)',  color: '#16a34a',       border: 'rgba(74,222,128,.3)'  },
+  processing: { label: 'Processing', labelAr: 'قيد المعالجة', bg: 'rgba(251,146,60,.12)', color: 'var(--orange)', border: 'rgba(251,146,60,.3)'  },
+  pending:    { label: 'Pending',    labelAr: 'معلّق',       bg: 'var(--p2)',              color: 'var(--p)',      border: 'var(--bd)'            },
 }
 
 const mask = (s: string, keep = 4) =>
@@ -75,10 +76,11 @@ function KpiCard({ icon, label, value, sub, color }: {
 
 // ─── Connect Form ─────────────────────────────────────────────────────────────
 
-function ConnectForm({ current, onSave, onCancel }: {
+function ConnectForm({ current, onSave, onCancel, lang }: {
   current: BankInfo
   onSave: (info: BankInfo) => void
   onCancel: () => void
+  lang: string
 }) {
   const [method,         setMethod]         = useState<'stripe' | 'bank'>(current.method === 'bank' ? 'bank' : 'stripe')
   const [stripeEmail,    setStripeEmail]    = useState(current.stripeEmail    ?? '')
@@ -118,8 +120,8 @@ function ConnectForm({ current, onSave, onCancel }: {
     <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
       <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
         <div>
-          <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Connect Payout Method</p>
-          <p className="text-[12px]" style={{ color: 'var(--t3)' }}>Choose how you want to receive your earnings</p>
+          <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'ربط طريقة الدفع' : 'Connect Payout Method'}</p>
+          <p className="text-[12px]" style={{ color: 'var(--t2)' }}>{lang === 'ar' ? 'اختر كيف تريد استلام أرباحك' : 'Choose how you want to receive your earnings'}</p>
         </div>
         <button onClick={onCancel} className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-70"
           style={{ background: 'var(--bg)', color: 'var(--t3)' }}>
@@ -134,15 +136,15 @@ function ConnectForm({ current, onSave, onCancel }: {
             {
               id: 'stripe' as const,
               title: 'Stripe',
-              desc: 'Instant payouts to your bank via Stripe Connect',
+              desc: lang === 'ar' ? 'دفعات فورية إلى بنكك عبر Stripe Connect' : 'Instant payouts to your bank via Stripe Connect',
               icon: <Zap className="w-5 h-5" strokeWidth={1.7} />,
               color: '#635bff',
-              badge: 'Recommended',
+              badge: lang === 'ar' ? 'موصى به' : 'Recommended',
             },
             {
               id: 'bank' as const,
-              title: 'Bank Transfer',
-              desc: 'Direct wire transfer — 2-5 business days',
+              title: lang === 'ar' ? 'تحويل بنكي' : 'Bank Transfer',
+              desc: lang === 'ar' ? 'تحويل مباشر — 2-5 أيام عمل' : 'Direct wire transfer — 2-5 business days',
               icon: <Building2 className="w-5 h-5" strokeWidth={1.7} />,
               color: 'var(--cyan)',
               badge: null,
@@ -179,27 +181,29 @@ function ConnectForm({ current, onSave, onCancel }: {
         {/* Fields */}
         {method === 'stripe' ? (
           <div>
-            <LBL text="Stripe Account Email" req />
+            <LBL text={lang === 'ar' ? 'بريد حساب Stripe' : 'Stripe Account Email'} req />
             <input type="email" value={stripeEmail} onChange={e => setStripeEmail(e.target.value)}
               placeholder="your@stripe.com" className={inp} style={fs} {...fo} />
             <div className="flex items-center gap-2 mt-2.5 px-3 py-2 rounded-xl"
               style={{ background: 'rgba(99,91,255,.06)', border: '1px solid rgba(99,91,255,.2)' }}>
               <Shield className="w-3.5 h-3.5 shrink-0" style={{ color: '#635bff' }} strokeWidth={1.7} />
               <p className="text-[11px]" style={{ color: '#635bff' }}>
-                You will be redirected to Stripe to authorize the connection securely.
+                {lang === 'ar' ? 'سيتم توجيهك إلى Stripe لإتمام الربط بشكل آمن.' : 'You will be redirected to Stripe to authorize the connection securely.'}
               </p>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
             <div>
-              <LBL text="Bank Name" req />
-              <input value={bankName} onChange={e => setBankName(e.target.value)} placeholder="e.g. Banque de Tunisie"
+              <LBL text={lang === 'ar' ? 'اسم البنك' : 'Bank Name'} req />
+              <input value={bankName} onChange={e => setBankName(e.target.value)}
+                placeholder={lang === 'ar' ? 'مثل: بنك تونس' : 'e.g. Banque de Tunisie'}
                 className={inp} style={fs} {...fo} />
             </div>
             <div>
-              <LBL text="Account Holder Name" req />
-              <input value={accountHolder} onChange={e => setAccountHolder(e.target.value)} placeholder="Full legal name"
+              <LBL text={lang === 'ar' ? 'اسم صاحب الحساب' : 'Account Holder Name'} req />
+              <input value={accountHolder} onChange={e => setAccountHolder(e.target.value)}
+                placeholder={lang === 'ar' ? 'الاسم القانوني الكامل' : 'Full legal name'}
                 className={inp} style={fs} {...fo} />
             </div>
             <div>
@@ -211,7 +215,7 @@ function ConnectForm({ current, onSave, onCancel }: {
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
               style={{ background: 'var(--p2)', border: '1px solid var(--bd)' }}>
               <Lock className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
-              <p className="text-[11px]" style={{ color: 'var(--t2)' }}>Bank details are encrypted and stored securely.</p>
+              <p className="text-[11px]" style={{ color: 'var(--t2)' }}>{lang === 'ar' ? 'تفاصيل البنك مشفرة ومحمية.' : 'Bank details are encrypted and stored securely.'}</p>
             </div>
           </div>
         )}
@@ -221,7 +225,7 @@ function ConnectForm({ current, onSave, onCancel }: {
           <button onClick={onCancel}
             className="flex-1 h-10 rounded-xl text-[13px] font-semibold cursor-pointer hover:opacity-80"
             style={{ background: 'var(--bg)', color: 'var(--t2)', border: '1.5px solid var(--bd)' }}>
-            Cancel
+            {lang === 'ar' ? 'إلغاء' : 'Cancel'}
           </button>
           <button onClick={submit} disabled={!canSave || saving}
             className="flex-1 h-10 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
@@ -229,8 +233,8 @@ function ConnectForm({ current, onSave, onCancel }: {
             {saving
               ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
               : method === 'stripe'
-                ? <><Zap className="w-4 h-4" strokeWidth={1.7} /> Connect with Stripe</>
-                : <><Check className="w-4 h-4" strokeWidth={1.7} /> Save Bank Details</>
+                ? <><Zap className="w-4 h-4" strokeWidth={1.7} /> {lang === 'ar' ? 'ربط مع Stripe' : 'Connect with Stripe'}</>
+                : <><Check className="w-4 h-4" strokeWidth={1.7} /> {lang === 'ar' ? 'حفظ بيانات البنك' : 'Save Bank Details'}</>
             }
           </button>
         </div>
@@ -241,18 +245,18 @@ function ConnectForm({ current, onSave, onCancel }: {
 
 // ─── Connected Display ────────────────────────────────────────────────────────
 
-function ConnectedCard({ info, onEdit }: { info: BankInfo; onEdit: () => void }) {
+function ConnectedCard({ info, onEdit, lang }: { info: BankInfo; onEdit: () => void; lang: string }) {
   const isStripe = info.method === 'stripe'
   const color    = isStripe ? '#635bff' : 'var(--cyan)'
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
       <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
-        <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Payout Method</p>
+        <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'طريقة الدفع' : 'Payout Method'}</p>
         <button onClick={onEdit}
           className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-80"
           style={{ background: 'var(--bg)', color: 'var(--t2)', border: '1px solid var(--bd)' }}>
-          <Pencil className="w-3 h-3" strokeWidth={1.7} /> Edit
+          <Pencil className="w-3 h-3" strokeWidth={1.7} /> {lang === 'ar' ? 'تعديل' : 'Edit'}
         </button>
       </div>
 
@@ -272,7 +276,7 @@ function ConnectedCard({ info, onEdit }: { info: BankInfo; onEdit: () => void })
             </p>
             <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
               style={{ background: 'rgba(74,222,128,.12)', color: '#16a34a' }}>
-              <Check className="w-2.5 h-2.5" strokeWidth={3} /> Connected
+              <Check className="w-2.5 h-2.5" strokeWidth={3} /> {lang === 'ar' ? 'مرتبط' : 'Connected'}
             </span>
           </div>
           {isStripe
@@ -287,9 +291,11 @@ function ConnectedCard({ info, onEdit }: { info: BankInfo; onEdit: () => void })
         </div>
 
         <div className="text-right shrink-0">
-          <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Payout schedule</p>
+          <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{lang === 'ar' ? 'جدول الدفع' : 'Payout schedule'}</p>
           <p className="text-[13px] font-semibold mt-0.5" style={{ color: 'var(--t1)' }}>
-            {isStripe ? 'Every 7 days' : 'Every 15 days'}
+            {isStripe
+              ? (lang === 'ar' ? 'كل 7 أيام' : 'Every 7 days')
+              : (lang === 'ar' ? 'كل 15 يومًا' : 'Every 15 days')}
           </p>
         </div>
       </div>
@@ -298,14 +304,14 @@ function ConnectedCard({ info, onEdit }: { info: BankInfo; onEdit: () => void })
       <div className="px-5 pb-5 grid grid-cols-3 gap-3">
         {(isStripe
           ? [
-              { icon: <Zap className="w-3.5 h-3.5" />,      label: 'Instant Transfer',      sub: 'in minutes'      },
-              { icon: <Shield className="w-3.5 h-3.5" />,   label: 'Stripe Protected',      sub: 'fully encrypted' },
-              { icon: <CreditCard className="w-3.5 h-3.5" />, label: 'All currencies',       sub: 'auto-converted'  },
+              { icon: <Zap className="w-3.5 h-3.5" />,        label: lang === 'ar' ? 'تحويل فوري'       : 'Instant Transfer',    sub: lang === 'ar' ? 'في دقائق'        : 'in minutes'      },
+              { icon: <Shield className="w-3.5 h-3.5" />,     label: lang === 'ar' ? 'حماية Stripe'     : 'Stripe Protected',    sub: lang === 'ar' ? 'مشفر بالكامل'   : 'fully encrypted' },
+              { icon: <CreditCard className="w-3.5 h-3.5" />, label: lang === 'ar' ? 'جميع العملات'     : 'All currencies',      sub: lang === 'ar' ? 'تحويل تلقائي'   : 'auto-converted'  },
             ]
           : [
-              { icon: <Building2 className="w-3.5 h-3.5" />, label: 'Wire Transfer',        sub: '2–5 business days' },
-              { icon: <Shield className="w-3.5 h-3.5" />,    label: 'Bank-grade Security',  sub: 'encrypted IBAN'    },
-              { icon: <Clock className="w-3.5 h-3.5" />,     label: 'Auto Payouts',         sub: 'bi-monthly'        },
+              { icon: <Building2 className="w-3.5 h-3.5" />, label: lang === 'ar' ? 'تحويل بنكي'       : 'Wire Transfer',       sub: lang === 'ar' ? '2–5 أيام عمل'   : '2–5 business days' },
+              { icon: <Shield className="w-3.5 h-3.5" />,    label: lang === 'ar' ? 'أمان بنكي'        : 'Bank-grade Security', sub: lang === 'ar' ? 'IBAN مشفر'       : 'encrypted IBAN'    },
+              { icon: <Clock className="w-3.5 h-3.5" />,     label: lang === 'ar' ? 'دفع تلقائي'       : 'Auto Payouts',        sub: lang === 'ar' ? 'نصف شهري'       : 'bi-monthly'        },
             ]
         ).map((f, i) => (
           <div key={i} className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
@@ -325,6 +331,7 @@ function ConnectedCard({ info, onEdit }: { info: BankInfo; onEdit: () => void })
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PayoutsPage() {
+  const { lang } = useDashPrefs()
   const [bankInfo,  setBankInfo]  = useState<BankInfo>({ method: null })
   const [editing,   setEditing]   = useState(false)
 
@@ -357,16 +364,19 @@ export default function PayoutsPage() {
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
         <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
-          <DashTopbar title="Payouts" subtitle="Revenue overview and payout management" />
+          <DashTopbar
+            title={lang === 'ar' ? 'المدفوعات' : 'Payouts'}
+            subtitle={lang === 'ar' ? 'نظرة عامة على الإيرادات وإدارة المدفوعات' : 'Revenue overview and payout management'}
+          />
 
           <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* KPIs */}
             <div className="grid grid-cols-4 gap-4 mb-7">
-              <KpiCard icon={<TrendingUp      className="w-5 h-5" />} label="Total Revenue"   value={`${(totalAllTime + available + 26836).toLocaleString()} TND`} sub="all time"                  color="var(--p)"      />
-              <KpiCard icon={<ArrowDownToLine className="w-5 h-5" />} label="Available"       value={`${available} TND`}                                           sub="ready to withdraw"         color="#16a34a"       />
-              <KpiCard icon={<Clock          className="w-5 h-5" />}  label="Pending"         value={`${pending} TND`}                                             sub="being processed"           color="var(--orange)" />
-              <KpiCard icon={<CheckCircle2   className="w-5 h-5" />}  label="Total Paid Out"  value={`${totalPaid.toLocaleString()} TND`}                          sub={`${PAYOUT_HISTORY.filter(p=>p.status==='paid').length} payouts`} color="var(--cyan)" />
+              <KpiCard icon={<TrendingUp      className="w-5 h-5" />} label={lang === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue'}  value={`${(totalAllTime + available + 26836).toLocaleString()} TND`} sub={lang === 'ar' ? 'منذ البداية'          : 'all time'}                                                                               color="var(--p)"      />
+              <KpiCard icon={<ArrowDownToLine className="w-5 h-5" />} label={lang === 'ar' ? 'متاح للسحب'      : 'Available'}       value={`${available} TND`}                                           sub={lang === 'ar' ? 'جاهز للسحب'           : 'ready to withdraw'}                                                                        color="#16a34a"       />
+              <KpiCard icon={<Clock          className="w-5 h-5" />}  label={lang === 'ar' ? 'قيد المعالجة'    : 'Pending'}         value={`${pending} TND`}                                             sub={lang === 'ar' ? 'قيد المعالجة'          : 'being processed'}                                                                          color="var(--orange)" />
+              <KpiCard icon={<CheckCircle2   className="w-5 h-5" />}  label={lang === 'ar' ? 'إجمالي المدفوع'  : 'Total Paid Out'}  value={`${totalPaid.toLocaleString()} TND`}                          sub={`${PAYOUT_HISTORY.filter(p=>p.status==='paid').length} ${lang === 'ar' ? 'دفعة' : 'payouts'}`}                                            color="var(--cyan)"   />
             </div>
 
             {/* Available balance banner */}
@@ -379,15 +389,15 @@ export default function PayoutsPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-[14px] font-bold" style={{ color: '#16a34a' }}>
-                    {available} TND available for withdrawal
+                    {available} TND {lang === 'ar' ? 'متاح للسحب' : 'available for withdrawal'}
                   </p>
                   <p className="text-[12px] mt-0.5" style={{ color: 'var(--t3)' }}>
-                    Next automatic payout on April 14, 2026 · {bankInfo.method === 'stripe' ? 'Stripe' : bankInfo.bankName}
+                    {lang === 'ar' ? 'الدفعة التلقائية القادمة في 14 أبريل 2026 ·' : 'Next automatic payout on April 14, 2026 ·'} {bankInfo.method === 'stripe' ? 'Stripe' : bankInfo.bankName}
                   </p>
                 </div>
                 <button className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90"
                   style={{ background: '#16a34a' }}>
-                  <ArrowDownToLine className="w-3.5 h-3.5" strokeWidth={1.7} /> Request Now
+                  <ArrowDownToLine className="w-3.5 h-3.5" strokeWidth={1.7} /> {lang === 'ar' ? 'طلب الآن' : 'Request Now'}
                 </button>
               </div>
             )}
@@ -396,9 +406,9 @@ export default function PayoutsPage() {
               {/* left: payout method */}
               <div className="col-span-2 space-y-5">
                 {editing || !bankInfo.method ? (
-                  <ConnectForm current={bankInfo} onSave={save} onCancel={() => { if (bankInfo.method) setEditing(false) }} />
+                  <ConnectForm current={bankInfo} onSave={save} onCancel={() => { if (bankInfo.method) setEditing(false) }} lang={lang} />
                 ) : (
-                  <ConnectedCard info={bankInfo} onEdit={() => setEditing(true)} />
+                  <ConnectedCard info={bankInfo} onEdit={() => setEditing(true)} lang={lang} />
                 )}
 
                 {/* no method notice */}
@@ -407,7 +417,7 @@ export default function PayoutsPage() {
                     style={{ background: 'rgba(251,146,60,.08)', border: '1px solid rgba(251,146,60,.25)' }}>
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--orange)' }} strokeWidth={1.7} />
                     <p className="text-[12px]" style={{ color: 'var(--orange)' }}>
-                      Connect a payout method to start receiving your earnings.
+                      {lang === 'ar' ? 'قم بربط طريقة دفع لبدء استلام أرباحك.' : 'Connect a payout method to start receiving your earnings.'}
                     </p>
                   </div>
                 )}
@@ -418,27 +428,41 @@ export default function PayoutsPage() {
                 <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                   <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--bd)' }}>
                     <div>
-                      <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Payout History</p>
-                      <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{PAYOUT_HISTORY.length} payouts</p>
+                      <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'سجل المدفوعات' : 'Payout History'}</p>
+                      <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{PAYOUT_HISTORY.length} {lang === 'ar' ? 'دفعة' : 'payouts'}</p>
                     </div>
                     <p className="text-[13px] font-bold" style={{ color: '#16a34a' }}>
-                      {totalPaid.toLocaleString()} TND paid
+                      {totalPaid.toLocaleString()} TND {lang === 'ar' ? 'مدفوع' : 'paid'}
                     </p>
                   </div>
 
                   {/* table header */}
                   <div className="grid px-5 py-2.5"
                     style={{ gridTemplateColumns: '1fr 90px 80px 90px 120px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)' }}>
-                    {['Reference', 'Amount', 'Status', 'Method', 'Date'].map(h => (
+                    {([
+                      lang === 'ar' ? 'المرجع'  : 'Reference',
+                      lang === 'ar' ? 'المبلغ'  : 'Amount',
+                      lang === 'ar' ? 'الحالة'  : 'Status',
+                      lang === 'ar' ? 'الوسيلة' : 'Method',
+                      lang === 'ar' ? 'التاريخ' : 'Date',
+                    ] as string[]).map(h => (
                       <p key={h} className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>{h}</p>
                     ))}
                   </div>
 
-                  {PAYOUT_HISTORY.map((p, i) => {
+                  {PAYOUT_HISTORY.length === 0 ? (
+                    <div className="flex flex-col items-center py-16 gap-3 text-center">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--p2)' }}>
+                        <DollarSign className="w-7 h-7" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+                      </div>
+                      <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'لا توجد مدفوعات بعد' : 'No payouts yet'}</p>
+                      <p className="text-[12px]" style={{ color: 'var(--t2)' }}>{lang === 'ar' ? 'ستظهر سجلات المدفوعات هنا' : 'Your payout history will appear here'}</p>
+                    </div>
+                  ) : PAYOUT_HISTORY.map((p, i) => {
                     const st = STATUS_META[p.status]
                     return (
                       <div key={p.id}
-                        className="grid items-center px-5 py-3.5 transition-colors"
+                        className="grid items-center px-5 py-3.5 transition-colors cursor-pointer"
                         style={{ gridTemplateColumns: '1fr 90px 80px 90px 120px', borderBottom: i < PAYOUT_HISTORY.length - 1 ? '1px solid var(--bd)' : 'none' }}
                         onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg)'}
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
@@ -446,7 +470,7 @@ export default function PayoutsPage() {
                         <p className="text-[13px] font-bold" style={{ color: '#16a34a' }}>{p.amount.toLocaleString()} TND</p>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border w-fit"
                           style={{ background: st.bg, color: st.color, borderColor: st.border }}>
-                          {st.label}
+                          {lang === 'ar' ? st.labelAr : st.label}
                         </span>
                         <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{p.method}</p>
                         <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{p.date}</p>
