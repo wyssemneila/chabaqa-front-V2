@@ -44,7 +44,7 @@ export default function DashOnboarding() {
               color:           step.done ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,.7)',
               textDecoration:  step.done ? 'line-through' : 'none',
             }}>
-            <span className="w-4 h-4 rounded-full border flex items-center justify-center text-[9px] shrink-0"
+            <span className="w-4 h-4 rounded-full border flex items-center justify-center text-[11px] shrink-0"
               style={{
                 background:  step.done ? '#4ade80' : 'transparent',
                 borderColor: step.done ? '#4ade80' : 'rgba(255,255,255,.3)',

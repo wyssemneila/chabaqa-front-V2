@@ -85,10 +85,10 @@ export default function EventsPage() {
       <div className="flex min-h-screen" style={{ background:'var(--bg)' }}>
         <DashSidebar />
 
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title={T.title} subtitle={T.subtitle} />
 
-          <main className="p-7 flex-1" style={{ animation:'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1" style={{ animation:'dashFadeUp .4s ease both' }}>
 
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-6">
@@ -96,7 +96,7 @@ export default function EventsPage() {
                 {events.length} {lang==='ar'?'فعالية':'event'}{events.length!==1&&lang==='en'?'s':''}
               </p>
               <button onClick={() => router.push('/creator/events/create')}
-                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[13px] font-bold text-white
                            cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ background:'var(--p)' }}>
                 <Plus className="w-4 h-4" strokeWidth={1.7} /> {T.create}
@@ -149,7 +149,7 @@ export default function EventsPage() {
                       <div className="w-[140px] shrink-0 relative"
                         style={{ background: ev.coverPreview ? 'transparent' : 'linear-gradient(135deg,var(--p) 0%,#6c52f0 100%)' }}>
                         {ev.coverPreview
-                          ? <img src={ev.coverPreview} alt="" className="w-full h-full object-cover" />
+                          ? <img src={ev.coverPreview} alt="Event cover" loading="lazy" className="w-full h-full object-cover" />
                           : <div className="absolute inset-0 flex items-center justify-center">
                               <Calendar className="w-8 h-8 text-white opacity-40" strokeWidth={1.7} />
                             </div>
@@ -163,7 +163,7 @@ export default function EventsPage() {
                             <div className="flex items-center gap-2 flex-wrap mb-0.5">
                               <p className="text-[14px] font-bold truncate" style={{ color:'var(--t1)' }}>{ev.title}</p>
                               {/* Status badge */}
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
                                 style={{ background:stStatus.bg, color:stStatus.color, borderColor:stStatus.border }}>
                                 {ev.status==='published'?T.published:T.draft}
                               </span>
@@ -174,11 +174,13 @@ export default function EventsPage() {
                           {/* Actions */}
                           <div className="flex gap-1 shrink-0">
                             <button onClick={() => router.push(`/creator/events/${ev.id}/edit`)}
+                              aria-label="Edit event"
                               className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity"
                               style={{ background:'var(--bg)', color:'var(--t3)' }}>
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => deleteEvent(ev.id)}
+                              aria-label="Delete event"
                               className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity"
                               style={{ background:'rgba(239,68,68,.08)', color:'#ef4444' }}>
                               <Trash2 className="w-3.5 h-3.5" />
@@ -189,7 +191,7 @@ export default function EventsPage() {
                         {/* Meta chips */}
                         <div className="mt-2.5 flex items-center gap-2 flex-wrap">
                           {/* Format */}
-                          <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                          <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
                             style={{ background:fmtColor.bg, color:fmtColor.color }}>
                             <FormatIcon className="w-2.5 h-2.5" strokeWidth={1.7} />
                             {formatLabel[ev.format]}
@@ -203,7 +205,7 @@ export default function EventsPage() {
                           )}
                           {/* Category */}
                           {ev.category && (
-                            <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                            <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
                               style={{ background:'var(--p2)', color:'var(--p)' }}>
                               <Tag className="w-2.5 h-2.5" strokeWidth={1.7} />
                               {ev.category}

@@ -1,6 +1,5 @@
 "use client"
 
-import confetti from "canvas-confetti"
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -96,7 +95,7 @@ function Sidebar({ step, data, done }: { step: number; data: FormData; done: Set
           style={{ background: "var(--bg)", border: "1.5px dashed var(--bd)" }}
         >
           {data.thumbnail
-            ? <img src={data.thumbnail} alt="" className="w-full h-full object-cover" />
+            ? <img src={data.thumbnail} alt="Course thumbnail preview" loading="lazy" className="w-full h-full object-cover" />
             : <div className="flex flex-col items-center gap-1 opacity-40">
                 <ImageIcon className="w-6 h-6" style={{ color: "var(--t3)" }} />
                 <span className="text-[10px]" style={{ color: "var(--t3)" }}>No thumbnail</span>
@@ -270,7 +269,7 @@ function ThumbnailUpload({ value, onChange }: { value: string; onChange: (url: s
           onMouseLeave={() => setHovered(false)}
           onClick={() => inputRef.current?.click()}
         >
-          <img src={value} alt="Thumbnail preview" className="w-full aspect-video object-cover block" />
+          <img src={value} alt="Course thumbnail preview" loading="lazy" className="w-full aspect-video object-cover block" />
           {hovered && (
             <div
               className="absolute inset-0 flex items-center justify-center"
@@ -971,19 +970,23 @@ const STEP_META: Record<number, { title: string; sub: string }> = {
 
 function SuccessScreen() {
   useEffect(() => {
-    const colors = ["#8e78fb", "#fb923c", "#22d3ee", "#f472b6", "#a78bfa", "#ffffff"]
-    const defaults = { startVelocity: 30, spread: 360, ticks: 80, zIndex: 9999, colors }
-    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min
-    const duration = 3500
-    const end = Date.now() + duration
+    let interval: ReturnType<typeof setInterval>
+    ;(async () => {
+      const confetti = (await import('canvas-confetti')).default
+      const colors = ["#8e78fb", "#fb923c", "#22d3ee", "#f472b6", "#a78bfa", "#ffffff"]
+      const defaults = { startVelocity: 30, spread: 360, ticks: 80, zIndex: 9999, colors }
+      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min
+      const duration = 3500
+      const end = Date.now() + duration
 
-    const interval = window.setInterval(() => {
-      const timeLeft = end - Date.now()
-      if (timeLeft <= 0) return clearInterval(interval)
-      const particleCount = 60 * (timeLeft / duration)
-      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } })
-      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } })
-    }, 250)
+      interval = window.setInterval(() => {
+        const timeLeft = end - Date.now()
+        if (timeLeft <= 0) return clearInterval(interval)
+        const particleCount = 60 * (timeLeft / duration)
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } })
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } })
+      }, 250)
+    })()
 
     return () => clearInterval(interval)
   }, [])

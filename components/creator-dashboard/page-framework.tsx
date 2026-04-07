@@ -94,7 +94,7 @@ export function ActionBar({ searchValue, onSearchChange, searchPlaceholder = "Se
             {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5">
                 {tab.label}
-                {tab.count !== undefined && tab.count > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{tab.count}</Badge>}
+                {tab.count !== undefined && tab.count > 0 && <Badge variant="secondary" className="text-[11px] px-1.5 py-0">{tab.count}</Badge>}
               </TabsTrigger>
             ))}
           </TabsList>

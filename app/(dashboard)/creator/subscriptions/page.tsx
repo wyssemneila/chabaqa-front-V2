@@ -134,7 +134,7 @@ function SubRow({ sub, idx, lang }: { sub: Subscription; idx: number; lang: stri
       </p>
 
       {/* status */}
-      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border w-fit"
+      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border w-fit"
         style={{ background: st.bg, color: st.color, borderColor: st.border }}>
         {lang === 'ar' ? STATUS_LABELS_AR[sub.status] : st.label}
       </span>
@@ -143,7 +143,7 @@ function SubRow({ sub, idx, lang }: { sub: Subscription; idx: number; lang: stri
       <div>
         <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{lang === 'ar' ? 'منذ' : 'Since'} {sub.startDate}</p>
         {sub.renewalDate && (
-          <p className="text-[10px]" style={{ color: 'var(--t3)' }}>{lang === 'ar' ? 'يتجدد' : 'Renews'} {sub.renewalDate}</p>
+          <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{lang === 'ar' ? 'يتجدد' : 'Renews'} {sub.renewalDate}</p>
         )}
       </div>
 
@@ -185,16 +185,16 @@ export default function SubscriptionsPage() {
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar
             title={lang === 'ar' ? 'الاشتراكات' : 'Subscriptions'}
             subtitle={lang === 'ar' ? 'تتبع كل مشترك ودفعة وتجديد' : 'Track every subscriber, payment and renewal'}
           />
 
-          <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* KPIs */}
-            <div className="grid grid-cols-4 gap-4 mb-7">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
               <KpiCard icon={<RefreshCw   className="w-5 h-5" />} label={lang === 'ar' ? 'الإيرادات الشهرية'  : 'Monthly Recurring'}   value={`${mrr} TND`}       sub={lang === 'ar' ? 'من الخطط النشطة'               : 'MRR from active plans'}                                                              color="var(--p)"      />
               <KpiCard icon={<Users       className="w-5 h-5" />} label={lang === 'ar' ? 'المشتركون النشطون' : 'Active Subscribers'}   value={String(totalSubs)}  sub={`${SEED.filter(s=>s.status==='cancelled').length} ${lang === 'ar' ? 'ملغى' : 'cancelled'}`}                                                color="var(--cyan)"   />
               <KpiCard icon={<DollarSign  className="w-5 h-5" />} label={lang === 'ar' ? 'إجمالي المحصّل'    : 'Total Collected'}      value={`${totalRev} TND`}  sub={lang === 'ar' ? 'منذ البداية'                   : 'all time'}                                                                          color="#16a34a"       />
@@ -216,7 +216,7 @@ export default function SubscriptionsPage() {
                       className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[12px] font-semibold cursor-pointer transition-all"
                       style={tab === t ? { background: 'var(--p)', color: '#fff' } : { color: 'var(--t3)' }}>
                       {tabLabel[t]}
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                      <span className="text-[11px] px-1.5 py-0.5 rounded-full"
                         style={tab === t ? { background: 'rgba(255,255,255,.25)', color: '#fff' } : { background: 'var(--bg)', color: 'var(--t3)' }}>
                         {tabCount(t)}
                       </span>
@@ -254,7 +254,7 @@ export default function SubscriptionsPage() {
                   lang === 'ar' ? 'التواريخ' : 'Dates',
                   lang === 'ar' ? 'الدفع'    : 'Payment',
                 ] as string[]).map(h => (
-                  <p key={h} className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>{h}</p>
+                  <p key={h} className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>{h}</p>
                 ))}
               </div>
 

@@ -113,10 +113,10 @@ export default function ManageCoursePage() {
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title="Manage Course" subtitle="Edit course info, settings & visibility" />
 
-          <main className="p-7 flex-1 max-w-3xl" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1 max-w-3xl" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* breadcrumb */}
             <div className="flex items-center gap-2 mb-6">
@@ -152,12 +152,12 @@ export default function ManageCoursePage() {
                 <Section title="Basic Info" sub="Course title and description">
                   <div className="space-y-4">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--t3)' }}>Title</p>
+                      <p className="text-[11px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--t3)' }}>Title</p>
                       <Input value={title} onChange={e => setTitle(e.target.value)}
                         placeholder="Course title" className={inp} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--t3)' }}>Description</p>
+                      <p className="text-[11px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--t3)' }}>Description</p>
                       <Textarea value={description} onChange={e => setDescription(e.target.value)}
                         rows={4} placeholder="Course description"
                         className="w-full px-4 py-3 rounded-xl border-2 text-sm resize-none focus:outline-none focus:ring-0 transition-colors"
@@ -202,7 +202,7 @@ export default function ManageCoursePage() {
                   <div className="space-y-5">
                     {/* level */}
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--t3)' }}>Difficulty Level</p>
+                      <p className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--t3)' }}>Difficulty Level</p>
                       <div className="grid grid-cols-3 gap-3">
                         {LEVELS.map(lvl => {
                           const on = level === lvl.id
@@ -226,7 +226,7 @@ export default function ManageCoursePage() {
                     {/* duration + pricing */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--t3)' }}>Duration (hours)</p>
+                        <p className="text-[11px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--t3)' }}>Duration (hours)</p>
                         <div className="relative">
                           <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--t3)' }} />
                           <Input type="number" min={1} value={duration || ''}
@@ -235,7 +235,7 @@ export default function ManageCoursePage() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--t3)' }}>Pricing</p>
+                        <p className="text-[11px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--t3)' }}>Pricing</p>
                         <Select value={priceType} onValueChange={v => setPriceType(v as 'free' | 'paid')}>
                           <SelectTrigger className={inp} style={{ height: 44 }}>
                             <SelectValue />
@@ -250,7 +250,7 @@ export default function ManageCoursePage() {
 
                     {priceType === 'paid' && (
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--t3)' }}>Price (TND)</p>
+                        <p className="text-[11px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--t3)' }}>Price (TND)</p>
                         <Input type="number" min={1} step={0.5} value={price || ''}
                           onChange={e => setPrice(parseFloat(e.target.value) || 0)}
                           className={inp} />

@@ -42,7 +42,7 @@ export default function DashRecentActivity() {
             <div className="w-2 h-2 rounded-full mt-[5px] shrink-0"
               style={{ background: dotColor[item.type] }} />
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[.05em] mb-0.5"
+              <p className="text-[11px] font-semibold uppercase tracking-[.05em] mb-0.5"
                 style={{ color: typeColor[item.type] }}>
                 {lang === 'ar' ? (TYPE_LABEL_AR[item.type] ?? item.label) : item.label}
               </p>

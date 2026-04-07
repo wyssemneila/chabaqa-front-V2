@@ -227,7 +227,7 @@ function ConversationsView({ lang }: { lang: string }) {
           <div className="flex items-center justify-between mb-3">
             <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>
               {lang === 'ar' ? 'البريد الوارد' : 'Inbox'} {totalUnread > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white"
+                <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[11px] font-bold text-white"
                   style={{ background: 'var(--p)' }}>{totalUnread}</span>
               )}
             </p>
@@ -261,12 +261,12 @@ function ConversationsView({ lang }: { lang: string }) {
                   <p className="text-[12px] font-semibold truncate" style={{ color: selected === c.id ? 'var(--p)' : 'var(--t1)' }}>
                     {c.member.name}
                   </p>
-                  <p className="text-[10px] shrink-0 ml-1" style={{ color: 'var(--t3)' }}>{c.lastTime}</p>
+                  <p className="text-[11px] shrink-0 ml-1" style={{ color: 'var(--t3)' }}>{c.lastTime}</p>
                 </div>
                 <div className="flex items-center justify-between mt-0.5">
                   <p className="text-[11px] truncate" style={{ color: 'var(--t3)' }}>{c.lastMessage}</p>
                   {c.unread > 0 && (
-                    <span className="ml-1 shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                    <span className="ml-1 shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
                       style={{ background: 'var(--p)' }}>{c.unread}</span>
                   )}
                 </div>
@@ -300,7 +300,7 @@ function ConversationsView({ lang }: { lang: string }) {
             {thread.messages.map(msg => (
               <div key={msg.id} className={`flex ${msg.from === 'creator' ? 'justify-end' : 'justify-start'}`}>
                 {msg.from === 'member' && (
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 mr-2 mt-0.5"
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 mr-2 mt-0.5"
                     style={{ background: thread.member.color }}>
                     {thread.member.initials[0]}
                   </div>
@@ -312,7 +312,7 @@ function ConversationsView({ lang }: { lang: string }) {
                       : { background: 'var(--bg)', color: 'var(--t1)', border: '1px solid var(--bd)', borderBottomLeftRadius: 4 }}>
                     {msg.text}
                   </div>
-                  <p className={`text-[10px] mt-1 ${msg.from === 'creator' ? 'text-right' : 'text-left'}`}
+                  <p className={`text-[11px] mt-1 ${msg.from === 'creator' ? 'text-right' : 'text-left'}`}
                     style={{ color: 'var(--t3)' }}>
                     {msg.time}{msg.from === 'creator' && <Check className="inline w-3 h-3 ml-1" strokeWidth={1.7} />}
                   </p>
@@ -400,7 +400,7 @@ function BroadcastsView({ lang }: { lang: string }) {
               </div>
               <div className="text-center">
                 <p className="text-[11px] font-semibold" style={{ color: segment === s.id ? s.color : 'var(--t1)' }}>{s.label}</p>
-                <p className="text-[10px]" style={{ color: 'var(--t3)' }}>{s.sub}</p>
+                <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{s.sub}</p>
               </div>
             </button>
           ))}
@@ -462,7 +462,7 @@ function BroadcastsView({ lang }: { lang: string }) {
             </div>
             <div className="shrink-0 text-right">
               <p className="text-[12px] font-bold" style={{ color: 'var(--p)' }}>{b.sent.toLocaleString()}</p>
-              <p className="text-[10px]" style={{ color: 'var(--t3)' }}>sent · {b.time}</p>
+              <p className="text-[11px]" style={{ color: 'var(--t3)' }}>sent · {b.time}</p>
             </div>
           </div>
         ))}
@@ -561,7 +561,7 @@ function AutomationsView({ lang }: { lang: string }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>{rule.triggerLabel}</p>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold"
                     style={rule.active
                       ? { background: 'rgba(74,222,128,.12)', color: '#16a34a' }
                       : { background: 'var(--bg)',            color: 'var(--t3)' }}>
@@ -574,7 +574,7 @@ function AutomationsView({ lang }: { lang: string }) {
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-[14px] font-bold" style={{ color: 'var(--p)' }}>{rule.sent.toLocaleString()}</p>
-                <p className="text-[10px]" style={{ color: 'var(--t3)' }}>{lang === 'ar' ? 'رسالة مرسلة' : 'messages sent'}</p>
+                <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{lang === 'ar' ? 'رسالة مرسلة' : 'messages sent'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--bd)' }}>
@@ -692,10 +692,10 @@ export default function MessagesPage() {
       `}</style>
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title="Messages" subtitle="Conversations, broadcasts and automated DMs" />
 
-          <main className="p-7 flex-1 flex flex-col" style={{ animation: 'fadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1 flex flex-col" style={{ animation: 'fadeUp .4s ease both' }}>
             {/* View toggle */}
             <div className="flex items-center gap-1 p-1 rounded-2xl mb-5 w-fit"
               style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>

@@ -222,8 +222,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         remember_me: Boolean(payload.rememberMe),
       }
 
-      console.log(`Attempting login to: ${apiBase}/auth/login`);
-
       let res;
       try {
         res = await fetch(`${apiBase}/auth/login`, {

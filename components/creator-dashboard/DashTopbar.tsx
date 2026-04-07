@@ -21,7 +21,8 @@ export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
 
         {/* Home — landing page */}
         <Link href="/"
-          title="Go to landing page"
+          aria-label="Go to home page"
+          title="Go to home page"
           className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:opacity-80"
           style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t2)' }}>
           <Home className="w-3.5 h-3.5" strokeWidth={1.7} />
@@ -38,7 +39,8 @@ export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
         {/* AR / EN toggle */}
         <button
           onClick={toggleLang}
-          title={lang === 'en' ? 'Switch to Arabic' : 'التبديل إلى الإنجليزية'}
+          aria-label="Toggle language"
+          title="Toggle language"
           className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-bold cursor-pointer transition-all hover:opacity-80"
           style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t2)' }}>
           <Languages className="w-3.5 h-3.5" />
@@ -48,7 +50,8 @@ export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
         {/* dark mode toggle */}
         <button
           onClick={toggleDark}
-          title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label="Toggle dark mode"
+          title="Toggle dark mode"
           className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all hover:opacity-80"
           style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t2)' }}>
           {dark

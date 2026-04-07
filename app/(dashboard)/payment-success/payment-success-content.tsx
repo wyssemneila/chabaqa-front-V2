@@ -378,7 +378,7 @@ export default function PaymentSuccessContent() {
     <div className="min-h-screen bg-white flex flex-col">
       <Header />
 
-      <main className="flex-1 flex items-center justify-center py-12">
+      <main id="main-content" className="flex-1 flex items-center justify-center py-12">
         <div className="max-w-md w-full px-6">
           {loading ? (
             <div className="text-center">

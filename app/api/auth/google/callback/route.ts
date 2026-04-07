@@ -213,7 +213,7 @@ export async function GET(request: NextRequest) {
               
               if (!token) {
                 document.getElementById('spinner').style.display = 'none';
-                document.getElementById('status').innerHTML = '<span class="error">Session expired. Please close this window and try again.</span>';
+                document.getElementById('status').textContent = 'Session expired. Please close this window and try again.';
                 localStorage.removeItem('google_calendar_oauth_pending');
                 
                 setTimeout(() => {
@@ -259,7 +259,7 @@ export async function GET(request: NextRequest) {
                   console.error('[Google Callback Client] Error:', errorData);
                   
                   document.getElementById('spinner').style.display = 'none';
-                  document.getElementById('status').innerHTML = '<span class="error">' + (errorData.message || 'Failed to connect') + '</span>';
+                  document.getElementById('status').textContent = errorData.message || 'Failed to connect';
                   localStorage.removeItem('google_calendar_oauth_pending');
                   localStorage.removeItem('google_calendar_oauth_token');
                   
@@ -277,7 +277,7 @@ export async function GET(request: NextRequest) {
                 console.error('[Google Callback Client] Exception:', err);
                 
                 document.getElementById('spinner').style.display = 'none';
-                document.getElementById('status').innerHTML = '<span class="error">Connection failed. Please try again.</span>';
+                document.getElementById('status').textContent = 'Connection failed. Please try again.';
                 localStorage.removeItem('google_calendar_oauth_pending');
                 localStorage.removeItem('google_calendar_oauth_token');
                 

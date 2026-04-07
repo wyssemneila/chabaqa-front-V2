@@ -1,6 +1,5 @@
 "use client"
 
-import confetti from "canvas-confetti"
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -147,7 +146,7 @@ function ThumbnailUpload({ value, onChange }: { value:string; onChange:(url:stri
           style={{ border:"2px solid var(--bd)" }}
           onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
           onClick={() => ref.current?.click()}>
-          <img src={value} alt="" className="w-full aspect-video object-cover block" />
+          <img src={value} alt="Product thumbnail preview" loading="lazy" className="w-full aspect-video object-cover block" />
           {hovered && (
             <div className="absolute inset-0 flex items-center justify-center" style={{ background:"rgba(0,0,0,.55)" }}>
               <button type="button" className="px-5 py-2 rounded-full text-sm font-bold cursor-pointer"
@@ -177,7 +176,7 @@ function Sidebar({ wizardStep, data, done }: { wizardStep:number; data:FormData;
         <div className="w-full aspect-video rounded-xl overflow-hidden flex items-center justify-center mb-3"
           style={{ background:"var(--bg)", border:"1.5px dashed var(--bd)" }}>
           {data.thumbnail
-            ? <img src={data.thumbnail} alt="" className="w-full h-full object-cover" />
+            ? <img src={data.thumbnail} alt="Product thumbnail preview" loading="lazy" className="w-full h-full object-cover" />
             : <div className="flex flex-col items-center gap-1 opacity-40">
                 <Package className="w-6 h-6" style={{ color:"var(--t3)" }} />
                 <span className="text-[10px]" style={{ color:"var(--t3)" }}>No cover</span>
@@ -418,7 +417,7 @@ function StepFiles({ data, set }: { data:FormData; set:(f:keyof FormData, v:any)
             {data.previewImages.map((src, i) => (
               <div key={i} className="relative group rounded-xl overflow-hidden aspect-video"
                 style={{ background:"var(--bg)" }}>
-                <img src={src} alt="" className="w-full h-full object-cover" />
+                <img src={src} alt="Product thumbnail preview" loading="lazy" className="w-full h-full object-cover" />
                 <button type="button" onClick={() => removePreview(i)}
                   className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center
                              opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -754,17 +753,21 @@ function StepPricing({ data, set }: { data:FormData; set:(f:keyof FormData, v:an
 // ════════════════════════════════════════════════════════════════════════════════
 function SuccessScreen() {
   useEffect(() => {
-    const colors   = ["#8e78fb","#fb923c","#22d3ee","#f472b6","#a78bfa","#ffffff"]
-    const defaults = { startVelocity:30, spread:360, ticks:80, zIndex:9999, colors }
-    const rand     = (a:number, b:number) => Math.random()*(b-a)+a
-    const end      = Date.now() + 3500
-    const iv       = window.setInterval(() => {
-      const left = end - Date.now()
-      if (left<=0) return clearInterval(iv)
-      const n = 60*(left/3500)
-      confetti({ ...defaults, particleCount:n, origin:{ x:rand(.1,.3), y:Math.random()-.2 } })
-      confetti({ ...defaults, particleCount:n, origin:{ x:rand(.7,.9), y:Math.random()-.2 } })
-    }, 250)
+    let iv: ReturnType<typeof setInterval>
+    ;(async () => {
+      const confetti = (await import('canvas-confetti')).default
+      const colors   = ["#8e78fb","#fb923c","#22d3ee","#f472b6","#a78bfa","#ffffff"]
+      const defaults = { startVelocity:30, spread:360, ticks:80, zIndex:9999, colors }
+      const rand     = (a:number, b:number) => Math.random()*(b-a)+a
+      const end      = Date.now() + 3500
+      iv             = window.setInterval(() => {
+        const left = end - Date.now()
+        if (left<=0) return clearInterval(iv)
+        const n = 60*(left/3500)
+        confetti({ ...defaults, particleCount:n, origin:{ x:rand(.1,.3), y:Math.random()-.2 } })
+        confetti({ ...defaults, particleCount:n, origin:{ x:rand(.7,.9), y:Math.random()-.2 } })
+      }, 250)
+    })()
     return () => clearInterval(iv)
   }, [])
   return (

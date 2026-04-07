@@ -212,7 +212,7 @@ export default function SignInForm({ onSuccess }: { onSuccess?: () => void } = {
           <input
             type="checkbox" id="si-remember" checked={rememberMe} disabled={loading}
             onChange={e => setRememberMe(e.target.checked)}
-            className="w-4 h-4 rounded cursor-pointer accent-[#8e78fb]"
+            className="w-5 h-5 rounded cursor-pointer accent-[#8e78fb]"
           />
           <label htmlFor="si-remember" className="text-[13px] cursor-pointer" style={{ color: "var(--t2,#6b7280)" }}>
             {t("rememberMe")}

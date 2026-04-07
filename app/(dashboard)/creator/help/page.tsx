@@ -122,7 +122,7 @@ function filterFaqs(items: typeof FAQS, q: string) {
 function CategoryBadge({ category }: { category: string }) {
   const color = CATEGORY_COLORS[category] ?? 'var(--p)'
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold"
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
       style={{ background: color + '18', color }}>
       {category}
     </span>
@@ -285,10 +285,10 @@ export default function HelpPage() {
       `}</style>
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title="Help & Support" subtitle="Guides, tutorials, FAQs and resources" />
 
-          <main className="p-7 flex-1" style={{ animation: 'fadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1" style={{ animation: 'fadeUp .4s ease both' }}>
 
             {/* ── Search bar ── */}
             <div className="relative mb-7 max-w-2xl">
@@ -372,7 +372,7 @@ export default function HelpPage() {
                     : { color: 'var(--t3)' }}>
                   {t.icon}
                   {t.label}
-                  <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px]"
+                  <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[11px]"
                     style={{
                       background: tab === t.id ? 'rgba(255,255,255,.25)' : 'var(--bg)',
                       color: tab === t.id ? '#fff' : 'var(--t3)',

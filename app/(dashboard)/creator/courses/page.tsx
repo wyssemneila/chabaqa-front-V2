@@ -128,10 +128,10 @@ export default function CoursesPage() {
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title={t.pageTitle} subtitle={t.pageSub} />
 
-          <main className="p-7 flex-1 space-y-6" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1 space-y-6" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* ── HEADER ── */}
             <div className="flex items-center justify-between">
@@ -158,7 +158,7 @@ export default function CoursesPage() {
             </div>
 
             {/* ── STATS ROW ── */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {STATS.map(s => (
                 <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4"
                   style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 2px 8px rgba(0,0,0,.03)' }}>
@@ -187,7 +187,7 @@ export default function CoursesPage() {
                         color:      tab === t.key ? '#fff'     : 'var(--t3)',
                       }}>
                       {t.label}
-                      <span className="text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold"
+                      <span className="text-[11px] w-5 h-5 rounded-full flex items-center justify-center font-bold"
                         style={{
                           background: tab === t.key ? 'rgba(255,255,255,.25)' : 'var(--bg)',
                           color: tab === t.key ? '#fff' : 'var(--t3)',

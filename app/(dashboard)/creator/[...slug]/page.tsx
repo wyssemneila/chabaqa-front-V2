@@ -125,10 +125,10 @@ export default function ComingSoonPage() {
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title={t.title} subtitle={t.sub} />
 
-          <main className="flex-1 flex flex-col items-center justify-center p-12 text-center"
+          <main id="main-content" className="flex-1 flex flex-col items-center justify-center p-12 text-center"
             style={{ animation: 'dashFadeUp .5s ease both' }}>
 
             <ComingSoonIllustration />

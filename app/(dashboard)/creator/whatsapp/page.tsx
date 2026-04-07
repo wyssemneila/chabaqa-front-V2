@@ -138,7 +138,7 @@ function WaPreview({ message, msgType, caption }: {
           style={{ background: '#128c7e', color: '#fff' }}>Ch</div>
         <div>
           <p className="text-[13px] font-semibold text-white">Motion Masters</p>
-          <p className="text-[10px]" style={{ color: 'rgba(255,255,255,.7)' }}>Business Account</p>
+          <p className="text-[11px]" style={{ color: 'rgba(255,255,255,.7)' }}>Business Account</p>
         </div>
         <Phone className="w-4 h-4 text-white ml-auto" strokeWidth={1.7} />
       </div>
@@ -164,7 +164,7 @@ function WaPreview({ message, msgType, caption }: {
               {message || 'Your message will appear here...'}
             </p>
             <div className="flex items-center justify-end gap-1 mt-1">
-              <p className="text-[10px]" style={{ color: '#777' }}>{now}</p>
+              <p className="text-[11px]" style={{ color: '#777' }}>{now}</p>
               <CheckCheck className="w-3 h-3" style={{ color: '#34b7f1' }} strokeWidth={1.7} />
             </div>
           </div>
@@ -207,9 +207,9 @@ function CampaignCard({ c, onDelete, onPreview, lang = 'en' }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-[14px] font-bold truncate" style={{ color: 'var(--t1)' }}>{c.name}</p>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
               style={{ background: st.bg, color: st.color, borderColor: st.border }}>{st.label}</span>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize"
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize"
               style={{ background: 'var(--bg)', color: 'var(--t3)', border: '1px solid var(--bd)' }}>
               {c.messageType}
             </span>
@@ -250,7 +250,7 @@ function CampaignCard({ c, onDelete, onPreview, lang = 'en' }: {
           ].map(m => (
             <div key={m.label} className="rounded-xl p-3" style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
               <p className="text-[13px] font-bold" style={{ color: m.color }}>{m.value}</p>
-              <p className="text-[10px] mt-0.5 mb-1.5" style={{ color: 'var(--t3)' }}>{m.label}</p>
+              <p className="text-[11px] mt-0.5 mb-1.5" style={{ color: 'var(--t3)' }}>{m.label}</p>
               <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--bd)' }}>
                 <div className="h-full rounded-full" style={{ width: `${m.bar}%`, background: m.color }} />
               </div>
@@ -291,7 +291,7 @@ function AutomationCard({ a, onToggle, onDelete }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{a.name}</p>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border"
             style={a.isActive
               ? { background: 'rgba(74,222,128,.12)', color: '#16a34a', borderColor: 'rgba(74,222,128,.3)' }
               : { background: 'var(--bg)', color: 'var(--t3)', borderColor: 'var(--bd)' }}>
@@ -374,7 +374,7 @@ function CreateCampaignDrawer({ open, onClose, onSave }: {
     <>
       {preview && (
         <>
-          <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm" onClick={() => setPreview(false)} />
+          <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm" onClick={() => setPreview(false)} role="button" tabIndex={-1} aria-label="Close preview" onKeyDown={(e) => e.key === 'Escape' && setPreview(false)} />
           <div className="fixed inset-0 z-[80] flex items-center justify-center p-6 pointer-events-none">
             <div className="pointer-events-auto w-full max-w-[380px]">
               <div className="flex items-center justify-between mb-3 px-1">
@@ -391,7 +391,7 @@ function CreateCampaignDrawer({ open, onClose, onSave }: {
 
       <div className="fixed inset-0 z-40 transition-all duration-300"
         style={{ background: open ? 'rgba(0,0,0,.35)' : 'transparent', backdropFilter: open ? 'blur(2px)' : 'none', pointerEvents: open ? 'auto' : 'none' }}
-        onClick={onClose} />
+        onClick={onClose} role="button" tabIndex={-1} aria-label="Close panel" onKeyDown={(e) => e.key === 'Escape' && onClose()} />
 
       <div className="fixed top-0 right-0 h-full w-[480px] z-50 flex flex-col transition-transform duration-300 ease-out"
         style={{ background: 'var(--white)', borderLeft: '1px solid var(--bd)', transform: open ? 'translateX(0)' : 'translateX(100%)' }}>
@@ -434,7 +434,7 @@ function CreateCampaignDrawer({ open, onClose, onSave }: {
                         className="flex flex-col items-center gap-1.5 py-3 rounded-xl cursor-pointer transition-all"
                         style={sel ? { background: 'rgba(37,211,102,.12)', border: '1.5px solid #25d366' } : { background: 'var(--bg)', border: '1.5px solid var(--bd)' }}>
                         <Icon className="w-4 h-4" style={{ color: sel ? '#25d366' : 'var(--t3)' }} strokeWidth={1.7} />
-                        <p className="text-[10px] font-semibold" style={{ color: sel ? '#25d366' : 'var(--t3)' }}>{t.label}</p>
+                        <p className="text-[11px] font-semibold" style={{ color: sel ? '#25d366' : 'var(--t3)' }}>{t.label}</p>
                       </button>
                     )
                   })}
@@ -587,7 +587,7 @@ function CreateAutoDrawer({ open, onClose, onSave }: {
     <>
       <div className="fixed inset-0 z-40 transition-all duration-300"
         style={{ background: open ? 'rgba(0,0,0,.35)' : 'transparent', backdropFilter: open ? 'blur(2px)' : 'none', pointerEvents: open ? 'auto' : 'none' }}
-        onClick={onClose} />
+        onClick={onClose} role="button" tabIndex={-1} aria-label="Close panel" onKeyDown={(e) => e.key === 'Escape' && onClose()} />
 
       <div className="fixed top-0 right-0 h-full w-[480px] z-50 flex flex-col transition-transform duration-300 ease-out"
         style={{ background: 'var(--white)', borderLeft: '1px solid var(--bd)', transform: open ? 'translateX(0)' : 'translateX(100%)' }}>
@@ -756,7 +756,7 @@ export default function WhatsAppPage() {
 
       {previewCamp && (
         <>
-          <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm" onClick={() => setPreviewCamp(null)} />
+          <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm" onClick={() => setPreviewCamp(null)} role="button" tabIndex={-1} aria-label="Close preview" onKeyDown={(e) => e.key === 'Escape' && setPreviewCamp(null)} />
           <div className="fixed inset-0 z-[80] flex items-center justify-center p-6 pointer-events-none">
             <div className="pointer-events-auto w-full max-w-[380px]">
               <div className="flex items-center justify-between mb-3 px-1">
@@ -773,10 +773,10 @@ export default function WhatsAppPage() {
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title={lang==='ar'?'حملات واتساب':'WhatsApp Campaign'} subtitle={lang==='ar'?'أرسل رسائل جماعية وأتمت تدفقات واتساب':'Broadcast messages and automate WhatsApp flows'} />
 
-          <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* KPIs */}
             <div className="grid grid-cols-4 gap-4 mb-7">
@@ -808,7 +808,7 @@ export default function WhatsAppPage() {
                           className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[12px] font-semibold cursor-pointer transition-all"
                           style={tab === t.id ? { background: '#25d366', color: '#fff' } : { color: 'var(--t3)' }}>
                           {t.label}
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                          <span className="text-[11px] px-1.5 py-0.5 rounded-full"
                             style={tab === t.id ? { background: 'rgba(255,255,255,.25)', color: '#fff' } : { background: 'var(--bg)', color: 'var(--t3)' }}>
                             {cnt}
                           </span>

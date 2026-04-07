@@ -109,7 +109,7 @@ export default function DashYourContent() {
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium truncate mb-1" style={{ color: 'var(--t1)' }}>{item.name}</p>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-[4px]" style={TYPE_STYLE[item.type]}>
+                  <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-[4px]" style={TYPE_STYLE[item.type]}>
                     {t.typeLabel[item.type]}
                   </span>
                   <span className="text-[11px]" style={{ color: 'var(--t3)' }}>

@@ -130,9 +130,9 @@ function AreaChart({
           style={{ left: `${tipPct}%`, top: 0, transform: 'translateX(-50%)', transition: 'left .08s' }}>
           <div className="px-3 py-2 rounded-xl shadow-xl"
             style={{ background: 'var(--t1)', color: 'var(--white)', whiteSpace: 'nowrap', minWidth: 80, textAlign: 'center' }}>
-            <p className="text-[10px] leading-none mb-1.5" style={{ opacity: .6 }}>{labels[hoverIdx]}</p>
+            <p className="text-[11px] leading-none mb-1.5" style={{ opacity: .6 }}>{labels[hoverIdx]}</p>
             <p className="text-[14px] font-bold leading-none">
-              {data[hoverIdx].toLocaleString()}{unit && <span className="text-[10px] font-normal ml-1 opacity-70">{unit}</span>}
+              {data[hoverIdx].toLocaleString()}{unit && <span className="text-[11px] font-normal ml-1 opacity-70">{unit}</span>}
             </p>
           </div>
           <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid var(--t1)' }} />
@@ -178,7 +178,7 @@ function AreaChart({
       {/* x-axis labels */}
       <div className="flex justify-between mt-1 px-0">
         {xTickIdx.map(i => (
-          <p key={i} className="text-[10px]" style={{ color: hoverIdx === i ? color : 'var(--t3)', fontWeight: hoverIdx === i ? 700 : 400, minWidth: 0, transition: 'color .1s' }}>{labels[i]}</p>
+          <p key={i} className="text-[11px]" style={{ color: hoverIdx === i ? color : 'var(--t3)', fontWeight: hoverIdx === i ? 700 : 400, minWidth: 0, transition: 'color .1s' }}>{labels[i]}</p>
         ))}
       </div>
     </div>
@@ -337,10 +337,10 @@ export default function AnalyticsPage() {
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title="Analytics" subtitle="Community, content and revenue insights" />
 
-          <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* ── Filter bar ── */}
             <div className="flex items-center gap-3 mb-6 flex-wrap">
@@ -376,7 +376,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* ── KPI row ── */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <KpiCard icon={<DollarSign className="w-4.5 h-4.5" />}      label="Total Revenue"    value={`${totalRevenue.toLocaleString()} TND`} change={revChange} sub="vs previous period" color="var(--p)" />
               <KpiCard icon={<UserPlus   className="w-4.5 h-4.5" />}      label="New Members"      value={totalMembers.toLocaleString()}           change={memChange} sub="joined this period"  color="var(--cyan)" />
               <KpiCard icon={<BarChart2  className="w-4.5 h-4.5" />}      label="Enrollments"      value={totalEnrollments.toLocaleString()}       change={enrChange} sub="across all content"  color="var(--orange)" />
@@ -384,7 +384,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* ── Main chart row ── */}
-            <div className="grid grid-cols-3 gap-4 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
 
               {/* Revenue chart — 2/3 width */}
               <div className="col-span-2 rounded-2xl p-5" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
@@ -417,7 +417,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* ── Middle row ── */}
-            <div className="grid grid-cols-3 gap-4 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
 
               {/* Revenue by content type */}
               <div className="rounded-2xl p-5" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
@@ -453,7 +453,7 @@ export default function AnalyticsPage() {
                   {MEMBER_SOURCES.map(s => (
                     <div key={s.label} className="flex items-center gap-1.5">
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
-                      <p className="text-[10px]" style={{ color: 'var(--t3)' }}>{s.label} {s.value}%</p>
+                      <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{s.label} {s.value}%</p>
                     </div>
                   ))}
                 </div>
@@ -461,7 +461,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* ── Community health row ── */}
-            <div className="grid grid-cols-4 gap-4 mb-5">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
               {[
                 { label: 'Active Members',    value: '1,087', sub: 'last 30 days',        color: '#16a34a',       icon: <Users className="w-4 h-4" />           },
                 { label: 'Avg. Session Time', value: '18 min', sub: 'per visit',           color: 'var(--p)',      icon: <Eye className="w-4 h-4" />              },
@@ -477,7 +477,7 @@ export default function AnalyticsPage() {
                   <div>
                     <p className="text-[18px] font-bold" style={{ color: s.color }}>{s.value}</p>
                     <p className="text-[11px] font-medium" style={{ color: 'var(--t2)' }}>{s.label}</p>
-                    <p className="text-[10px]" style={{ color: 'var(--t3)' }}>{s.sub}</p>
+                    <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{s.sub}</p>
                   </div>
                 </div>
               ))}
@@ -505,7 +505,7 @@ export default function AnalyticsPage() {
               {/* table header */}
               <div className="grid px-5 py-2.5" style={{ gridTemplateColumns: '2fr 80px 100px 100px 80px 60px', borderBottom: '1px solid var(--bd)', background: 'var(--bg)' }}>
                 {['Content', 'Type', 'Enrollments', 'Revenue', 'Views', 'Rating'].map(h => (
-                  <p key={h} className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>{h}</p>
+                  <p key={h} className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>{h}</p>
                 ))}
               </div>
 
@@ -522,7 +522,7 @@ export default function AnalyticsPage() {
                   </div>
 
                   <div>
-                    <span className="flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-full w-fit capitalize"
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-full w-fit capitalize"
                       style={{ background: TYPE_COLOR[item.type] + '18', color: TYPE_COLOR[item.type] }}>
                       <span style={{ color: TYPE_COLOR[item.type] }}>{TYPE_ICON[item.type]}</span>
                       {item.type}

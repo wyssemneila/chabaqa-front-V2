@@ -292,7 +292,7 @@ function CountryPicker({ value, onChange }: { value: Country | null; onChange: (
           ? <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`https://flagcdn.com/w20/${value.code.toLowerCase()}.png`}
-                width={20} height={15} alt={value.name}
+                width={20} height={15} alt={value.name} loading="lazy"
                 style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />
               <span className="flex-1 text-left">{value.name}</span>
             </>
@@ -326,7 +326,7 @@ function CountryPicker({ value, onChange }: { value: Country | null; onChange: (
                     onClick={() => { onChange(c); setOpen(false); setQuery('') }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`}
-                      width={20} height={15} alt={c.name}
+                      width={20} height={15} alt={c.name} loading="lazy"
                       style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />
                     {c.name}
                     {value?.code === c.code && <Check className="w-3.5 h-3.5 ml-auto" strokeWidth={2} />}
@@ -453,7 +453,7 @@ export default function ProfilePage() {
               <div className="w-[100px] h-[100px] rounded-full overflow-hidden mb-4"
                 style={{ border: '3px solid var(--white)', boxShadow: '0 0 0 2.5px var(--p), 0 4px 16px rgba(0,0,0,.1)' }}>
                 {profile.avatar
-                  ? <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />  // eslint-disable-line @next/next/no-img-element
+                  ? <img src={profile.avatar} alt="Avatar" loading="lazy" className="w-full h-full object-cover" />  // eslint-disable-line @next/next/no-img-element
                   : <div className="w-full h-full flex items-center justify-center text-[34px] font-bold text-white"
                       style={{ background: 'var(--p)' }}>
                       {profile.name.charAt(0).toUpperCase()}
@@ -474,7 +474,7 @@ export default function ProfilePage() {
                   <span className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--t2)' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={`https://flagcdn.com/w20/${profile.location.code.toLowerCase()}.png`}
-                      width={18} height={14} alt={profile.location.name}
+                      width={18} height={14} alt={profile.location.name} loading="lazy"
                       style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />
                     {profile.location.name}
                   </span>
@@ -639,7 +639,7 @@ export default function ProfilePage() {
                       <div className="w-[72px] h-[72px] rounded-full overflow-hidden"
                         style={{ border: '2.5px solid var(--bd)' }}>
                         {draft.avatar
-                          ? <img src={draft.avatar} alt="" className="w-full h-full object-cover" />  // eslint-disable-line @next/next/no-img-element
+                          ? <img src={draft.avatar} alt="Avatar preview" loading="lazy" className="w-full h-full object-cover" />  // eslint-disable-line @next/next/no-img-element
                           : <div className="w-full h-full flex items-center justify-center text-[26px] font-bold text-white"
                               style={{ background: 'var(--p)' }}>
                               {draft.name.charAt(0).toUpperCase()}

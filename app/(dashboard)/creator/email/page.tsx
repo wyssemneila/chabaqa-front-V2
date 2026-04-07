@@ -155,7 +155,7 @@ function PreviewModal({ open, onClose, subject, previewText, body }: {
   if (!open) return null
   return (
     <>
-      <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm" onClick={onClose} role="button" tabIndex={-1} aria-label="Close preview" onKeyDown={(e) => e.key === 'Escape' && onClose()} />
       <div className="fixed inset-0 z-[80] flex items-center justify-center p-6 pointer-events-none">
         <div className="pointer-events-auto w-full flex flex-col" style={{ maxWidth: view === 'mobile' ? '420px' : '680px', maxHeight: '90vh' }}>
 
@@ -274,7 +274,7 @@ function CampaignCard({ c, onDelete, onPreview, lang = 'en' }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-[14px] font-bold truncate" style={{ color: 'var(--t1)' }}>{c.name}</p>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
               style={{ background: st.bg, color: st.color, borderColor: st.border }}>{st.label}</span>
           </div>
           <p className="text-[12px] truncate mt-0.5" style={{ color: 'var(--t2)' }}>{c.subject}</p>
@@ -312,7 +312,7 @@ function CampaignCard({ c, onDelete, onPreview, lang = 'en' }: {
           ].map(m => (
             <div key={m.label} className="rounded-xl p-3" style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
               <p className="text-[13px] font-bold" style={{ color: m.color }}>{m.value}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: 'var(--t3)' }}>{m.label}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>{m.label}</p>
               <StatBar value={m.bar} color={m.color} />
             </div>
           ))}
@@ -359,7 +359,7 @@ function AutomationCard({ a, onToggle, onDelete, lang = 'en' }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-0.5">
           <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{a.name}</p>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border"
             style={a.isActive
               ? { background: 'rgba(74,222,128,.12)', color: '#16a34a', borderColor: 'rgba(74,222,128,.3)' }
               : { background: 'var(--bg)', color: 'var(--t3)', borderColor: 'var(--bd)' }}>
@@ -486,7 +486,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
 
       <div className="fixed inset-0 z-40 transition-all duration-300"
         style={{ background: open ? 'rgba(0,0,0,.35)' : 'transparent', backdropFilter: open ? 'blur(2px)' : 'none', pointerEvents: open ? 'auto' : 'none' }}
-        onClick={onClose} />
+        onClick={onClose} role="button" tabIndex={-1} aria-label="Close panel" onKeyDown={(e) => e.key === 'Escape' && onClose()} />
 
       <div className="fixed top-0 right-0 h-full w-[480px] z-50 flex flex-col transition-transform duration-300 ease-out"
         style={{ background: 'var(--white)', borderLeft: '1px solid var(--bd)', transform: open ? 'translateX(0)' : 'translateX(100%)' }}>
@@ -588,7 +588,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
                       </div>
                       <p className="text-[13px] font-medium flex-1" style={{ color: sel ? 'var(--p)' : 'var(--t2)' }}>{c}</p>
                       {isCustom && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'var(--p2)', color: 'var(--p)' }}>CUSTOM</span>
+                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'var(--p2)', color: 'var(--p)' }}>CUSTOM</span>
                       )}
                       <Users className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
                     </button>
@@ -782,7 +782,7 @@ function CreateAutomationDrawer({ open, onClose, onSave, lang = 'en' }: {
 
       <div className="fixed inset-0 z-40 transition-all duration-300"
         style={{ background: open ? 'rgba(0,0,0,.35)' : 'transparent', backdropFilter: open ? 'blur(2px)' : 'none', pointerEvents: open ? 'auto' : 'none' }}
-        onClick={onClose} />
+        onClick={onClose} role="button" tabIndex={-1} aria-label="Close panel" onKeyDown={(e) => e.key === 'Escape' && onClose()} />
 
       <div className="fixed top-0 right-0 h-full w-[480px] z-50 flex flex-col transition-transform duration-300 ease-out"
         style={{ background: 'var(--white)', borderLeft: '1px solid var(--bd)', transform: open ? 'translateX(0)' : 'translateX(100%)' }}>
@@ -986,10 +986,10 @@ export default function EmailMarketingPage() {
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title="Email Marketing" subtitle="Campaigns, automations and audience analytics" />
 
-          <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* KPIs */}
             <div className="grid grid-cols-4 gap-4 mb-7">
@@ -1025,7 +1025,7 @@ export default function EmailMarketingPage() {
                            : t.id === 'sent'      ? (lang === 'ar' ? 'مُرسَل'   : 'Sent')
                            : t.id === 'scheduled' ? (lang === 'ar' ? 'مجدول'   : 'Scheduled')
                            :                        (lang === 'ar' ? 'مسودات'   : 'Drafts')}
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                          <span className="text-[11px] px-1.5 py-0.5 rounded-full"
                             style={tab === t.id ? { background: 'rgba(255,255,255,.25)', color: '#fff' } : { background: 'var(--bg)', color: 'var(--t3)' }}>
                             {cnt}
                           </span>

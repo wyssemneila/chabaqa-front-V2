@@ -1,6 +1,5 @@
 "use client"
 
-import confetti from "canvas-confetti"
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -169,7 +168,7 @@ function ThumbnailUpload({ value, onChange }: { value: string; onChange: (url: s
           style={{ border: "2px solid var(--bd)" }}
           onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
           onClick={() => inputRef.current?.click()}>
-          <img src={value} alt="" className="w-full aspect-video object-cover block" />
+          <img src={value} alt="Challenge banner preview" loading="lazy" className="w-full aspect-video object-cover block" />
           {hovered && (
             <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.55)" }}>
               <button type="button" className="px-5 py-2 rounded-full text-sm font-bold cursor-pointer"
@@ -439,7 +438,7 @@ function Sidebar({ wizardStep, data, done }: { wizardStep: number; data: FormDat
         <div className="w-full aspect-video rounded-xl overflow-hidden flex items-center justify-center mb-3"
           style={{ background: "var(--bg)", border: "1.5px dashed var(--bd)" }}>
           {data.banner
-            ? <img src={data.banner} alt="" className="w-full h-full object-cover" />
+            ? <img src={data.banner} alt="Challenge banner preview" loading="lazy" className="w-full h-full object-cover" />
             : <div className="flex flex-col items-center gap-1 opacity-40">
                 <Trophy className="w-6 h-6" style={{ color: "var(--t3)" }} />
                 <span className="text-[10px]" style={{ color: "var(--t3)" }}>No banner</span>
@@ -949,17 +948,21 @@ function StepPricing({ data, set }: { data: FormData; set: (f: keyof FormData, v
 // ════════════════════════════════════════════════════════════════════════════════
 function SuccessScreen() {
   useEffect(() => {
-    const colors   = ["#8e78fb","#fb923c","#22d3ee","#f472b6","#a78bfa","#ffffff"]
-    const defaults = { startVelocity:30, spread:360, ticks:80, zIndex:9999, colors }
-    const rand     = (a:number, b:number) => Math.random()*(b-a)+a
-    const end      = Date.now() + 3500
-    const iv       = window.setInterval(() => {
-      const left = end - Date.now()
-      if (left <= 0) return clearInterval(iv)
-      const n = 60*(left/3500)
-      confetti({ ...defaults, particleCount:n, origin:{ x:rand(.1,.3), y:Math.random()-.2 } })
-      confetti({ ...defaults, particleCount:n, origin:{ x:rand(.7,.9), y:Math.random()-.2 } })
-    }, 250)
+    let iv: ReturnType<typeof setInterval>
+    ;(async () => {
+      const confetti = (await import('canvas-confetti')).default
+      const colors   = ["#8e78fb","#fb923c","#22d3ee","#f472b6","#a78bfa","#ffffff"]
+      const defaults = { startVelocity:30, spread:360, ticks:80, zIndex:9999, colors }
+      const rand     = (a:number, b:number) => Math.random()*(b-a)+a
+      const end      = Date.now() + 3500
+      iv             = window.setInterval(() => {
+        const left = end - Date.now()
+        if (left <= 0) return clearInterval(iv)
+        const n = 60*(left/3500)
+        confetti({ ...defaults, particleCount:n, origin:{ x:rand(.1,.3), y:Math.random()-.2 } })
+        confetti({ ...defaults, particleCount:n, origin:{ x:rand(.7,.9), y:Math.random()-.2 } })
+      }, 250)
+    })()
     return () => clearInterval(iv)
   }, [])
 

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import confetti from 'canvas-confetti'
 import {
   ArrowLeft, ArrowRight, Check, X, Upload, Sparkles,
   FileText, Palette, Tag, AtSign,
@@ -81,16 +80,20 @@ function useFilePick(cb: (url:string)=>void) {
 
 function CelebrationPopup({ name, onOk }: { name:string; onOk:()=>void }) {
   useEffect(() => {
-    const colors = ['#8e78fb','#fb923c','#22d3ee','#f472b6','#a78bfa','#fff','#fbbf24']
-    const def = { startVelocity:30, spread:360, ticks:80, zIndex:9999, colors }
-    const rand = (a:number,b:number) => Math.random()*(b-a)+a
-    const end = Date.now()+4000
-    const iv = window.setInterval(()=>{
-      const t=end-Date.now(); if(t<=0) return clearInterval(iv)
-      const n=60*(t/4000)
-      confetti({...def,particleCount:n,origin:{x:rand(.1,.3),y:Math.random()-.2}})
-      confetti({...def,particleCount:n,origin:{x:rand(.7,.9),y:Math.random()-.2}})
-    },250)
+    let iv: ReturnType<typeof setInterval>
+    ;(async () => {
+      const confetti = (await import('canvas-confetti')).default
+      const colors = ['#8e78fb','#fb923c','#22d3ee','#f472b6','#a78bfa','#fff','#fbbf24']
+      const def = { startVelocity:30, spread:360, ticks:80, zIndex:9999, colors }
+      const rand = (a:number,b:number) => Math.random()*(b-a)+a
+      const end = Date.now()+4000
+      iv = window.setInterval(()=>{
+        const t=end-Date.now(); if(t<=0) return clearInterval(iv)
+        const n=60*(t/4000)
+        confetti({...def,particleCount:n,origin:{x:rand(.1,.3),y:Math.random()-.2}})
+        confetti({...def,particleCount:n,origin:{x:rand(.7,.9),y:Math.random()-.2}})
+      },250)
+    })()
     return ()=>clearInterval(iv)
   },[])
 
@@ -111,7 +114,7 @@ function CelebrationPopup({ name, onOk }: { name:string; onOk:()=>void }) {
             <Check className="w-10 h-10 text-white" strokeWidth={3}/>
           </div>
           <div style={{animation:'cFade .4s .2s ease both'}}>
-            <p className="text-[10px] font-bold tracking-[.12em] uppercase mb-1" style={{color:'var(--p)'}}>Community Created</p>
+            <p className="text-[11px] font-bold tracking-[.12em] uppercase mb-1" style={{color:'var(--p)'}}>Community Created</p>
             <h2 className="text-[22px] font-bold mb-1" style={{color:'var(--t1)'}}>Congratulations! 🎉</h2>
             <p className="text-[13px]" style={{color:'var(--t3)'}}>
               <span className="font-semibold" style={{color:'var(--p)'}}>&ldquo;{name || 'Your Community'}&rdquo;</span> is now live
@@ -299,7 +302,7 @@ export default function CreateCommunityPage() {
                   rows={4} placeholder="What will members learn or experience in this community?"
                   className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none resize-none"
                   style={iSty} onFocus={onFocus} onBlur={onBlur}/>
-                <p className="text-[10px] mt-1" style={{color:'var(--t3)'}}>{data.description.length}/300</p>
+                <p className="text-[11px] mt-1" style={{color:'var(--t3)'}}>{data.description.length}/300</p>
               </F>
             </div>
           )}
@@ -316,7 +319,7 @@ export default function CreateCommunityPage() {
                   <div className="w-20 h-20 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
                     style={{border:'2px dashed var(--bd)',background:'var(--bg)'}}>
                     {data.logo
-                      ? <img src={data.logo} alt="" className="w-full h-full object-cover"/>
+                      ? <img src={data.logo} alt="Community logo preview" loading="lazy" className="w-full h-full object-cover"/>
                       : <ImageIcon className="w-6 h-6" style={{color:'var(--t3)'}} strokeWidth={1.4}/>}
                   </div>
                   <div className="flex gap-2">
@@ -349,7 +352,7 @@ export default function CreateCommunityPage() {
                     background: data.thumbnail ? 'transparent' : 'var(--bg)',
                   }}>
                   {data.thumbnail
-                    ? <img src={data.thumbnail} alt="" className="absolute inset-0 w-full h-full object-cover"/>
+                    ? <img src={data.thumbnail} alt="Community image preview" loading="lazy" className="absolute inset-0 w-full h-full object-cover"/>
                     : <><Upload className="w-5 h-5" style={{color:'var(--t3)'}} strokeWidth={1.5}/>
                         <p className="text-[11px]" style={{color:'var(--t3)'}}>Click to upload banner</p></>
                   }
@@ -409,7 +412,7 @@ export default function CreateCommunityPage() {
                             </div>
                             <div>
                               <p className="text-[12px] font-bold" style={{color:active?'var(--p)':'var(--t1)'}}>{opt.label}</p>
-                              <p className="text-[10px]" style={{color:'var(--t3)'}}>{opt.sub}</p>
+                              <p className="text-[11px]" style={{color:'var(--t3)'}}>{opt.sub}</p>
                             </div>
                           </button>
                         )
@@ -489,7 +492,7 @@ export default function CreateCommunityPage() {
         style={{background:'var(--bg)'}}>
         {panelImg
           ? <>
-              <img src={panelImg} alt="" className="absolute inset-0 w-full h-full object-cover"/>
+              <img src={panelImg} alt="Community image preview" loading="lazy" className="absolute inset-0 w-full h-full object-cover"/>
               {/* Change image button */}
               <button onClick={openPanel}
                 className="absolute bottom-6 right-6 flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-80 z-10"

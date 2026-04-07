@@ -116,7 +116,7 @@ function AffiliateCard({ aff, idx, onToggle, onDelete }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-[14px] font-bold truncate" style={{ color: 'var(--t1)' }}>{aff.name}</p>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border"
               style={{ background: st.bg, color: st.color, borderColor: st.border }}>{st.label}</span>
           </div>
           <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{aff.email}</p>
@@ -160,7 +160,7 @@ function AffiliateCard({ aff, idx, onToggle, onDelete }: {
         ].map(s => (
           <div key={s.label} className="rounded-xl p-2.5" style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
             <p className="text-[13px] font-bold" style={{ color: s.color }}>{s.value}</p>
-            <p className="text-[10px] mt-0.5" style={{ color: 'var(--t2)' }}>{s.label}</p>
+            <p className="text-[11px] mt-0.5" style={{ color: 'var(--t2)' }}>{s.label}</p>
           </div>
         ))}
       </div>
@@ -246,10 +246,10 @@ function CreateDrawer({ open, onClose, onSave }: {
     onBlur:  (e: React.FocusEvent<HTMLInputElement>) => (e.target.style.borderColor = 'var(--bd)'),
   }
 
-  const LBL = ({ text, req }: { text: string; req?: boolean }) => (
-    <p className="text-[12px] font-semibold mb-1.5" style={{ color: 'var(--t2)' }}>
+  const LBL = ({ text, req, htmlFor }: { text: string; req?: boolean; htmlFor?: string }) => (
+    <label htmlFor={htmlFor} className="text-[12px] font-semibold mb-1.5 block" style={{ color: 'var(--t2)' }}>
       {text}{req && <span style={{ color: 'var(--p)' }}> *</span>}
-    </p>
+    </label>
   )
 
   return (
@@ -445,13 +445,13 @@ export default function AffiliatesPage() {
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title="Affiliates" subtitle="Track referral links, conversions and commissions" />
 
-          <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* KPIs */}
-            <div className="grid grid-cols-4 gap-4 mb-7">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
               <KpiCard icon={<Users className="w-5 h-5" />}             label="Total Affiliates" value={String(affiliates.length)} sub={`${affiliates.filter(a=>a.status==='active').length} active`} color="var(--p)" />
               <KpiCard icon={<MousePointerClick className="w-5 h-5" />} label="Total Clicks"     value={totalClicks.toLocaleString()} sub="all affiliate links"    color="var(--cyan)" />
               <KpiCard icon={<TrendingUp className="w-5 h-5" />}        label="Conversions"      value={totalConversions.toLocaleString()} sub={`${pct(totalConversions, totalClicks)} conv. rate`} color="var(--orange)" />
@@ -466,7 +466,7 @@ export default function AffiliatesPage() {
                     className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[12px] font-semibold cursor-pointer transition-all capitalize"
                     style={tab === t ? { background: 'var(--p)', color: '#fff' } : { color: 'var(--t3)' }}>
                     {t}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full"
                       style={tab === t ? { background: 'rgba(255,255,255,.25)', color: '#fff' } : { background: 'var(--bg)', color: 'var(--t3)' }}>
                       {tabCount(t)}
                     </span>
@@ -483,7 +483,7 @@ export default function AffiliatesPage() {
               </div>
 
               <button onClick={() => setDrawer(true)}
-                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90"
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
                 style={{ background: 'var(--p)' }}>
                 <Plus className="w-4 h-4" strokeWidth={1.7} /> Add Affiliate
               </button>

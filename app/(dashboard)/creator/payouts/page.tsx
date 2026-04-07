@@ -161,7 +161,7 @@ function ConnectForm({ current, onSave, onCancel, lang }: {
                   <div style={{ color: method === opt.id ? opt.color : 'var(--t3)' }}>{opt.icon}</div>
                 </div>
                 {opt.badge && (
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
                     style={{ background: opt.color + '20', color: opt.color }}>
                     {opt.badge}
                   </span>
@@ -274,7 +274,7 @@ function ConnectedCard({ info, onEdit, lang }: { info: BankInfo; onEdit: () => v
             <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>
               {isStripe ? 'Stripe Connect' : info.bankName}
             </p>
-            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+            <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full"
               style={{ background: 'rgba(74,222,128,.12)', color: '#16a34a' }}>
               <Check className="w-2.5 h-2.5" strokeWidth={3} /> {lang === 'ar' ? 'مرتبط' : 'Connected'}
             </span>
@@ -319,7 +319,7 @@ function ConnectedCard({ info, onEdit, lang }: { info: BankInfo; onEdit: () => v
             <div style={{ color }}>{f.icon}</div>
             <div>
               <p className="text-[11px] font-semibold" style={{ color: 'var(--t1)' }}>{f.label}</p>
-              <p className="text-[10px]" style={{ color: 'var(--t3)' }}>{f.sub}</p>
+              <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{f.sub}</p>
             </div>
           </div>
         ))}
@@ -363,16 +363,16 @@ export default function PayoutsPage() {
 
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar
             title={lang === 'ar' ? 'المدفوعات' : 'Payouts'}
             subtitle={lang === 'ar' ? 'نظرة عامة على الإيرادات وإدارة المدفوعات' : 'Revenue overview and payout management'}
           />
 
-          <main className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
             {/* KPIs */}
-            <div className="grid grid-cols-4 gap-4 mb-7">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
               <KpiCard icon={<TrendingUp      className="w-5 h-5" />} label={lang === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue'}  value={`${(totalAllTime + available + 26836).toLocaleString()} TND`} sub={lang === 'ar' ? 'منذ البداية'          : 'all time'}                                                                               color="var(--p)"      />
               <KpiCard icon={<ArrowDownToLine className="w-5 h-5" />} label={lang === 'ar' ? 'متاح للسحب'      : 'Available'}       value={`${available} TND`}                                           sub={lang === 'ar' ? 'جاهز للسحب'           : 'ready to withdraw'}                                                                        color="#16a34a"       />
               <KpiCard icon={<Clock          className="w-5 h-5" />}  label={lang === 'ar' ? 'قيد المعالجة'    : 'Pending'}         value={`${pending} TND`}                                             sub={lang === 'ar' ? 'قيد المعالجة'          : 'being processed'}                                                                          color="var(--orange)" />
@@ -402,7 +402,7 @@ export default function PayoutsPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-5 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
               {/* left: payout method */}
               <div className="col-span-2 space-y-5">
                 {editing || !bankInfo.method ? (
@@ -446,7 +446,7 @@ export default function PayoutsPage() {
                       lang === 'ar' ? 'الوسيلة' : 'Method',
                       lang === 'ar' ? 'التاريخ' : 'Date',
                     ] as string[]).map(h => (
-                      <p key={h} className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>{h}</p>
+                      <p key={h} className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>{h}</p>
                     ))}
                   </div>
 
@@ -468,7 +468,7 @@ export default function PayoutsPage() {
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
                         <p className="text-[12px] font-mono" style={{ color: 'var(--t3)' }}>{p.ref}</p>
                         <p className="text-[13px] font-bold" style={{ color: '#16a34a' }}>{p.amount.toLocaleString()} TND</p>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border w-fit"
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border w-fit"
                           style={{ background: st.bg, color: st.color, borderColor: st.border }}>
                           {lang === 'ar' ? st.labelAr : st.label}
                         </span>

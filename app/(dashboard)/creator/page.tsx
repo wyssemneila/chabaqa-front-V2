@@ -26,10 +26,10 @@ export default function CreatorDashboardPage() {
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
 
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title="Creator Dashboard" subtitle={today} />
 
-          <main className="p-7 flex-1">
+          <main id="main-content" className="p-7 flex-1">
             <DashOnboarding />
             <DashKpiGrid />
 

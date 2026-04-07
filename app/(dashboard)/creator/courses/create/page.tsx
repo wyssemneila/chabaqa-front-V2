@@ -17,9 +17,9 @@ export default function CreateCoursePage() {
 
       <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col h-screen overflow-hidden">
+        <div className="md:ml-[220px] flex-1 flex flex-col h-screen overflow-hidden">
           <DashTopbar title="Create Course" subtitle="New course wizard" />
-          <main className="flex-1 flex flex-col overflow-hidden" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="flex-1 flex flex-col overflow-hidden" style={{ animation: 'dashFadeUp .4s ease both' }}>
             <CreateCourseForm />
           </main>
         </div>

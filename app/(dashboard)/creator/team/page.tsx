@@ -522,13 +522,13 @@ export default function TeamPage() {
       `}</style>
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title="Team & Roles" subtitle="Manage your community team and permissions" />
 
-          <main className="p-7 flex-1" style={{ animation: 'fadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1" style={{ animation: 'fadeUp .4s ease both' }}>
 
             {/* ── KPI row ── */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {[
                 { label: lang === 'ar' ? 'إجمالي الأعضاء' : 'Total Members', value: members.length, color: 'var(--p)',      icon: <Users      className="w-4 h-4" strokeWidth={1.7} />, sub: lang === 'ar' ? 'في هذا المجتمع'        : 'in this community'     },
                 { label: lang === 'ar' ? 'المشرفون'       : 'Admins',        value: admins,         color: 'var(--orange)', icon: <Shield     className="w-4 h-4" strokeWidth={1.7} />, sub: lang === 'ar' ? 'صلاحيات إدارة كاملة'  : 'full management access' },
@@ -559,7 +559,7 @@ export default function TeamPage() {
                       className="h-7 px-3 rounded-lg text-[11px] font-semibold cursor-pointer transition-all flex items-center gap-1.5"
                       style={tab === t.id ? { background: 'var(--p)', color: '#fff' } : { color: 'var(--t3)' }}>
                       {t.label}
-                      <span className="px-1.5 py-0.5 rounded-full text-[9px]"
+                      <span className="px-1.5 py-0.5 rounded-full text-[11px]"
                         style={{ background: tab === t.id ? 'rgba(255,255,255,.25)' : 'var(--white)', color: tab === t.id ? '#fff' : 'var(--t3)' }}>
                         {t.count}
                       </span>
@@ -633,7 +633,7 @@ export default function TeamPage() {
                     {/* Last active */}
                     <p className="text-[12px]" style={{ color: 'var(--t2)' }}>{m.lastActive}</p>
                     {/* Status */}
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold w-fit"
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold w-fit"
                       style={m.status === 'active'
                         ? { background: 'rgba(74,222,128,.1)', color: '#16a34a' }
                         : { background: 'var(--bg)', color: 'var(--t3)', border: '1px solid var(--bd)' }}>
@@ -664,7 +664,7 @@ export default function TeamPage() {
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                   <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'صلاحيات الأدوار' : 'Role Permissions'}</p>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold"
                     style={{ background: 'var(--p2)', color: 'var(--p)' }}>
                     {PERMISSIONS.length} {lang === 'ar' ? 'صلاحية' : 'permissions'}
                   </span>
@@ -723,7 +723,7 @@ export default function TeamPage() {
                     <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>
                       {lang === 'ar' ? 'الدعوات المعلقة' : 'Pending Invitations'}
                       {pending > 0 && (
-                        <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white"
+                        <span className="ml-2 px-1.5 py-0.5 rounded-full text-[11px] font-bold text-white"
                           style={{ background: 'var(--p)' }}>{pending}</span>
                       )}
                     </p>
@@ -747,7 +747,7 @@ export default function TeamPage() {
                         </div>
                       </div>
                       {/* Status */}
-                      <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                      <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold"
                         style={inv.status === 'pending'
                           ? { background: 'rgba(251,191,36,.12)', color: '#d97706' }
                           : { background: 'var(--bg)', color: 'var(--t3)', border: '1px solid var(--bd)' }}>

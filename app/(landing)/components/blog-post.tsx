@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import DOMPurify from "isomorphic-dompurify"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
@@ -263,7 +264,7 @@ export function BlogPost({ post }: BlogPostProps) {
             ref={contentRef}
             className="blog-content"
             style={{ maxWidth: "680px" }}
-            dangerouslySetInnerHTML={{ __html: content }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
           />
 
           {/* Divider */}

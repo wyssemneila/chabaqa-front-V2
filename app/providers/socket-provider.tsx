@@ -53,7 +53,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     socketRef.current = newSocket
 
     newSocket.on('connect', () => {
-      console.log('Socket connected:', newSocket.id)
+      if (process.env.NODE_ENV === 'development') console.log('Socket connected:', newSocket.id)
       setIsConnected(true)
       
       // Request initial online users
@@ -65,7 +65,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     })
 
     newSocket.on('disconnect', () => {
-      console.log('Socket disconnected')
+      if (process.env.NODE_ENV === 'development') console.log('Socket disconnected')
       setIsConnected(false)
     })
 

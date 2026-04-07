@@ -90,19 +90,19 @@ function SessionCardUI({ session, t }: { session: SessionCard; t: typeof TR['en'
   return (
     <div className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200 group"
       style={{ background:'var(--white)', border:'1px solid var(--bd)', boxShadow:'0 2px 8px rgba(0,0,0,.04)' }}
-      onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow='0 12px 40px rgba(142,120,251,.16)'}
+      onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow='0 8px 32px rgba(0,0,0,.07)'}
       onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow='0 2px 8px rgba(0,0,0,.04)'}>
       <div className="relative aspect-video overflow-hidden" style={{ background:'var(--bg)' }}>
         {session.banner
-          ? <img src={session.banner} alt={session.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+          ? <img src={session.banner} alt={session.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
           : <div className="w-full h-full flex items-center justify-center">
               <Calendar className="w-10 h-10 opacity-20" style={{ color:'var(--t3)' }} />
             </div>}
-        <span className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
+        <span className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold"
           style={{ background:'var(--p)', color:'#fff' }}>
           <Clock className="w-3 h-3" /> {dur}
         </span>
-        <span className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold"
+        <span className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold"
           style={{
             background: session.isPublished ? 'rgba(16,185,129,.15)' : 'rgba(0,0,0,.4)',
             color: session.isPublished ? '#10b981' : '#fff',
@@ -159,7 +159,7 @@ function IntegrationCard({
         <div className="flex items-center gap-2">
           <p className="text-[13px] font-bold" style={{ color:'var(--t1)' }}>{title}</p>
           {on && (
-            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
               style={{ background:`${accentColor}15`, color: accentColor }}>{labelConnected}</span>
           )}
         </div>
@@ -244,10 +244,10 @@ export default function SessionsPage() {
 
       <div className="flex min-h-screen" style={{ background:'var(--bg)' }}>
         <DashSidebar />
-        <div className="ml-[220px] flex-1 flex flex-col min-h-screen">
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title={lang === 'ar' ? 'إدارة الجلسات' : 'Session Manager'} subtitle={lang === 'ar' ? 'إدارة جلسات التدريب الفردية' : 'Manage your 1-on-1 mentoring sessions'} />
 
-          <main className="p-7 flex-1 space-y-6" style={{ animation:'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1 space-y-6" style={{ animation:'dashFadeUp .4s ease both' }}>
 
             {/* ── HEADER ── */}
             <div className="flex items-center justify-between">
@@ -279,7 +279,7 @@ export default function SessionsPage() {
             </div>
 
             {/* ── STATS ROW ── */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {STATS.map(s => (
                 <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4"
                   style={{ background:'var(--white)', border:'1px solid var(--bd)', boxShadow:'0 2px 8px rgba(0,0,0,.03)' }}>
@@ -289,7 +289,7 @@ export default function SessionsPage() {
                   </div>
                   <div>
                     <p className="text-[28px] font-black leading-none" style={{ color: s.color }}>{s.value}</p>
-                    <p className="text-[12px] font-semibold mt-0.5" style={{ color:'var(--t3)' }}>{s.label}</p>
+                    <p className="text-[12px] font-semibold mt-0.5" style={{ color:'var(--t2)' }}>{s.label}</p>
                   </div>
                 </div>
               ))}
@@ -325,7 +325,7 @@ export default function SessionsPage() {
                         color:      tab===t.key ? '#fff'     : 'var(--t3)',
                       }}>
                       {t.label}
-                      <span className="text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold"
+                      <span className="text-[11px] w-5 h-5 rounded-full flex items-center justify-center font-bold"
                         style={{
                           background: tab===t.key ? 'rgba(255,255,255,.25)' : 'var(--bg)',
                           color: tab===t.key ? '#fff' : 'var(--t3)',
@@ -367,7 +367,7 @@ export default function SessionsPage() {
               <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor:'var(--bd)' }}>
                 <div className="flex items-center gap-2">
                   <p className="text-[14px] font-bold" style={{ color:'var(--t1)' }}>{t.upcoming}</p>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
                     style={{ background:'var(--p2)', color:'var(--p)' }}>{upcoming.length}</span>
                 </div>
                 <Link href="/creator/sessions/bookings"
@@ -405,7 +405,7 @@ export default function SessionsPage() {
                           <Video className="w-3 h-3" /> {t.joinBtn}
                         </a>
                       ) : (
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0"
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
                           style={{ background:'rgba(251,146,60,.12)', color:'var(--orange)' }}>
                           {t.pendingBadge}
                         </span>

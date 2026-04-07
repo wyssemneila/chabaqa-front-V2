@@ -40,7 +40,7 @@ export default function DashYourCommunities() {
             <div className="flex items-center gap-1.5 text-[13px] font-semibold mb-0.5" style={{ color: 'var(--t1)' }}>
               {c.name}
               {c.verified && (
-                <span className="text-[9px] font-bold tracking-[.04em] px-1.5 py-0.5 rounded-[4px]"
+                <span className="text-[11px] font-bold tracking-[.04em] px-1.5 py-0.5 rounded-[4px]"
                   style={{ background: 'var(--white)', color: 'var(--p)' }}>
                   {t.verified}
                 </span>

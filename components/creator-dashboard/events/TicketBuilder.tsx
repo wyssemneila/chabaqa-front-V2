@@ -269,7 +269,7 @@ function TicketCard({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-[13px] font-bold truncate" style={{ color: 'var(--t1)' }}>{ticket.name}</p>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0"
             style={{ background: clr.bg, color: clr.color, border: `1px solid ${clr.border}` }}>
             {tierLabel}
           </span>
