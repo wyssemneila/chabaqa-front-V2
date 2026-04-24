@@ -12,6 +12,12 @@ cd "$PROJECT_DIR"
 git config --global --add safe.directory "$PROJECT_DIR" || true
 
 echo "[deploy] syncing git branch"
+
+if [ -n "${GIT_AUTH_TOKEN:-}" ] && [ -n "${GIT_REPO:-}" ]; then
+  GIT_AUTH_USER="${GIT_AUTH_USER:-x-access-token}"
+  git remote set-url origin "https://${GIT_AUTH_USER}:${GIT_AUTH_TOKEN}@github.com/${GIT_REPO}.git"
+fi
+
 git fetch --all --prune
 git checkout "$BRANCH"
 git reset --hard "origin/$BRANCH"
