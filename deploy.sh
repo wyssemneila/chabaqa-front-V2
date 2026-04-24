@@ -7,6 +7,10 @@ BRANCH="${BRANCH:-main}"
 echo "[deploy] project=${PROJECT_DIR} branch=${BRANCH}"
 cd "$PROJECT_DIR"
 
+# When deployment runs as root over SSH on a repo owned by ubuntu,
+# Git may block operations with a dubious ownership error.
+git config --global --add safe.directory "$PROJECT_DIR" || true
+
 echo "[deploy] syncing git branch"
 git fetch --all --prune
 git checkout "$BRANCH"
