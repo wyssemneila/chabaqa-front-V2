@@ -38,6 +38,9 @@ jobs:
               PROJECT_DIR="/home/ubuntu/chabaqa"
             fi
             export BRANCH="main"
+            export GIT_REPO="${{ github.repository }}"
+            export GIT_AUTH_USER="x-access-token"
+            export GIT_AUTH_TOKEN="${{ github.token }}"
 
             cd "$PROJECT_DIR"
             chmod +x ./deploy.sh
