@@ -1,55 +1,34 @@
-#!/bin/bash
-# ============================================================
-# Chabaqa CI/CD Setup Script
-# Run this ONCE to push workflows and configure GitHub secrets
-# ============================================================
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "🔧 Chabaqa CI/CD Setup"
-echo "======================"
-echo ""
+REPO="${1:-Louay0007/chabaqa}"
+VPS_HOST="${VPS_HOST:-}"
+VPS_USER="${VPS_USER:-ubuntu}"
+VPS_PORT="${VPS_PORT:-22}"
+VPS_PROJECT_DIR="${VPS_PROJECT_DIR:-/home/ubuntu/chabaqa}"
+SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/chabaqa_deploy}"
 
-# Check for GitHub CLI
-if ! command -v gh &> /dev/null; then
-  echo "Installing GitHub CLI..."
-  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-  sudo apt update && sudo apt install gh -y
+if ! command -v gh >/dev/null 2>&1; then
+  echo "gh CLI is required. Install from https://cli.github.com/" >&2
+  exit 1
 fi
 
-# Login to GitHub
-echo ""
-echo "📝 Logging into GitHub..."
-gh auth login
+if [ ! -f "$SSH_KEY_PATH" ]; then
+  echo "SSH key not found at: $SSH_KEY_PATH" >&2
+  exit 1
+fi
 
-# Push workflows to both repos
-echo ""
-echo "📤 Pushing backend workflow..."
-cd /home/ubuntu/chabaqa/backend
-git push origin main
+if [ -z "$VPS_HOST" ]; then
+  echo "Set VPS_HOST before running. Example: VPS_HOST=76.13.57.215 bash setup-cicd.sh" >&2
+  exit 1
+fi
 
-echo ""
-echo "📤 Pushing frontend workflow..."
-cd /home/ubuntu/chabaqa/frontend
-git push origin main
+echo "Configuring GitHub Actions secrets for $REPO"
 
-# Set secrets on both repos
-echo ""
-echo "🔐 Setting GitHub Secrets..."
+gh secret set VPS_HOST --repo "$REPO" --body "$VPS_HOST"
+gh secret set VPS_USER --repo "$REPO" --body "$VPS_USER"
+gh secret set VPS_PORT --repo "$REPO" --body "$VPS_PORT"
+gh secret set VPS_PROJECT_DIR --repo "$REPO" --body "$VPS_PROJECT_DIR"
+gh secret set VPS_SSH_PRIVATE_KEY --repo "$REPO" < "$SSH_KEY_PATH"
 
-VPS_SSH_KEY=$(cat /home/ubuntu/.ssh/chabaqa_deploy)
-
-for REPO in Louay0007/chabaqa-backend Louay0007/chabaqa-frontend; do
-  echo "  Setting secrets for $REPO..."
-  gh secret set VPS_HOST   --repo "$REPO" --body "51.254.132.77"
-  gh secret set VPS_USER   --repo "$REPO" --body "ubuntu"
-  gh secret set VPS_PORT   --repo "$REPO" --body "22"
-  gh secret set VPS_SSH_KEY --repo "$REPO" --body "$VPS_SSH_KEY"
-done
-
-echo ""
-echo "✅ CI/CD Setup Complete!"
-echo ""
-echo "Pipeline: Push to main → Lint → Build → Test → Deploy"
-echo "  Backend:  https://github.com/Louay0007/chabaqa-backend/actions"
-echo "  Frontend: https://github.com/Louay0007/chabaqa-frontend/actions"
+echo "Done. Next step: push to main to trigger deployment."

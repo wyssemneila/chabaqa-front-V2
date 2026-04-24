@@ -1,0 +1,12 @@
+* @Louay0007
+
+# Backend
+/backend/ @Louay0007
+
+# Frontend
+/frontend/ @Louay0007
+
+# Infra / CI
+/.github/ @Louay0007
+/docker-compose.yml @Louay0007
+/deploy.sh @Louay0007
