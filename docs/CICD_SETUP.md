@@ -21,7 +21,7 @@ Set these repository secrets in GitHub Settings -> Secrets and variables -> Acti
 - `VPS_HOST`: VPS public IP or hostname
 - `VPS_USER`: SSH user (recommended `ubuntu`)
 - `VPS_PORT`: usually `22`
-- `VPS_SSH_PRIVATE_KEY`: private key matching authorized key on VPS
+- `VPS_PASSWORD`: SSH password for `VPS_USER`
 - `VPS_PROJECT_DIR`: `/home/ubuntu/chabaqa` (or your actual deployment path)
 
 ## VPS requirements
