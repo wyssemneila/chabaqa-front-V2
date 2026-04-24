@@ -1,0 +1,285 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                  CHABAQA FRONTEND PROJECT SUMMARY                              ║
+║                    Complete Codebase Analysis                                   ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+📦 PROJECT INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Location:          /home/ubuntu/chabaqa/chabaqa-frontend/
+  Code Size:         ~25,952 lines (TS/TSX)
+  Project Type:      Next.js 15 App Router
+  Status:            Production Ready
+
+
+🏗️  TECH STACK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Framework:         Next.js 15.2.4
+  Runtime:           React 19.x
+  Language:          TypeScript 5 (strict mode)
+  Styling:           Tailwind CSS 3.4.17 + Styled-JSX
+  UI Library:        Radix UI (20+ components)
+  State Mgmt:        TanStack React Query 5.91.3
+  Forms:             React Hook Form + Zod validation
+  Testing:           Jest + Playwright
+  i18n:              next-intl 3.26.5
+
+
+🗂️  DIRECTORY LAYOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  chabaqa-frontend/
+  │
+  ├── app/                          ← Next.js App Router
+  │   ├── (admin)/                  Admin Dashboard
+  │   ├── (auth)/                   Sign in/up, Reset Password
+  │   ├── (landing)/                Public Landing & Pages
+  │   ├── (community)/              Community Pages
+  │   ├── (creator)/                Creator Dashboard
+  │   ├── (dashboard)/              User Dashboard
+  │   ├── (build-community)/        Community Setup
+  │   ├── api/                      API Routes
+  │   └── layout.tsx                Root Layout
+  │
+  ├── components/                   ← Reusable UI Components
+  │   ├── ui/                       Shadcn UI (buttons, dialogs, etc)
+  │   ├── auth/                     Auth Components
+  │   ├── community/                Community UI
+  │   ├── creator-dashboard/        Creator UI
+  │   ├── layout/                   Layout (navbar, sidebar)
+  │   ├── media/                    Video/Image Players
+  │   ├── notifications/            Toasts & Alerts
+  │   ├── plan/                     Pricing & Plans
+  │   ├── permissions/              Permission Guards
+  │   └── __tests__/                Component Tests
+  │
+  ├── lib/                          ← Utilities & Helpers
+  │   ├── api/                      API Clients (15+ modules)
+  │   │   ├── admin-api.ts
+  │   │   ├── affiliate.api.ts
+  │   │   ├── notifications.api.ts
+  │   │   ├── payments.api.ts
+  │   │   ├── products.api.ts
+  │   │   ├── video-playback.api.ts
+  │   │   └── ... (10+ more)
+  │   ├── hooks/                    Custom Hooks
+  │   ├── utils/                    Helper Functions
+  │   ├── permissions/              Role-Based Access
+  │   ├── validation/               Zod Schemas
+  │   ├── api-client.ts             Main HTTP Client
+  │   ├── models.ts                 TypeScript Types
+  │   ├── auth.ts                   Auth Utils
+  │   ├── token-manager.ts          JWT Management
+  │   └── __tests__/                Lib Tests
+  │
+  ├── hooks/                        ← App-Level Hooks
+  ├── middleware/                   ← Route Guards & Auth
+  ├── i18n/                         ← i18n Configuration
+  ├── messages/                     ← Translation Strings
+  ├── e2e/                          ← Playwright E2E Tests
+  ├── __tests__/                    ← Jest Unit Tests
+  ├── docs/                         ← Documentation
+  ├── public/                       ← Static Assets
+  ├── scripts/                      ← Build Scripts
+  │
+  └── Configuration Files:
+      ├── tsconfig.json             TypeScript Config
+      ├── .eslintrc.json            ESLint Rules
+      ├── next.config.mjs           Next.js Config
+      ├── tailwind.config.ts        Tailwind Theme
+      ├── postcss.config.mjs        CSS Processing
+      ├── jest.config.js            Jest Config
+      ├── playwright.config.ts      E2E Config
+      ├── package.json              Dependencies
+      ├── .env                      Environment
+      └── .browserslistrc           Browser Support
+
+
+⚙️  BUILD & LINT TOOLS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  TypeScript:
+    ✓ Target: ES6
+    ✓ Strict mode enabled
+    ✓ Path alias: @/* → root directory
+    ✓ Incremental builds
+    ✓ JSX: preserve (Next.js handles it)
+
+  ESLint:
+    ✓ Base: next/core-web-vitals
+    ✓ Custom: react/no-unescaped-entities (off)
+    ✓ Custom: react-hooks/exhaustive-deps (off)
+    ✓ Custom: @next/next/no-img-element (off)
+
+  Next.js:
+    ✓ i18n: next-intl plugin
+    ✓ ESLint: ignored during build
+    ✓ TypeScript: errors ignored during build
+    ✓ Output: standalone (self-contained)
+    ✓ Security headers: HSTS, CSP, X-Frame-Options
+    ✓ Image optimization: disabled (custom CDN)
+    ✓ API proxying: /api/* → backend
+
+  Tailwind CSS:
+    ✓ Dark mode: class-based
+    ✓ Custom colors: chabaqa brand palette
+    ✓ Custom animations: 8+ animations
+    ✓ Plugins: tailwindcss-animate
+
+  Jest:
+    ✓ Preset: ts-jest
+    ✓ Environment: jsdom
+    ✓ Coverage: admin dashboard + admin APIs
+    ✓ Module mapping: @/* alias, CSS mocking
+
+  Playwright:
+    ✓ Browsers: Chromium, Firefox, WebKit
+    ✓ Mobile: Pixel 5, iPhone 12
+    ✓ CI: 2 retries, single worker
+    ✓ Artifacts: screenshots, videos on failure
+
+
+📦 NPM SCRIPTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Development:
+    npm run dev                   Start dev server (port 8080)
+    npm run build                 Production build
+    npm run start                 Run production build
+    npm run lint                  Run ESLint
+
+  Testing:
+    npm run test                  Jest unit tests
+    npm run test:watch           Jest watch mode
+    npm run test:coverage        Coverage report
+    npm run test:e2e             Playwright E2E tests
+    npm run test:e2e:ui          Playwright UI mode
+    npm run test:e2e:headed      Run tests visibly
+    npm run test:e2e:chromium    Chromium only
+    npm run test:e2e:firefox     Firefox only
+    npm run test:e2e:webkit      WebKit only
+    npm run test:e2e:mobile      Mobile tests
+    npm run test:e2e:report      Show HTML report
+
+  Code Quality:
+    npm run guard:no-relative-api     Check relative API calls
+    npm run check:browser-compat      Check browser compatibility
+
+  Internationalization:
+    npm run i18n:check:parity        Translation consistency
+    npm run i18n:check:hardcoded     Find hardcoded strings
+    npm run i18n:translate:ar        Generate Arabic translations
+    npm run i18n:ci                  CI validation
+
+
+🎨 DESIGN SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Brand Colors:
+    Primary:     #8e78fb (Purple)
+    Sessions:    #f65887 (Pink)
+    Courses:     #47c7ea (Cyan)
+    Challenges:  #ff9b28 (Orange)
+
+  Custom Animations:
+    • float, shimmer, pulse-glow
+    • slide-up, slide-in-right
+    • fade-in, bounce-gentle
+    • accordion-down/up
+
+  UI Components (Radix UI):
+    • Buttons, Dialogs, Dropdowns
+    • Forms, Inputs, Selects
+    • Tabs, Accordions, Modals
+    • Tooltips, Popovers, Alerts
+
+
+🌐 ENVIRONMENT & DEPLOYMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Production (.env):
+    NEXT_PUBLIC_API_URL=https://chabaqa.io/api
+    API_INTERNAL_URL=http://chabaqa-backend:3000/api
+    NEXT_PUBLIC_APP_URL=https://chabaqa.io
+
+  Backend Integration:
+    ✓ Server-side: Uses API_INTERNAL_URL (container networking)
+    ✓ Client-side: Falls back to NEXT_PUBLIC_API_URL
+    ✓ Fallback: http://localhost:3000/api
+
+  Security Features:
+    ✓ HSTS enabled (1 year)
+    ✓ X-Content-Type-Options: nosniff
+    ✓ X-Frame-Options: SAMEORIGIN
+    ✓ Referrer-Policy: strict-origin-when-cross-origin
+    ✓ Permissions-Policy: camera/mic/geolocation disabled
+    ✓ API proxying (prevents direct backend exposure)
+    ✓ Video streaming via /api/video/stream/
+
+
+📱 INTERNATIONALIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Library:        next-intl 3.26.5
+  Config:         i18n/request.ts
+  Messages:       messages/ directory
+  Languages:      English, Arabic, (expandable)
+  Validation:     Parity checks, hardcoded detection
+
+
+📊 PROJECT STATISTICS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Code Lines:           ~25,952 (TypeScript/TSX)
+  Route Segments:       7 grouped (admin, auth, landing, etc)
+  Components:           13+ feature categories
+  API Modules:          15+ dedicated clients
+  Test Files:           Jest + Playwright
+  Configuration Files:  10+ (ts, js, json)
+  Dependencies:         50+ npm packages
+
+
+✅ KEY FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓ Modern Next.js 15 App Router
+  ✓ Full TypeScript with strict mode
+  ✓ Component-driven with Radix UI
+  ✓ Comprehensive testing (Jest + Playwright)
+  ✓ Built-in internationalization
+  ✓ Production-grade security
+  ✓ API client abstraction layer
+  ✓ Role-based permissions
+  ✓ Real-time support (Socket.io)
+  ✓ Video streaming (HLS.js)
+  ✓ Dark mode support
+  ✓ Form validation (Zod)
+  ✓ Animation library (Framer Motion)
+
+
+🔗 DOCUMENTATION GENERATED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  📄 FRONTEND_STRUCTURE.md    → Detailed architecture guide
+  📄 QUICK_START.md           → Commands & common tasks
+  📄 This file                → Summary visualization
+
+
+💡 QUICK COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  cd /home/ubuntu/chabaqa/chabaqa-frontend
+  npm install                     # Install dependencies
+  npm run dev                     # Start dev server
+  npm run lint                    # Check linting
+  npm run build                   # Production build
+  npm run test                    # Run tests
+  npm run test:e2e               # End-to-end tests
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+
+For detailed information, see:
+  • FRONTEND_STRUCTURE.md - Complete configuration details
+  • QUICK_START.md - Development guide & command reference
+
+═══════════════════════════════════════════════════════════════════════════════════

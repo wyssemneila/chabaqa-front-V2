@@ -1,0 +1,47 @@
+# ── Stage 1: Install dependencies ─────────────────────────────────────────────
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci --prefer-offline
+
+# ── Stage 2: Build ────────────────────────────────────────────────────────────
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json .npmrc next.config.mjs tsconfig.json ./
+COPY tailwind.config.ts postcss.config.mjs components.json ./
+COPY app ./app
+COPY components ./components
+COPY hooks ./hooks
+COPY lib ./lib
+COPY i18n ./i18n
+COPY messages ./messages
+COPY middleware ./middleware
+COPY middleware.ts ./
+COPY public ./public
+
+ARG NEXT_PUBLIC_API_URL=https://chabaqa.io/api
+ARG NEXT_PUBLIC_APP_URL=https://chabaqa.io
+ARG API_INTERNAL_URL=http://chabaqa-backend:3000/api
+ENV API_INTERNAL_URL=$API_INTERNAL_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN npm run build
+
+# ── Stage 3: Production image ────────────────────────────────────────────────
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+EXPOSE 8081
+ENV PORT=8081
+ENV HOSTNAME=0.0.0.0
+
+CMD ["node", "server.js"]

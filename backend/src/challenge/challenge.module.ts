@@ -1,0 +1,39 @@
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ChallengeController } from './challenge.controller';
+import { ChallengeService } from './challenge.service';
+import { Challenge, ChallengeSchema } from '../schema/challenge.schema';
+import { Community, CommunitySchema } from '../schema/community.schema';
+import { User, UserSchema } from '../schema/user.schema';
+import { AuthModule } from '../auth/auth.module';
+import { TrackingModule } from '../common/modules/tracking.module';
+import { FeeModule } from '../common/modules/fee.module';
+import { OrderSchema } from '../schema/order.schema';
+import { PolicyModule } from '../common/modules/policy.module';
+import { UploadModule } from '../upload/upload.module';
+import { ContentProgressSchema } from '../schema/content-tracking.schema';
+import { ChallengeSubmission, ChallengeSubmissionSchema } from '../schema/challenge-submission.schema';
+import { AnalyticsDaily, AnalyticsDailySchema } from '../schema/analytics-daily.schema';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: Challenge.name, schema: ChallengeSchema },
+      { name: Community.name, schema: CommunitySchema },
+      { name: User.name, schema: UserSchema },
+      { name: 'Order', schema: OrderSchema },
+      { name: 'ContentProgress', schema: ContentProgressSchema },
+      { name: ChallengeSubmission.name, schema: ChallengeSubmissionSchema },
+      { name: AnalyticsDaily.name, schema: AnalyticsDailySchema },
+    ]),
+    AuthModule,
+    TrackingModule,
+    FeeModule,
+    PolicyModule,
+    UploadModule,
+  ],
+  controllers: [ChallengeController],
+  providers: [ChallengeService],
+  exports: [ChallengeService],
+})
+export class ChallengeModule { }
