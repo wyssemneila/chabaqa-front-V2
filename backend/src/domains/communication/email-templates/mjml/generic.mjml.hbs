@@ -1,0 +1,48 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{subject}}</mj-title>
+    <mj-preview>{{preheader}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Arial, Helvetica, sans-serif" />
+      <mj-text color="#2d2d2d" font-size="15px" line-height="1.7" />
+      <mj-button border-radius="12px" font-weight="700" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f0f0f5" width="640px">
+    <mj-section background-color="#ffffff" border-radius="18px 18px 0 0" padding="26px 24px 10px">
+      <mj-column>
+        <mj-text align="center" font-size="28px" font-weight="900">
+          <span style="color:#8e78fb">c</span><span style="color:#47c7ea">h</span><span style="color:#f65887">a</span><span style="color:#ff9b28">b</span><span style="color:#8e78fb">a</span><span style="color:#47c7ea">q</span><span style="color:#f65887">a</span><span style="color:#ff9b28">.</span>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#ffffff" padding="18px 34px 30px">
+      <mj-column>
+        <mj-text color="#8e78fb" font-size="24px" font-weight="900" line-height="1.25">{{heading}}</mj-text>
+        <mj-text>{{{bodyHtml}}}</mj-text>
+        {{#if actionUrl}}<mj-button href="{{actionUrl}}" background-color="#8e78fb" color="#ffffff">{{actionLabel}}</mj-button>{{/if}}
+      </mj-column>
+    </mj-section>
+    {{#if showAppCta}}
+    <mj-section background-color="#8e78fb" border-radius="18px" padding="24px">
+      <mj-column>
+        <mj-text color="#ffffff" font-size="20px" font-weight="900">Chabaqa on the go</mj-text>
+        <mj-text color="#ffffff" font-size="13px">Access your communities, events, and sessions from anywhere.</mj-text>
+        {{#if iosAppUrl}}<mj-button href="{{iosAppUrl}}" background-color="#ffffff" color="#1a1a2e">App Store</mj-button>{{/if}}
+        {{#if androidAppUrl}}<mj-button href="{{androidAppUrl}}" background-color="#ffffff" color="#1a1a2e">Google Play</mj-button>{{/if}}
+      </mj-column>
+    </mj-section>
+    {{/if}}
+    <mj-section background-color="#ffffff" border-radius="0 0 18px 18px" padding="18px 34px">
+      <mj-column>
+        <mj-text align="center" color="#aaaaaa" font-size="12px">{{footerReason}}</mj-text>
+        <mj-text align="center" color="#aaaaaa" font-size="12px">
+          {{#if preferencesUrl}}<a href="{{preferencesUrl}}" style="color:#8e78fb;text-decoration:none;font-weight:700;">Manage Preferences</a>{{/if}}
+          {{#if showFooterDivider}} &nbsp;|&nbsp; {{/if}}
+          {{#if unsubscribeUrl}}<a href="{{unsubscribeUrl}}" style="color:#8e78fb;text-decoration:none;font-weight:700;">Unsubscribe</a>{{/if}}
+        </mj-text>
+        <mj-text align="center" color="#cccccc" font-size="11px">© {{currentYear}} Chabaqa</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

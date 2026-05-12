@@ -10,10 +10,10 @@
  */
 
 import mongoose, { Types } from 'mongoose';
-import { SubscriptionSchema, SubscriptionStatus } from '../src/schema/subscription.schema';
-import { PlanSchema } from '../src/schema/plan.schema';
-import { OrderSchema } from '../src/schema/order.schema';
-import { TrackableContentType } from '../src/schema/content-tracking.schema';
+import { SubscriptionSchema, SubscriptionStatus } from '@/infrastructure/database/schemas/commerce/subscription.schema';
+import { PlanSchema } from '@/infrastructure/database/schemas/commerce/plan.schema';
+import { OrderSchema } from '@/infrastructure/database/schemas/commerce/order.schema';
+import { TrackableContentType } from '@/infrastructure/database/schemas/learning/content-tracking.schema';
 
 // Build local models for the script
 const SubscriptionModel = mongoose.model('Subscription', SubscriptionSchema);

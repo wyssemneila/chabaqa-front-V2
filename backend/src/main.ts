@@ -1,13 +1,14 @@
+import 'tsconfig-paths/register';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from '@/app/app.module';
 import { BadRequestException, ValidationPipe, ValidationError } from '@nestjs/common';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { HttpExceptionFilter } from '@/shared/filters/http-exception.filter';
 import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
-import { AbsoluteUploadsUrlInterceptor } from './common/interceptors/absolute-uploads-url.interceptor';
-import { UploadService } from './upload/upload.service';
-import { MonitoringService } from './common/services/monitoring.service';
+import { AbsoluteUploadsUrlInterceptor } from '@/shared/interceptors/absolute-uploads-url.interceptor';
+import { UploadService } from '@/domains/shared/upload/upload.service';
+import { MonitoringService } from '@/shared/services/monitoring.service';
 import os from 'os';
 import { webcrypto } from 'node:crypto';
 import {
@@ -15,7 +16,7 @@ import {
   isCorsOriginAllowed,
   isProductionEnvironment,
   isSwaggerEnabled,
-} from './common/utils/security-config.util';
+} from '@/shared/utils/security-config.util';
 
 // Compatibility for Node < 20 where globalThis.crypto may be undefined.
 if (!globalThis.crypto) {
