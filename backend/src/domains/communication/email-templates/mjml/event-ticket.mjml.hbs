@@ -1,0 +1,31 @@
+<mjml>
+  <mj-head><mj-title>{{subject}}</mj-title><mj-preview>{{preheader}}</mj-preview></mj-head>
+  <mj-body background-color="#f0f0f5" width="600px">
+    <mj-section background-color="#ffffff" border-radius="22px 22px 0 0" padding="28px 24px 10px">
+      <mj-column>
+        <mj-text align="center" font-size="28px" font-weight="900"><span style="color:#8e78fb">chabaqa</span><span style="color:#ff9b28">.</span></mj-text>
+        <mj-text align="center" color="#8e78fb" font-size="11px" font-weight="700" letter-spacing="2px">✦ EVENT TICKET CONFIRMED</mj-text>
+        <mj-text align="center" color="#8e78fb" font-size="26px" font-weight="900">{{eventTitle}}</mj-text>
+        <mj-text align="center" color="#666666">You're all set. Keep this QR code ready for check-in.</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#ffffff" padding="20px 34px">
+      <mj-column>
+        <mj-text>Hey <strong style="color:#8e78fb">{{userName}}</strong>,<br /><br />Your registration is confirmed.</mj-text>
+        <mj-table cellpadding="8px">
+          <tr><td><strong>Date</strong></td><td>{{eventDate}}</td></tr>
+          <tr><td><strong>Time</strong></td><td>{{eventTime}}</td></tr>
+          {{#if eventLocation}}<tr><td><strong>Location</strong></td><td>{{eventLocation}}</td></tr>{{/if}}
+          <tr><td><strong>Type</strong></td><td>{{eventType}}</td></tr>
+          <tr><td><strong>Ticket</strong></td><td>{{ticketName}}</td></tr>
+        </mj-table>
+        <mj-image src="cid:ticket-qr" alt="Ticket QR Code" width="220px" border-radius="12px" padding="24px" />
+        <mj-button href="{{verifyUrl}}" background-color="#8e78fb" color="#ffffff">View Ticket Online</mj-button>
+        <mj-text color="#e07000" font-size="13px">Tip: screenshot or save this QR code for quick access.</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#ffffff" border-radius="0 0 22px 22px" padding="18px 34px">
+      <mj-column><mj-text align="center" color="#aaaaaa" font-size="12px">You received this email because you purchased a ticket on Chabaqa.</mj-text><mj-text align="center" color="#cccccc" font-size="11px">© {{currentYear}} Chabaqa</mj-text></mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

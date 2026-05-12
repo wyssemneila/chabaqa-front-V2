@@ -11,7 +11,7 @@
  */
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import { PlanSchema } from '../src/schema/plan.schema';
+import { PlanSchema } from '@/infrastructure/database/schemas/commerce/plan.schema';
 
 const MONGODB_URI = process.env.MONGODB_URI ?? process.env.MONGO_URI ?? '';
 

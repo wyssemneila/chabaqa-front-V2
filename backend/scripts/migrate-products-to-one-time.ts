@@ -6,7 +6,7 @@
  */
 
 import mongoose from 'mongoose';
-import { ProductSchema } from '../src/schema/product.schema';
+import { ProductSchema } from '@/infrastructure/database/schemas/commerce/product.schema';
 
 const ProductModel = mongoose.model('Product', ProductSchema);
 

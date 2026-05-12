@@ -1,10 +1,10 @@
 import 'dotenv/config';
 import mongoose, { Types } from 'mongoose';
 
-import { Payout, PayoutSchema, PayoutStatus } from '../src/schema/payout.schema';
-import { Order, OrderSchema } from '../src/schema/order.schema';
-import { Community, CommunitySchema } from '../src/schema/community.schema';
-import { User, UserSchema } from '../src/schema/user.schema';
+import { Payout, PayoutSchema, PayoutStatus } from '@/infrastructure/database/schemas/commerce/payout.schema';
+import { Order, OrderSchema } from '@/infrastructure/database/schemas/commerce/order.schema';
+import { Community, CommunitySchema } from '@/infrastructure/database/schemas/community/community.schema';
+import { User, UserSchema } from '@/infrastructure/database/schemas/auth/user.schema';
 
 type ParsedArgs = {
   creatorId?: string;

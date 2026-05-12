@@ -1,0 +1,62 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{subject}}</mj-title>
+    <mj-preview>{{preheader}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Arial, Helvetica, sans-serif" />
+      <mj-text color="#2d2d2d" font-size="15px" line-height="1.7" />
+      <mj-button border-radius="12px" font-weight="700" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f0f0f5" width="600px">
+    <mj-section background-color="#ffffff" border-radius="22px 22px 0 0" padding="28px 24px 12px">
+      <mj-column>
+        <mj-text align="center" font-size="28px" font-weight="900" letter-spacing="0">
+          <span style="color:#8e78fb">c</span><span style="color:#47c7ea">h</span><span style="color:#f65887">a</span><span style="color:#ff9b28">b</span><span style="color:#8e78fb">a</span><span style="color:#47c7ea">q</span><span style="color:#f65887">a</span><span style="color:#ff9b28">.</span>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="24px 34px 8px">
+      <mj-column>
+        <mj-text align="center" color="#8e78fb" font-size="11px" font-weight="700" letter-spacing="2px" text-transform="uppercase">✦ {{heroTag}}</mj-text>
+        <mj-text align="center" color="#8e78fb" font-size="30px" font-weight="900" line-height="1.2">{{{heroTitle}}}</mj-text>
+        <mj-text align="center" color="#666666" font-size="14px">{{heroDescription}}</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="22px 34px">
+      <mj-column>
+        <mj-text>Hey <strong style="color:#8e78fb">{{userName}}</strong>,<br /><br />{{introText}}</mj-text>
+        <mj-text color="#8e78fb" font-size="10px" font-weight="700" letter-spacing="2px" text-transform="uppercase">{{otpLabel}}</mj-text>
+        <mj-text align="center" color="#2d2d2d" font-family="'Courier New', monospace" font-size="34px" font-weight="900" letter-spacing="8px" padding="26px 18px">{{otpCode}}</mj-text>
+        <mj-text align="center" color="#9ca3af" font-size="12px">Single use only · Do not share</mj-text>
+        <mj-text color="#e07000" font-size="13px">This code expires in <strong>{{expiryMinutes}} minutes</strong>.</mj-text>
+        <mj-text color="#c0446a" font-size="13px"><strong style="color:#f65887">{{securityTitle}}</strong> {{securityText}}</mj-text>
+      </mj-column>
+    </mj-section>
+
+    {{#if showAppCta}}
+    <mj-section background-color="#8e78fb" border-radius="20px" padding="26px 24px">
+      <mj-column>
+        <mj-text color="#ffffff" font-size="22px" font-weight="900">Get Chabaqa APP</mj-text>
+        <mj-text color="#ffffff" font-size="13px">Grow your audience, launch courses, join sessions, and manage everything on the go.</mj-text>
+        {{#if iosAppUrl}}<mj-button href="{{iosAppUrl}}" background-color="#ffffff" color="#1a1a2e">App Store</mj-button>{{/if}}
+        {{#if androidAppUrl}}<mj-button href="{{androidAppUrl}}" background-color="#ffffff" color="#1a1a2e">Google Play</mj-button>{{/if}}
+      </mj-column>
+    </mj-section>
+    {{/if}}
+
+    <mj-section background-color="#ffffff" border-radius="0 0 22px 22px" padding="20px 34px">
+      <mj-column>
+        <mj-text align="center" color="#aaaaaa" font-size="12px">{{footerReason}}</mj-text>
+        <mj-text align="center" color="#aaaaaa" font-size="12px">
+          {{#if preferencesUrl}}<a href="{{preferencesUrl}}" style="color:#8e78fb;text-decoration:none;font-weight:700;">Manage Preferences</a>{{/if}}
+          {{#if showFooterDivider}} &nbsp;|&nbsp; {{/if}}
+          {{#if unsubscribeUrl}}<a href="{{unsubscribeUrl}}" style="color:#8e78fb;text-decoration:none;font-weight:700;">Unsubscribe</a>{{/if}}
+        </mj-text>
+        <mj-text align="center" color="#cccccc" font-size="11px">© {{currentYear}} Chabaqa. All rights reserved.</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

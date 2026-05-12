@@ -5,10 +5,10 @@ import {
   EmailCampaignDocument,
   EmailCampaignSchema,
   EmailCampaignStatus,
-} from '../src/schema/email-campaign.schema';
+} from '@/infrastructure/database/schemas/communication/email-campaign.schema';
 import {
   EmailCampaignSendJobPayload,
-} from '../src/email-campaign/email-campaign.jobs';
+} from '@/domains/communication/email-campaign/email-campaign.jobs';
 
 const REDIS_READY_LIST = 'email-campaigns:ready';
 const REDIS_SCHEDULED_ZSET = 'email-campaigns:scheduled';
