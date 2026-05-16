@@ -2,11 +2,12 @@ import type React from "react"
 import type { Metadata } from "next"
 import dynamic from "next/dynamic"
 import CreatorClientLayout from "@/app/(creator)/creator/creator-client-layout"
+import { noIndexRobots } from "@/lib/seo-config"
 
 export const metadata: Metadata = {
   title: "Chabaqa - Creator Dashboard",
   description: "Manage your creator content, analytics, and community",
-  generator: "v0.dev",
+  robots: noIndexRobots,
 }
 
 import { AuthProvider } from "@/app/providers/auth-provider"

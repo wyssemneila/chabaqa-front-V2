@@ -16,7 +16,7 @@ import {
 import { normalizeCommunitySettings } from "@/lib/community-settings"
 import { buildCommunityTheme, getContentWidthClass } from "@/lib/community-theme"
 import { cn } from "@/lib/utils"
-import { generateAlternateLanguages, generateKeywords, generateTwitterMetadata } from "@/lib/seo-config"
+import { absoluteUrl, generateAlternateLanguages, generateKeywords, generateTwitterMetadata } from "@/lib/seo-config"
 
 const PUBLIC_COMMUNITY_DATA_REVALIDATE_SECONDS = 60
 const OPTIONAL_COMMUNITY_FETCH_TIMEOUT_MS = 4500
@@ -66,17 +66,17 @@ export async function generateMetadata({ params }: CommunityDetailsPageProps): P
     : "Community"
   const title = `${normalizedName} Community`
   const description = `Join ${normalizedName} on Chabaqa to access premium content, sessions, events, and creator resources.`
-  const communityUrl = `https://chabaqa.io/community/${encodeURIComponent(slug)}`
+  const communityPath = `/community/${encodeURIComponent(slug)}`
 
   return {
     title,
     description,
     keywords: generateKeywords([`${normalizedName} community`, `${slug} community`, "join creator community"]),
-    alternates: generateAlternateLanguages(`/community/${encodeURIComponent(slug)}`),
+    alternates: generateAlternateLanguages(communityPath),
     openGraph: {
       title,
       description,
-      url: communityUrl,
+      url: absoluteUrl(communityPath),
       type: "website",
       siteName: "Chabaqa",
     },

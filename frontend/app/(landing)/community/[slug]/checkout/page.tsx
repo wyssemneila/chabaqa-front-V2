@@ -4,7 +4,7 @@ import { communitiesApi } from "@/lib/api"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { CheckoutForm } from "./components/checkout-form"
-import { generateAlternateLanguages, generateKeywords, generateTwitterMetadata } from "@/lib/seo-config"
+import { generateAlternateLanguages, generateKeywords, generateTwitterMetadata, noIndexRobots } from "@/lib/seo-config"
 
 interface CheckoutPageProps {
   params: Promise<{
@@ -33,10 +33,7 @@ export async function generateMetadata({ params }: CheckoutPageProps): Promise<M
     description,
     keywords: generateKeywords(["community checkout", "join community", `${communityName} checkout`]),
     alternates: generateAlternateLanguages(`/community/${encodeURIComponent(slug)}/checkout`),
-    robots: {
-      index: false,
-      follow: true,
-    },
+    robots: noIndexRobots,
     twitter: generateTwitterMetadata(title, description),
   }
 }

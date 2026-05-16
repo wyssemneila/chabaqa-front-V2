@@ -2,12 +2,24 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { FAQ } from "../components/faq"
 import type { Metadata } from "next"
+import {
+  absoluteUrl,
+  generateAlternateLanguages,
+  generateBreadcrumbSchema,
+  generateKeywords,
+  generateOGMetadata,
+  generateRobotsMetadata,
+  generateTwitterMetadata,
+} from "@/lib/seo-config"
+
+const faqTitle = "FAQ - Frequently Asked Questions | Chabaqa Community Platform"
+const faqDescription =
+  "Find answers to common questions about Chabaqa, the all-in-one community platform for courses, challenges, coaching sessions, events, and creator monetization."
 
 export const metadata: Metadata = {
-  title: "FAQ - Frequently Asked Questions | Chabaqa Community Platform",
-  description: "Find answers to common questions about Chabaqa , the all-in-one community platform. Learn about creating communities, online courses, challenges, coaching sessions, events, and monetization strategies.",
-  keywords: [
-    // English keywords
+  title: faqTitle,
+  description: faqDescription,
+  keywords: generateKeywords([
     "chabaqa faq",
     "community platform questions",
     "online course platform faq",
@@ -17,17 +29,6 @@ export const metadata: Metadata = {
     "coaching platform faq",
     "membership site questions",
     "creator monetization faq",
-    // Arabic transliterations for SEO
-    "shabqa",
-    "chabka",
-    "shabka",
-    "chabqa",
-    "chabaqa",
-    "shabqa platform",
-    "chabka community",
-    "shabka online",
-    "شبقة",
-    // Long-tail keywords
     "how to create community chabaqa",
     "chabaqa pricing questions",
     "online course platform comparison",
@@ -36,51 +37,17 @@ export const metadata: Metadata = {
     "chabaqa vs other platforms",
     "community engagement tools",
     "creator economy platform"
-  ],
+  ]),
   authors: [{ name: "Chabaqa" }],
-  openGraph: {
-    title: "FAQ - Frequently Asked Questions | Chabaqa Community Platform",
-    description: "Get answers to all your questions about Chabaqa, the all-in-one platform for creators to build, engage, and monetize their communities.",
-    url: "https://chabaqa.io/faq",
-    siteName: "Chabaqa",
-    type: "website",
-    locale: "en_US",
-    alternateLocale: ["ar_TN"],
-    images: [
-      {
-        url: "/og-faq.jpg",
-        width: 1200,
-        height: 630,
-        alt: "Chabaqa FAQ - Community Platform Questions"
-      }
-    ]
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "FAQ - Frequently Asked Questions | Chabaqa",
-    description: "Get answers to all your questions about Chabaqa community platform.",
-    images: ["/og-faq.jpg"],
-    creator: "@chabaqa"
-  },
-  alternates: {
-    canonical: "https://chabaqa.io/faq",
-    languages: {
-      'en': 'https://chabaqa.io/faq',
-      'ar': 'https://chabaqa.io/ar/faq'
-    }
-  },
-  robots: {
-    index: true,
-    follow: true,
-    nocache: false,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    }
-  },
+  openGraph: generateOGMetadata(faqTitle, faqDescription, "/faq", {
+    url: "/og-faq.jpg",
+    width: 1200,
+    height: 630,
+    alt: "Chabaqa FAQ - Community Platform Questions",
+  }),
+  twitter: generateTwitterMetadata(faqTitle, faqDescription, "/og-faq.jpg"),
+  alternates: generateAlternateLanguages("/faq"),
+  robots: generateRobotsMetadata(true, true),
   other: {
     'revisit-after': '7 days',
     'distribution': 'global',
@@ -108,7 +75,7 @@ export default function FAQPage() {
             "@type": "FAQPage",
             "name": "Chabaqa Frequently Asked Questions",
             "description": "Comprehensive FAQ about Chabaqa community platform, online courses, challenges, coaching, and monetization",
-            "url": "https://chabaqa.io/faq",
+            "url": absoluteUrl("/faq"),
             "inLanguage": "en",
             "mainEntity": [
               {
@@ -155,10 +122,10 @@ export default function FAQPage() {
             "publisher": {
               "@type": "Organization",
               "name": "Chabaqa",
-              "url": "https://chabaqa.io",
+              "url": absoluteUrl("/"),
               "logo": {
                 "@type": "ImageObject",
-                "url": "https://chabaqa.io/logo.png"
+                "url": absoluteUrl("/logo_chabaqa.png")
               },
               "sameAs": [
                 "https://twitter.com/chabaqa",
@@ -174,24 +141,12 @@ export default function FAQPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Home",
-                "item": "https://chabaqa.io"
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": "FAQ",
-                "item": "https://chabaqa.io/faq"
-              }
-            ]
-          })
+          __html: JSON.stringify(
+            generateBreadcrumbSchema([
+              { name: "Home", url: absoluteUrl("/") },
+              { name: "FAQ", url: absoluteUrl("/faq") },
+            ]),
+          )
         }}
       />
       
@@ -204,12 +159,12 @@ export default function FAQPage() {
             "@type": "WebSite",
             "name": "Chabaqa",
             "alternateName": ["Shabqa", "Chabka", "Shabka", "شبقة"],
-            "url": "https://chabaqa.io",
+            "url": absoluteUrl("/"),
             "potentialAction": {
               "@type": "SearchAction",
               "target": {
                 "@type": "EntryPoint",
-                "urlTemplate": "https://chabaqa.io/search?q={search_term_string}"
+                "urlTemplate": `${absoluteUrl("/search")}?q={search_term_string}`
               },
               "query-input": "required name=search_term_string"
             }
