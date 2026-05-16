@@ -11,6 +11,7 @@ import { Ga4ScriptGate } from "@/components/ga4-script-gate"
 import { CookieConsentProvider } from "@/components/cookie-consent-provider"
 import { ArabicAutoTranslate } from "@/components/arabic-auto-translate"
 import { PwaServiceWorker } from "@/components/pwa-service-worker"
+import { GlobalImageErrorHandler } from "@/components/media/global-image-error-handler"
 import LoadingScreen from "@/components/ui/LoadingScreen"
 import { DEFAULT_LOCALE, getLocaleDirection, isAppLocale, LOCALE_COOKIE } from "@/lib/i18n/config"
 import { getMessagesForLocale } from "@/lib/i18n/messages"
@@ -20,6 +21,7 @@ import {
   generateRobotsMetadata,
   generateTwitterMetadata,
   generateWebSiteSchema,
+  getSiteUrl,
   seoConfig,
 } from "@/lib/seo-config"
 
@@ -29,10 +31,7 @@ const tajawal = Tajawal({
   variable: "--font-arabic",
   weight: ["400", "500", "700", "800"],
 })
-const appBaseUrl =
-  process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith("http")
-    ? process.env.NEXT_PUBLIC_APP_URL
-    : "https://chabaqa.io"
+const appBaseUrl = getSiteUrl()
 
 export const metadata: Metadata = {
   metadataBase: new URL(appBaseUrl),
@@ -42,7 +41,7 @@ export const metadata: Metadata = {
   },
   description: seoConfig.defaultDescription,
   keywords: generateKeywords(),
-  authors: [{ name: "Chabaqa", url: "https://chabaqa.io" }],
+  authors: [{ name: "Chabaqa", url: appBaseUrl }],
   creator: "Chabaqa",
   publisher: "Chabaqa",
   formatDetection: {
@@ -112,7 +111,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
         {/* Language alternates */}
-        <link rel="alternate" hrefLang="x-default" href="https://chabaqa.io" />
+        <link rel="alternate" hrefLang="x-default" href={appBaseUrl} />
         
         {/* Additional meta tags for better SEO */}
         <meta name="theme-color" content="#ffffff" />
@@ -130,6 +129,7 @@ export default async function RootLayout({
           <NextIntlClientProvider locale={locale} messages={messages}>
           <ReactQueryProvider>
             <ExtensionErrorGuard />
+            <GlobalImageErrorHandler />
             {children}
             <PwaServiceWorker />
             <ArabicAutoTranslate />

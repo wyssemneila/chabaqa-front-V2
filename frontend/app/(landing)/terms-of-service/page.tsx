@@ -3,6 +3,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { LegalDocumentLayout } from "@/app/(landing)/components/legal-document-layout"
 import { getTranslations } from "next-intl/server"
+import { generateAlternateLanguages, generateOGMetadata, generateRobotsMetadata } from "@/lib/seo-config"
 
 const TERMS_SECTIONS = [
   {
@@ -104,21 +105,13 @@ export const metadata: Metadata = {
   title: "Terms of Service | Chabaqa",
   description:
     "Read Chabaqa's Terms of Service covering platform access, account responsibilities, payments, content standards, and legal terms.",
-  alternates: {
-    canonical: "https://chabaqa.io/terms-of-service",
-  },
-  openGraph: {
-    title: "Terms of Service | Chabaqa",
-    description:
-      "Understand the terms that govern use of Chabaqa, including accounts, payments, content, and platform policies.",
-    url: "https://chabaqa.io/terms-of-service",
-    siteName: "Chabaqa",
-    type: "website",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  alternates: generateAlternateLanguages("/terms-of-service"),
+  openGraph: generateOGMetadata(
+    "Terms of Service | Chabaqa",
+    "Understand the terms that govern use of Chabaqa, including accounts, payments, content, and platform policies.",
+    "/terms-of-service",
+  ),
+  robots: generateRobotsMetadata(true, true),
 }
 
 export default function TermsOfServicePage() {

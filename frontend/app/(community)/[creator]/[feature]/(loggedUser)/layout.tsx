@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { CommunityHeader } from "@/app/(community)/components/community-header"
+import { noIndexRobots } from "@/lib/seo-config"
 
 export const metadata: Metadata = {
   title: {
@@ -22,10 +23,7 @@ export const metadata: Metadata = {
     title: "Chabaqa - Turn your passion into business",
     description: "A full-featured creator platform for building and managing communities"
   },
-  robots: {
-    index: true,
-    follow: true
-  }
+  robots: noIndexRobots,
 }
 
 export const viewport: Viewport = {

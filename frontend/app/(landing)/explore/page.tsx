@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   openGraph: generateOGMetadata(
     "Explore Communities, Courses, Events and Sessions",
     "Discover top communities, courses, challenges, products, events, and 1-to-1 sessions on Chabaqa.",
-    "https://chabaqa.io/explore",
+    "/explore",
   ),
   twitter: generateTwitterMetadata(
     "Explore Communities, Courses, Events and Sessions",

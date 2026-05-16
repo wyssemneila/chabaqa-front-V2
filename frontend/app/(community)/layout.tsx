@@ -6,6 +6,7 @@ import { CommunityProvider } from "@/app/providers/community-context"
 import { SocketProvider } from "@/lib/socket-context"
 import { Toaster } from "@/components/ui/toaster"
 import { ExtensionErrorGuard } from "@/app/(auth)/components/extension-error-guard"
+import { noIndexRobots } from "@/lib/seo-config"
 
 const LiveSupportWidget = dynamic(
   () => import("@/components/live-support/live-support-widget").then(mod => ({ default: mod.LiveSupportWidget })),
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
   title: "Chabaqa - Turn your passion into buisness",
   description:
     "The ultimate platform for creators to build engaged communities, monetize their expertise, and scale their impact.",
+  robots: noIndexRobots,
 }
 
 export default function RootLayout({

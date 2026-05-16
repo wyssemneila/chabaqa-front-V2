@@ -3,10 +3,15 @@
  * Centralized SEO settings including keywords, metadata, and structured data
  */
 
+const configuredSiteUrl =
+  process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith("http")
+    ? process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
+    : "https://chabaqa.io"
+
 export const seoConfig = {
   // Base configuration
   siteName: "Chabaqa",
-  siteUrl: "https://chabaqa.io",
+  siteUrl: configuredSiteUrl,
   defaultTitle: "Chabaqa Official Site | All-in-One Community Platform for Creators",
   defaultDescription:
     "Official Chabaqa platform for creators to build and monetize communities with courses, challenges, coaching sessions, events, and digital products.",
@@ -128,12 +133,12 @@ export const seoConfig = {
     "@type": "Organization",
     name: "Chabaqa",
     alternateName: ["Shabqa", "Chabka", "Shabka", "شبقة"],
-    url: "https://chabaqa.io",
+    url: configuredSiteUrl,
     logo: {
       "@type": "ImageObject",
-      url: "https://chabaqa.io/logo.png",
-      width: 250,
-      height: 60
+      url: `${configuredSiteUrl}/logo_chabaqa.png`,
+      width: 2000,
+      height: 525
     },
     description: "All-in-one community platform for creators to build, engage, and monetize their communities",
     foundingDate: "2023",
@@ -162,6 +167,30 @@ export const seoConfig = {
   }
 }
 
+export function getSiteUrl(): string {
+  return seoConfig.siteUrl
+}
+
+export function normalizeSeoPath(path = ""): string {
+  if (!path || path === "/") return ""
+  return `/${path.replace(/^\/+/, "").replace(/\/+$/, "")}`
+}
+
+export function absoluteUrl(pathOrUrl = ""): string {
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl
+  const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`
+  return `${seoConfig.siteUrl}${path}`
+}
+
+export function getCanonicalUrl(path = ""): string {
+  return `${seoConfig.siteUrl}${normalizeSeoPath(path)}`
+}
+
+export const defaultSeoImage = {
+  ...seoConfig.ogImage,
+  url: absoluteUrl(seoConfig.ogImage.url),
+}
+
 /**
  * Generate comprehensive keywords array for a page
  */
@@ -183,15 +212,16 @@ export function generateOGMetadata(
   url: string,
   image?: { url: string; width: number; height: number; alt: string }
 ) {
+  const imageConfig = image || defaultSeoImage
   return {
     title,
     description,
-    url,
+    url: absoluteUrl(url),
     siteName: seoConfig.siteName,
     type: "website" as const,
     locale: seoConfig.languages.locales.en,
     alternateLocale: [seoConfig.languages.locales.ar],
-    images: [image || seoConfig.ogImage]
+    images: [{ ...imageConfig, url: absoluteUrl(imageConfig.url) }]
   }
 }
 
@@ -207,7 +237,7 @@ export function generateTwitterMetadata(
     card: "summary_large_image" as const,
     title,
     description,
-    images: [image || seoConfig.ogImage.url],
+    images: [absoluteUrl(image || seoConfig.ogImage.url)],
     creator: seoConfig.social.twitter,
     site: seoConfig.social.twitter
   }
@@ -217,12 +247,14 @@ export function generateTwitterMetadata(
  * Generate alternate language links
  */
 export function generateAlternateLanguages(path: string = "") {
-  const baseUrl = seoConfig.siteUrl
+  const normalizedPath = normalizeSeoPath(path)
+  const canonical = `${seoConfig.siteUrl}${normalizedPath}`
   return {
-    canonical: `${baseUrl}${path}`,
+    canonical,
     languages: {
-      'en': `${baseUrl}${path}`,
-      'ar': `${baseUrl}/ar${path}`
+      "en": canonical,
+      "ar": `${seoConfig.siteUrl}/ar${normalizedPath}`,
+      "x-default": canonical,
     }
   }
 }
@@ -245,6 +277,8 @@ export function generateRobotsMetadata(index: boolean = true, follow: boolean = 
   }
 }
 
+export const noIndexRobots = generateRobotsMetadata(false, false)
+
 /**
  * Generate WebSite structured data with search action
  */
@@ -264,6 +298,39 @@ export function generateWebSiteSchema() {
       "query-input": "required name=search_term_string"
     },
     inLanguage: seoConfig.languages.supported
+  }
+}
+
+export function generateWebPageSchema({
+  path = "",
+  name,
+  description,
+}: {
+  path?: string
+  name: string
+  description: string
+}) {
+  const url = getCanonicalUrl(path)
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name,
+    description,
+    url,
+    isPartOf: {
+      "@type": "WebSite",
+      name: seoConfig.siteName,
+      url: seoConfig.siteUrl,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: seoConfig.siteName,
+      url: seoConfig.siteUrl,
+      logo: {
+        "@type": "ImageObject",
+        url: absoluteUrl("/logo_chabaqa.png"),
+      },
+    },
   }
 }
 

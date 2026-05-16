@@ -1,44 +1,48 @@
-import { MetadataRoute } from 'next'
+import { MetadataRoute } from "next"
+import { getSiteUrl } from "@/lib/seo-config"
 
 export default function robots(): MetadataRoute.Robots {
+  const siteUrl = getSiteUrl()
+
   return {
     rules: [
       {
-        userAgent: '*',
-        allow: '/',
+        userAgent: "*",
+        allow: [
+          "/",
+          "/pricing",
+          "/faq",
+          "/blogs",
+          "/blogs/",
+          "/explore",
+          "/community/",
+          "/profile/",
+          "/terms-of-service",
+          "/privacy-policy",
+        ],
         disallow: [
-          '/api/',
-          '/admin/',
-          '/dashboard/',
-          '/creator/',
-          '/_next/',
-          '/private/',
+          "/api/",
+          "/admin/",
+          "/dashboard/",
+          "/creator/",
+          "/settings/",
+          "/signin",
+          "/signup",
+          "/forgot-password",
+          "/reset-password",
+          "/verify-email",
+          "/build-community",
+          "/community/*/checkout",
+          "/invite/",
+          "/invitation/",
+          "/payment-success",
+          "/ticket/verify/",
+          "/konnect-mock-checkout",
+          "/private/",
         ],
       },
-      // AI crawlers - allow access to public content
-      {
-        userAgent: 'GPTBot',
-        allow: ['/blogs/', '/faq', '/terms-of-service', '/privacy-policy', '/'],
-        disallow: ['/api/', '/admin/', '/dashboard/', '/creator/'],
-      },
-      {
-        userAgent: 'ChatGPT-User',
-        allow: ['/blogs/', '/faq', '/terms-of-service', '/privacy-policy', '/'],
-        disallow: ['/api/', '/admin/', '/dashboard/', '/creator/'],
-      },
-      {
-        userAgent: 'Google-Extended',
-        allow: ['/blogs/', '/faq', '/terms-of-service', '/privacy-policy', '/'],
-      },
-      {
-        userAgent: 'anthropic-ai',
-        allow: ['/blogs/', '/faq', '/terms-of-service', '/privacy-policy', '/'],
-      },
-      {
-        userAgent: 'Claude-Web',
-        allow: ['/blogs/', '/faq', '/terms-of-service', '/privacy-policy', '/'],
-      },
     ],
-    sitemap: 'https://chabaqa.io/sitemap.xml',
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   }
 }

@@ -3,6 +3,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { LegalDocumentLayout } from "@/app/(landing)/components/legal-document-layout"
 import { getTranslations } from "next-intl/server"
+import { generateAlternateLanguages, generateOGMetadata, generateRobotsMetadata } from "@/lib/seo-config"
 
 const PRIVACY_SECTIONS = [
   {
@@ -107,21 +108,13 @@ export const metadata: Metadata = {
   title: "Privacy Policy | Chabaqa",
   description:
     "Read Chabaqa's Privacy Policy to understand how we collect, use, protect, and process personal data across our platform.",
-  alternates: {
-    canonical: "https://chabaqa.io/privacy-policy",
-  },
-  openGraph: {
-    title: "Privacy Policy | Chabaqa",
-    description:
-      "Learn how Chabaqa handles personal data, platform security, retention, and user privacy rights.",
-    url: "https://chabaqa.io/privacy-policy",
-    siteName: "Chabaqa",
-    type: "website",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  alternates: generateAlternateLanguages("/privacy-policy"),
+  openGraph: generateOGMetadata(
+    "Privacy Policy | Chabaqa",
+    "Learn how Chabaqa handles personal data, platform security, retention, and user privacy rights.",
+    "/privacy-policy",
+  ),
+  robots: generateRobotsMetadata(true, true),
 }
 
 export default function PrivacyPolicyPage() {
