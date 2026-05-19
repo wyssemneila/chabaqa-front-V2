@@ -107,10 +107,17 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
     const unlockedList = (unlocked as any)?.unlockedChapters || null
     const sequentialEnabled = Boolean((unlocked as any)?.sequentialProgressionEnabled)
     const unlockMsg = (unlocked as any)?.unlockMessage
+    const normalizedUnlockedList = Array.isArray(unlockedList) ? unlockedList : null
 
-    setUnlockedChapters(Array.isArray(unlockedList) ? unlockedList : null)
+    setUnlockedChapters(normalizedUnlockedList)
     setSequentialProgressionEnabled(sequentialEnabled)
     setUnlockMessage(typeof unlockMsg === "string" ? unlockMsg : undefined)
+
+    return {
+      unlockedChapters: normalizedUnlockedList,
+      sequentialProgressionEnabled: sequentialEnabled,
+      unlockMessage: typeof unlockMsg === "string" ? unlockMsg : undefined,
+    }
   }
 
   const refreshProgress = async (
@@ -161,20 +168,26 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
         await new Promise((resolve) => setTimeout(resolve, delay))
       }
       try {
-        await Promise.all([
+        const [, unlockedSnapshot, sessionRaw] = await Promise.all([
           refreshEnrollmentProgress(resolvedCourseId, course),
           refreshUnlockedChapters(resolvedCourseId),
-          courseSession.refreshSession().catch(() => {}),
+          coursesApi.getCourseSession(resolvedCourseId, chapterId).catch(() => null),
         ])
-        const [paidRaw, seqRaw] = await Promise.all([
-          coursesApi.checkChapterAccessPaid(resolvedCourseId, chapterId).catch(() => null),
-          coursesApi.checkChapterAccessSequential(resolvedCourseId, chapterId).catch(() => null),
-        ])
-        const paid = (paidRaw as any)?.data || paidRaw
-        const seq = (seqRaw as any)?.data || seqRaw
-        const paidAllowed = Boolean((paid as any)?.canAccess)
-        const seqAllowed = Boolean((seq as any)?.canAccess ?? (seq as any)?.hasAccess ?? true)
-        if (paidAllowed && seqAllowed) {
+        void courseSession.refreshSession().catch(() => {})
+
+        const session = unwrapApiPayload(sessionRaw)
+        const unlockedByList = Boolean(
+          unlockedSnapshot.unlockedChapters?.some(
+            (chapter: any) => String(chapter?.id) === String(chapterId) && Boolean(chapter?.isUnlocked),
+          ),
+        )
+        const unlockedBySession = Boolean(
+          (session as any)?.chapters?.some(
+            (chapter: any) => String(chapter?.chapterId) === String(chapterId) && Boolean(chapter?.canAccess),
+          ),
+        )
+
+        if (unlockedByList || unlockedBySession) {
           setPendingPaidChapterId(chapterId)
           setChapterUnlockState("unlocked")
           clearCheckoutParams()

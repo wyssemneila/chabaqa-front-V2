@@ -3,12 +3,30 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Lock, PlayCircle, Loader2 } from "lucide-react"
+import {
+  Check,
+  Gauge,
+  Loader2,
+  Lock,
+  Maximize,
+  Minimize,
+  Pause,
+  PictureInPicture,
+  Play,
+  PlayCircle,
+  RotateCcw,
+  RotateCw,
+  Settings,
+  Volume2,
+  VolumeX,
+} from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { coursesApi } from "@/lib/api/courses.api"
 import { videoPlaybackApi, type PlaybackSessionResponse } from "@/lib/api/video-playback.api"
 import { detectVideoPlatform, parseVimeoVideoId, parseYouTubeVideoId } from "@/lib/utils/video-source"
 import { tokenStorage } from "@/lib/token-storage"
 import { ChabaqaLogoWatermark } from "@/components/media/chabaqa-logo-watermark"
+import { cn } from "@/lib/utils"
 
 interface EnhancedVideoPlayerProps {
   creatorSlug: string
@@ -35,6 +53,38 @@ type YouTubeApiPlayer = {
 
 let youtubeIframeApiPromise: Promise<void> | null = null
 const COMPLETION_RATIO = 0.99
+type WatchTimeSyncOptions = { isFinal?: boolean }
+const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+
+const formatVideoTime = (seconds: number) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0:00"
+  const totalSeconds = Math.floor(seconds)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const remainingSeconds = totalSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
+  }
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`
+}
+
+const clampTime = (value: number, max: number) => {
+  const safeMax = Number.isFinite(max) && max > 0 ? max : Number.MAX_SAFE_INTEGER
+  return Math.min(Math.max(Number(value) || 0, 0), safeMax)
+}
+
+const normalizeApiError = (error: unknown) => {
+  if (!error || typeof error !== "object") return error
+  const anyError = error as any
+  return {
+    message: anyError?.message || anyError?.response?.data?.message,
+    code: anyError?.code || anyError?.response?.data?.code,
+    statusCode: anyError?.statusCode || anyError?.response?.status,
+    details: anyError?.response?.data || anyError,
+  }
+}
 
 const loadYouTubeIframeApi = (): Promise<void> => {
   if (typeof window === "undefined") {
@@ -141,6 +191,45 @@ function WatermarkText({ text, sessionShort }: { text: string; sessionShort: str
   )
 }
 
+function PlayerControlButton({
+  label,
+  children,
+  onClick,
+  className,
+  disabled,
+}: {
+  label: string
+  children: React.ReactNode
+  onClick?: () => void
+  className?: string
+  disabled?: boolean
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          title={label}
+          onClick={onClick}
+          disabled={disabled}
+          className={cn(
+            "grid h-9 w-9 shrink-0 place-items-center rounded-md text-white transition",
+            "hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
+            "disabled:pointer-events-none disabled:opacity-45",
+            className,
+          )}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="border-white/10 bg-black/90 text-xs text-white">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 // Memoized to prevent re-renders when parent CoursePlayer re-renders due to watch-time state changes.
 // The polling interval inside this component would restart on every re-render otherwise.
 const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
@@ -161,8 +250,18 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
   const [playerError, setPlayerError] = useState<string | null>(null)
   const [isLoadingSession, setIsLoadingSession] = useState(false)
   const [playbackSession, setPlaybackSession] = useState<PlaybackSessionResponse | null>(null)
+  const [bufferedTime, setBufferedTime] = useState(0)
+  const [isMuted, setIsMuted] = useState(false)
+  const [volume, setVolume] = useState(1)
+  const [playbackRate, setPlaybackRate] = useState(1)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isPictureInPicture, setIsPictureInPicture] = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
+  const [seekPreviewTime, setSeekPreviewTime] = useState<number | null>(null)
+  const [openNativeMenu, setOpenNativeMenu] = useState<"speed" | "settings" | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const lastUpdateRef = useRef<number>(0)
+  const playerContainerRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<HTMLDivElement>(null)
   const htmlVideoRef = useRef<HTMLVideoElement | null>(null)
   const vimeoIframeRef = useRef<HTMLIFrameElement | null>(null)
@@ -181,7 +280,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
   const videoDurationRef = useRef<number>(0)
   const enrollmentRef = useRef<any>(enrollment)
   const savedWatchPositionRef = useRef<number>(0)
-  const sendWatchTimeRef = useRef<(time: number, duration?: number) => Promise<void>>(async () => {})
+  const sendWatchTimeRef = useRef<(time: number, duration?: number, options?: WatchTimeSyncOptions) => Promise<any>>(async () => null)
   // Use refs for callbacks so the polling interval / YouTube player never needs to
   // restart just because the callback reference changed.
   const onWatchTimeUpdateRef = useRef(onWatchTimeUpdate)
@@ -191,6 +290,8 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
   const markChapterCompletedOnceRef = useRef<(reason: string, context?: { currentTime?: number; duration?: number }) => Promise<void>>(async () => {})
   const sessionExtendIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const hlsInstanceRef = useRef<any>(null)
+  const controlsHideTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const previousVolumeRef = useRef(1)
 
   const rawVideoUrl = currentChapter?.videoUrl || ''
   const hasProtectedVideo = Boolean(currentChapter?.hasProtectedVideo)
@@ -412,6 +513,225 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
     return /\.(mp4|webm|mov|avi|mkv|3gp)(\?.*)?$/i.test(safeUrl)
   }, [videoUrl])
 
+  const progressPercent = videoDuration > 0 ? Math.min((watchTime / videoDuration) * 100, 100) : 0
+  const bufferedPercent = videoDuration > 0 ? Math.min((bufferedTime / videoDuration) * 100, 100) : 0
+  const visibleSeekTime = seekPreviewTime ?? watchTime
+  const volumePercent = Math.round((isMuted ? 0 : volume) * 100)
+  const supportsPictureInPicture =
+    typeof document !== "undefined" &&
+    "pictureInPictureEnabled" in document
+
+  const updateBufferedState = useCallback((videoEl: HTMLVideoElement) => {
+    if (!videoEl.buffered || videoEl.buffered.length === 0) {
+      setBufferedTime(0)
+      return
+    }
+
+    let latestBufferedEnd = 0
+    for (let index = 0; index < videoEl.buffered.length; index += 1) {
+      latestBufferedEnd = Math.max(latestBufferedEnd, videoEl.buffered.end(index))
+    }
+    setBufferedTime(latestBufferedEnd)
+  }, [])
+
+  const clearControlsHideTimer = useCallback(() => {
+    if (controlsHideTimerRef.current) {
+      clearTimeout(controlsHideTimerRef.current)
+      controlsHideTimerRef.current = null
+    }
+  }, [])
+
+  const showControlsTemporarily = useCallback((force = false) => {
+    setControlsVisible(true)
+    clearControlsHideTimer()
+
+    if (!force && isPlaying) {
+      controlsHideTimerRef.current = setTimeout(() => {
+        setControlsVisible(false)
+      }, 2400)
+    }
+  }, [clearControlsHideTimer, isPlaying])
+
+  const toggleNativePlay = useCallback(async () => {
+    const videoEl = htmlVideoRef.current
+    if (!videoEl) return
+
+    try {
+      if (videoEl.paused || videoEl.ended) {
+        await videoEl.play()
+      } else {
+        videoEl.pause()
+      }
+    } catch {
+      setPlayerError("Your browser blocked playback. Try again from the player.")
+    }
+  }, [])
+
+  const seekNativeVideo = useCallback((targetSeconds: number) => {
+    const videoEl = htmlVideoRef.current
+    if (!videoEl) return
+
+    const targetTime = clampTime(targetSeconds, videoEl.duration || videoDuration)
+    videoEl.currentTime = targetTime
+    setWatchTime(targetTime)
+    showControlsTemporarily(true)
+  }, [showControlsTemporarily, videoDuration])
+
+  const seekNativeBy = useCallback((deltaSeconds: number) => {
+    const videoEl = htmlVideoRef.current
+    if (!videoEl) return
+    seekNativeVideo(Number(videoEl.currentTime || 0) + deltaSeconds)
+  }, [seekNativeVideo])
+
+  const setNativeVolume = useCallback((nextVolume: number) => {
+    const videoEl = htmlVideoRef.current
+    if (!videoEl) return
+
+    const normalizedVolume = Math.min(Math.max(nextVolume, 0), 1)
+    videoEl.volume = normalizedVolume
+    videoEl.muted = normalizedVolume === 0
+    setVolume(normalizedVolume)
+    setIsMuted(videoEl.muted)
+    if (normalizedVolume > 0) {
+      previousVolumeRef.current = normalizedVolume
+    }
+  }, [])
+
+  const toggleNativeMute = useCallback(() => {
+    const videoEl = htmlVideoRef.current
+    if (!videoEl) return
+
+    if (videoEl.muted || volume === 0) {
+      const restoredVolume = previousVolumeRef.current > 0 ? previousVolumeRef.current : 0.8
+      videoEl.volume = restoredVolume
+      videoEl.muted = false
+      setVolume(restoredVolume)
+      setIsMuted(false)
+    } else {
+      previousVolumeRef.current = videoEl.volume || volume || 0.8
+      videoEl.muted = true
+      setIsMuted(true)
+    }
+  }, [volume])
+
+  const setNativePlaybackRate = useCallback((rate: number) => {
+    const videoEl = htmlVideoRef.current
+    if (!videoEl) return
+
+    videoEl.playbackRate = rate
+    setPlaybackRate(rate)
+    setOpenNativeMenu(null)
+  }, [])
+
+  const toggleNativeFullscreen = useCallback(async () => {
+    const container = playerContainerRef.current
+    if (!container || typeof document === "undefined") return
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+      } else {
+        await container.requestFullscreen()
+      }
+    } catch {
+      // Fullscreen can be blocked by the browser or host frame.
+    }
+  }, [])
+
+  const toggleNativePictureInPicture = useCallback(async () => {
+    const videoEl = htmlVideoRef.current
+    if (!videoEl || typeof document === "undefined") return
+    if (!("pictureInPictureEnabled" in document) || !document.pictureInPictureEnabled) return
+    if (!("requestPictureInPicture" in videoEl)) return
+
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture()
+      } else {
+        await videoEl.requestPictureInPicture()
+      }
+    } catch {
+      // PiP is optional and can be denied by the browser.
+    }
+  }, [])
+
+  const handleNativePlayerKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape" && openNativeMenu) {
+      event.preventDefault()
+      setOpenNativeMenu(null)
+      return
+    }
+
+    const target = event.target as HTMLElement | null
+    const tagName = target?.tagName?.toLowerCase()
+    if (tagName === "input" || tagName === "button" || tagName === "select") return
+
+    switch (event.key.toLowerCase()) {
+      case " ":
+      case "k":
+        event.preventDefault()
+        void toggleNativePlay()
+        break
+      case "arrowleft":
+      case "j":
+        event.preventDefault()
+        seekNativeBy(-10)
+        break
+      case "arrowright":
+      case "l":
+        event.preventDefault()
+        seekNativeBy(10)
+        break
+      case "arrowup":
+        event.preventDefault()
+        setNativeVolume(Math.min(volume + 0.05, 1))
+        break
+      case "arrowdown":
+        event.preventDefault()
+        setNativeVolume(Math.max(volume - 0.05, 0))
+        break
+      case "m":
+        event.preventDefault()
+        toggleNativeMute()
+        break
+      case "f":
+        event.preventDefault()
+        void toggleNativeFullscreen()
+        break
+      case "p":
+        event.preventDefault()
+        void toggleNativePictureInPicture()
+        break
+      default:
+        break
+    }
+  }, [
+    seekNativeBy,
+    setNativeVolume,
+    openNativeMenu,
+    toggleNativeFullscreen,
+    toggleNativeMute,
+    toggleNativePictureInPicture,
+    toggleNativePlay,
+    volume,
+  ])
+
+  useEffect(() => {
+    showControlsTemporarily()
+    return clearControlsHideTimer
+  }, [clearControlsHideTimer, isPlaying, showControlsTemporarily])
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement))
+    }
+
+    document.addEventListener("fullscreenchange", onFullscreenChange)
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange)
+    }
+  }, [])
+
   // Send watch time to backend (throttled via lastUpdateRef).
   const isSendingRef = useRef<boolean>(false)
   const hasSentCompleteRef = useRef<boolean>(false)
@@ -419,23 +739,37 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
   const completeRetryPendingRef = useRef<boolean>(false)
   const completeRetryCountRef = useRef<number>(0)
 
-  const sendWatchTime = useCallback(async (time: number, duration?: number) => {
-    if (!currentChapter?.id) return
+  const sendWatchTime = useCallback(async (time: number, duration?: number, options?: WatchTimeSyncOptions) => {
+    if (!currentChapter?.id) return null
     if (!enrollmentRef.current) {
       // Preview playback stays local; no enrollment mutations.
       persistHighWaterMark(time)
-      return
+      return null
     }
-    if (isSendingRef.current) return
+    if (isSendingRef.current && !options?.isFinal) return null
+    if (isSendingRef.current && options?.isFinal) {
+      for (let attempt = 0; attempt < 10 && isSendingRef.current; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      }
+      if (isSendingRef.current) return null
+    }
     isSendingRef.current = true
 
     try {
-      const response = await coursesApi.updateChapterWatchTime(
-        String(courseId),
-        String(currentChapter.id),
-        Math.floor(time),
-        duration ? Math.floor(duration) : undefined
-      )
+      const response = options?.isFinal
+        ? await coursesApi.updateChapterWatchTime(
+            String(courseId),
+            String(currentChapter.id),
+            Math.floor(time),
+            duration ? Math.floor(duration) : undefined,
+            true,
+          )
+        : await coursesApi.updateChapterWatchTime(
+            String(courseId),
+            String(currentChapter.id),
+            Math.floor(time),
+            duration ? Math.floor(duration) : undefined,
+          )
       persistHighWaterMark(time)
       lastUpdateRef.current = time
 
@@ -459,7 +793,12 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
         completeRetryPendingRef.current = false
         completeRetryCountRef.current += 1
         try {
-          await coursesApi.completeChapterEnrollment(String(courseId), String(currentChapter.id))
+          const retryResponse = await coursesApi.completeChapterEnrollment(String(courseId), String(currentChapter.id))
+          if (retryResponse?.success) {
+            if (onChapterCompleteRef.current) {
+              onChapterCompleteRef.current(String(currentChapter.id))
+            }
+          }
           if (typeof (window as any).__onChapterComplete === 'function') {
             ;(window as any).__onChapterComplete()
           }
@@ -473,12 +812,15 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
           hasSentCompleteRef.current = true
           completeRetryCountRef.current = 0
         } catch (retryError) {
-          console.error("Completion retry after watch-time sync failed:", retryError)
+          console.error("Completion retry after watch-time sync failed:", normalizeApiError(retryError))
           completeRetryPendingRef.current = true
         }
       }
+      return response
     } catch (error) {
-      console.error('Failed to update watch time:', error)
+      console.error('Failed to update watch time:', normalizeApiError(error))
+      if (options?.isFinal) throw error
+      return null
     } finally {
       isSendingRef.current = false
     }
@@ -495,17 +837,24 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
       if (hasSentCompleteRef.current || completeInFlightRef.current) return
 
       completeInFlightRef.current = true
-      hasSentCompleteRef.current = true
       try {
         const contextWatchTime = Number(context?.currentTime ?? watchTimeRef.current ?? 0)
         const contextDuration = Number(context?.duration ?? videoDurationRef.current ?? 0)
+        let completionResponse: any = null
         if (contextWatchTime > 0) {
-          await sendWatchTimeRef.current(
+          completionResponse = await sendWatchTimeRef.current(
             contextWatchTime,
             contextDuration > 0 ? contextDuration : undefined,
+            { isFinal: true },
           )
         }
-        await coursesApi.completeChapterEnrollment(String(courseId), String(currentChapter.id))
+        if (!completionResponse?.isCompleted && !completionResponse?.isAutoCompleted) {
+          completionResponse = await coursesApi.completeChapterEnrollment(String(courseId), String(currentChapter.id))
+        }
+
+        hasSentCompleteRef.current = true
+        completeRetryPendingRef.current = false
+        completeRetryCountRef.current = 0
 
         // Notify via the explicit callback prop (preferred over global coupling).
         if (onChapterCompleteRef.current) {
@@ -523,11 +872,9 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
           )
         }
       } catch (error) {
-        // Keep hasSentCompleteRef true to prevent the 1s polling interval from
-        // re-triggering markChapterCompletedOnce every tick.  Retry will
-        // happen only via completeRetryPendingRef inside sendWatchTime.
+        hasSentCompleteRef.current = false
         completeRetryPendingRef.current = true
-        console.error("Failed to complete chapter:", error)
+        console.error("Failed to complete chapter:", normalizeApiError(error))
       } finally {
         completeInFlightRef.current = false
       }
@@ -796,6 +1143,15 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
     const videoEl = htmlVideoRef.current
     if (!videoEl) return
 
+    const syncNativeMediaState = () => {
+      setIsPlaying(!videoEl.paused && !videoEl.ended)
+      setIsMuted(videoEl.muted)
+      setVolume(videoEl.volume)
+      setPlaybackRate(videoEl.playbackRate)
+      if (videoEl.duration > 0) setVideoDuration(videoEl.duration)
+      updateBufferedState(videoEl)
+    }
+
     const onTimeUpdate = () => {
       const currentTime = videoEl.currentTime;
       const duration = videoEl.duration;
@@ -803,6 +1159,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
       // Update local state for current playback
       setWatchTime(currentTime);
       if (duration > 0) setVideoDuration(duration);
+      updateBufferedState(videoEl)
 
       // --- HIGH WATER MARK LOGIC ---
       // We calculate the maximum time reached across all storage layers
@@ -851,6 +1208,8 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
       const videoEl = htmlVideoRef.current;
       if (!videoEl) return;
 
+      syncNativeMediaState()
+
       if (savedWatchPosition > 0) {
         const seekTime = Math.min(savedWatchPosition, videoEl.duration - 0.5);
         try {
@@ -865,16 +1224,42 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
 
     videoEl.addEventListener('loadedmetadata', onLoadedMetadataResume);
 
-    const onPlay = () => setIsPlaying(true)
-    const onPause = () => setIsPlaying(false)
+    const onPlay = () => {
+      setIsPlaying(true)
+      showControlsTemporarily()
+    }
+    const onPause = () => {
+      setIsPlaying(false)
+      setControlsVisible(true)
+    }
     const onEnded = () => {
       setIsPlaying(false)
+      setControlsVisible(true)
       void markChapterCompletedOnceRef.current("native_ended", { currentTime: videoEl.currentTime, duration: videoEl.duration })
     }
+    const onVolumeChange = () => {
+      setIsMuted(videoEl.muted)
+      setVolume(videoEl.volume)
+      if (!videoEl.muted && videoEl.volume > 0) {
+        previousVolumeRef.current = videoEl.volume
+      }
+    }
+    const onRateChange = () => setPlaybackRate(videoEl.playbackRate)
+    const onProgress = () => updateBufferedState(videoEl)
+    const onEnterPictureInPicture = () => setIsPictureInPicture(true)
+    const onLeavePictureInPicture = () => setIsPictureInPicture(false)
+
+    syncNativeMediaState()
 
     videoEl.addEventListener('play', onPlay)
     videoEl.addEventListener('pause', onPause)
     videoEl.addEventListener('ended', onEnded)
+    videoEl.addEventListener('volumechange', onVolumeChange)
+    videoEl.addEventListener('ratechange', onRateChange)
+    videoEl.addEventListener('progress', onProgress)
+    videoEl.addEventListener('durationchange', syncNativeMediaState)
+    videoEl.addEventListener('enterpictureinpicture', onEnterPictureInPicture)
+    videoEl.addEventListener('leavepictureinpicture', onLeavePictureInPicture)
 
     return () => {
       videoEl.removeEventListener('timeupdate', onTimeUpdate);
@@ -882,6 +1267,12 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
       videoEl.removeEventListener('pause', onPause)
       videoEl.removeEventListener('ended', onEnded)
       videoEl.removeEventListener('loadedmetadata', onLoadedMetadataResume)
+      videoEl.removeEventListener('volumechange', onVolumeChange)
+      videoEl.removeEventListener('ratechange', onRateChange)
+      videoEl.removeEventListener('progress', onProgress)
+      videoEl.removeEventListener('durationchange', syncNativeMediaState)
+      videoEl.removeEventListener('enterpictureinpicture', onEnterPictureInPicture)
+      videoEl.removeEventListener('leavepictureinpicture', onLeavePictureInPicture)
     }
   }, [
     currentChapter?.id,
@@ -891,6 +1282,8 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
     courseId,
     getStoredHighWaterMark,
     persistHighWaterMark,
+    showControlsTemporarily,
+    updateBufferedState,
   ]);
 
   // Track watch time when playing (run even without enrollment so backend can auto-create it)
@@ -1022,7 +1415,8 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
 
       const payload = JSON.stringify({
         watchTime: Math.floor(watchTime),
-        videoDuration: videoDuration > 0 ? Math.floor(videoDuration) : undefined
+        videoDuration: videoDuration > 0 ? Math.floor(videoDuration) : undefined,
+        isFinal: videoDuration > 0 && watchTime / videoDuration >= COMPLETION_RATIO,
       });
 
       const keepAliveRequest = fetch(endpoint, {
@@ -1067,6 +1461,13 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
     youtubePollingBackoffUntilRef.current = 0
     setPlaybackSession(null)
     setIsLoadingSession(false)
+    setWatchTime(0)
+    setVideoDuration(0)
+    setBufferedTime(0)
+    setSeekPreviewTime(null)
+    setControlsVisible(true)
+    setIsPictureInPicture(false)
+    setOpenNativeMenu(null)
   }, [currentChapter?.id])
 
   // Check if video URL is valid (not empty string)
@@ -1154,7 +1555,23 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
 
   return (
     <Card className="border-0 shadow-sm overflow-hidden">
-      <div className="relative bg-black aspect-video">
+      <div
+        ref={playerContainerRef}
+        className="group relative aspect-video overflow-hidden bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        tabIndex={isLocalFileVideo() ? 0 : undefined}
+        role={isLocalFileVideo() ? "region" : undefined}
+        aria-label={isLocalFileVideo() ? `${currentChapter?.title || "Course"} video player` : undefined}
+        onKeyDown={isLocalFileVideo() ? handleNativePlayerKeyDown : undefined}
+        onMouseMove={() => {
+          if (isLocalFileVideo()) showControlsTemporarily()
+        }}
+        onFocus={() => {
+          if (isLocalFileVideo()) setControlsVisible(true)
+        }}
+        onMouseLeave={() => {
+          if (isLocalFileVideo() && isPlaying) setControlsVisible(false)
+        }}
+      >
         {/* Full-surface logo watermark overlay for all player branches.
             Browser/native fullscreen can elevate media layers above DOM overlays. */}
         <ChabaqaLogoWatermark enabled />
@@ -1167,28 +1584,236 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
         )}
 
         {isLocalFileVideo() ? (
-          <video
-            key={videoUrl} // Force re-render when URL changes
-            ref={htmlVideoRef}
-            src={videoUrl}
-            controls
-            playsInline
-            preload="metadata"
-            controlsList="nodownload"
-            className="absolute inset-0 w-full h-full"
-            onContextMenu={(e) => e.preventDefault()}
-            onError={(e) => {
-              setPlayerError("Unable to load this video right now.")
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("media:video-error", {
-                  detail: {
-                    chapterId: currentChapter?.id,
-                    platform: "local",
-                  },
-                }))
-              }
-            }}
-          />
+          <>
+            <video
+              key={videoUrl} // Force re-render when URL changes
+              ref={htmlVideoRef}
+              src={videoUrl}
+              playsInline
+              preload="metadata"
+              controlsList="nodownload"
+              className="absolute inset-0 h-full w-full object-contain"
+              onClick={() => void toggleNativePlay()}
+              onDoubleClick={() => void toggleNativeFullscreen()}
+              onContextMenu={(e) => e.preventDefault()}
+              onError={() => {
+                setPlayerError("Unable to load this video right now.")
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("media:video-error", {
+                    detail: {
+                      chapterId: currentChapter?.id,
+                      platform: "local",
+                    },
+                  }))
+                }
+              }}
+            />
+
+            <TooltipProvider delayDuration={150}>
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-0 z-40 flex flex-col justify-between transition-opacity duration-200",
+                  controlsVisible || !isPlaying ? "opacity-100" : "opacity-0",
+                )}
+                data-testid="chabaqa-video-controls"
+              >
+                <div className="pointer-events-none h-20 bg-gradient-to-b from-black/70 via-black/25 to-transparent" />
+
+                {!isPlaying && (
+                  <div className="pointer-events-auto absolute inset-0 grid place-items-center">
+                    <button
+                      type="button"
+                      aria-label="Play video"
+                      title="Play video"
+                      onClick={() => void toggleNativePlay()}
+                      className="grid h-16 w-16 place-items-center rounded-full border border-white/25 bg-black/50 text-white shadow-2xl backdrop-blur transition hover:scale-105 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    >
+                      <Play className="ml-1 h-8 w-8 fill-current" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="pointer-events-auto mt-auto bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 sm:px-4">
+                  <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-medium text-white/90 sm:text-xs">
+                    <span className="truncate">{currentChapter?.title || currentChapter?.titre || "Chapter video"}</span>
+                    <span className="shrink-0 tabular-nums">
+                      {formatVideoTime(visibleSeekTime)} / {formatVideoTime(videoDuration)}
+                    </span>
+                  </div>
+
+                  <input
+                    type="range"
+                    min={0}
+                    max={videoDuration > 0 ? videoDuration : 100}
+                    step={0.1}
+                    value={videoDuration > 0 ? visibleSeekTime : 0}
+                    aria-label="Seek video"
+                    aria-valuetext={`${formatVideoTime(visibleSeekTime)} of ${formatVideoTime(videoDuration)}`}
+                    disabled={videoDuration <= 0}
+                    onInput={(event) => {
+                      const nextTime = Number(event.currentTarget.value)
+                      setSeekPreviewTime(nextTime)
+                      seekNativeVideo(nextTime)
+                    }}
+                    onChange={(event) => {
+                      const nextTime = Number(event.currentTarget.value)
+                      seekNativeVideo(nextTime)
+                    }}
+                    onPointerUp={() => setSeekPreviewTime(null)}
+                    onBlur={() => setSeekPreviewTime(null)}
+                    className="chabaqa-video-range h-2 w-full cursor-pointer appearance-none rounded-full disabled:cursor-not-allowed disabled:opacity-60"
+                    style={{
+                      background: `linear-gradient(to right, rgb(139 92 246) 0%, rgb(139 92 246) ${progressPercent}%, rgba(255,255,255,0.55) ${progressPercent}%, rgba(255,255,255,0.55) ${Math.max(bufferedPercent, progressPercent)}%, rgba(255,255,255,0.22) ${Math.max(bufferedPercent, progressPercent)}%, rgba(255,255,255,0.22) 100%)`,
+                    }}
+                  />
+
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:flex-nowrap">
+                    <PlayerControlButton label={isPlaying ? "Pause" : "Play"} onClick={() => void toggleNativePlay()}>
+                      {isPlaying ? <Pause className="h-5 w-5 fill-current" /> : <Play className="ml-0.5 h-5 w-5 fill-current" />}
+                    </PlayerControlButton>
+
+                    <PlayerControlButton label="Back 10 seconds" onClick={() => seekNativeBy(-10)}>
+                      <RotateCcw className="h-4 w-4" />
+                    </PlayerControlButton>
+
+                    <PlayerControlButton label="Forward 10 seconds" onClick={() => seekNativeBy(10)}>
+                      <RotateCw className="h-4 w-4" />
+                    </PlayerControlButton>
+
+                    <div className="flex min-w-0 flex-1 items-center gap-2 pl-1 text-white">
+                      <PlayerControlButton
+                        label={isMuted || volume === 0 ? "Unmute" : "Mute"}
+                        onClick={toggleNativeMute}
+                        className="h-8 w-8"
+                      >
+                        {isMuted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      </PlayerControlButton>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={isMuted ? 0 : volume}
+                        aria-label="Volume"
+                        aria-valuetext={`${volumePercent}%`}
+                        onChange={(event) => setNativeVolume(Number(event.currentTarget.value))}
+                        className="chabaqa-video-range hidden h-1.5 w-24 cursor-pointer appearance-none rounded-full sm:block"
+                        style={{
+                          background: `linear-gradient(to right, rgb(255 255 255) 0%, rgb(255 255 255) ${volumePercent}%, rgba(255,255,255,0.25) ${volumePercent}%, rgba(255,255,255,0.25) 100%)`,
+                        }}
+                      />
+                    </div>
+
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        aria-label="Playback speed"
+                        aria-haspopup="menu"
+                        aria-expanded={openNativeMenu === "speed"}
+                        title="Playback speed"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          showControlsTemporarily(true)
+                          setOpenNativeMenu((menu) => (menu === "speed" ? null : "speed"))
+                        }}
+                        className="flex h-9 items-center gap-1 rounded-md px-2 text-xs font-semibold text-white transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                      >
+                        <Gauge className="h-4 w-4" />
+                        <span>{playbackRate}x</span>
+                      </button>
+                      {openNativeMenu === "speed" && (
+                        <div
+                          role="menu"
+                          aria-label="Playback speed options"
+                          className="absolute bottom-11 right-0 z-50 w-36 rounded-md border border-white/10 bg-black/95 p-1 text-white shadow-2xl backdrop-blur"
+                        >
+                          <div className="px-2 py-1.5 text-xs font-semibold text-white/65">Speed</div>
+                          <div className="my-1 h-px bg-white/10" />
+                          {PLAYBACK_RATES.map((rate) => (
+                            <button
+                              key={rate}
+                              type="button"
+                              role="menuitem"
+                              onClick={() => setNativePlaybackRate(rate)}
+                              className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm transition hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
+                            >
+                              <span>{rate}x</span>
+                              {playbackRate === rate && <Check className="ml-auto h-4 w-4" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <PlayerControlButton
+                      label={
+                        supportsPictureInPicture
+                          ? isPictureInPicture
+                            ? "Exit picture in picture"
+                            : "Picture in picture"
+                          : "Picture in picture unavailable"
+                      }
+                      onClick={() => void toggleNativePictureInPicture()}
+                      disabled={!supportsPictureInPicture}
+                    >
+                      <PictureInPicture className="h-4 w-4" />
+                    </PlayerControlButton>
+
+                    <PlayerControlButton
+                      label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                      onClick={() => void toggleNativeFullscreen()}
+                    >
+                      {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                    </PlayerControlButton>
+
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        aria-label="Player settings"
+                        aria-haspopup="menu"
+                        aria-expanded={openNativeMenu === "settings"}
+                        title="Player settings"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          showControlsTemporarily(true)
+                          setOpenNativeMenu((menu) => (menu === "settings" ? null : "settings"))
+                        }}
+                        className="grid h-9 w-9 place-items-center rounded-md text-white transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                      >
+                        <Settings className="h-4 w-4" />
+                      </button>
+                      {openNativeMenu === "settings" && (
+                        <div
+                          role="menu"
+                          aria-label="Player shortcuts"
+                          className="absolute bottom-11 right-0 z-50 w-52 rounded-md border border-white/10 bg-black/95 p-2 text-white shadow-2xl backdrop-blur"
+                        >
+                          <div className="px-1 pb-2 text-xs font-semibold text-white/65">Shortcuts</div>
+                          {[
+                            ["Play / pause", "Space"],
+                            ["Seek", "J / L"],
+                            ["Mute", "M"],
+                            ["Fullscreen", "F"],
+                          ].map(([label, shortcut]) => (
+                            <div
+                              key={label}
+                              role="menuitem"
+                              className="flex items-center justify-between gap-4 rounded-sm px-1.5 py-1.5 text-sm text-white/90"
+                            >
+                              <span>{label}</span>
+                              <span className="rounded border border-white/10 bg-white/10 px-1.5 py-0.5 text-xs text-white/60">
+                                {shortcut}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TooltipProvider>
+          </>
         ) : platform === 'youtube' && youtubeId ? (
           <div ref={playerRef} className="absolute inset-0 w-full h-full" />
         ) : platform === 'vimeo' && vimeoId ? (
@@ -1227,6 +1852,30 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
             </span>
           </div>
         )}
+        <style jsx>{`
+          .chabaqa-video-range::-webkit-slider-thumb {
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 9999px;
+            border: 2px solid rgba(255, 255, 255, 0.95);
+            background: rgb(139 92 246);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2), 0 8px 18px rgba(0, 0, 0, 0.35);
+          }
+
+          .chabaqa-video-range::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 9999px;
+            border: 2px solid rgba(255, 255, 255, 0.95);
+            background: rgb(139 92 246);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2), 0 8px 18px rgba(0, 0, 0, 0.35);
+          }
+
+          .chabaqa-video-range::-moz-range-track {
+            background: transparent;
+          }
+        `}</style>
       </div>
     </Card>
   )

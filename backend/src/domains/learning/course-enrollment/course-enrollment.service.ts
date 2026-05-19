@@ -629,7 +629,10 @@ export class CourseEnrollmentService {
       chapterId,
       existingProgress,
     );
-    if (watchMetrics.watchPercentage < this.AUTO_COMPLETE_THRESHOLD) {
+    if (
+      !existingProgress.isCompleted &&
+      watchMetrics.watchPercentage < this.AUTO_COMPLETE_THRESHOLD
+    ) {
       throw new BadRequestException({
         code: 'WATCH_THRESHOLD_NOT_MET',
         message:
@@ -643,7 +646,7 @@ export class CourseEnrollmentService {
     const hadWatchBefore = Number(existingProgress?.watchTime ?? 0) > 0;
     const wasCompletedBefore = Boolean(existingProgress?.isCompleted);
     existingProgress.isCompleted = true;
-    existingProgress.completedAt = new Date();
+    existingProgress.completedAt = existingProgress.completedAt || new Date();
     existingProgress.updatedAt = new Date();
     existingProgress.lastAccessedAt = new Date();
 
@@ -773,6 +776,7 @@ export class CourseEnrollmentService {
     chapterId: string,
     watchTime: number,
     videoDuration?: number,
+    isFinal = false,
   ) {
     if (!Number.isFinite(watchTime) || watchTime < 0) {
       throw new BadRequestException(
@@ -869,6 +873,11 @@ export class CourseEnrollmentService {
       chapterDurationSeconds > 0
         ? Math.min(normalizedWatchTimeSeconds, chapterDurationSeconds)
         : normalizedWatchTimeSeconds;
+    const isFinalCompletionSync =
+      Boolean(isFinal) &&
+      chapterDurationSeconds > 0 &&
+      (boundedRequestedWatchTimeSeconds / chapterDurationSeconds) * 100 >=
+        this.AUTO_COMPLETE_THRESHOLD;
 
     const policy = applyWatchTimePolicy({
       currentWatchTimeSeconds: currentProgression,
@@ -879,15 +888,24 @@ export class CourseEnrollmentService {
 
     // Store monotonically increasing watch time only.
     if (!policy.ignored) {
-      if (policy.acceptedAdvanceSeconds > policy.maxAllowedAdvanceSeconds) {
+      if (
+        policy.acceptedAdvanceSeconds > policy.maxAllowedAdvanceSeconds &&
+        !isFinalCompletionSync
+      ) {
         throw new BadRequestException(
           `Watch time jump rejected. Maximum allowed advance is ${policy.maxAllowedAdvanceSeconds} seconds.`,
         );
       }
 
-      const deltaSeconds = policy.acceptedAdvanceSeconds;
-      progress.watchTime = policy.acceptedWatchTimeSeconds;
-      console.log(`📈 [CourseEnrollmentService] Progress increased: ${currentProgression}s -> ${policy.acceptedWatchTimeSeconds}s (delta: ${deltaSeconds}s)`);
+      const acceptedWatchTimeSeconds = isFinalCompletionSync
+        ? boundedRequestedWatchTimeSeconds
+        : policy.acceptedWatchTimeSeconds;
+      const deltaSeconds = Math.max(
+        0,
+        acceptedWatchTimeSeconds - currentProgression,
+      );
+      progress.watchTime = acceptedWatchTimeSeconds;
+      console.log(`📈 [CourseEnrollmentService] Progress increased: ${currentProgression}s -> ${acceptedWatchTimeSeconds}s (delta: ${deltaSeconds}s)`);
 
       // Real-time rollup of watchTime into AnalyticsDaily
       if (deltaSeconds > 0 && course?.creatorId) {

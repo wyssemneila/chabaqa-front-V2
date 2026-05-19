@@ -19,27 +19,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
+import type { IconType } from "react-icons"
 import {
-  BookOpen,
-  Calendar,
-  Check,
-  Copy,
-  Loader2,
-  Megaphone,
-  Package,
-  Rocket,
-  Sparkles,
-  Target,
-  Trophy,
-  Video,
-} from "lucide-react"
+  TbBook,
+  TbCalendar,
+  TbCheck,
+  TbCopy,
+  TbLoader2,
+  TbPackage,
+  TbRocket,
+  TbSparkles,
+  TbSpeakerphone,
+  TbTarget,
+  TbTrophy,
+  TbVideo,
+} from "react-icons/tb"
 
-const TYPES: Array<{ value: AiCreateDraftType; label: string; icon: typeof BookOpen }> = [
-  { value: "course", label: "Course", icon: BookOpen },
-  { value: "challenge", label: "Challenge", icon: Trophy },
-  { value: "event", label: "Event", icon: Calendar },
-  { value: "product", label: "Product", icon: Package },
-  { value: "session", label: "Session", icon: Video },
+const TYPES: Array<{ value: AiCreateDraftType; label: string; icon: IconType }> = [
+  { value: "course", label: "Course", icon: TbBook },
+  { value: "challenge", label: "Challenge", icon: TbTrophy },
+  { value: "event", label: "Event", icon: TbCalendar },
+  { value: "product", label: "Product", icon: TbPackage },
+  { value: "session", label: "Session", icon: TbVideo },
 ]
 
 function getCommunitySlug(community: any) {
@@ -137,11 +138,11 @@ export default function CreateWithAiPage() {
       title="Create with AI"
       description="Turn one rough idea into a reviewable offer draft — structure, landing copy, and launch message included."
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(300px,380px)_1fr]">
+      <div className="grid w-full gap-6 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
         <AiPanel className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          <div className="flex items-center gap-3 border-b border-[var(--bd)] pb-4">
+          <div className="flex items-center gap-3 border-b border-gray-200 pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Sparkles className="h-5 w-5" aria-hidden="true" />
+              <TbSparkles className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
               <h2 className="text-base font-semibold text-[var(--t1)]">Offer brief</h2>
@@ -225,7 +226,7 @@ export default function CreateWithAiPage() {
           </div>
 
           <Button onClick={generate} disabled={!canGenerate || isGenerating} className="w-full">
-            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Rocket className="mr-2 h-4 w-4" />}
+            {isGenerating ? <TbLoader2 className="mr-2 h-4 w-4 animate-spin" /> : <TbRocket className="mr-2 h-4 w-4" />}
             Generate {selectedType.label}
           </Button>
         </AiPanel>
@@ -239,7 +240,7 @@ export default function CreateWithAiPage() {
 
           {!result ? (
             <AiEmptyDraft
-              icon={Target}
+              icon={TbTarget}
               title="Your draft will appear here"
               description="Chabaqa AI will generate the offer structure, landing copy, launch message, and a review checklist before anything goes live."
             />
@@ -257,11 +258,11 @@ export default function CreateWithAiPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={copyJson}>
-                    <Copy className="mr-2 h-4 w-4" />
+                    <TbCopy className="mr-2 h-4 w-4" />
                     Copy JSON
                   </Button>
                   <Button size="sm" onClick={saveDraft} disabled={isSaving}>
-                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                    {isSaving ? <TbLoader2 className="mr-2 h-4 w-4 animate-spin" /> : <TbCheck className="mr-2 h-4 w-4" />}
                     Save as draft
                   </Button>
                 </div>
@@ -280,7 +281,7 @@ export default function CreateWithAiPage() {
                     <ul className="space-y-2 text-sm">
                       {result.landingPage.bullets.map((item) => (
                         <li key={item} className="flex gap-2 text-[var(--t2)]">
-                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                          <TbCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                           {item}
                         </li>
                       ))}
@@ -288,7 +289,7 @@ export default function CreateWithAiPage() {
                   </AiPanel>
                   <AiPanel className="space-y-3">
                     <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--t1)]">
-                      <Megaphone className="h-4 w-4 text-primary" aria-hidden="true" />
+                      <TbSpeakerphone className="h-4 w-4 text-primary" aria-hidden="true" />
                       Launch campaign
                     </h3>
                     <div className="text-sm text-[var(--t2)]">
@@ -302,7 +303,7 @@ export default function CreateWithAiPage() {
                     <h3 className="text-sm font-semibold text-[var(--t1)]">Review checklist</h3>
                     {result.reviewChecklist.map((item) => (
                       <div key={item} className="flex gap-2 text-sm text-[var(--t2)]">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                        <TbCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                         {item}
                       </div>
                     ))}

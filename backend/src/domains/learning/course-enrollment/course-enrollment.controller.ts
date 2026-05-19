@@ -178,7 +178,8 @@ export class CourseEnrollmentController {
       courseId,
       chapterId,
       body.watchTime,
-      body.videoDuration
+      body.videoDuration,
+      body.isFinal
     );
   }
 

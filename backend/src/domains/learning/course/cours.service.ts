@@ -21,7 +21,7 @@ import { NotificationService } from '@/domains/communication/notification/notifi
 import { AchievementService } from '@/domains/shared/achievement/achievement.service';
 import { UploadService } from '@/domains/shared/upload/upload.service';
 import { MediaPurpose } from '@/domains/content/media/media.types';
-import { CacheService } from '@/infrastructure/cache/cache.service';
+import { CacheService } from '@/shared/services/cache.service';
 import { ChapterAccessService } from '@/shared/services/chapter-access.service';
 import { CourseSessionDto } from '@/shared/dto/course-session.dto';
 import {
@@ -78,6 +78,36 @@ export class CoursService {
     if (creatorId) {
       patterns.push(`creator-analytics:${creatorId}:*`);
     }
+
+    await Promise.allSettled(
+      patterns.map((pattern) => this.cacheService.deletePattern(pattern)),
+    );
+  }
+
+  private async invalidateCourseAccessCaches(course?: CoursDocument | null): Promise<void> {
+    if (!this.cacheService || !course) {
+      return;
+    }
+
+    const courseKeys = Array.from(
+      new Set(
+        [course._id?.toString?.(), (course as any)?.id]
+          .map((value) => String(value || '').trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (courseKeys.length === 0) {
+      return;
+    }
+
+    const patterns = courseKeys.flatMap((courseKey) => [
+      `http:/api/cours/${courseKey}/course-session*`,
+      `http:/api/cours/${courseKey}/unlocked-chapters*`,
+      `http:/api/cours/${courseKey}/chapters/*/access*`,
+      `http:/api/cours/${courseKey}/chapitres/*/access*`,
+      `http:/api/cours/${courseKey}/track/progress*`,
+    ]);
 
     await Promise.allSettled(
       patterns.map((pattern) => this.cacheService.deletePattern(pattern)),
@@ -364,6 +394,7 @@ export class CoursService {
       ? enrollment.purchasedChapterIds.includes(chapterId)
       : false;
     if (alreadyPurchased) {
+      await this.invalidateCourseAccessCaches(course);
       return { enrollmentId: enrollment.id, granted: false };
     }
 
@@ -374,6 +405,7 @@ export class CoursService {
       chapterId,
     ];
     await enrollment.save({ session });
+    await this.invalidateCourseAccessCaches(course);
 
     return { enrollmentId: enrollment.id, granted: true };
   }

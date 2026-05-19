@@ -62,7 +62,9 @@ export interface CourseSessionState {
   nextChapterAction: NextChapterAction | null
 }
 
-type SelectChapterResult = { success: true } | { success: false; reason: string; lockCode?: string; needsPayment?: boolean }
+type SelectChapterResult =
+  | { success: true; chapterId?: string }
+  | { success: false; reason: string; lockCode?: string; needsPayment?: boolean; chapterId?: string }
 
 export interface CourseSession extends CourseSessionState {
   // ── Derived state ─────────────────────────────────────────────────────────
@@ -307,7 +309,7 @@ export function useCourseSession(
         console.warn("[useCourseSession] Failed to start chapter on backend:", err)
       }
 
-      return { success: true }
+      return { success: true, chapterId }
     },
     [fetchSession],
   )
@@ -343,6 +345,7 @@ export function useCourseSession(
         reason: action.reason || "Next chapter is locked.",
         lockCode: action.lockCode,
         needsPayment: action.needsPayment,
+        chapterId: action.chapterId,
       }
     }
 

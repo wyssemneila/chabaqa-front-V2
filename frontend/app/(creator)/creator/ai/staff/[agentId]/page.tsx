@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Send } from "lucide-react";
+import { TbSend } from "react-icons/tb";
 import { useCommunityGuard } from "@/hooks/use-community-guard";
 import { api, type AiAgent } from "@/lib/api";
 import { AiShellLayout } from "@/components/ai/ai-shell-layout";
@@ -51,7 +51,7 @@ export default function AgentDetailPage() {
       description="Review configuration and test the member-facing response with citations."
     >
       <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-lg border bg-card p-5 text-card-foreground shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 text-card-foreground shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold">
@@ -71,7 +71,7 @@ export default function AgentDetailPage() {
             ))}
           </div>
         </div>
-        <div className="rounded-lg border bg-card p-5 text-card-foreground shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 text-card-foreground shadow-sm">
           <h2 className="mb-3 text-sm font-semibold">Test chat</h2>
           <div className="flex gap-2">
             <Input
@@ -80,7 +80,7 @@ export default function AgentDetailPage() {
               placeholder="Ask what members might ask..."
             />
             <Button onClick={send} aria-label="Send test message">
-              <Send className="h-4 w-4" />
+              <TbSend className="h-4 w-4" />
             </Button>
           </div>
           {answer && (
@@ -90,7 +90,7 @@ export default function AgentDetailPage() {
                 {answer.citations?.map((citation: any, index: number) => (
                   <p
                     key={index}
-                    className="rounded-md border bg-card p-2 text-xs text-muted-foreground"
+                    className="rounded-md border border-gray-200 bg-white p-2 text-xs text-muted-foreground"
                   >
                     {citation.excerpt}
                   </p>

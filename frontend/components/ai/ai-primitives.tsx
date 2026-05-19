@@ -1,6 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import type { IconType } from "react-icons";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ export function AiPanel({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[var(--bd)] bg-card p-5 text-card-foreground shadow-sm",
+        "rounded-xl border border-gray-200 bg-white p-5 text-card-foreground shadow-sm",
         className,
       )}
     >
@@ -29,7 +29,7 @@ export function AiTypeSelector<T extends string>({
   value,
   onChange,
 }: {
-  options: Array<{ value: T; label: string; icon: LucideIcon }>;
+  options: Array<{ value: T; label: string; icon: IconType }>;
   value: T;
   onChange: (value: T) => void;
 }) {
@@ -50,7 +50,7 @@ export function AiTypeSelector<T extends string>({
               "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg border px-1 py-2 text-[10px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
               selected
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "border-[var(--bd)] bg-background text-muted-foreground hover:border-primary/40 hover:bg-[var(--p2)] hover:text-foreground",
+                : "border-gray-200 bg-white text-muted-foreground hover:border-gray-300 hover:bg-gray-50 hover:text-foreground",
             )}
           >
             <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -69,10 +69,10 @@ export function AiHeroStrip({
 }: {
   badge: string;
   title: string;
-  icon: LucideIcon;
+  icon: IconType;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-[var(--bd)] bg-gradient-to-br from-[var(--p2)] via-card to-[var(--c2)] p-6 shadow-sm">
+    <section className="overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="space-y-3">
           <Badge className="rounded-md bg-primary/15 text-primary hover:bg-primary/15">
@@ -97,10 +97,10 @@ export function AiEmptyDraft({
 }: {
   title: string;
   description: string;
-  icon: LucideIcon;
+  icon: IconType;
 }) {
   return (
-    <div className="flex min-h-[380px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--bd2)] bg-[var(--p2)]/40 px-6 text-center">
+    <div className="flex min-h-[380px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-6 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
         <Icon className="h-6 w-6" aria-hidden="true" />
       </div>
@@ -112,7 +112,7 @@ export function AiEmptyDraft({
 
 export function AiCodeBlock({ children }: { children: string }) {
   return (
-    <pre className="max-h-[520px] overflow-auto rounded-lg border border-[var(--bd)] bg-[var(--t1)] p-4 text-xs leading-relaxed text-[var(--p2)]">
+    <pre className="max-h-[520px] overflow-auto rounded-lg border border-gray-800 bg-[var(--t1)] p-4 text-xs leading-relaxed text-[var(--p2)]">
       {children}
     </pre>
   );

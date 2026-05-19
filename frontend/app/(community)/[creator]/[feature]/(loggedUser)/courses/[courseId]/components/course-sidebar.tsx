@@ -270,11 +270,30 @@ export default function CourseSidebar({
       return
     }
 
+    const nextChapterRequiresPayment = Boolean(nextChapter.isPaidChapter)
+    const nextChapterAccessible = isChapterAccessible(nextChapterId)
+
+    if (nextChapterRequiresPayment && !nextChapterAccessible) {
+      await handleNextChapter(nextChapter)
+      return
+    }
+
+    if (!isUserEnrolled && !nextChapterAccessible && onOpenEnrollment) {
+      await onOpenEnrollment({
+        targetChapterId: nextChapterId,
+        targetChapterPaid: nextChapterRequiresPayment,
+        source: "sidebar-next",
+      })
+      return
+    }
+
     // When the session hook is available, use its deterministic goToNextChapter action.
     // This bypasses the stale-closure problem because the session fetches fresh access from backend.
     if (courseSession && isCurrentChapterCompleted) {
       const result = await courseSession.goToNextChapter()
       if (result.success) {
+        const targetChapterId = result.chapterId ? String(result.chapterId) : nextChapterId
+        await requestChapterSelection(targetChapterId, "sidebar-next")
         console.info("[CourseNextFlow] Session-based next chapter navigation succeeded")
         return
       }
@@ -282,10 +301,11 @@ export default function CourseSidebar({
       // Session says blocked — check if it's a payment/enrollment issue
       const lockCode = 'lockCode' in result ? result.lockCode : undefined
       const needsPayment = 'needsPayment' in result ? result.needsPayment : false
+      const resultChapterId = 'chapterId' in result && result.chapterId ? String(result.chapterId) : nextChapterId
 
       if (needsPayment && onOpenEnrollment) {
         await onOpenEnrollment({
-          targetChapterId: nextChapterId,
+          targetChapterId: resultChapterId,
           targetChapterPaid: true,
           source: "sidebar-next",
         })
