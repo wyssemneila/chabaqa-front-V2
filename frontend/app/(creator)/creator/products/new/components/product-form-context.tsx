@@ -33,7 +33,9 @@ interface ProductFormContextType {
   setCurrentStep: (step: number) => void
   formData: any
   errors: ValidationErrors
+  isSubmitting: boolean
   handleInputChange: (field: string, value: any) => void
+  restoreFormData: (values: any) => void
   handleArrayChange: (field: string, index: number, value: string) => void
   addArrayItem: (field: string) => void
   removeArrayItem: (field: string, index: number) => void
@@ -45,7 +47,7 @@ interface ProductFormContextType {
   removeFile: (fileId: string) => void
   validateStep: (step: number) => boolean
   clearFieldError: (field: string) => void
-  handleSubmit: () => void
+  handleSubmit: (options?: { publish?: boolean }) => void
 }
 
 const ProductFormContext = createContext<ProductFormContextType | undefined>(undefined)
@@ -55,6 +57,7 @@ export function ProductFormProvider({ children }: { children: React.ReactNode })
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
   const [errors, setErrors] = useState<ValidationErrors>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Use the selected community from context
   const { selectedCommunityId } = useCreatorCommunity()
@@ -66,7 +69,7 @@ export function ProductFormProvider({ children }: { children: React.ReactNode })
     thumbnail: "",
     price: 0,
     currency: "TND",
-    category: "",
+    category: "Digital Product",
     type: "digital",
     isPublished: false,
     tags: [] as string[],
@@ -89,6 +92,18 @@ export function ProductFormProvider({ children }: { children: React.ReactNode })
     }
   }
 
+  const restoreFormData = (values: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      ...values,
+      features: Array.isArray(values?.features) && values.features.length ? values.features : [""],
+      requirements: Array.isArray(values?.requirements) && values.requirements.length ? values.requirements : [""],
+      variants: Array.isArray(values?.variants) ? values.variants : [],
+      files: Array.isArray(values?.files) ? values.files : [],
+    }))
+    setErrors({})
+  }
+
   const clearFieldError = (field: string) => {
     setErrors((prev) => {
       const newErrors = { ...prev }
@@ -107,12 +122,6 @@ export function ProductFormProvider({ children }: { children: React.ReactNode })
       }
       if (!formData.description?.trim()) {
         newErrors.description = "La description du produit est requise"
-      }
-      if (!formData.category) {
-        newErrors.category = "La catégorie est requise"
-      }
-      if (!formData.features || formData.features.length === 0 || !formData.features.some((f: string) => f.trim())) {
-        newErrors.features = "Au moins une fonctionnalité est requise"
       }
     } else if (step === 2) {
       // Pricing validation
@@ -133,11 +142,6 @@ export function ProductFormProvider({ children }: { children: React.ReactNode })
       }
     } else if (step === 3) {
       // Delivery validation - files are optional but validated if provided
-      const requiresFiles = formData.type === "digital" && Number(formData.price || 0) > 0
-      if (requiresFiles && (!formData.files || formData.files.length === 0)) {
-        newErrors.files = "Au moins un fichier est requis pour un produit digital payant"
-      }
-
       if (formData.files && formData.files.length > 0) {
         formData.files.forEach((file: DownloadFileForm, index: number) => {
           if (!file.name?.trim()) {
@@ -262,7 +266,8 @@ const handleArrayChange = (field: string, index: number, value: string) => {
     }))
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (options?: { publish?: boolean }) => {
+    if (isSubmitting) return
     // Validate all steps before submitting
     const step1Valid = validateStep(1)
     if (!step1Valid) {
@@ -281,6 +286,7 @@ const handleArrayChange = (field: string, index: number, value: string) => {
     }
 
     try {
+      setIsSubmitting(true)
       if (!communityId) {
         toast({ title: 'Communauté manquante', description: 'Aucune communauté trouvée pour ce créateur.', variant: 'destructive' as any })
         return
@@ -293,9 +299,9 @@ const handleArrayChange = (field: string, index: number, value: string) => {
         price: Number(formData.price || 0),
         currency: (formData.currency || 'TND') as CreateProductData['currency'],
         communityId,
-        category: formData.category || 'General',
+        category: formData.category || 'Digital Product',
         type: formData.type as 'digital' | 'physical',
-        isPublished: Boolean(formData.isPublished),
+        isPublished: Boolean(options?.publish ?? formData.isPublished),
         ...(formData.thumbnail && { images: [formData.thumbnail] }),
         ...(formData.variants && formData.variants.length > 0 && {
           variants: formData.variants.map((v: any) => ({
@@ -333,6 +339,8 @@ const handleArrayChange = (field: string, index: number, value: string) => {
     } catch (e: any) {
       console.error('❌ Product creation error:', e)
       toast({ title: 'Failed to create product', description: e?.message || 'Please review required fields.', variant: 'destructive' as any })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -343,7 +351,9 @@ const handleArrayChange = (field: string, index: number, value: string) => {
         setCurrentStep,
         formData,
         errors,
+        isSubmitting,
         handleInputChange,
+        restoreFormData,
         handleArrayChange,
         addArrayItem,
         removeArrayItem,

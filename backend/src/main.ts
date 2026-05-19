@@ -17,6 +17,7 @@ import {
   isProductionEnvironment,
   isSwaggerEnabled,
 } from '@/shared/utils/security-config.util';
+import { validateStartupEnv } from '@/shared/utils/startup-env.validation';
 
 // Compatibility for Node < 20 where globalThis.crypto may be undefined.
 if (!globalThis.crypto) {
@@ -38,6 +39,8 @@ const getLocalNetworkIp = (): string => {
 };
 
 async function bootstrap() {
+  validateStartupEnv();
+
   const app = await NestFactory.create(AppModule);
   const expressApp = app.getHttpAdapter().getInstance();
   const monitoringService = app.get(MonitoringService);
@@ -50,13 +53,20 @@ async function bootstrap() {
     expressApp.set('trust proxy', Number(trustProxy));
   }
 
-  // Temporary backward-compat alias: /api/payments/* -> /api/payment/*
+  // Temporary backward-compat aliases: /api/payments/* -> /api/payment/*
+  // and /payments/* -> /payment/* after Nest's global prefix handling.
   // Keep this during migration to avoid breaking older frontend clients.
   app.use((req: any, res: any, next: any) => {
-    if (typeof req.url === 'string' && req.url === '/api/payments') {
-      req.url = '/api/payment';
-    } else if (typeof req.url === 'string' && req.url.startsWith('/api/payments/')) {
-      req.url = req.url.replace('/api/payments/', '/api/payment/');
+    if (typeof req.url === 'string') {
+      if (req.url === '/api/payments') {
+        req.url = '/api/payment';
+      } else if (req.url.startsWith('/api/payments/')) {
+        req.url = req.url.replace('/api/payments/', '/api/payment/');
+      } else if (req.url === '/payments') {
+        req.url = '/payment';
+      } else if (req.url.startsWith('/payments/')) {
+        req.url = req.url.replace('/payments/', '/payment/');
+      }
     }
     next();
   });

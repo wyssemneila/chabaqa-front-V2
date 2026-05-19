@@ -123,6 +123,11 @@ export class CourseChapter {
   notes?: string;
 
   @Prop({
+    type: Boolean,
+  })
+  aiTutorEnabled?: boolean;
+
+  @Prop({
     type: [CourseResourceSchema],
     default: []
   })
@@ -353,6 +358,7 @@ export interface CoursDocument extends Document {
   ratingCount: number;
   sequentialProgression: boolean;
   unlockMessage?: string;
+  aiTutorEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 
@@ -686,6 +692,15 @@ export class Cours {
     maxlength: 500
   })
   unlockMessage?: string;
+
+  /**
+   * AI Course Tutor enabled for this course (inherits community default when true)
+   */
+  @Prop({
+    type: Boolean,
+    default: true,
+  })
+  aiTutorEnabled: boolean;
 
   /**
    * Note moyenne du cours

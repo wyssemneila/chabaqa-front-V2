@@ -124,19 +124,19 @@ export function CourseContentStep({
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center">
             <Target className="h-5 w-5 mr-2 text-courses-500" />
-            Course Content
+            Lessons
           </div>
           <div className="flex items-center space-x-2">
             <Badge variant="secondary">
-              {formData.sections.length} sections, {totalChapters} chapters
+              {formData.sections.length} sections, {totalChapters} lessons
             </Badge>
             <Button onClick={addSection} size="sm">
               <Plus className="h-4 w-4 mr-2" />
-              Add Section
+              Organize Section
             </Button>
           </div>
         </CardTitle>
-        <CardDescription>Organize your course into sections and chapters</CardDescription>
+        <CardDescription>Start with one lesson. You can organize sections now or refine them later.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {formData.sections.length === 0 ? (
@@ -151,15 +151,15 @@ export function CourseContentStep({
             <h3 className={`text-lg font-semibold mb-2 ${
               hasValidationError ? "text-red-700" : "text-gray-700"
             }`}>
-              No sections added yet
+              No lesson structure yet
             </h3>
             <p className={`mb-2 ${
               hasValidationError ? "text-red-600" : "text-muted-foreground"
             }`}>
-              Start building your course by adding your first section
+              Start building your course by adding the first lesson section
             </p>
             {hasValidationError && (
-              <p className="text-sm text-red-500 mb-6">At least one section with one chapter is required</p>
+              <p className="text-sm text-red-500 mb-6">At least one section with one lesson is required</p>
             )}
             <Button 
               onClick={addSection}
@@ -169,7 +169,7 @@ export function CourseContentStep({
               }
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add First Section
+              Add First Lesson Section
             </Button>
           </div>
         ) : (
@@ -184,7 +184,7 @@ export function CourseContentStep({
                     </div>
                     <div className="flex items-center space-x-2">
                       <Badge variant="secondary" className="text-xs">
-                        {section.chapters.length} chapters
+                        {section.chapters.length} lessons
                       </Badge>
                       <Button
                         variant="ghost"
@@ -217,23 +217,23 @@ export function CourseContentStep({
                     </div>
                   </div>
 
-                  {/* Chapters */}
+                  {/* Lessons */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-base font-medium">Chapters</Label>
+                      <Label className="text-base font-medium">Lessons</Label>
                       <Button type="button" variant="outline" size="sm" onClick={() => addChapter(section.id)}>
                         <Plus className="h-4 w-4 mr-1" />
-                        Add Chapter
+                        Add Lesson
                       </Button>
                     </div>
 
                     {section.chapters.length === 0 ? (
                       <div className="text-center py-8 border border-dashed border-gray-200 rounded-lg bg-gray-50">
                         <PlayCircle className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                        <p className="text-sm text-muted-foreground mb-3">No chapters in this section</p>
+                        <p className="text-sm text-muted-foreground mb-3">No lessons in this section</p>
                         <Button type="button" variant="outline" size="sm" onClick={() => addChapter(section.id)}>
                           <Plus className="h-4 w-4 mr-1" />
-                          Add First Chapter
+                          Add First Lesson
                         </Button>
                       </div>
                     ) : (
@@ -256,7 +256,7 @@ export function CourseContentStep({
                                 <Badge variant="outline" className="text-xs">
                                   {chapterIndex + 1}
                                 </Badge>
-                                <span className="font-medium">{chapter.title || `Chapter ${chapterIndex + 1}`}</span>
+                                <span className="font-medium">{chapter.title || `Lesson ${chapterIndex + 1}`}</span>
                                 {chapter.isPreview ? (
                                   <Badge variant="secondary" className="bg-green-100 text-green-700">
                                     <Unlock className="h-3 w-3 mr-1" />
@@ -281,7 +281,7 @@ export function CourseContentStep({
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                               <div className="space-y-1">
-                                <Label className="text-xs">Chapter Title *</Label>
+                                <Label className="text-xs">Lesson Title *</Label>
                                 <Input
                                   placeholder="e.g., Introduction to HTML"
                                   value={chapter.title}
@@ -293,7 +293,7 @@ export function CourseContentStep({
                                 ) : null}
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-xs">Chapter Video Upload</Label>
+                                <Label className="text-xs">Lesson Video Upload</Label>
                                 <Input
                                   type="file"
                                   accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
@@ -332,9 +332,9 @@ export function CourseContentStep({
                             </div>
 
                             <div className="space-y-1 mb-3">
-                              <Label className="text-xs">Chapter Content</Label>
+                              <Label className="text-xs">Lesson Content</Label>
                               <Textarea
-                                placeholder="Describe what students will learn in this chapter..."
+                                placeholder="Write the lesson text, notes, or summary. Required before publishing unless a video is added."
                                 value={chapter.content}
                                 onChange={(e) => updateChapter(section.id, chapter.id, "content", e.target.value)}
                                 rows={2}
@@ -376,7 +376,7 @@ export function CourseContentStep({
                                   />
                                 </div>
                                 <div className="space-y-1">
-                                  <Label className="text-xs">Chapter Price</Label>
+                                  <Label className="text-xs">Lesson Price</Label>
                                   <Input
                                     type="number"
                                     min="0"

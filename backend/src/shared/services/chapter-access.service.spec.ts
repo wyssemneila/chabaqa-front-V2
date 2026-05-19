@@ -10,6 +10,7 @@ describe('ChapterAccessService', () => {
   const baseCourse: any = {
     _id: '65f0f0f0f0f0f0f0f0f0f001',
     id: 'course-public-id',
+    sequentialProgression: false,
     sections: [
       {
         id: 'section-1',
@@ -40,9 +41,11 @@ describe('ChapterAccessService', () => {
   const buildService = (params?: {
     enrollment?: any;
     paidOrders?: any[];
+    hasCoursePurchase?: boolean;
   }) => {
     const enrollment = params?.enrollment ?? null;
     const paidOrders = params?.paidOrders ?? [];
+    const hasCoursePurchase = params?.hasCoursePurchase ?? false;
 
     const coursModel: any = {
       findById: jest.fn().mockResolvedValue(baseCourse),
@@ -53,6 +56,7 @@ describe('ChapterAccessService', () => {
     };
     const orderModel: any = {
       find: jest.fn().mockReturnValue(makeOrderQuery(paidOrders)),
+      exists: jest.fn().mockResolvedValue(hasCoursePurchase ? { _id: 'order-1' } : null),
     };
 
     const service = new ChapterAccessService(
@@ -107,9 +111,37 @@ describe('ChapterAccessService', () => {
     expect(decision.lockCode).toBe('payment_required');
   });
 
+  it('requires payment for a paid later chapter even when stale data marks it preview', async () => {
+    const course: any = {
+      ...baseCourse,
+      sections: [
+        {
+          ...baseCourse.sections[0],
+          chapitres: [
+            { id: 'chapter-1', titre: 'Ch1', ordre: 1, isPreview: true, isPaidChapter: false, prix: 0 },
+            { id: 'chapter-2', titre: 'Ch2', ordre: 2, isPreview: true, isPaidChapter: true, prix: 25 },
+          ],
+        },
+      ],
+    };
+    const enrollment = {
+      progression: [{ chapterId: 'chapter-1', isCompleted: true }],
+      purchasedChapterIds: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const { service } = buildService({ enrollment, paidOrders: [] });
+    const context = await service.buildAccessContext('65f0f0f0f0f0f0f0f0f0f130', course);
+
+    const decision = service.evaluateChapterAccess(context, 'chapter-2');
+    expect(decision.canAccess).toBe(false);
+    expect(decision.lockCode).toBe('payment_required');
+    expect(decision.needsPayment).toBe(true);
+  });
+
   it('denies chapter when previous chapter is not completed', async () => {
     const course: any = {
       ...baseCourse,
+      sequentialProgression: true,
       sections: [
         {
           ...baseCourse.sections[0],
@@ -136,6 +168,79 @@ describe('ChapterAccessService', () => {
     expect(decision.lockCode).toBe('previous_chapter_incomplete');
   });
 
+  it('blocks enrolled users from later free chapters until the previous chapter is complete', async () => {
+    const course: any = {
+      ...baseCourse,
+      sequentialProgression: false,
+      sections: [
+        {
+          ...baseCourse.sections[0],
+          chapitres: [
+            { ...baseCourse.sections[0].chapitres[0], isPaidChapter: false },
+            { ...baseCourse.sections[0].chapitres[1], isPaidChapter: false },
+          ],
+        },
+      ],
+    };
+    const enrollment = {
+      progression: [{ chapterId: 'chapter-1', isCompleted: false }],
+      purchasedChapterIds: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const { service } = buildService({ enrollment, paidOrders: [] });
+    const context = await service.buildAccessContext(
+      '65f0f0f0f0f0f0f0f0f0f116',
+      course,
+    );
+
+    const decision = service.evaluateChapterAccess(context, 'chapter-2');
+    expect(decision.canAccess).toBe(false);
+    expect(decision.lockCode).toBe('previous_chapter_incomplete');
+  });
+
+  it('allows paid chapters with full-course entitlement', async () => {
+    const enrollment = {
+      progression: [{ chapterId: 'chapter-1', isCompleted: true }],
+      purchasedChapterIds: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const { service } = buildService({
+      enrollment,
+      paidOrders: [],
+      hasCoursePurchase: true,
+    });
+    const context = await service.buildAccessContext(
+      '65f0f0f0f0f0f0f0f0f0f117',
+      baseCourse,
+    );
+
+    const decision = service.evaluateChapterAccess(context, 'chapter-2');
+    expect(decision.canAccess).toBe(true);
+    expect(decision.hasChapterPurchase).toBe(true);
+  });
+
+  it('keeps sequential lock for paid chapters even with entitlement', async () => {
+    const course: any = {
+      ...baseCourse,
+      sequentialProgression: true,
+    };
+    const enrollment = {
+      progression: [{ chapterId: 'chapter-1', isCompleted: false }],
+      purchasedChapterIds: ['chapter-2'],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const { service } = buildService({ enrollment, paidOrders: [] });
+    const context = await service.buildAccessContext(
+      '65f0f0f0f0f0f0f0f0f0f118',
+      course,
+    );
+
+    const decision = service.evaluateChapterAccess(context, 'chapter-2');
+    expect(decision.canAccess).toBe(false);
+    expect(decision.lockCode).toBe('previous_chapter_incomplete');
+    expect(decision.needsPayment).toBe(false);
+  });
+
   it('allows access when chapter is purchased and previous chapter completed', async () => {
     const enrollment = {
       progression: [{ chapterId: 'chapter-1', isCompleted: true }],
@@ -155,9 +260,10 @@ describe('ChapterAccessService', () => {
 
   // ── Preview chapter bypass (bug fix) ─────────────────────────────────────
 
-  it('allows preview chapter at index > 0 for unenrolled users', async () => {
+  it('blocks preview chapter at index > 0 for unenrolled users', async () => {
     const courseWithPreview: any = {
       ...baseCourse,
+      sequentialProgression: true,
       sections: [
         {
           ...baseCourse.sections[0],
@@ -171,13 +277,15 @@ describe('ChapterAccessService', () => {
     const { service } = buildService({ enrollment: null });
     const context = await service.buildAccessContext('65f0f0f0f0f0f0f0f0f0f120', courseWithPreview);
     const decision = service.evaluateChapterAccess(context, 'chapter-2');
-    expect(decision.canAccess).toBe(true);
-    expect(decision.readOnlyPreview).toBe(true);
+    expect(decision.canAccess).toBe(false);
+    expect(decision.lockCode).toBe('not_enrolled_preview_only');
+    expect(decision.readOnlyPreview).toBeFalsy();
   });
 
   it('blocks preview chapter for enrolled user without prior chapter completion (strict sequential)', async () => {
     const courseWithPreview: any = {
       ...baseCourse,
+      sequentialProgression: true,
       sections: [
         {
           ...baseCourse.sections[0],
@@ -249,6 +357,21 @@ describe('ChapterAccessService', () => {
     expect(action.chapterId).toBe('chapter-2');
   });
 
+  it('resolveNextChapterAction returns blocked payment_required for paid locked next chapter', async () => {
+    const enrollment = {
+      progression: [{ chapterId: 'chapter-1', isCompleted: true }],
+      purchasedChapterIds: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const { service } = buildService({ enrollment, paidOrders: [] });
+    const context = await service.buildAccessContext('65f0f0f0f0f0f0f0f0f0f127', baseCourse);
+
+    const action = service.resolveNextChapterAction(context, 'chapter-1');
+    expect(action.action).toBe('blocked');
+    expect(action.lockCode).toBe('payment_required');
+    expect(action.needsPayment).toBe(true);
+  });
+
   it('resolveNextChapterAction returns blocked when next chapter is locked', async () => {
     const enrollment = {
       progression: [{ chapterId: 'chapter-1', isCompleted: false }],
@@ -257,6 +380,7 @@ describe('ChapterAccessService', () => {
     };
     const courseNoPaid: any = {
       ...baseCourse,
+      sequentialProgression: true,
       sections: [{
         ...baseCourse.sections[0],
         chapitres: [
@@ -291,6 +415,7 @@ describe('ChapterAccessService', () => {
   it('REGRESSION: completed current chapter + preview next chapter => navigate', async () => {
     const course: any = {
       ...baseCourse,
+      sequentialProgression: true,
       sections: [{
         ...baseCourse.sections[0],
         chapitres: [

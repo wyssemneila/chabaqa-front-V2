@@ -1,9 +1,6 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { EventsHeader } from "./components/events-header"
-import { EventsStats } from "./components/events-stats"
-import { EventsActionBar } from "./components/events-action-bar"
 import { EventsList } from "./components/events-list"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
@@ -11,12 +8,11 @@ import { useCommunityGuard } from "@/hooks/use-community-guard"
 import { eventsApi } from "@/lib/api/events.api"
 import { computeEventStartAt } from "@/lib/utils/event-time"
 import {
-  PageShell,
-  PageHeader,
-  PageState,
   ModuleEmptyState,
+  ModulePage,
   TOAST_MESSAGES,
 } from "@/components/creator-dashboard"
+import { Calendar, Coins, Plus, Ticket, Users } from "lucide-react"
 
 export default function EventsPage() {
   const { toast } = useToast()
@@ -29,6 +25,8 @@ export default function EventsPage() {
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [reloadKey, setReloadKey] = useState(0)
   const [revenue, setRevenue] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState("upcoming")
 
@@ -132,25 +130,35 @@ export default function EventsPage() {
       }
     }
     load()
-  }, [selectedCommunityId, selectedCommunity, toast])
+  }, [selectedCommunityId, selectedCommunity, toast, reloadKey])
+
+  const filteredEvents = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return events
+    return events.filter((event) => {
+      return [event.title, event.description, event.location, event.category]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    })
+  }, [events, searchQuery])
 
   const upcomingEvents = useMemo(() => {
     const now = Date.now()
-    return events.filter((event) => {
+    return filteredEvents.filter((event) => {
       const startAt = computeEventStartAt(event.startDate, event.startTime, event.timezone)
       if (!startAt) return true
       return startAt.getTime() >= now
     })
-  }, [events])
+  }, [filteredEvents])
 
   const pastEvents = useMemo(() => {
     const now = Date.now()
-    return events.filter((event) => {
+    return filteredEvents.filter((event) => {
       const startAt = computeEventStartAt(event.startDate, event.startTime, event.timezone)
       if (!startAt) return false
       return startAt.getTime() < now
     })
-  }, [events])
+  }, [filteredEvents])
 
   const totalEvents = events.length
   const totalUpcoming = upcomingEvents.length
@@ -160,46 +168,50 @@ export default function EventsPage() {
   // Community guard
   if (guard) return guard
 
-  if (loading) return <PageState variant="loading" compact />
-
-  if (error) {
-    return <PageState variant="error" description={error} onRetry={() => { setError(null); setLoading(true) }} />
-  }
-
-  if (events.length === 0) {
-    return (
-      <PageShell>
-        <PageHeader
-          title="Events"
-          breadcrumbs={[{ label: "Dashboard", href: "/creator/dashboard" }, { label: "Events" }]}
-        />
-        <ModuleEmptyState module="events" />
-      </PageShell>
-    )
-  }
-
   return (
-    <PageShell>
-      <EventsHeader />
-      <EventsStats
-        totalEvents={totalEvents}
-        totalAttendees={totalAttendees}
-        totalRevenue={revenue}
-        totalUpcoming={totalUpcoming}
-      />
-      <EventsActionBar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        totalUpcoming={totalUpcoming}
-        totalPast={totalPast}
-      />
+    <ModulePage
+      title="Events"
+      description={`Manage live, virtual, and in-person events for ${selectedCommunity?.name || "this community"}.`}
+      primaryAction={{ label: "Create Event", href: "/creator/events/new", icon: Plus }}
+      metrics={[
+        { title: "Events", value: totalEvents, icon: Calendar, color: "primary" },
+        { title: "Upcoming", value: totalUpcoming, icon: Ticket, color: "warning" },
+        { title: "Attendees", value: totalAttendees, icon: Users, color: "success" },
+        { title: "Revenue", value: revenue == null ? "..." : `${revenue.toLocaleString()} TND`, icon: Coins, color: "success" },
+      ]}
+      searchValue={searchQuery}
+      onSearchChange={setSearchQuery}
+      searchPlaceholder="Search events..."
+      dataFreshnessLabel="Event totals refresh from creator analytics and ticket data."
+      density="compact"
+      tabs={[
+        { value: "upcoming", label: "Upcoming", count: totalUpcoming },
+        { value: "past", label: "Past", count: totalPast },
+      ]}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      loading={loading}
+      error={error}
+      onRetry={() => {
+        setError(null)
+        setReloadKey((key) => key + 1)
+      }}
+      emptyState={
+        !loading && !error && events.length === 0 ? (
+          <ModuleEmptyState module="events" />
+        ) : searchQuery && filteredEvents.length === 0 ? (
+          <ModuleEmptyState module="events" hasSearchQuery />
+        ) : null
+      }
+    >
       <EventsList
         activeTab={activeTab}
         upcomingEvents={upcomingEvents}
         pastEvents={pastEvents}
         loading={loading}
         communityEventBaseUrl={communityEventBaseUrl}
+        hasSearchQuery={!!searchQuery}
       />
-    </PageShell>
+    </ModulePage>
   )
 }

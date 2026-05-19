@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { LogOut, User as UserIcon, Plus, LayoutDashboard } from "lucide-react"
 import { usePathname } from "next/navigation"
-import Image from "next/image"
+import { SafeImage } from "@/components/media/safe-image"
 import { useAuth } from "@/hooks/use-auth"
 import { getUserProfileHandle } from "@/lib/profile-handle"
 import { useTranslations } from "next-intl"
@@ -112,7 +112,15 @@ export function Header() {
       >
         {/* Logo */}
         <Link href={withLocale("/")} aria-label="Chabaqa — go to homepage" className="flex-shrink-0">
-          <Image src={logoSrc} alt="Chabaqa" width={logoWidth} height={logoHeight} className={logoClassName} priority />
+          <SafeImage
+            src={logoSrc}
+            fallbackSrc="/logo_chabaqa.png"
+            alt="Chabaqa"
+            width={logoWidth}
+            height={logoHeight}
+            className={logoClassName}
+            priority
+          />
         </Link>
 
         {/* Desktop links */}

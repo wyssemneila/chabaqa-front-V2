@@ -39,6 +39,18 @@ echo "[deploy] health checks"
 BACKEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/api || true)"
 FRONTEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:8081/ || true)"
 
+assert_http_status() {
+  local url="$1"
+  local expected="$2"
+  local label="$3"
+  local status
+  status="$(curl -sS -o /dev/null -w "%{http_code}" "${url}" || true)"
+  if [ "${status}" != "${expected}" ]; then
+    echo "[deploy] ${label} failed: expected ${expected}, got ${status} (${url})"
+    exit 1
+  fi
+}
+
 if [ "$BACKEND_STATUS" != "200" ]; then
   echo "[deploy] backend failed health check: $BACKEND_STATUS"
   docker logs chabaqa-backend --tail 120 || true
@@ -50,6 +62,11 @@ if [ "$FRONTEND_STATUS" != "200" ] && [ "$FRONTEND_STATUS" != "307" ]; then
   docker logs chabaqa-frontend --tail 120 || true
   exit 1
 fi
+
+assert_http_status "http://127.0.0.1:8081/logo_chabaqa.png" "200" "frontend logo asset"
+assert_http_status "http://127.0.0.1:8081/Logos/PNG/frensh1.png" "200" "frontend header logo asset"
+assert_http_status "http://127.0.0.1:8081/banners-community/community-1-email-marketing.png" "200" "frontend image fallback asset"
+assert_http_status "http://127.0.0.1:8081/placeholder-user.jpg" "200" "frontend avatar fallback asset"
 
 echo "[deploy] success"
 echo "[deploy] frontend: https://chabaqa.io"

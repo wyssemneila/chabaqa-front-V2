@@ -23,9 +23,9 @@ export function BasicInfoStep({ formData, handleInputChange, validationErrors = 
       <CardHeader>
         <CardTitle className="flex items-center">
           <BookOpen className="h-5 w-5 mr-2 text-courses-500" />
-          Basic Course Information
+          Start Your Course
         </CardTitle>
-        <CardDescription>Start with the fundamentals of your course</CardDescription>
+        <CardDescription>Name the course and describe the result members will get</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -38,22 +38,22 @@ export function BasicInfoStep({ formData, handleInputChange, validationErrors = 
             className={validationErrors.title ? "border-red-500 focus-visible:ring-red-500" : ""}
           />
           {validationErrors.title && (
-            <p className="text-sm text-red-500">Title must be at least 3 characters</p>
+            <p className="text-sm text-red-500">Title must be at least 2 characters</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Course Description *</Label>
+          <Label htmlFor="description">What will members learn? *</Label>
           <Textarea
             id="description"
-            placeholder="Describe what students will learn in this course..."
+            placeholder="Describe the promise of this course in a few sentences..."
             rows={4}
             value={formData.description}
             onChange={(e) => handleInputChange("description", e.target.value)}
             className={validationErrors.description ? "border-red-500 focus-visible:ring-red-500" : ""}
           />
           {validationErrors.description && (
-            <p className="text-sm text-red-500">Description must be at least 10 characters</p>
+            <p className="text-sm text-red-500">Add a short course description</p>
           )}
         </div>
 

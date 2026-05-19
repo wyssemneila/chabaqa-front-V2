@@ -184,18 +184,18 @@ export default function BookingsPageContent({
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 md:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="icon" className="hidden md:inline-flex" asChild>
             <Link href="/creator/sessions">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold gradient-text-sessions">All Bookings</h1>
-            <p className="text-muted-foreground mt-1">Manage all your session bookings</p>
+            <h1 className="text-2xl font-bold gradient-text-sessions md:text-3xl">All Bookings</h1>
+            <p className="text-muted-foreground mt-1">Review your session bookings</p>
           </div>
         </div>
         <Button onClick={onRefresh} variant="outline" size="sm" disabled={loading}>
@@ -301,7 +301,7 @@ export default function BookingsPageContent({
               />
             </div>
             <Tabs value={timeFilter} onValueChange={onTimeFilterChange} className="w-full md:w-auto">
-              <TabsList>
+              <TabsList className="grid w-full grid-cols-3 md:w-auto">
                 <TabsTrigger value="all">All Time</TabsTrigger>
                 <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
                 <TabsTrigger value="past">Past</TabsTrigger>
@@ -435,7 +435,7 @@ export default function BookingsPageContent({
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <div className="hidden items-center gap-2 flex-wrap justify-end md:flex">
                         {booking.status === 'pending' && (
                           <>
                             <Button

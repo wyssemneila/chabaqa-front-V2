@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Zap, Upload } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { CreatorAdvancedSection } from "@/components/creator-dashboard/create-flow"
 import { useCallback, useRef, useState } from "react"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
@@ -28,6 +30,7 @@ interface BasicInfoStepProps {
 }
 
 const categories = [
+  "General",
   "Web Development",
   "Mobile Development",
   "Data Science",
@@ -43,7 +46,7 @@ const difficulties = [
   { value: "intermediate", label: "Intermediate" },
   { value: "advanced", label: "Advanced" },
 ] as const
-const durations = ["7 days", "14 days", "21 days", "30 days", "60 days", "90 days"]
+const durations = ["3 days", "7 days", "14 days", "30 days"]
 
 export function BasicInfoStep({ formData, setFormData, validationErrors = {} }: BasicInfoStepProps) {
   const { toast } = useToast()
@@ -90,9 +93,9 @@ export function BasicInfoStep({ formData, setFormData, validationErrors = {} }: 
       <CardHeader>
         <CardTitle className="flex items-center">
           <Zap className="h-5 w-5 mr-2 text-challenges-500" />
-          Basic Challenge Information
+          Start Your Challenge
         </CardTitle>
-        <CardDescription>Start with the fundamentals of your challenge</CardDescription>
+        <CardDescription>Name the challenge and choose a simple duration preset</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -126,7 +129,7 @@ export function BasicInfoStep({ formData, setFormData, validationErrors = {} }: 
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="category">Category *</Label>
+            <Label htmlFor="category">Category</Label>
             <Select
               value={formData.category}
               onValueChange={(value) => handleInputChange("category", value)}
@@ -148,7 +151,7 @@ export function BasicInfoStep({ formData, setFormData, validationErrors = {} }: 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="difficulty">Difficulty Level *</Label>
+            <Label htmlFor="difficulty">Difficulty Level</Label>
             <Select
               value={formData.difficulty}
               onValueChange={(value) => handleInputChange("difficulty", value)}
@@ -171,57 +174,61 @@ export function BasicInfoStep({ formData, setFormData, validationErrors = {} }: 
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="duration">Challenge Duration *</Label>
-          <Select
-            value={formData.duration}
-            onValueChange={(value) => handleInputChange("duration", value)}
-          >
-            <SelectTrigger className={getError("duration") ? "border-red-500" : ""}>
-              <SelectValue placeholder="Select duration" />
-            </SelectTrigger>
-            <SelectContent>
-              {durations.map((duration) => (
-                <SelectItem key={duration} value={duration}>
-                  {duration}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>Challenge Duration</Label>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {durations.map((duration) => (
+              <Button
+                key={duration}
+                type="button"
+                variant={formData.duration === duration ? "default" : "outline"}
+                onClick={() => handleInputChange("duration", duration)}
+                className={formData.duration === duration ? "bg-challenges-500 hover:bg-challenges-600" : ""}
+              >
+                {duration}
+              </Button>
+            ))}
+          </div>
           {getError("duration") && (
             <p className="text-sm text-red-500">{getError("duration")}</p>
           )}
         </div>
 
-        <div className="space-y-4 rounded-lg border p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="sequentialProgression">Sequential Progression</Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                Participants must complete previous tasks to unlock the next one.
-              </p>
-            </div>
-            <Switch
-              id="sequentialProgression"
-              checked={Boolean(formData.sequentialProgression)}
-              onCheckedChange={(checked) => handleInputChange("sequentialProgression", checked)}
-            />
-          </div>
-
-          {formData.sequentialProgression && (
-            <div className="space-y-2">
-              <Label htmlFor="unlockMessage">Unlock Message (optional)</Label>
-              <Input
-                id="unlockMessage"
-                placeholder="Complete the previous task to unlock this one."
-                value={formData.unlockMessage || ""}
-                onChange={(e) => handleInputChange("unlockMessage", e.target.value)}
+        <CreatorAdvancedSection
+          title="Progression rules"
+          description="Optional. Lock tasks until previous work is completed."
+          status={formData.sequentialProgression ? "Enabled" : "Optional"}
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="sequentialProgression">Sequential Progression</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Participants must complete previous tasks to unlock the next one.
+                </p>
+              </div>
+              <Switch
+                id="sequentialProgression"
+                checked={Boolean(formData.sequentialProgression)}
+                onCheckedChange={(checked) => handleInputChange("sequentialProgression", checked)}
               />
-              {getError("unlockMessage") && (
-                <p className="text-sm text-red-500">{getError("unlockMessage")}</p>
-              )}
             </div>
-          )}
-        </div>
+
+            {formData.sequentialProgression && (
+              <div className="space-y-2">
+                <Label htmlFor="unlockMessage">Unlock Message (optional)</Label>
+                <Input
+                  id="unlockMessage"
+                  placeholder="Complete the previous task to unlock this one."
+                  value={formData.unlockMessage || ""}
+                  onChange={(e) => handleInputChange("unlockMessage", e.target.value)}
+                />
+                {getError("unlockMessage") && (
+                  <p className="text-sm text-red-500">{getError("unlockMessage")}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </CreatorAdvancedSection>
 
         <div className="space-y-2">
           <Label>Challenge Thumbnail</Label>

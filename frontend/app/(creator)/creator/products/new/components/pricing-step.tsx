@@ -10,6 +10,7 @@ import { Plus, X, Coins, Codesandbox } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useProductForm } from "./product-form-context"
 import { Textarea } from "@/components/ui/textarea"
+import { CreatorAdvancedSection } from "@/components/creator-dashboard/create-flow"
 export function PricingStep() {
   const {
     formData,
@@ -60,27 +61,32 @@ export function PricingStep() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label>Product Variants</Label>
-            <Button type="button" variant="outline" size="sm" onClick={addVariant}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Variant
-            </Button>
-          </div>
-
-          {formData.variants.length === 0 ? (
-            <div className="text-center py-8 border border-dashed border-gray-200 rounded-lg bg-gray-50">
-              <Codesandbox className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-              <p className="text-sm text-muted-foreground mb-3">No variants added yet</p>
+        <CreatorAdvancedSection
+          title="Pricing options"
+          description="Add variants only when this product has multiple licenses, bundles, or editions."
+          status={formData.variants.length ? `${formData.variants.length} variants` : "Optional"}
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <Label>Product Variants</Label>
               <Button type="button" variant="outline" size="sm" onClick={addVariant}>
                 <Plus className="h-4 w-4 mr-1" />
-                Add First Variant
+                Add Variant
               </Button>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {formData.variants.map((variant: any, index: number) => (
+
+            {formData.variants.length === 0 ? (
+              <div className="text-center py-8 border border-dashed border-gray-200 rounded-lg bg-gray-50">
+                <Codesandbox className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-muted-foreground mb-3">No variants added yet</p>
+                <Button type="button" variant="outline" size="sm" onClick={addVariant}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add First Variant
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {formData.variants.map((variant: any, index: number) => (
                 <div
                   key={variant.id}
                   className="border rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors"
@@ -141,10 +147,11 @@ export function PricingStep() {
                     />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CreatorAdvancedSection>
       </CardContent>
     </EnhancedCard>
   )

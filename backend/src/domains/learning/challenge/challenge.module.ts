@@ -14,6 +14,8 @@ import { UploadModule } from '@/domains/shared/upload/upload.module';
 import { ContentProgressSchema } from '@/infrastructure/database/schemas/learning/content-tracking.schema';
 import { ChallengeSubmission, ChallengeSubmissionSchema } from '@/infrastructure/database/schemas/learning/challenge-submission.schema';
 import { AnalyticsDaily, AnalyticsDailySchema } from '@/infrastructure/database/schemas/analytics/analytics-daily.schema';
+import { Ga4Module } from '@/domains/analytics/ga4/ga4.module';
+import { CacheModule } from '@/infrastructure/cache/cache.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { AnalyticsDaily, AnalyticsDailySchema } from '@/infrastructure/database/
     FeeModule,
     PolicyModule,
     UploadModule,
+    Ga4Module,
+    CacheModule,
   ],
   controllers: [ChallengeController],
   providers: [ChallengeService],

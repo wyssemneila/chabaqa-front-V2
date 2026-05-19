@@ -30,8 +30,11 @@ export interface Community {
   category: string;
   tags: string[];
   logo?: string;
+  logoUrl?: string;
   image?: string;
   coverImage?: string;
+  coverUrl?: string;
+  thumbnailUrl?: string;
   price: number;
   priceType: 'free' | 'monthly' | 'yearly' | 'one-time';
   type?: 'community' | 'course' | 'challenge' | 'event' | 'oneToOne' | 'product';

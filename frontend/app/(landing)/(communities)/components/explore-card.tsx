@@ -1,8 +1,9 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import type { ExploreItem } from '@/lib/explore-data'
 import { TYPE_CONFIG } from '@/lib/explore-data'
 import { useTranslations } from 'next-intl'
+import { getExploreAvatarFallback, getExploreImageFallback } from '@/lib/explore-image-fallbacks'
+import { ExploreSafeImage } from '@/app/(landing)/(communities)/components/explore-safe-image'
 
 function fmt(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `${n}`
@@ -23,6 +24,8 @@ export function ExploreCard({ item, featured = false }: ExploreCardProps) {
   const t = useTranslations('landing.explore')
   const isFree = item.price === 'free' || item.price === 0
   const itemType = item.type
+  const imageFallback = getExploreImageFallback(item)
+  const avatarFallback = getExploreAvatarFallback(item)
 
   let ctaLabel: string
   let ctaHref: string
@@ -81,8 +84,11 @@ export function ExploreCard({ item, featured = false }: ExploreCardProps) {
       }`}
     >
       <div className="relative flex-shrink-0 overflow-hidden" style={{ aspectRatio: '16/9' }}>
-        <Image
-          src={item.banner} alt={item.title} fill
+        <ExploreSafeImage
+          src={item.banner}
+          fallbackSrc={imageFallback}
+          alt={item.title}
+          fill
           className="object-cover group-hover:scale-[1.04] transition-transform duration-500"
           sizes={featured ? '320px' : '(max-width:640px) 100vw,(max-width:1024px) 50vw,280px'}
         />
@@ -120,10 +126,14 @@ export function ExploreCard({ item, featured = false }: ExploreCardProps) {
         </h3>
         <div className="flex items-center gap-2">
           <div className="relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 ring-[1.5px] ring-gray-200">
-            {item.creatorAvatar
-              ? <Image src={item.creatorAvatar} alt={item.creator} fill className="object-cover" sizes="24px" />
-              : <div className="w-full h-full flex items-center justify-center text-[8px] font-black text-white" style={{ background: item.creatorColor }}>{item.creatorInitials}</div>
-            }
+            <ExploreSafeImage
+              src={item.creatorAvatar}
+              fallbackSrc={avatarFallback}
+              alt={item.creator}
+              fill
+              className="object-cover"
+              sizes="24px"
+            />
           </div>
           <span className="text-[11px] text-gray-500 truncate flex items-center gap-1">
             {item.creator}

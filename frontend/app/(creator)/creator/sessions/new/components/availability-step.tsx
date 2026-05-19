@@ -35,6 +35,13 @@ const DAYS_OF_WEEK = [
   { value: 6, label: 'Saturday' },
 ]
 
+const weekdayPreset: RecurringAvailability[] = [1, 2, 3, 4, 5].map((dayOfWeek) => ({
+  dayOfWeek,
+  startTime: "09:00",
+  endTime: "17:00",
+  isActive: true,
+}))
+
 export function AvailabilityStep({ formData, handleInputChange }: AvailabilityStepProps) {
   const recurringAvailability = formData.recurringAvailability || []
   const autoGenerateSlots = formData.autoGenerateSlots ?? true
@@ -100,6 +107,20 @@ export function AvailabilityStep({ formData, handleInputChange }: AvailabilitySt
     handleInputChange('recurringAvailability', recurringAvailability.filter((_, i) => i !== index))
   }
 
+  const applyPreset = (preset: "later" | "weekdays" | "custom") => {
+    if (preset === "later") {
+      handleInputChange('recurringAvailability', [])
+      return
+    }
+    if (preset === "weekdays") {
+      handleInputChange('recurringAvailability', weekdayPreset)
+      return
+    }
+    if (recurringAvailability.length === 0) {
+      addAvailabilitySlot()
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -127,14 +148,25 @@ export function AvailabilityStep({ formData, handleInputChange }: AvailabilitySt
               <span>{validationError}</span>
             </div>
           )}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <Button type="button" variant={recurringAvailability.length === 0 ? "default" : "outline"} onClick={() => applyPreset("later")}>
+              Add later
+            </Button>
+            <Button type="button" variant="outline" onClick={() => applyPreset("weekdays")}>
+              Weekdays 9-5
+            </Button>
+            <Button type="button" variant="outline" onClick={() => applyPreset("custom")}>
+              Custom
+            </Button>
+          </div>
           {recurringAvailability.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
               <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="font-medium">No availability configured yet</p>
-              <p className="text-sm mt-1">Add time slots to let users book sessions with you.</p>
+              <p className="font-medium">Availability can be added later</p>
+              <p className="text-sm mt-1">Drafts can be saved now. Add booking times before publishing.</p>
               <Button onClick={addAvailabilitySlot} size="sm" className="mt-4">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Your First Time Slot
+                Add Custom Slot
               </Button>
             </div>
           ) : (
@@ -216,7 +248,7 @@ export function AvailabilityStep({ formData, handleInputChange }: AvailabilitySt
 
           {/* Info */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-            <p className="font-medium">💡 Tip</p>
+            <p className="font-medium">Tip</p>
             <p className="mt-1">
               After creating the session, you can generate specific time slots from the edit page. 
               The availability you set here will be used as a template.

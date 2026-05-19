@@ -20,6 +20,7 @@ interface ReviewPublishStepProps {
       start: string
       end: string
     }
+    recurringAvailability?: { dayOfWeek: number; startTime: string; endTime: string; isActive: boolean }[]
     maxBookingsPerWeek: string
     whatYoullGet: string[]
     requirements: string
@@ -31,6 +32,8 @@ interface ReviewPublishStepProps {
 
 export function ReviewPublishStep({ formData, handleInputChange }: ReviewPublishStepProps) {
   const previewImage = resolveImageUrl(formData.thumbnail) || formData.thumbnail || "/placeholder.svg"
+  const dayLabels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+  const activeAvailability = formData.recurringAvailability?.filter((slot) => slot.isActive) || []
 
   return (
     <EnhancedCard>
@@ -67,11 +70,15 @@ export function ReviewPublishStep({ formData, handleInputChange }: ReviewPublish
               <div className="space-y-2 text-sm">
                 <div>
                   <strong>Days:</strong>{" "}
-                  {formData.availableDays.length > 0 ? formData.availableDays.join(", ") : "Not set"}
+                  {activeAvailability.length > 0
+                    ? activeAvailability.map((slot) => dayLabels[slot.dayOfWeek] || "Day").join(", ")
+                    : formData.availableDays.length > 0 ? formData.availableDays.join(", ") : "Not set"}
                 </div>
                 <div>
                   <strong>Hours:</strong>{" "}
-                  {formData.availableHours.start && formData.availableHours.end
+                  {activeAvailability.length > 0
+                    ? `${activeAvailability[0].startTime} - ${activeAvailability[0].endTime}`
+                    : formData.availableHours.start && formData.availableHours.end
                     ? `${formData.availableHours.start} - ${formData.availableHours.end}`
                     : "Not set"}
                 </div>

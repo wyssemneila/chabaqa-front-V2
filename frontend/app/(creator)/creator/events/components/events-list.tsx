@@ -6,6 +6,7 @@ import { EnhancedCard } from "@/components/ui/enhanced-card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ModuleEmptyState } from "@/components/creator-dashboard"
 import {
   CalendarIcon,
   Clock,
@@ -19,7 +20,6 @@ import {
   ChevronUp,
   Eye,
   Edit,
-  Plus
 } from "lucide-react"
 import Image from "next/image"
 import { Event } from "@/lib/models"
@@ -30,9 +30,10 @@ interface EventsListProps {
   pastEvents: Event[]
   loading?: boolean
   communityEventBaseUrl?: string | null
+  hasSearchQuery?: boolean
 }
 
-export function EventsList({ activeTab, upcomingEvents, pastEvents, loading, communityEventBaseUrl }: EventsListProps) {
+export function EventsList({ activeTab, upcomingEvents, pastEvents, loading, communityEventBaseUrl, hasSearchQuery = false }: EventsListProps) {
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
 
   const toggleExpandEvent = (eventId: string) => {
@@ -64,7 +65,9 @@ export function EventsList({ activeTab, upcomingEvents, pastEvents, loading, com
         />
       ))}
 
-      {displayEvents.length === 0 && <EmptyState type={activeTab as 'upcoming' | 'past'} />}
+      {displayEvents.length === 0 && (
+        <ModuleEmptyState module="events" hasSearchQuery={hasSearchQuery || activeTab === "past"} />
+      )}
     </div>
   )
 }
@@ -375,26 +378,3 @@ function EventDetails({ event }: { event: Event }) {
   )
 }
 
-function EmptyState({ type }: { type: 'upcoming' | 'past' }) {
-  return (
-    <EnhancedCard className="text-center py-12">
-      <CalendarIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-      <h3 className="text-xl font-semibold mb-2">
-        {type === 'upcoming' ? 'No upcoming events' : 'No past events'}
-      </h3>
-      <p className="text-muted-foreground mb-6">
-        {type === 'upcoming'
-          ? 'Create your first event to get started'
-          : 'Your past events will appear here'}
-      </p>
-      {type === 'upcoming' && (
-        <Button asChild>
-          <Link href="/creator/events/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Event
-          </Link>
-        </Button>
-      )}
-    </EnhancedCard>
-  )
-}

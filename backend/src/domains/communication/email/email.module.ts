@@ -1,6 +1,6 @@
 import { Global, Logger, Module } from '@nestjs/common';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/adapters/handlebars.adapter';
 import { MongooseModule } from '@nestjs/mongoose';
 import * as nodemailer from 'nodemailer';
 import { join } from 'path';

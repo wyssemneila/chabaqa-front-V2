@@ -7,6 +7,7 @@ import { Footer } from '@/components/footer';
 import Link from 'next/link';
 import { communitiesApi } from '@/lib/api/communities.api';
 import { useToast } from '@/components/ui/use-toast';
+import { toPaymentViewModel } from '@/lib/view-models/payment-view-model';
 
 
 interface VerificationResponse {
@@ -122,10 +123,11 @@ export default function PaymentSuccessContent() {
         }
 
         setVerificationData(data);
+        const normalizedPayment = toPaymentViewModel(data);
 
         // Check both potential structures (active wrapper or direct response)
-        const isSuccess = data?.success === true || Boolean(response?.ok);
-        const payload = data.data || data;
+        const isSuccess = normalizedPayment.success || Boolean(response?.ok);
+        const payload = normalizedPayment;
         const status = payload?.status;
         const action = payload?.action;
         const errorMessage = payload?.message || data?.message || data?.error;
@@ -134,7 +136,7 @@ export default function PaymentSuccessContent() {
           !isSuccess &&
           isAlreadyRegisteredEventMessage(errorMessage);
 
-        if (isSuccess && (status === 'paid' || status === 'complete' || status === 'succeeded')) {
+        if (isSuccess && status === 'paid') {
           setVerified(true);
         } else if (isEventAlreadyRegistered) {
           setVerified(true);
@@ -145,7 +147,7 @@ export default function PaymentSuccessContent() {
               description: 'You can only register once per event (1 ticket per user).',
             });
           }
-        } else if (isSuccess && status === 'paid_action_required' && action === 'choose_session_slot') {
+        } else if (isSuccess && status === 'requires_action' && (action === 'choose_session_slot' || payload.actionRequired === 'choose_session_slot')) {
           const orderId = payload?.orderId;
           const sessionTargetId = payload?.sessionContentId || payload?.targetId || id;
           const redirectUrl =

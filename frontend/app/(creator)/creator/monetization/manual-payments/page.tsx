@@ -1,12 +1,13 @@
 'use client'
 
 import { PageShell } from "@/components/creator-dashboard"
+import { useCommunityGuard } from "@/hooks/use-community-guard"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Search, CheckCircle, XCircle, Clock, Loader2, RefreshCw, Eye, ExternalLink } from "lucide-react"
+import { Search, CheckCircle, Clock, Loader2, RefreshCw, Eye, ExternalLink } from "lucide-react"
 import {
     Table,
     TableBody,
@@ -24,7 +25,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { manualPaymentsApi } from "@/lib/api/manual-payments"
-import Image from "next/image"
 
 interface PaymentRequest {
     _id: string;
@@ -61,6 +61,7 @@ interface HistoryMeta {
 }
 
 export default function ManualPaymentsPage() {
+    const { guard, selectedCommunity, selectedCommunityId, isLoading: communityLoading } = useCommunityGuard()
     const [payments, setPayments] = useState<PaymentRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -74,9 +75,16 @@ export default function ManualPaymentsPage() {
     const [historyMeta, setHistoryMeta] = useState<HistoryMeta>({ page: 1, limit: 20, total: 0, totalPages: 1 });
 
     const loadPayments = async () => {
+        if (communityLoading) return;
+        if (!selectedCommunityId) {
+            setPayments([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
-            const response = await manualPaymentsApi.getPendingPayments();
+            const response = await manualPaymentsApi.getPendingPayments({ communityId: selectedCommunityId });
             // API shape: { success: true, data: PaymentRequest[] }
             const items = (response as any)?.data?.data || (response as any)?.data || [];
             setPayments(items as PaymentRequest[]);
@@ -93,12 +101,21 @@ export default function ManualPaymentsPage() {
     };
 
     const loadHistory = async (opts?: { status?: string; page?: number }) => {
+        if (communityLoading) return;
+        if (!selectedCommunityId) {
+            setHistory([]);
+            setHistoryMeta({ page: 1, limit: 20, total: 0, totalPages: 1 });
+            setHistoryLoading(false);
+            return;
+        }
+
         setHistoryLoading(true);
         try {
             const response = await manualPaymentsApi.getHistory({
                 status: opts?.status ?? historyStatus,
                 page: opts?.page ?? historyPage,
                 limit: historyMeta.limit,
+                communityId: selectedCommunityId,
             });
             const items = (response as any)?.data?.data || (response as any)?.data || [];
             const meta = (response as any)?.data?.meta;
@@ -119,9 +136,10 @@ export default function ManualPaymentsPage() {
     };
 
     useEffect(() => {
+        if (communityLoading) return;
         loadPayments();
         loadHistory({ status: 'paid', page: 1 });
-    }, []);
+    }, [selectedCommunityId, communityLoading]);
 
     const handleAction = async (orderId: string, action: 'approve' | 'reject') => {
         setProcessingId(orderId);
@@ -148,21 +166,28 @@ export default function ManualPaymentsPage() {
         }
     };
 
-    const filteredPayments = payments.filter(p =>
-        p.buyerId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.buyerId?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.contentTitle || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.contentType || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.community?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const belongsToSelectedCommunity = (payment: PaymentRequest) => {
+        if (!selectedCommunityId) return true;
+        return !payment.community?._id || payment.community._id === selectedCommunityId;
+    };
 
-    const filteredHistory = history.filter(p =>
-        p.buyerId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.buyerId?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.contentTitle || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.contentType || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.community?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const matchesSearch = (payment: PaymentRequest) => {
+        const query = searchQuery.toLowerCase();
+        return (
+            payment.buyerId?.name?.toLowerCase().includes(query) ||
+            payment.buyerId?.email?.toLowerCase().includes(query) ||
+            (payment.contentTitle || '').toLowerCase().includes(query) ||
+            (payment.contentType || '').toLowerCase().includes(query) ||
+            (payment.community?.name || '').toLowerCase().includes(query)
+        );
+    };
+
+    const scopedPayments = payments.filter(belongsToSelectedCommunity);
+    const scopedHistory = history.filter(belongsToSelectedCommunity);
+    const filteredPayments = scopedPayments.filter(matchesSearch);
+    const filteredHistory = scopedHistory.filter(matchesSearch);
+
+    if (guard) return guard
 
     const getFullImageUrl = (path: string) => {
         if (!path) return '';
@@ -193,7 +218,7 @@ export default function ManualPaymentsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Manual Payments</h1>
-                    <p className="text-gray-600 mt-1">Verify and approve manual payment requests</p>
+                    <p className="text-gray-600 mt-1">Fast approval queue for {selectedCommunity?.name || "the selected community"}.</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={loadPayments} disabled={loading}>
                     {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
@@ -201,10 +226,40 @@ export default function ManualPaymentsPage() {
                 </Button>
             </div>
 
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{scopedPayments.length}</div>
+                        <p className="text-xs text-muted-foreground">Need approval</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Approved</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{historyStatus === 'paid' ? scopedHistory.length : '—'}</div>
+                        <p className="text-xs text-muted-foreground">In current history filter</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Scope</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="truncate text-2xl font-bold">{selectedCommunity?.name || "Community"}</div>
+                        <p className="text-xs text-muted-foreground">Selected workspace</p>
+                    </CardContent>
+                </Card>
+            </div>
+
             <Card>
                 <CardHeader>
                     <CardTitle>Pending Requests</CardTitle>
-                    <CardDescription>Review proof of payments uploaded by users</CardDescription>
+                    <CardDescription>Approve or reject uploaded proof for the selected community.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center justify-between mb-4">

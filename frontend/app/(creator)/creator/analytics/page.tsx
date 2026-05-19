@@ -25,6 +25,8 @@ import {
   Search,
   Mail,
   Share2,
+  Lightbulb,
+  Settings2,
 } from "lucide-react"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
@@ -587,6 +589,7 @@ export default function CommunityAnalyticsPage() {
   const [referrersSummary, setReferrersSummary] = useState<ReferrersSummary | null>(null)
   const [topItems, setTopItems] = useState<TopItemRow[]>([])
   const [detailsTab, setDetailsTab] = useState<"overview" | "details">("overview")
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [selectedItemTitle, setSelectedItemTitle] = useState<string | null>(null)
   const [funnelData, setFunnelData] = useState<CreatorFunnelResponse | null>(null)
@@ -1180,6 +1183,66 @@ export default function CommunityAnalyticsPage() {
     ]
   }, [overview, selectedFeature])
 
+  const selectedFeatureLabel = useMemo(() => {
+    const labels: Record<AnalyticsFeature, string> = {
+      courses: "Courses",
+      challenges: "Challenges",
+      sessions: "Sessions",
+      events: "Events",
+      posts: "Posts",
+      products: "Products",
+    }
+    return labels[selectedFeature]
+  }, [selectedFeature])
+
+  const hasAnalyticsData = useMemo(() => {
+    return !isOverviewEffectivelyEmpty(baseOverview) || topItems.length > 0 || membershipData.length > 0
+  }, [baseOverview, membershipData.length, topItems.length])
+
+  const freshnessLabel = useMemo(() => {
+    if (isRefreshing) return "Refreshing now"
+    if (!lastUpdatedAt) return "Not refreshed yet"
+    return `Updated ${new Date(lastUpdatedAt).toLocaleTimeString()}`
+  }, [isRefreshing, lastUpdatedAt])
+
+  const simpleInsight = useMemo(() => {
+    if (!hasAnalyticsData) {
+      return {
+        title: "No analytics yet",
+        body: "Publish and share content. Analytics will appear once your community starts viewing, booking, buying, or engaging.",
+      }
+    }
+
+    const topItem = topItems[0]
+    const topTitle = String(topItem?.title || topItem?.name || "").trim()
+    const completionRate = toNumber((overview as any)?.completionRate ?? (overview as any)?.challengeCompletionRate)
+    const views = toNumber(overview?.viewsTotal ?? overview?.views)
+    const starts = toNumber(overview?.starts)
+
+    if (topTitle) {
+      return {
+        title: "Best signal",
+        body: `${topTitle} is your strongest ${selectedFeatureLabel.toLowerCase()} item in this period. Review it first when deciding what to improve next.`,
+      }
+    }
+    if (views > 0 && starts === 0) {
+      return {
+        title: "Attention point",
+        body: "People are viewing content but not starting. Tighten the title, opening promise, or first action.",
+      }
+    }
+    if (completionRate > 0 && completionRate < 40) {
+      return {
+        title: "Completion needs work",
+        body: "Completion is below 40%. Open Advanced Analytics when you want to inspect the exact drop-off steps.",
+      }
+    }
+    return {
+      title: "Steady activity",
+      body: "Your analytics have usable activity. Compare the top item with the trend chart before making the next content change.",
+    }
+  }, [hasAnalyticsData, overview, selectedFeatureLabel, topItems])
+
   const selectedContentType = useMemo(() => featureToContentType(selectedFeature), [selectedFeature])
 
   const loadSelectedFunnel = useCallback(async () => {
@@ -1248,8 +1311,9 @@ export default function CommunityAnalyticsPage() {
   }, [isAuthenticated, selectedCommunityId, selectedCommunity?.slug, selectedContentType, selectedItemId, timeRange])
 
   useEffect(() => {
+    if (!showAdvanced) return
     void loadSelectedFunnel()
-  }, [loadSelectedFunnel])
+  }, [loadSelectedFunnel, showAdvanced])
 
   const handleGenerateInsights = useCallback(async () => {
     if (!selectedItemId || !selectedCommunityId) return
@@ -1336,17 +1400,15 @@ export default function CommunityAnalyticsPage() {
   return (
     <PageShell className="min-h-screen bg-gray-50">
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-        {/* Header */}
         <div className="mb-6 lg:mb-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Community Analytics</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Analytics</h1>
               <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
-                Track and analyze your community performance
+                A simple view of what is moving, what is working, and what to check next.
               </p>
             </div>
 
-            {/* Controls */}
             <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
               <Select value={selectedCommunityId || ""} onValueChange={setSelectedCommunityId}>
                 <SelectTrigger className="w-full sm:w-[180px]">
@@ -1394,40 +1456,36 @@ export default function CommunityAnalyticsPage() {
               <Button
                 variant="outline"
                 className="w-full sm:w-auto"
-                onClick={handleExportCsv}
-                disabled={isExporting || isInitialLoading}
+                onClick={() => setShowAdvanced((open) => !open)}
               >
-                <Download className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">{isExporting ? "Exporting..." : "Export CSV"}</span>
-                <span className="sm:hidden">{isExporting ? "Exporting..." : "Export"}</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={() => handleSyncAnalytics()}
-                disabled={isSyncing || isInitialLoading}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'Syncing...' : 'Sync Data'}
+                <Settings2 className="w-4 h-4 mr-2" />
+                {showAdvanced ? "Hide Advanced" : "Advanced"}
               </Button>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-            {isRefreshing && (
-              <span className="inline-flex items-center gap-1">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                Refreshing...
-              </span>
-            )}
-            {lastUpdatedAt && (
-              <span>Last updated at {new Date(lastUpdatedAt).toLocaleTimeString()}</span>
-            )}
+            <span className="inline-flex items-center gap-1">
+              {isRefreshing && <RefreshCw className="w-3 h-3 animate-spin" />}
+              {freshnessLabel}
+            </span>
+            <span>{selectedFeatureLabel} · {timeRange}</span>
             {loadError && (
               <span className="text-red-600">{loadError}</span>
             )}
           </div>
         </div>
+
+        {!hasAnalyticsData && !loadError && (
+          <Card className="mb-6 border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+              <TrendingUp className="h-10 w-10 text-gray-400" />
+              <h2 className="mt-3 text-lg font-semibold text-gray-900">No analytics yet</h2>
+              <p className="mt-1 max-w-md text-sm text-gray-600">
+                Analytics will appear after members start viewing, joining, booking, buying, or reacting to your content.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
@@ -1465,8 +1523,7 @@ export default function CommunityAnalyticsPage() {
           })}
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
+        <div className="mb-6 lg:mb-8">
           <Card className="shadow-sm">
             <CardHeader className="p-6">
               <div className="flex items-center justify-between">
@@ -1546,13 +1603,121 @@ export default function CommunityAnalyticsPage() {
                     <TrendingUp className="w-6 h-6 text-gray-400" />
                   </div>
                   <p className="text-sm font-medium">No trend data available</p>
-                  <Button variant="outline" size="sm" onClick={() => handleSyncAnalytics()} className="text-xs">
-                    Try syncing data
+                  <Button variant="outline" size="sm" onClick={() => setShowAdvanced(true)} className="text-xs">
+                    Open advanced refresh
                   </Button>
                 </div>
               )}
             </CardContent>
           </Card>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
+          <Card className="shadow-sm xl:col-span-2">
+            <CardHeader className="p-6">
+              <CardTitle className="text-lg font-semibold text-gray-900">Top {selectedFeatureLabel}</CardTitle>
+              <CardDescription className="text-sm text-gray-500 mt-1">The strongest items in the selected period</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              {topItems.length > 0 ? (
+                <div className="divide-y rounded-lg border">
+                  {topItems.slice(0, 5).map((item, index) => {
+                    const rowId = String(item.contentId || item.id || "").trim()
+                    const rowTitle = String(item.title || item.name || `Item ${index + 1}`)
+                    const completionRate = toNumber(item.completionRate)
+                    return (
+                      <button
+                        key={rowId || item.id || index}
+                        type="button"
+                        className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-gray-50"
+                        onClick={() => {
+                          if (!rowId) return
+                          setSelectedItemId(rowId)
+                          setSelectedItemTitle(rowTitle)
+                          setFunnelData(null)
+                          setStepFunnelData(null)
+                          setFocusStepId(null)
+                          setAiInsights(null)
+                          setFunnelError(null)
+                          setDetailsTab("details")
+                          setShowAdvanced(true)
+                        }}
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-700">
+                          {index + 1}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-gray-900">{rowTitle}</span>
+                          <span className="mt-0.5 block text-xs text-gray-500">
+                            {(item.views || 0).toLocaleString()} views · {(item.starts || 0).toLocaleString()} starts
+                          </span>
+                        </span>
+                        <span className="text-right text-sm font-semibold text-gray-900">
+                          {completionRate ? `${Math.round(completionRate)}%` : "0%"}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed bg-gray-50 p-8 text-center text-sm text-gray-500">
+                  No top {selectedFeatureLabel.toLowerCase()} yet for this period.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader className="p-6">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                <Lightbulb className="h-5 w-5 text-amber-500" />
+                One Insight
+              </CardTitle>
+              <CardDescription className="text-sm text-gray-500 mt-1">The plain next read from your data</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              <div className="rounded-lg border bg-amber-50/60 p-4">
+                <p className="text-sm font-semibold text-gray-900">{simpleInsight.title}</p>
+                <p className="mt-2 text-sm leading-6 text-gray-700">{simpleInsight.body}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {showAdvanced && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="p-6">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-gray-900">Advanced Analytics</CardTitle>
+                    <CardDescription className="text-sm text-gray-500 mt-1">
+                      Export, refresh, device/referrer data, funnels, and AI explainers.
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={handleExportCsv}
+                      disabled={isExporting || isInitialLoading}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      {isExporting ? "Exporting..." : "Export CSV"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={() => handleSyncAnalytics()}
+                      disabled={isSyncing || isInitialLoading}
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                      {isSyncing ? 'Refreshing...' : 'Refresh'}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
 
           <Card className="shadow-sm">
             <CardHeader className="p-6">
@@ -1616,7 +1781,6 @@ export default function CommunityAnalyticsPage() {
               )}
             </CardContent>
           </Card>
-        </div>
 
         {/* Devices and Referrers */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
@@ -2351,7 +2515,7 @@ export default function CommunityAnalyticsPage() {
                           <>
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="text-sm font-medium text-gray-900">AI Explainer</p>
+                                <p className="text-sm font-medium text-gray-900">AI Creator Insights</p>
                                 <p className="text-xs text-gray-500" dir="auto">
                                   {selectedItemTitle ? selectedItemTitle : selectedItemId}
                                   {focusStepId ? ` · Focus: ${focusStepTitle ? focusStepTitle : focusStepId}` : ""}
@@ -2580,6 +2744,8 @@ export default function CommunityAnalyticsPage() {
             </TabsContent>
           </Tabs>
         </Card>
+          </div>
+        )}
       </div>
     </PageShell>
   )

@@ -19,6 +19,7 @@ export function CourseTabs({ activeTab, onTabChange, children }: CourseTabsProps
         <TabsTrigger value="resources">Resources</TabsTrigger>
         <TabsTrigger value="reviews">Reviews</TabsTrigger>
         <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <TabsTrigger value="ai-tutor">AI Tutor</TabsTrigger>
         <TabsTrigger value="settings">Settings</TabsTrigger>
       </TabsList>
       {children}

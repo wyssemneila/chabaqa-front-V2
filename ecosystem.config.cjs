@@ -3,11 +3,11 @@ module.exports = {
     {
       name: "chabaqa-backend",
       cwd: "/home/ubuntu/chabaqa/backend",
-      script: "dist/main.js",
+      script: "dist/src/main.js",
       interpreter: "node",
       exec_mode: "fork",
       env_file: "/home/ubuntu/chabaqa/backend/.env",
-      env: { NODE_ENV: "production", PORT: 3000, HOST: "0.0.0.0" },
+      env: { NODE_ENV: "production", PORT: 3000, HOST: "0.0.0.0", ENABLE_SWAGGER: "false" },
       instances: 1,
       autorestart: true,
       max_restarts: 10,

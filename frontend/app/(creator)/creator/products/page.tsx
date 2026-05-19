@@ -1,21 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ProductsHeader } from "./components/products-header"
-import { ProductsStatsGrid } from "./components/products-stats-grid"
-import { ProductsSearch } from "./components/products-search"
 import { ProductsTabs } from "./components/products-tabs"
 import { ProductsPerformance } from "./components/products-performance"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
 import {
-  PageShell,
-  PageHeader,
-  PageState,
   ModuleEmptyState,
+  ModulePage,
   TOAST_MESSAGES,
 } from "@/components/creator-dashboard"
+import { Coins, Package, Plus, ShoppingBag, Star } from "lucide-react"
 
 export default function CreatorProductsPage() {
   const { toast } = useToast()
@@ -28,6 +24,8 @@ export default function CreatorProductsPage() {
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [reloadKey, setReloadKey] = useState(0)
   const [revenue, setRevenue] = useState<number | null>(null)
   const [sales, setSales] = useState<number | null>(null)
   const [topProducts, setTopProducts] = useState<any[]>([])
@@ -122,51 +120,37 @@ export default function CreatorProductsPage() {
       }
     }
     load()
-  }, [selectedCommunityId, selectedCommunity, toast])
+  }, [selectedCommunityId, selectedCommunity, toast, reloadKey])
 
   // Community guard: loading / error / no-community states
   if (guard) return guard
 
-  // Page-level loading state
-  if (loading) return <PageState variant="loading" compact />
-
-  // Page-level error state
-  if (error) {
-    return (
-      <PageState
-        variant="error"
-        description={error}
-        onRetry={() => {
-          setError(null)
-          setLoading(true)
-        }}
-      />
-    )
-  }
-
-  // Empty state
-  if (products.length === 0) {
-    return (
-      <PageShell>
-        <PageHeader
-          title="Products"
-          breadcrumbs={[
-            { label: "Dashboard", href: "/creator/dashboard" },
-            { label: "Products" },
-          ]}
-        />
-        <ModuleEmptyState module="products" />
-      </PageShell>
-    )
-  }
-
   return (
-    <PageShell>
-      <ProductsHeader />
-      <ProductsStatsGrid products={products} revenue={revenue} sales={sales} />
-      <ProductsSearch />
-      <ProductsTabs products={products} communityId={selectedCommunityId || ""} />
+    <ModulePage
+      title="Products"
+      description={`Sell digital and physical products for ${selectedCommunity?.name || "this community"}.`}
+      primaryAction={{ label: "Create Product", href: "/creator/products/new", icon: Plus }}
+      metrics={[
+        { title: "Products", value: products.length, icon: ShoppingBag, color: "primary" },
+        { title: "Published", value: products.filter((product) => product.isPublished).length, icon: Package, color: "success" },
+        { title: "Sales", value: sales ?? products.reduce((sum, product) => sum + Number(product.sales || product.salesCount || 0), 0), icon: Star, color: "warning" },
+        { title: "Revenue", value: revenue == null ? "..." : `${revenue.toLocaleString()} TND`, icon: Coins, color: "success" },
+      ]}
+      searchValue={searchQuery}
+      onSearchChange={setSearchQuery}
+      searchPlaceholder="Search products..."
+      dataFreshnessLabel="Product sales and revenue show the latest loaded analytics."
+      density="compact"
+      loading={loading}
+      error={error}
+      onRetry={() => {
+        setError(null)
+        setReloadKey((key) => key + 1)
+      }}
+      emptyState={!loading && !error && products.length === 0 ? <ModuleEmptyState module="products" /> : null}
+    >
+      <ProductsTabs products={products} communityId={selectedCommunityId || ""} searchQuery={searchQuery} />
       <ProductsPerformance products={products} topProducts={topProducts} />
-    </PageShell>
+    </ModulePage>
   )
 }

@@ -8,6 +8,7 @@ interface ChallengeNavigationProps {
   onSubmit: () => void
   isPublished: boolean
   isSubmitting?: boolean
+  hideSubmitAction?: boolean
 }
 
 export function ChallengeNavigation({
@@ -18,6 +19,7 @@ export function ChallengeNavigation({
   onSubmit,
   isPublished,
   isSubmitting = false,
+  hideSubmitAction = false,
 }: ChallengeNavigationProps) {
   return (
     <div className="flex items-center justify-between">
@@ -38,7 +40,7 @@ export function ChallengeNavigation({
           >
             Next Step
           </Button>
-        ) : (
+        ) : hideSubmitAction ? null : (
           <Button
             onClick={onSubmit}
             className="bg-challenges-500 hover:bg-challenges-600"

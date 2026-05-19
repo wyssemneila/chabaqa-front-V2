@@ -10,11 +10,33 @@ function getSecureApiOrigin(): string {
   )
 }
 
+function getSameOriginUploadPath(path: string): string | undefined {
+  const cleanPath = path.startsWith("/") ? path : `/${path}`
+  if (
+    cleanPath.startsWith("/uploads/") ||
+    cleanPath.startsWith("/storage/") ||
+    cleanPath.startsWith("/images/")
+  ) {
+    return cleanPath
+  }
+  return undefined
+}
+
 export function resolveImageUrl(value?: string): string | undefined {
   const raw = (value || "").trim()
   if (!raw) return undefined
 
   if (/^https?:\/\//i.test(raw)) {
+    try {
+      const url = new URL(raw)
+      const uploadPath = getSameOriginUploadPath(url.pathname)
+      if (uploadPath) {
+        return `${uploadPath}${url.search || ""}`
+      }
+    } catch {
+      // Keep the older fallback behavior for malformed absolute values.
+    }
+
     if (raw.startsWith("https://")) return raw
 
     const path = raw.replace(/^https?:\/\/[^/]+/, "")
@@ -25,16 +47,13 @@ export function resolveImageUrl(value?: string): string | undefined {
   }
 
   if (raw.startsWith("/")) {
-    if (raw.startsWith("/uploads") || raw.startsWith("/storage") || raw.startsWith("/images")) {
-      return `${getSecureApiOrigin()}${raw}`
-    }
+    const uploadPath = getSameOriginUploadPath(raw)
+    if (uploadPath) return uploadPath
     return raw
   }
 
-  if (raw.startsWith("uploads") || raw.startsWith("storage") || raw.startsWith("images")) {
-    return `${getSecureApiOrigin()}/${raw.replace(/^\/+/, "")}`
-  }
+  const uploadPath = getSameOriginUploadPath(raw)
+  if (uploadPath) return uploadPath
 
   return `${getSecureApiOrigin()}/uploads/image/${raw}`
 }
-

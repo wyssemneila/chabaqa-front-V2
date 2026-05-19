@@ -1,15 +1,13 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import PageHeader from "./components/PageHeader"
-import StatsGrid from "./components/StatsGrid"
-import SearchBar from "./components/SearchBar"
 import ChallengesTabs from "./components/ChallengesTabs"
 import ChallengePerformanceOverview from "./components/ChallengePerformanceOverview"
 import { api, apiClient } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
-import { PageShell, PageState, ModuleEmptyState, TOAST_MESSAGES } from "@/components/creator-dashboard"
+import { ModuleEmptyState, ModulePage, TOAST_MESSAGES } from "@/components/creator-dashboard"
+import { Coins, Plus, Trophy, Users, Zap } from "lucide-react"
 
 export default function CreatorChallengesPage() {
   const { toast } = useToast()
@@ -17,7 +15,9 @@ export default function CreatorChallengesPage() {
 
   const [challenges, setChallenges] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
+  const [reloadKey, setReloadKey] = useState(0)
   const [revenue, setRevenue] = useState<number | null>(null)
   const [topChallenges, setTopChallenges] = useState<any[]>([])
 
@@ -26,6 +26,7 @@ export default function CreatorChallengesPage() {
 
     const load = async () => {
       setLoading(true)
+      setError(null)
       try {
         const me = await api.auth.me().catch(() => null as any)
         const user = me?.data || (me as any)?.user || null
@@ -90,6 +91,7 @@ export default function CreatorChallengesPage() {
             }),
         )
       } catch (e: any) {
+        setError(e?.message || "Failed to load challenges")
         setRevenue(null)
         setTopChallenges([])
         toast(TOAST_MESSAGES.error(e?.message || 'Failed to load challenges'))
@@ -98,7 +100,7 @@ export default function CreatorChallengesPage() {
       }
     }
     load()
-  }, [selectedCommunityId, selectedCommunity, toast])
+  }, [selectedCommunityId, selectedCommunity, toast, reloadKey])
 
   const filtered = useMemo(() => {
     if (!search) return challenges
@@ -113,18 +115,45 @@ export default function CreatorChallengesPage() {
   }, [topChallenges, search])
 
   if (guard) return guard
-  if (loading) return <PageState variant="loading" title="Loading challenges…" />
+
+  const activeChallenges = challenges.filter((challenge) => {
+    const now = new Date()
+    return challenge.startDate <= now && challenge.endDate >= now
+  }).length
+
+  const totalParticipants = challenges.reduce((sum, challenge) => {
+    const participants = Array.isArray(challenge.participants) ? challenge.participants.length : Number(challenge.participantsCount || 0)
+    return sum + participants
+  }, 0)
 
   return (
-    <PageShell>
-      <PageHeader />
-      <StatsGrid allChallenges={filtered} revenue={revenue} />
-      <SearchBar onSearch={setSearch} />
-      <ChallengesTabs allChallenges={filtered} />
+    <ModulePage
+      title="Challenges"
+      description={`Create and manage accountability programs for ${selectedCommunity?.name || "this community"}.`}
+      primaryAction={{ label: "Create Challenge", href: "/creator/challenges/new", icon: Plus }}
+      metrics={[
+        { title: "Challenges", value: challenges.length, icon: Zap, color: "challenges" },
+        { title: "Active", value: activeChallenges, icon: Trophy, color: "success" },
+        { title: "Participants", value: totalParticipants, icon: Users, color: "primary" },
+        { title: "Revenue", value: revenue == null ? "..." : `${revenue.toLocaleString()} TND`, icon: Coins, color: "success" },
+      ]}
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search challenges..."
+      dataFreshnessLabel="Challenge participation and revenue refresh from creator analytics."
+      density="compact"
+      loading={loading}
+      error={error}
+      onRetry={() => {
+        setError(null)
+        setReloadKey((key) => key + 1)
+      }}
+      emptyState={!loading && !error && challenges.length === 0 ? <ModuleEmptyState module="challenges" /> : null}
+    >
+      <ChallengesTabs allChallenges={filtered} hasSearchQuery={!!search} />
       {filtered.length > 0 && (
         <ChallengePerformanceOverview allChallenges={filtered} topChallenges={filteredTopChallenges} />
       )}
-      {filtered.length === 0 && <ModuleEmptyState module="challenges" />}
-    </PageShell>
+    </ModulePage>
   )
 }

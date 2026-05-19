@@ -34,6 +34,7 @@ type YouTubeApiPlayer = {
 }
 
 let youtubeIframeApiPromise: Promise<void> | null = null
+const COMPLETION_RATIO = 0.99
 
 const loadYouTubeIframeApi = (): Promise<void> => {
   if (typeof window === "undefined") {
@@ -245,7 +246,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
     if (!currentChapter?.id || !enrollment?.progress) return 0
     const chapterProgress = enrollment.progress.find((p: any) => String(p.chapterId) === String(currentChapter.id))
     const serverPosition = Number((chapterProgress && (chapterProgress as any).watchTime) ?? 0)
-    
+
     // Check LocalStorage for a potentially newer position
     if (typeof window !== 'undefined' && storageKey) {
       const localData = localStorage.getItem(storageKey);
@@ -258,7 +259,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
         }
       }
     }
-    
+
     return serverPosition;
   }, [currentChapter?.id, enrollment?.progress, storageKey])
 
@@ -369,7 +370,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
   // ─── Playback Session Management ──────────────────────────────────────────
   useEffect(() => {
     if (!hasProtectedVideo) return
-    if (!chapterAccessible && !currentChapter?.isPreview) return
+    if (!chapterAccessible) return
     if (!currentChapter?.id) return
     let cancelled = false
     const createSession = async () => {
@@ -386,7 +387,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
     }
     void createSession()
     return () => { cancelled = true }
-  }, [hasProtectedVideo, courseId, currentChapter?.id, chapterAccessible, currentChapter?.isPreview])
+  }, [hasProtectedVideo, courseId, currentChapter?.id, chapterAccessible])
 
   // Extend session periodically while watching
   useEffect(() => {
@@ -539,8 +540,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
   // Initialize YouTube Player
   useEffect(() => {
     if (platform !== 'youtube' || !youtubeId || !playerRef.current) return
-    // Allow initializing YouTube player for preview chapters even when not enrolled.
-    if (!chapterAccessible && !currentChapter?.isPreview) return
+    if (!chapterAccessible) return
 
     const resumePosition = savedWatchPositionRef.current
 
@@ -677,7 +677,6 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
     youtubeId,
     platform,
     currentChapter?.id,
-    currentChapter?.isPreview,
     chapterAccessible,
     mapYouTubeErrorMessage,
     rawVideoUrl,
@@ -688,7 +687,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
   useEffect(() => {
     if (platform !== 'vimeo' || !vimeoId || !vimeoIframeRef.current) return
     // Allow initializing Vimeo player for preview chapters even when not enrolled.
-    if (!isChapterAccessible(currentChapter?.id) && !currentChapter?.isPreview) return
+    if (!isChapterAccessible(currentChapter?.id)) return
 
     const iframe = vimeoIframeRef.current
     const iframeWindow = iframe.contentWindow
@@ -749,11 +748,11 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
             }
           }
 
-          // Completion trigger (>=90%) for all chapters
+          // Completion trigger (ended or >=99%) for all chapters
           if (duration > 0 && !hasSentCompleteRef.current) {
             const pct = time / duration
-            if (pct >= 0.9) {
-              void markChapterCompletedOnceRef.current("vimeo_90_percent", { currentTime: time, duration })
+            if (pct >= COMPLETION_RATIO) {
+              void markChapterCompletedOnceRef.current("vimeo_99_percent", { currentTime: time, duration })
             }
           }
         } else if (data.event === "ended") {
@@ -791,7 +790,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
   // Track watch time for native HTML5 video
   useEffect(() => {
     if (!isLocalFileVideo()) return
-    const accessAllowed = (currentChapter?.id ? isChapterAccessible(currentChapter?.id) : false) || !!currentChapter?.isPreview
+    const accessAllowed = currentChapter?.id ? isChapterAccessible(currentChapter?.id) : false
     if (!accessAllowed) return
 
     const videoEl = htmlVideoRef.current
@@ -800,7 +799,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
     const onTimeUpdate = () => {
       const currentTime = videoEl.currentTime;
       const duration = videoEl.duration;
-      
+
       // Update local state for current playback
       setWatchTime(currentTime);
       if (duration > 0) setVideoDuration(duration);
@@ -823,11 +822,11 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
       }
 
       // --- AUTO-COMPLETION RECOVERY ---
-      // If High-Water Mark is already >= 90% (e.g. from local storage), ensure we mark it complete
+      // If High-Water Mark is already >= 99% (e.g. from local storage), ensure we mark it complete
       // This handles the "I already completed it" case where backend might have missed it.
       if (duration > 0 && !hasSentCompleteRef.current) {
-         if (effectiveMaxTime / duration >= 0.9) {
-            void markChapterCompletedOnceRef.current("high_watermark_recovery", { currentTime: effectiveMaxTime, duration });
+         if (effectiveMaxTime / duration >= COMPLETION_RATIO) {
+            void markChapterCompletedOnceRef.current("high_watermark_99_percent", { currentTime: effectiveMaxTime, duration });
          }
       }
 
@@ -839,14 +838,14 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
       // Standard Completion check (Live Playback)
       // (This is redundant if the block above catches it, but kept for safety during active play)
       if (duration > 0 && !hasSentCompleteRef.current) {
-        if (currentTime / duration >= 0.9) {
-          void markChapterCompletedOnceRef.current("native_90_percent", { currentTime, duration });
+        if (currentTime / duration >= COMPLETION_RATIO) {
+          void markChapterCompletedOnceRef.current("native_99_percent", { currentTime, duration });
         }
       }
     };
 
     videoEl.addEventListener('timeupdate', onTimeUpdate);
-    
+
     // Resume position
     const onLoadedMetadataResume = () => {
       const videoEl = htmlVideoRef.current;
@@ -957,11 +956,11 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
              }
           }
 
-          // Completion trigger (>=90%) for all chapters
+          // Completion trigger (ended or >=99%) for all chapters
           if (duration > 0 && !hasSentCompleteRef.current) {
             const pct = currentTime / duration
-            if (pct >= 0.9) {
-              await markChapterCompletedOnceRef.current("interval_embedded_90_percent", { currentTime, duration })
+            if (pct >= COMPLETION_RATIO) {
+              await markChapterCompletedOnceRef.current("interval_embedded_99_percent", { currentTime, duration })
             }
           }
         } catch (error) {
@@ -1017,10 +1016,10 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
         return;
       }
       persistHighWaterMark(watchTime)
-      
+
       const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
       const endpoint = `${backendUrl}/course-enrollment/${courseId}/chapters/${currentChapter.id}/watch-time`;
-      
+
       const payload = JSON.stringify({
         watchTime: Math.floor(watchTime),
         videoDuration: videoDuration > 0 ? Math.floor(videoDuration) : undefined
@@ -1072,15 +1071,14 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
 
   // Check if video URL is valid (not empty string)
   const hasValidVideoUrl = Boolean(
-    (currentChapter?.videoUrl && 
-    typeof currentChapter.videoUrl === 'string' && 
+    (currentChapter?.videoUrl &&
+    typeof currentChapter.videoUrl === 'string' &&
     currentChapter.videoUrl.trim() !== '') ||
     hasProtectedVideo
   );
-  
-  // Show the video for preview chapters even when user isn't enrolled.
-  const shouldShowLocked = !hasValidVideoUrl || !videoUrl || Boolean(playerError) || (!chapterAccessible && !currentChapter?.isPreview)
-  
+
+  const shouldShowLocked = !hasValidVideoUrl || !videoUrl || Boolean(playerError) || !chapterAccessible
+
   // Loading state while creating playback session
   if (isLoadingSession || (hasProtectedVideo && !playbackSession && !playerError && chapterAccessible)) {
     return (
@@ -1099,10 +1097,10 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
 
   // For protected video: skip shouldShowLocked if we have a session
   const effectiveShowLocked = hasProtectedVideo && playbackSession ? false : shouldShowLocked;
-  
+
   if (effectiveShowLocked) {
 
-    const isAccessDenied = !chapterAccessible && !currentChapter?.isPreview
+    const isAccessDenied = !chapterAccessible
     const isVideoMissing = !hasValidVideoUrl || !videoUrl || Boolean(playerError)
 
     return (
@@ -1218,8 +1216,8 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
             <div className="w-16 h-1.5 bg-gray-600 rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary"
-                style={{ 
-                  width: `${videoDuration > 0 ? (watchTime / videoDuration) * 100 : 0}%` 
+                style={{
+                  width: `${videoDuration > 0 ? (watchTime / videoDuration) * 100 : 0}%`
                 }}
               />
             </div>

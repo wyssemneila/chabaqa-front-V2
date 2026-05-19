@@ -48,7 +48,7 @@ export function SessionDetailsStep({
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="sessionFormat">Session Format *</Label>
+          <Label htmlFor="sessionFormat">Session Format</Label>
           <Select
             value={formData.sessionFormat}
             onValueChange={(value) => handleInputChange("sessionFormat", value)}

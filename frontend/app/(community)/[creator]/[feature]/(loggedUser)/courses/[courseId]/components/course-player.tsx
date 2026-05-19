@@ -76,7 +76,6 @@ export default function CoursePlayer({
   const liveWatchTimeRef = useRef<number | null>(null)
   const watchTimeStateLastUpdatedRef = useRef<number>(0)
   const autoAdvancedFromChapterRef = useRef<Record<string, boolean>>({})
-  const autoAdvanceInFlightRef = useRef<Record<string, boolean>>({})
   const currentChapterRef = useRef<any>(null)
   const trackingSentRef = useRef<{ start: boolean; complete: boolean }>({ start: false, complete: false })
 
@@ -117,11 +116,6 @@ export default function CoursePlayer({
         return undefined
     }
   }, [effectiveUnlockMessage, previewLockedReason])
-  const forceUnlockedChapterId =
-    chapterUnlockState === "unlocked" && pendingPaidChapterId
-      ? String(pendingPaidChapterId)
-      : null
-
   const unlockedMap = useMemo(() => {
     if (!Array.isArray(unlockedChapters)) return new Map<string, any>()
     return new Map<string, any>(unlockedChapters.map((c: any) => [String(c.id), c]))
@@ -183,6 +177,22 @@ export default function CoursePlayer({
       const chapter = allChapters.find((c: any) => String(c.id) === resolvedChapterId)
       if (!chapter) return { canAccess: false, reason: "Chapter not found" }
 
+      const sessionChapter = courseSession?.chapters.find(
+        (c) => String(c.chapterId) === resolvedChapterId,
+      )
+      if (sessionChapter) {
+        if (sessionChapter.access.canAccess) {
+          return { canAccess: true }
+        }
+        return {
+          canAccess: false,
+          reason:
+            sessionChapter.access.lockReason ||
+            mapLockCodeToReason(sessionChapter.access.lockCode) ||
+            "Chapter is locked.",
+        }
+      }
+
       if (!isUserEnrolled) {
         if (firstChapterId && resolvedChapterId === firstChapterId) {
           return { canAccess: true }
@@ -190,7 +200,7 @@ export default function CoursePlayer({
         return { canAccess: false, reason: previewLockedReason }
       }
 
-      const requiresPaidAccess = Boolean(chapter.isPaidChapter) && !Boolean(chapter.isPreview)
+      const requiresPaidAccess = Boolean(chapter.isPaidChapter)
       if (requiresPaidAccess) {
         // Ask backend for paid access decision (covers freemium membership rule)
         try {
@@ -234,6 +244,7 @@ export default function CoursePlayer({
       effectiveUnlockMessage,
       resolveSequentialAccessLocally,
       mapLockCodeToReason,
+      courseSession,
     ],
   )
 
@@ -267,10 +278,6 @@ export default function CoursePlayer({
   const isChapterAccessible = useCallback(
     (chapterId: string) => {
       const key = String(chapterId)
-      if (forceUnlockedChapterId && key === forceUnlockedChapterId) {
-        return true
-      }
-
       // Prefer the centralized session's access decisions (backend-authoritative, no stale closure).
       if (courseSession && courseSession.chapters.length > 0) {
         return courseSession.isChapterAccessible(key)
@@ -279,32 +286,13 @@ export default function CoursePlayer({
       const chapter = allChapters.find((c: any) => String(c.id) === key)
       if (!chapter) return false
 
-      if (!isUserEnrolled) {
-        return Boolean(firstChapterId && key === firstChapterId) || Boolean(chapter.isPreview)
-      }
-
-      if (effectiveSequentialProgressionEnabled) {
-        return resolveSequentialAccessLocally(key).canAccess
-      }
-
-      if (unlockedMap.get(key)?.isUnlocked) {
-        return true
-      }
-      const known = accessibleChapters[key]
-      if (typeof known === "boolean") return known
-
-      // Non-sequential enrolled fallback: free chapters are accessible immediately.
-      return Boolean(chapter.isPreview) || !Boolean(chapter.isPaidChapter)
+      // Fail closed while the backend/session source of truth is not ready.
+      // The only runtime fallback is the first chapter public preview.
+      return Boolean(firstChapterId && key === firstChapterId)
     },
     [
       allChapters,
-      forceUnlockedChapterId,
-      isUserEnrolled,
       firstChapterId,
-      unlockedMap,
-      accessibleChapters,
-      effectiveSequentialProgressionEnabled,
-      resolveSequentialAccessLocally,
       courseSession,
     ],
   )
@@ -375,36 +363,21 @@ export default function CoursePlayer({
         }
       }
 
-      const canAccessNext = await ensureChapterAccessCached(nextChapterId)
-      if (!canAccessNext) return false
+      if (courseSession) {
+        if (courseSession.chapters.length === 0) return false
+        const result = await courseSession.selectChapter(nextChapterId)
+        if (!result.success) return false
+      } else {
+        const canAccessNext = await ensureChapterAccessCached(nextChapterId)
+        if (!canAccessNext) return false
+      }
 
       autoAdvancedFromChapterRef.current[sourceId] = true
       setSelectedChapter(nextChapterId)
       return true
     },
-    [isUserEnrolled, allChapters, onRefreshProgress, onRefreshUnlockedChapters, ensureChapterAccessCached],
+    [isUserEnrolled, allChapters, onRefreshProgress, onRefreshUnlockedChapters, ensureChapterAccessCached, courseSession],
   )
-
-  useEffect(() => {
-    if (!forceUnlockedChapterId) return
-    setAccessibleChapters((prev) => ({
-      ...prev,
-      [forceUnlockedChapterId]: true,
-    }))
-    setChapterAccessReason((prev) => ({
-      ...prev,
-      [forceUnlockedChapterId]: undefined,
-    }))
-    setSelectedChapter(forceUnlockedChapterId)
-  }, [forceUnlockedChapterId])
-
-  useEffect(() => {
-    if (!pendingPaidChapterId) return
-    const targetChapter = allChapters.find((c: any) => String(c.id) === String(pendingPaidChapterId))
-    if (!targetChapter) return
-    if (!isChapterAccessible(String(targetChapter.id))) return
-    setSelectedChapter(String(targetChapter.id))
-  }, [pendingPaidChapterId, allChapters, isChapterAccessible])
 
   // Handler called by EnhancedVideoPlayer with latest seconds (and optional duration)
   const handleWatchTimeUpdate = useCallback(
@@ -430,25 +403,6 @@ export default function CoursePlayer({
       const currentChapterId = currentChapterRef.current?.id ? String(currentChapterRef.current.id) : null
       if (currentChapterId && courseSession) {
         courseSession.reportWatchTime(currentChapterId, secs, duration)
-      }
-
-      if (currentChapterId && isUserEnrolled && !autoAdvancedFromChapterRef.current[currentChapterId]) {
-        const currentChapterIndex = allChapters.findIndex((c: any) => String(c.id) === currentChapterId)
-        const hasNextChapter = currentChapterIndex !== -1 && currentChapterIndex < allChapters.length - 1
-        const safeDuration = typeof duration === "number" && Number.isFinite(duration) ? Math.floor(duration) : null
-        // Use live ref value (not state) so we don't depend on stale state from throttled updates
-        const liveSecs = liveWatchTimeRef.current ?? secs
-        const effectiveDuration = safeDuration && safeDuration > 0
-          ? safeDuration
-          : Number(videoDurationOverride ?? 0)
-        const reachedUnlockThreshold = effectiveDuration > 0 && liveSecs >= effectiveDuration * 0.9
-
-        if (hasNextChapter && reachedUnlockThreshold && !autoAdvanceInFlightRef.current[currentChapterId]) {
-          autoAdvanceInFlightRef.current[currentChapterId] = true
-          void tryAutoAdvanceToNext(currentChapterId, { refreshBeforeCheck: true }).finally(() => {
-            autoAdvanceInFlightRef.current[currentChapterId] = false
-          })
-        }
       }
 
       // Build per-chapter contribution breakdown for logging
@@ -567,6 +521,21 @@ export default function CoursePlayer({
   }, [currentChapter]);
 
   useEffect(() => {
+    if (!courseSession || courseSession.chapters.length === 0) return
+
+    const sessionCurrentId = courseSession.currentChapterId ? String(courseSession.currentChapterId) : null
+    if (sessionCurrentId && sessionCurrentId !== selectedChapter && courseSession.isChapterAccessible(sessionCurrentId)) {
+      setSelectedChapter(sessionCurrentId)
+      return
+    }
+
+    if (selectedChapter && !courseSession.isChapterAccessible(String(selectedChapter))) {
+      const firstAccessible = courseSession.chapters.find((chapter) => chapter.access.canAccess)
+      setSelectedChapter(firstAccessible?.chapterId ?? null)
+    }
+  }, [courseSession, courseSession?.chapters, courseSession?.currentChapterId, selectedChapter])
+
+  useEffect(() => {
     if (!currentChapter?.id) return
     if (trackingSentRef.current.start) return
     const accessAllowed = isChapterAccessible(String(currentChapter.id))
@@ -683,7 +652,7 @@ export default function CoursePlayer({
 
       const reachedUnlockThreshold =
         isCompleted ||
-        (effectiveDuration > 0 && effectiveWatch > 0 && ((effectiveWatch / effectiveDuration) * 100) >= 90)
+        (effectiveDuration > 0 && effectiveWatch > 0 && ((effectiveWatch / effectiveDuration) * 100) >= 99)
 
       if (!reachedUnlockThreshold) return false
 
@@ -742,69 +711,71 @@ export default function CoursePlayer({
       selectedChapter,
     })
 
-    let canAccess = await ensureChapterAccessCached(chapterId)
-    console.info("[CourseNextFlow] Access check result", {
-      chapterId: String(chapterId),
-      canAccess,
-    })
-    if (!canAccess) {
-      canAccess = await tryUnlockImmediateNextChapter(chapterId)
-      console.info("[CourseNextFlow] Immediate unlock attempt result", {
-        chapterId: String(chapterId),
-        canAccess,
-      })
-    }
-
-    if (!canAccess) {
-      const reason =
-        chapterAccessReason[String(chapterId)] ||
-        (!isUserEnrolled ? previewLockedReason : undefined) ||
-        effectiveUnlockMessage ||
-        "You need to complete the previous chapter to unlock this one."
-      console.warn("[CourseNextFlow] Chapter remains locked", {
-        chapterId: String(chapterId),
-        reason,
-      })
-      toast({
-        title: "Chapter locked",
-        description: reason,
-        variant: "destructive",
-      })
-      return false
-    }
-
-    console.info("[CourseNextFlow] Chapter selected", { chapterId: String(chapterId) })
-    setSelectedChapter(chapterId)
-
-    try {
-      if (enrollment) {
-        await coursesApi.startChapter(resolvedCourseId, String(chapter.sectionId), String(chapterId), { watchTime: 0 })
+    if (courseSession) {
+      if (courseSession.chapters.length === 0) {
+        const isFirstChapter = Boolean(firstChapterId && String(chapterId) === firstChapterId)
+        if (isFirstChapter) {
+          setSelectedChapter(String(chapterId))
+          return true
+        }
+        toast({
+          title: "Chapter locked",
+          description: "Finish this chapter to unlock the next one.",
+          variant: "destructive",
+        })
+        return false
       }
-    } catch (error) {
-      toast({
-        title: "Could not start chapter",
-        description: typeof error === "object" && error && "message" in error ? String((error as any).message) : "Please try again.",
-        variant: "destructive",
-      })
+
+      const result = await courseSession.selectChapter(String(chapterId))
+      if (!result.success) {
+        const reason =
+          result.reason ||
+          mapLockCodeToReason(result.lockCode) ||
+          "Finish this chapter to unlock the next one."
+        toast({
+          title: "Chapter locked",
+          description: reason,
+          variant: "destructive",
+        })
+        return false
+      }
+      setSelectedChapter(String(chapterId))
+      return true
     }
-    return true
+
+    const isFirstChapterFallback = Boolean(firstChapterId && String(chapterId) === firstChapterId)
+    if (isFirstChapterFallback) {
+      setSelectedChapter(String(chapterId))
+      return true
+    }
+
+    toast({
+      title: "Chapter locked",
+      description: "Finish this chapter to unlock the next one.",
+      variant: "destructive",
+    })
+    return false
   }, [
     allChapters,
-    ensureChapterAccessCached,
-    tryUnlockImmediateNextChapter,
-    chapterAccessReason,
     isUserEnrolled,
-    previewLockedReason,
-    effectiveUnlockMessage,
     toast,
-    enrollment,
-    resolvedCourseId,
     selectedChapter,
+    courseSession,
+    mapLockCodeToReason,
+    firstChapterId,
   ])
 
   const handleSelectChapter = useCallback(async (chapterId: string) => {
     await attemptSelectChapter(chapterId)
   }, [attemptSelectChapter])
+
+  useEffect(() => {
+    if (!pendingPaidChapterId) return
+    const targetChapter = allChapters.find((c: any) => String(c.id) === String(pendingPaidChapterId))
+    if (!targetChapter) return
+    if (!isChapterAccessible(String(targetChapter.id))) return
+    void attemptSelectChapter(String(targetChapter.id))
+  }, [pendingPaidChapterId, allChapters, isChapterAccessible, attemptSelectChapter])
 
   useEffect(() => {
     if (!requestedChapterId) return
@@ -887,7 +858,7 @@ export default function CoursePlayer({
     if (enrollment) return
 
     const targetChapterId = currentChapter?.id ? String(currentChapter.id) : undefined
-    const targetChapterPaid = Boolean(currentChapter?.isPaidChapter) && !Boolean(currentChapter?.isPreview)
+    const targetChapterPaid = Boolean(currentChapter?.isPaidChapter)
 
     // Delegate chapter-aware enrollment/payment decision to page handler when available.
     if (onOpenEnrollment) {
@@ -923,22 +894,24 @@ export default function CoursePlayer({
   useEffect(() => { courseSessionRef.current = courseSession }, [courseSession])
   const handleChapterComplete = useCallback((chapterId: string) => {
     courseSessionRef.current?.reportChapterComplete(chapterId)
-  }, [])
+    void onRefreshProgress?.()
+    void onRefreshUnlockedChapters?.()
+  }, [onRefreshProgress, onRefreshUnlockedChapters])
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-6">
-        <CourseHeader 
+        <CourseHeader
           creatorSlug={creatorSlug}
-          slug={slug} 
-          course={course} 
-          progress={displayChapterPercent} 
-          allChapters={allChapters} 
+          slug={slug}
+          course={course}
+          progress={displayChapterPercent}
+          allChapters={allChapters}
           completedChaptersCount={completedChaptersCount}
           remainingChaptersCount={remainingChaptersCount}
           currentChapterProgress={displayChapterPercent}
         />
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-7 xl:grid-cols-3 gap-6">
           <div className="lg:col-span-4 xl:col-span-2 space-y-4">
 	            {isCourseCompleted ? (
@@ -954,7 +927,7 @@ export default function CoursePlayer({
 	              </div>
 	            ) : null}
 
-            <EnhancedVideoPlayer 
+            <EnhancedVideoPlayer
               creatorSlug={creatorSlug}
               currentChapter={currentChapter}
               isChapterAccessible={isChapterAccessible}
@@ -967,7 +940,7 @@ export default function CoursePlayer({
               onChapterComplete={handleChapterComplete}
             />
 
-	            <ChapterTabs 
+	            <ChapterTabs
 	              activeTab={activeTab}
 	              setActiveTab={setActiveTab}
 	              currentChapter={currentChapter}
@@ -986,6 +959,27 @@ export default function CoursePlayer({
                   console.warn("[CourseNextFlow] onGoToNextChapter blocked: no next chapter id")
                   return
                 }
+
+                if (courseSession) {
+                  const result = await courseSession.goToNextChapter()
+                  if (!result.success) {
+                    if (result.needsPayment && onOpenEnrollment) {
+                      await onOpenEnrollment({
+                        targetChapterId: nextChapterId,
+                        targetChapterPaid: true,
+                        source: "sidebar-next",
+                      })
+                    } else {
+                      toast({
+                        title: "Next chapter locked",
+                        description: result.reason || "Finish this chapter to unlock the next one.",
+                        variant: "destructive",
+                      })
+                    }
+                  }
+                  return
+                }
+
                 await handleSelectChapter(nextChapterId)
                 if (onRefreshUnlockedChapters) {
                   await onRefreshUnlockedChapters()
@@ -994,7 +988,7 @@ export default function CoursePlayer({
             />
           </div>
 
-          <CourseSidebar 
+          <CourseSidebar
             course={course}
             enrollment={enrollment}
             allChapters={allChapters}

@@ -41,7 +41,7 @@ import { PolicyService } from '@/shared/services/policy.service';
 import { UploadService } from '@/domains/shared/upload/upload.service';
 import { TrackableContentType, TrackingActionType } from '@/infrastructure/database/schemas/learning/content-tracking.schema';
 import { AnalyticsDaily, AnalyticsDailyDocument } from '@/infrastructure/database/schemas/analytics/analytics-daily.schema';
-import { Ga4Service } from '@/infrastructure/external/analytics/ga4.service';
+import { Ga4Service } from '@/domains/analytics/ga4/ga4.service';
 import { CacheService } from '@/infrastructure/cache/cache.service';
 
 @Injectable()

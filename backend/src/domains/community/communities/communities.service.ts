@@ -5,6 +5,7 @@ import { Community, CommunityDocument } from '@/infrastructure/database/schemas/
 import { User, UserDocument } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Post, PostDocument } from '@/infrastructure/database/schemas/content/post.schema';
 import { UploadService } from '@/domains/shared/upload/upload.service';
+import { MediaResolverService } from '@/shared/services/media-resolver.service';
 
 export interface CommunityFilters {
   search?: string;
@@ -31,7 +32,19 @@ export class CommunitiesService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Post.name) private postModel: Model<PostDocument>,
     private readonly uploadService: UploadService,
+    private readonly mediaResolver: MediaResolverService,
   ) { }
+
+  private async withResolvedCommunityMedia<T extends Record<string, any>>(
+    community: any,
+    payload: T,
+  ): Promise<T & { logoUrl: string; coverUrl: string; thumbnailUrl: string }> {
+    const media = await this.mediaResolver.resolveCommunityMedia(community);
+    return {
+      ...payload,
+      ...media,
+    };
+  }
 
   async searchCommunityMembers(
     communityId: string,
@@ -123,7 +136,7 @@ export class CommunitiesService {
         .sort({ createdAt: -1 })
         .exec();
 
-      const transformedJoined = joinedCommunities.map(community => {
+      const transformedJoined = await Promise.all(joinedCommunities.map(async (community) => {
         const communityData = community as any;
         // Determine user role in community
         let role = 'member';
@@ -135,7 +148,7 @@ export class CommunitiesService {
           role = 'moderator';
         }
 
-        return {
+        return this.withResolvedCommunityMedia(communityData, {
           id: community._id.toString(),
           slug: communityData.slug,
           name: communityData.name || communityData.nom,
@@ -150,8 +163,8 @@ export class CommunitiesService {
             name: communityData.createur?.name || 'Unknown',
             avatar: this.uploadService.ensureAbsoluteUrl(communityData.createur?.profile_picture || communityData.createur?.photo_profil || 'https://placehold.co/64x64?text=MM')
           }
-        };
-      });
+        });
+      }));
 
       allCommunities = [...allCommunities, ...transformedJoined];
     }
@@ -170,10 +183,10 @@ export class CommunitiesService {
         .sort({ createdAt: -1 })
         .exec();
 
-      const transformedCreated = createdCommunities.map(community => {
+      const transformedCreated = await Promise.all(createdCommunities.map(async (community) => {
         const communityData = community as any;
 
-        return {
+        return this.withResolvedCommunityMedia(communityData, {
           id: community._id.toString(),
           slug: communityData.slug,
           name: communityData.name || communityData.nom,
@@ -188,8 +201,8 @@ export class CommunitiesService {
             name: communityData.createur?.name || 'Unknown',
             avatar: this.uploadService.ensureAbsoluteUrl(communityData.createur?.profile_picture || communityData.createur?.photo_profil || 'https://placehold.co/64x64?text=MM')
           }
-        };
-      });
+        });
+      }));
 
       allCommunities = [...allCommunities, ...transformedCreated];
     }
@@ -362,7 +375,7 @@ export class CommunitiesService {
       };
 
       // Transform communities to match frontend format
-      const transformedCommunities = communities.map((community, index) => {
+      const transformedCommunities = await Promise.all(communities.map(async (community, index) => {
         // Get the best available image (prioritize non-placeholder URLs)
         let imageUrl = community.photo_de_couverture;
 
@@ -393,7 +406,7 @@ export class CommunitiesService {
           console.log(`  → Using photo_de_couverture: ${imageUrl}`);
         }
 
-        return {
+        return this.withResolvedCommunityMedia(community, {
           id: community._id.toString(), // Use actual MongoDB ID as string
           slug: community.slug,
           name: community.name,
@@ -415,8 +428,8 @@ export class CommunitiesService {
           verified: community.isVerified,
           createdDate: community.createdAt,
           link: `/${community.slug}` // Add link field as expected by frontend
-        };
-      });
+        });
+      }));
 
       return {
         communities: transformedCommunities,
@@ -501,6 +514,8 @@ export class CommunitiesService {
       throw new NotFoundException('Community not found');
     }
 
+    const media = await this.mediaResolver.resolveCommunityMedia(community as any);
+
     return {
       id: community._id.toString(), // String ID as per frontend spec
       slug: community.slug,
@@ -518,12 +533,17 @@ export class CommunitiesService {
       ratingCount: (community as any).ratingCount || 0,
       price: community.pricing?.price || community.fees_of_join || 0,
       priceType: community.priceType,
-      image: this.uploadService.ensureAbsoluteUrl(community.photo_de_couverture) || 
+      image: media.coverUrl ||
+             this.uploadService.ensureAbsoluteUrl(community.photo_de_couverture) || 
              this.uploadService.ensureAbsoluteUrl(community.creatorAvatar) || 
              `https://ui-avatars.com/api/?name=${encodeURIComponent(community.name)}&size=600&background=8e78fb&color=ffffff&format=png`,
-      coverImage: this.uploadService.ensureAbsoluteUrl(community.photo_de_couverture) || 
+      coverImage: media.coverUrl ||
+                  this.uploadService.ensureAbsoluteUrl(community.photo_de_couverture) || 
                   this.uploadService.ensureAbsoluteUrl(community.creatorAvatar) || 
                   `https://ui-avatars.com/api/?name=${encodeURIComponent(community.name)}&size=600&background=8e78fb&color=ffffff&format=png`,
+      logoUrl: media.logoUrl,
+      coverUrl: media.coverUrl,
+      thumbnailUrl: media.thumbnailUrl,
       tags: community.tags,
       featured: community.featured,
       verified: community.isVerified,
@@ -546,8 +566,8 @@ export class CommunitiesService {
         showFAQ: community.settings?.showFAQ || true,
         enableAnimations: community.settings?.enableAnimations || true,
         enableParallax: community.settings?.enableParallax || false,
-        logo: this.uploadService.ensureAbsoluteUrl(community.settings?.logo || community.logo),
-        heroBackground: this.uploadService.ensureAbsoluteUrl(community.settings?.heroBackground || community.photo_de_couverture),
+        logo: media.logoUrl,
+        heroBackground: media.coverUrl,
         gallery: community.settings?.gallery || [],
         videoUrl: community.settings?.videoUrl,
         socialLinks: community.settings?.socialLinks || {},

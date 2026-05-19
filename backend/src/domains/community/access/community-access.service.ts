@@ -211,6 +211,9 @@ export class CommunityAccessService {
         lastName: nameParts.slice(1).join(' ') ?? '',
         email: u.email ?? '',
         username: u.username ?? '',
+        avatar: u.avatar ?? null,
+        photo_profil: u.photo_profil ?? null,
+        profile_picture: u.profile_picture ?? null,
         profileImage: u.photo_profil ?? u.profile_picture ?? u.avatar ?? null,
       };
     };

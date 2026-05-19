@@ -1,16 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MetricCard } from "@/components/ui/metric-card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ModuleEmptyState, ModulePage } from "@/components/creator-dashboard";
 import {
   Calendar,
-  Search,
   Users,
   Coins,
   Eye,
@@ -36,12 +32,16 @@ export default function ClientSessionsView({
   allBookings,
   revenue,
   isSwitchLoading = false,
+  error,
+  onRetry,
   onSessionsUpdate
 }: {
   allSessions: any[];
   allBookings: CreatorBookingViewModel[];
   revenue?: number;
   isSwitchLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   onSessionsUpdate?: () => void;
 }) {
   const { toast } = useToast();
@@ -112,9 +112,11 @@ export default function ClientSessionsView({
   };
 
   const filteredSessions = allSessions.filter((session) => {
+    const title = session.title || "";
+    const description = session.description || "";
     const matchesSearch =
-      session.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.description.toLowerCase().includes(searchQuery.toLowerCase());
+      title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      description.toLowerCase().includes(searchQuery.toLowerCase());
     if (activeTab === "active") return matchesSearch && session.isActive;
     if (activeTab === "inactive") return matchesSearch && !session.isActive;
     return matchesSearch;
@@ -166,88 +168,39 @@ export default function ClientSessionsView({
     },
   ];
 
-  if (isSwitchLoading) {
-    return (
-      <div className="space-y-8 p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-3">
-            <Skeleton className="h-10 w-64" />
-            <Skeleton className="h-5 w-96 max-w-full" />
-          </div>
-          <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-            <Skeleton className="h-9 w-28" />
-            <Skeleton className="h-9 w-32" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <Skeleton className="h-10 w-full" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-64 rounded-xl" />
-              ))}
-            </div>
-          </div>
-          <div className="space-y-6">
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-40 rounded-xl" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-
   return (
-    <div className="space-y-8 p-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-4xl font-bold gradient-text-sessions">Session Manager</h1>
-          <p className="text-muted-foreground mt-2 text-lg">Manage your 1-on-1 mentoring sessions</p>
-        </div>
-        <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/creator/sessions/bookings">
-              <ClipboardList className="h-4 w-4 mr-2" /> All Bookings
-            </Link>
-          </Button>
-          <Button size="sm" className="bg-sessions-500 hover:bg-sessions-600" asChild>
-            <Link href="/creator/sessions/new"><Search className="h-4 w-4 mr-2" /> Create Session</Link>
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          <MetricCard key={stat.title} {...stat} />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <ModulePage
+      title="Sessions"
+      description="Manage your 1-on-1 mentoring sessions and booking flow."
+      primaryAction={{ label: "Create Session", href: "/creator/sessions/new", icon: Plus }}
+      secondaryActions={[{ label: "All Bookings", href: "/creator/sessions/bookings", icon: ClipboardList, variant: "outline" }]}
+      metrics={stats}
+      searchValue={searchQuery}
+      onSearchChange={setSearchQuery}
+      searchPlaceholder="Search sessions..."
+      dataFreshnessLabel="Bookings, revenue, and calendar status refresh when session data reloads."
+      density="compact"
+      tabs={[
+        { value: "all", label: "All", count: allSessions.length },
+        { value: "active", label: "Active", count: allSessions.filter((session) => session.isActive).length },
+        { value: "inactive", label: "Inactive", count: allSessions.filter((session) => !session.isActive).length },
+      ]}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      loading={isSwitchLoading}
+      error={error}
+      onRetry={onRetry}
+      emptyState={
+        !isSwitchLoading && !error && allSessions.length === 0 ? (
+          <ModuleEmptyState module="sessions" />
+        ) : !isSwitchLoading && !error && searchQuery && filteredSessions.length === 0 ? (
+          <ModuleEmptyState module="sessions" hasSearchQuery />
+        ) : null
+      }
+    >
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search sessions..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
-            </div>
-          </div>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="all">All Sessions ({allSessions.length})</TabsTrigger>
-              <TabsTrigger value="active">Active ({allSessions.filter((s) => s.isActive).length})</TabsTrigger>
-              <TabsTrigger value="inactive">Inactive ({allSessions.filter((s) => !s.isActive).length})</TabsTrigger>
-            </TabsList>
-            <TabsContent value={activeTab} className="mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {filteredSessions.length > 0 ? (
                     filteredSessions.map((session) => {
                       const sessionCover = resolveImageUrl(session.thumbnail || session.image) || "/placeholder.svg"
@@ -329,30 +282,11 @@ export default function ClientSessionsView({
                       )
                     })
                     ) : (
-                    <div className="col-span-full flex flex-col items-center justify-center py-12 px-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
-                        <Calendar className="h-16 w-16 text-zinc-300 dark:text-zinc-700 mb-4" />
-                        <h3 className="text-xl font-semibold mb-2">No sessions found</h3>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-center mb-6 max-w-md">
-                          {activeTab === "all" 
-                            ? "Get started by creating your first mentoring session."
-                            : activeTab === "active"
-                            ? "You don't have any active sessions yet. Publish a session to get started."
-                            : "You don't have any inactive sessions."}
-                        </p>
-                        {activeTab !== "inactive" && (
-                          <Button className="bg-sessions-500 hover:bg-sessions-600" asChild>
-                            <Link href="/creator/sessions/new">
-                              <Plus className="h-4 w-4 mr-2" />
-                              Create Session
-                            </Link>
-                          </Button>
-                        )}
+                    <div className="col-span-full">
+                      <ModuleEmptyState module="sessions" hasSearchQuery={!!searchQuery} />
                     </div>
                     )}
                 </div>
-                </TabsContent>
-
-          </Tabs>
         </div>
 
         {/* SIDEBAR */}
@@ -368,6 +302,6 @@ export default function ClientSessionsView({
           />
         </div>
       </div>
-    </div>
+    </ModulePage>
   );
 }

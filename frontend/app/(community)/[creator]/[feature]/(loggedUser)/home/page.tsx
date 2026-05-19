@@ -37,6 +37,7 @@ import {
   Settings2,
   Hash,
   PencilLine,
+  ArrowRight,
 } from "lucide-react"
 import Link from "next/link"
 import { communityHomeApi, type CommunityHomeData } from "@/lib/api/community-home.api"
@@ -48,6 +49,8 @@ import { useToast } from "@/hooks/use-toast"
 import { useSearchParams } from "next/navigation"
 import { getUserProfileHref } from "@/lib/profile-handle"
 import { trackingApi } from "@/lib/api/tracking.api"
+import { toMemberHomeViewModel, type RecommendationItem } from "@/lib/view-models/member-home-view-model"
+import { launchIcons } from "@/components/icons/launch-icons"
 
 const POSTS_PAGE = 1
 const POSTS_LIMIT = 10
@@ -879,6 +882,7 @@ export default function CommunityDashboard({ params }: { params: Promise<{ creat
 
   // Use /[creator_name]/[feature] route structure for all navigation
   const basePath = `/${community.creator.name}/${feature}`
+  const memberHome = toMemberHomeViewModel(data, basePath)
   const communityCreatorProfileHref = getUserProfileHref({
     username: (community.creator as any)?.username,
     name: community.creator.name,
@@ -900,6 +904,14 @@ export default function CommunityDashboard({ params }: { params: Promise<{ creat
   const currentUserId = String((currentUser as any)?.id || (currentUser as any)?._id || "")
   const creatorId = String((community.creator as any)?.id || (community.creator as any)?._id || "")
   const canPinPost = Boolean(currentUserId && creatorId && currentUserId === creatorId)
+  const recommendationIcon = (type: RecommendationItem["type"]) => {
+    if (type === "course_chapter") return launchIcons.course
+    if (type === "challenge") return launchIcons.challenge
+    if (type === "event") return launchIcons.event
+    if (type === "session") return launchIcons.session
+    if (type === "product") return launchIcons.product
+    return launchIcons.post
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -907,6 +919,54 @@ export default function CommunityDashboard({ params }: { params: Promise<{ creat
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
             {/* Main Feed */}
             <div className="lg:col-span-3 space-y-6">
+              {memberHome.continueItem && (
+                <Card className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-primary-600">Continue where you left off</p>
+                        <h2 className="mt-1 truncate text-lg font-semibold text-slate-900">{memberHome.continueItem.title}</h2>
+                        <p className="mt-1 line-clamp-2 text-sm text-slate-600">{memberHome.continueItem.description}</p>
+                      </div>
+                      <Button asChild className="shrink-0">
+                        <Link href={memberHome.continueItem.href}>
+                          Continue
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {memberHome.recommendations.length > 0 && (
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base sm:text-lg">What should I do next?</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-3 sm:grid-cols-2">
+                    {memberHome.recommendations.slice(0, 4).map((item) => {
+                      const Icon = recommendationIcon(item.type)
+                      return (
+                        <Link
+                          key={item.id}
+                          href={item.href}
+                          className="group flex min-w-0 items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 transition hover:border-primary-200 hover:bg-primary-50/40"
+                        >
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-primary-600 shadow-sm">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-primary-700">{item.title}</p>
+                            <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{item.description}</p>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Create / Edit Post */}
               <Card className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/50 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] bg-white">
                 <CardContent className="p-0">
@@ -1555,6 +1615,22 @@ export default function CommunityDashboard({ params }: { params: Promise<{ creat
                   </div>
                 </CardContent>
               </Card>
+
+              {memberHome.recentActivity.length > 0 && (
+                <Card className="border-0 shadow-sm">
+                  <CardHeader className="pb-2 sm:pb-3">
+                    <CardTitle className="text-base sm:text-lg">Recent Activity</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 p-4 sm:p-6">
+                    {memberHome.recentActivity.slice(0, 4).map((activity) => (
+                      <Link key={activity.id} href={activity.href} className="block rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+                        <p className="truncate text-sm font-medium text-slate-900">{activity.title}</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{activity.description}</p>
+                      </Link>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
             </div>
         </div>
       </div>

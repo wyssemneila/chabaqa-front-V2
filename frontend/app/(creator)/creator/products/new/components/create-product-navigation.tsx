@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button"
 import { useProductForm } from "./product-form-context"
 
-export function CreateProductNavigation() {
-  const { currentStep, setCurrentStep, validateStep, handleSubmit, formData } = useProductForm()
+export function CreateProductNavigation({ hideSubmitAction = false }: { hideSubmitAction?: boolean }) {
+  const { currentStep, setCurrentStep, validateStep, handleSubmit, formData, isSubmitting } = useProductForm()
   const steps = [
     { id: 1, title: "Basic Info" },
     { id: 2, title: "Pricing & Variants" },
@@ -23,7 +23,7 @@ export function CreateProductNavigation() {
       <Button
         variant="outline"
         onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-        disabled={currentStep === 1}
+        disabled={currentStep === 1 || isSubmitting}
       >
         Previous
       </Button>
@@ -33,11 +33,12 @@ export function CreateProductNavigation() {
           <Button
             onClick={handleNext}
             className="bg-products-500 hover:bg-products-600"
+            disabled={isSubmitting}
           >
             Next Step
           </Button>
-        ) : (
-          <Button onClick={handleSubmit} className="bg-products-500 hover:bg-products-600">
+        ) : hideSubmitAction ? null : (
+          <Button onClick={() => handleSubmit()} className="bg-products-500 hover:bg-products-600" disabled={isSubmitting}>
             {formData.isPublished ? "Create & Publish Product" : "Save as Draft"}
           </Button>
         )}

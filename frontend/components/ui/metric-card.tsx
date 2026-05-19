@@ -12,6 +12,7 @@ interface MetricCardProps {
   }
   icon?: React.ComponentType<{ className?: string }>
   color?: "primary" | "courses" | "challenges" | "sessions" | "success" | "warning" | "danger"
+  meta?: string
   className?: string
 }
 
@@ -53,7 +54,7 @@ const colorConfig = {
   },
 }
 
-export function MetricCard({ title, value, change, icon: Icon, color = "primary", className }: MetricCardProps) {
+export function MetricCard({ title, value, change, icon: Icon, color = "primary", meta, className }: MetricCardProps) {
   const config = colorConfig[color]
 
   return (
@@ -79,6 +80,7 @@ export function MetricCard({ title, value, change, icon: Icon, color = "primary"
             <span className="text-muted-foreground ml-1">from last month</span>
           </div>
         )}
+        {meta && <p className="mt-1 text-xs text-muted-foreground">{meta}</p>}
       </CardContent>
     </Card>
   )

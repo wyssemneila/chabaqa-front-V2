@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -32,7 +33,6 @@ import { AutomationsTab } from "../components/automations-tab"
 import { CampaignStats } from "../components/campaign-stats"
 import { CampaignBuilderDialog } from "../components/campaign-builder-dialog"
 import { EmailCampaignList } from "../components/email-campaign-list"
-import { EmailTemplateCards } from "../components/email-template-cards"
 import {
   emailCampaignsApi,
   EmailCampaign,
@@ -40,6 +40,7 @@ import {
   EmailCampaignStatus,
   EmailCampaignType,
 } from "@/lib/api"
+import { getCreatorCreateTemplate } from "@/lib/creator-content"
 import { toLocalDateTimeFields, toUtcIsoFromLocalDateTime } from "../components/campaign-form-utils"
 
 const PAGE_LIMIT = 10
@@ -61,6 +62,13 @@ const DEFAULT_FILTERS: FilterState = {
 export default function EmailCampaignsPage() {
   const { guard, selectedCommunity, selectedCommunityId } = useCommunityGuard()
   const { toast } = useToast()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const campaignTemplate = useMemo(
+    () => getCreatorCreateTemplate("campaign", searchParams.get("template")),
+    [searchParams],
+  )
+  const shouldOpenCreate = searchParams.get("create") === "1" || Boolean(campaignTemplate)
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
@@ -182,8 +190,26 @@ export default function EmailCampaignsPage() {
     return () => window.clearInterval(interval)
   }, [selectedCommunityId, campaigns, currentPage, activeFilters, fetchCampaigns, fetchStats])
 
+  useEffect(() => {
+    if (!shouldOpenCreate) return
+    setIsCreateDialogOpen(true)
+  }, [shouldOpenCreate])
+
+  const handleCreateDialogOpenChange = useCallback(
+    (open: boolean) => {
+      setIsCreateDialogOpen(open)
+      if (!open && shouldOpenCreate) {
+        router.replace("/creator/marketing/emails")
+      }
+    },
+    [router, shouldOpenCreate],
+  )
+
   const refreshCurrentPage = async () => {
     await Promise.all([fetchCampaigns(currentPage, activeFilters), fetchStats()])
+    if (shouldOpenCreate) {
+      router.replace("/creator/marketing/emails")
+    }
   }
 
   const runCampaignAction = async (campaign: EmailCampaign, action: () => Promise<any>, successMessage: string) => {
@@ -415,8 +441,6 @@ export default function EmailCampaignsPage() {
         </div>
       </div>
 
-      <EmailTemplateCards onCampaignCreated={refreshCurrentPage} />
-
       {campaignsError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -455,7 +479,8 @@ export default function EmailCampaignsPage() {
 
       <CampaignBuilderDialog
         open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
+        onOpenChange={handleCreateDialogOpenChange}
+        initialValues={campaignTemplate?.data}
         onSuccess={refreshCurrentPage}
       />
 

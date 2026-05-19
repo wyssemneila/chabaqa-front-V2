@@ -387,8 +387,8 @@ export function useCourseSession(
         })
       }
 
-      // Schedule a session refresh when the 90% threshold is crossed
-      if (duration && duration > 0 && seconds >= duration * 0.9) {
+      // Schedule a session refresh when the 99% threshold is crossed
+      if (duration && duration > 0 && seconds >= duration * 0.99) {
         if (!completionRefreshScheduledRef.current.has(chapterId)) {
           completionRefreshScheduledRef.current.add(chapterId)
           // Small delay to let the backend process the auto-completion
@@ -406,40 +406,22 @@ export function useCourseSession(
   const reportChapterComplete = useCallback(
     (chapterId: string) => {
       localCompletionRef.current.add(chapterId)
-      // Optimistically mark as completed and unlock the immediately next chapter
-      // so sequential progression works without waiting for a backend round-trip.
+      // Mark completion locally for the current chapter only. Access decisions for
+      // the next chapter stay backend-authoritative after the refresh below.
       setState((prev) => {
         const completedIdx = prev.chapters.findIndex((c) => c.chapterId === chapterId)
         const chapters = prev.chapters.map((c, idx) => {
           if (c.chapterId === chapterId) {
             return { ...c, isCompleted: true }
           }
-          // Unlock the immediately next chapter after the one just completed
-          if (completedIdx !== -1 && idx === completedIdx + 1 && !c.access.canAccess && c.access.lockCode === 'previous_chapter_incomplete') {
-            return { ...c, access: { ...c.access, canAccess: true, lockCode: 'allowed' as const, lockReason: undefined } }
-          }
           return c
         })
         const completedChapters = chapters.filter((c) => c.isCompleted).length
-        // Also update nextChapterAction optimistically so "Next Chapter" works immediately
-        let nextChapterAction = prev.nextChapterAction
-        if (completedIdx !== -1 && completedIdx + 1 < chapters.length) {
-          const nextCh = chapters[completedIdx + 1]
-          if (nextCh.access.canAccess) {
-            nextChapterAction = {
-              action: 'navigate' as const,
-              chapterId: nextCh.chapterId,
-              chapterTitle: nextCh.chapterTitle,
-              sectionId: nextCh.sectionId,
-            }
-          }
-        }
         return {
           ...prev,
           chapters,
           completedChapters,
           progressPercent: chapters.length > 0 ? Math.round((completedChapters / chapters.length) * 100) : 0,
-          nextChapterAction,
         }
       })
       // Bypass the throttle so next-chapter access is refreshed immediately after completion.

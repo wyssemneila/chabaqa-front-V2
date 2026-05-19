@@ -226,6 +226,8 @@ export class StripePaymentService {
   async verifyLinkPayment(sessionId: string): Promise<{
     success: boolean;
     status?: string;
+    checkoutStatus?: string | null;
+    paymentIntentStatus?: string;
     amountDT?: number;
     paymentMethod?: LinkPaymentMethod;
     customerId?: string;
@@ -271,7 +273,9 @@ export class StripePaymentService {
 
       return {
         success: true,
-        status: paymentIntent.status,
+        status: session.payment_status === 'paid' ? 'paid' : (session.status || paymentIntent.status),
+        checkoutStatus: session.status,
+        paymentIntentStatus: paymentIntent.status,
         amountDT: paymentIntent.amount / 100, // Convert from cents to dollars
         paymentMethod,
         customerId: customer?.id,

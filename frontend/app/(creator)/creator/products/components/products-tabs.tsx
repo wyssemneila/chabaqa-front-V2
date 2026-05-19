@@ -2,24 +2,26 @@
 
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ModuleEmptyState } from "@/components/creator-dashboard"
 import { ProductsGrid } from "./products-grid"
-import { EmptyProducts } from "./empty-products"
 
 interface ProductsTabsProps {
   products: any[]
   communityId: string
+  searchQuery?: string
 }
 
-export function ProductsTabs({ products, communityId }: ProductsTabsProps) {
+export function ProductsTabs({ products, communityId, searchQuery = "" }: ProductsTabsProps) {
   const [activeTab, setActiveTab] = useState("all")
-  const [searchQuery, setSearchQuery] = useState("")
 
-  const allProducts = products.filter((p) => p.communityId === communityId)
+  const allProducts = products.filter((p) => !p.communityId || p.communityId === communityId)
 
   const filteredProducts = allProducts.filter((product) => {
+    const title = product.title || product.name || ""
+    const description = product.description || ""
     const matchesSearch =
-      product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchQuery.toLowerCase())
+      title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      description.toLowerCase().includes(searchQuery.toLowerCase())
 
     if (activeTab === "published") {
       return matchesSearch && product.isPublished
@@ -56,7 +58,7 @@ export function ProductsTabs({ products, communityId }: ProductsTabsProps) {
 
       <TabsContent value={activeTab} className="mt-6">
         {filteredProducts.length === 0 ? (
-          <EmptyProducts hasSearchQuery={!!searchQuery} />
+          <ModuleEmptyState module="products" hasSearchQuery={!!searchQuery || allProducts.length > 0} />
         ) : (
           <ProductsGrid products={filteredProducts} />
         )}

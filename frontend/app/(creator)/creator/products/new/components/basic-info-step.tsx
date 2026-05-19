@@ -136,7 +136,7 @@ export function BasicInfoStep() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="category">Category *</Label>
+          <Label htmlFor="category">Category</Label>
           <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
             <SelectTrigger className={errors.category ? "border-red-500" : ""}>
               <SelectValue placeholder="Select a category" />
@@ -156,7 +156,7 @@ export function BasicInfoStep() {
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label>Key Features *</Label>
+          <Label>Key Features</Label>
             <Button type="button" variant="outline" size="sm" onClick={() => addArrayItem("features")}>
               <Plus className="h-4 w-4 mr-1" />
               Add Feature

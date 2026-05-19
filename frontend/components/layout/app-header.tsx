@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import Image from "next/image"
+import { SafeImage } from "@/components/media/safe-image"
 
 import {
   DropdownMenu,
@@ -93,17 +93,17 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
         {
           label: "Create Course",
           icon: BookOpen,
-          href: currentCommunity ? `/creator/${currentCommunity}/courses/new` : "/creator/courses/new",
+          href: "/creator/courses/new",
         },
         {
           label: "Start Challenge",
           icon: Calendar,
-          href: currentCommunity ? `/creator/${currentCommunity}/challenges/new` : "/creator/challenges/new",
+          href: "/creator/challenges/new",
         },
         {
           label: "Write Post",
           icon: MessageSquare,
-          href: currentCommunity ? `/creator/${currentCommunity}/posts/new` : "/creator/posts/new",
+          href: "/creator/posts?create=1",
         },
       ]
       : [
@@ -119,8 +119,9 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
         <div className="flex items-center space-x-4">
           <Link href="/" className="flex items-center space-x-2">
             <div className="hidden sm:block relative h-24 w-[100px]">
-              <Image
+              <SafeImage
                 src="/Logos/PNG/frensh1.png"
+                fallbackSrc="/logo_chabaqa.png"
                 alt="Chabaqa Logo"
                 fill
                 style={{ objectFit: "contain" }}

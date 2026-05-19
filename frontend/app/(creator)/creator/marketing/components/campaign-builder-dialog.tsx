@@ -126,6 +126,7 @@ export function CampaignBuilderDialog(props: {
 
   const [kind, setKind] = useState<CampaignKind>("announcement")
   const [title, setTitle] = useState("")
+  const [titleEdited, setTitleEdited] = useState(false)
   const [subject, setSubject] = useState("")
   const [content, setContent] = useState("")
 
@@ -180,7 +181,8 @@ export function CampaignBuilderDialog(props: {
     setIsSubmitting(false)
 
     setKind(initialValues?.kind || "announcement")
-    setTitle(initialValues?.title || "")
+    setTitle(initialValues?.title || initialValues?.subject || "")
+    setTitleEdited(Boolean(initialValues?.title))
     setSubject(initialValues?.subject || "")
     setContent(initialValues?.content || "")
 
@@ -1057,7 +1059,10 @@ export function CampaignBuilderDialog(props: {
                   <Input
                     id="campaign-title"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) => {
+                      setTitle(e.target.value)
+                      setTitleEdited(true)
+                    }}
                     placeholder="E.g. March update"
                   />
                 </div>
@@ -1068,7 +1073,10 @@ export function CampaignBuilderDialog(props: {
                     id="campaign-subject"
                     ref={subjectRef}
                     value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
+                    onChange={(e) => {
+                      setSubject(e.target.value)
+                      if (!titleEdited) setTitle(e.target.value)
+                    }}
                     onFocus={() => setActiveField("subject")}
                     placeholder="Enter email subject…"
                   />
@@ -1087,39 +1095,38 @@ export function CampaignBuilderDialog(props: {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Variables</Label>
-                  <TooltipProvider delayDuration={150}>
-                    <div className="flex flex-wrap gap-2">
-                      {availableVariables.map((v) => (
-                        <Tooltip key={v.key}>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-50"
-                              onClick={() => insertVariableAtCursor(v.key)}
-                            >
-                              <Badge variant="secondary" className="rounded-full">
-                                {`{{${v.key}}}`}
-                              </Badge>
-                              <span className="hidden sm:inline">{v.label}</span>
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">{v.description}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ))}
-                    </div>
-                  </TooltipProvider>
-                  <p className="text-xs text-gray-500">Click to insert into the focused field (subject or content).</p>
-                </div>
-
-                <Accordion type="single" collapsible className="w-full">
+                <Accordion type="single" collapsible defaultValue="advanced" className="w-full">
                   <AccordionItem value="advanced">
                     <AccordionTrigger>Advanced</AccordionTrigger>
                     <AccordionContent>
                       <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Variables</Label>
+                          <TooltipProvider delayDuration={150}>
+                            <div className="flex flex-wrap gap-2">
+                              {availableVariables.map((v) => (
+                                <Tooltip key={v.key}>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-50"
+                                      onClick={() => insertVariableAtCursor(v.key)}
+                                    >
+                                      <Badge variant="secondary" className="rounded-full">
+                                        {`{{${v.key}}}`}
+                                      </Badge>
+                                      <span className="hidden sm:inline">{v.label}</span>
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs">{v.description}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ))}
+                            </div>
+                          </TooltipProvider>
+                          <p className="text-xs text-gray-500">Click to insert into the focused field (subject or content).</p>
+                        </div>
                         <div className="flex items-center justify-between rounded-md border p-3">
                           <div className="space-y-0.5">
                             <p className="text-sm font-medium text-gray-900">HTML email</p>

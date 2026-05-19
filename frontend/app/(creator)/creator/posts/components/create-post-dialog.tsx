@@ -18,11 +18,16 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Plus, Image as ImageIcon, Video, Link as LinkIcon, Smile, Loader2, X } from "lucide-react"
 import type { Post } from "@/lib/api/types"
 
 // Common emojis for quick access
 const COMMON_EMOJIS = ["😀", "😂", "😍", "🎉", "🔥", "👍", "❤️", "🚀", "✨", "💯"]
+const MAX_IMAGES = 6
+const MAX_VIDEOS = 1
+const MAX_LINKS = 3
+const MAX_ATTACHMENTS = 10
 
 interface CreatePostDialogProps {
   open: boolean
@@ -58,6 +63,40 @@ export function CreatePostDialog({
   const videoInputRef = useRef<HTMLInputElement>(null)
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null)
   const isEditing = mode === "edit" && !!postToEdit
+  const attachmentCounts = {
+    photo: uploadedFiles.filter((file) => file.type === "photo").length,
+    video: uploadedFiles.filter((file) => file.type === "video").length,
+    link: uploadedFiles.filter((file) => file.type === "link").length,
+    total: uploadedFiles.length,
+  }
+
+  const getAttachmentLimitError = (type: "photo" | "video" | "link", incomingCount = 1) => {
+    if (attachmentCounts.total + incomingCount > MAX_ATTACHMENTS) {
+      return `Posts can have up to ${MAX_ATTACHMENTS} attachments.`
+    }
+    if (type === "photo" && attachmentCounts.photo + incomingCount > MAX_IMAGES) {
+      return `Posts can have up to ${MAX_IMAGES} photos.`
+    }
+    if (type === "video" && attachmentCounts.video + incomingCount > MAX_VIDEOS) {
+      return `Posts can have up to ${MAX_VIDEOS} video.`
+    }
+    if (type === "link" && attachmentCounts.link + incomingCount > MAX_LINKS) {
+      return `Posts can have up to ${MAX_LINKS} links.`
+    }
+    return null
+  }
+
+  const normalizeHttpUrl = (value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    try {
+      const parsed = new URL(trimmed)
+      if (!["http:", "https:"].includes(parsed.protocol)) return null
+      return parsed.toString()
+    } catch {
+      return null
+    }
+  }
 
   const resetForm = () => {
     setContent("")
@@ -133,10 +172,17 @@ export function CreatePostDialog({
       return
     }
 
+    const selectedFiles = Array.from(files)
+    const limitError = getAttachmentLimitError("photo", selectedFiles.length)
+    if (limitError) {
+      toast({ title: "Attachment limit reached", description: limitError, variant: "destructive" })
+      if (fileInputRef.current) fileInputRef.current.value = ""
+      return
+    }
+
     setIsLoading(true)
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
+      for (const file of selectedFiles) {
         
         if (!file.type.startsWith("image/")) {
           toast({
@@ -174,10 +220,17 @@ export function CreatePostDialog({
       return
     }
 
+    const selectedFiles = Array.from(files)
+    const limitError = getAttachmentLimitError("video", selectedFiles.length)
+    if (limitError) {
+      toast({ title: "Attachment limit reached", description: limitError, variant: "destructive" })
+      if (videoInputRef.current) videoInputRef.current.value = ""
+      return
+    }
+
     setIsLoading(true)
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
+      for (const file of selectedFiles) {
         
         if (!file.type.startsWith("video/")) {
           toast({
@@ -210,23 +263,35 @@ export function CreatePostDialog({
   }
 
   const handleAddLink = () => {
-    if (linkUrl.trim()) {
-      setUploadedFiles((prev) => [
-        ...prev,
-        {
-          url: linkUrl,
-          type: "link",
-          title: linkTitle || linkUrl,
-          filename: linkUrl,
-        },
-      ])
+    const normalizedUrl = normalizeHttpUrl(linkUrl)
+    if (!normalizedUrl) {
       toast({
-        title: "Success",
-        description: "Link added successfully",
+        title: "Invalid link",
+        description: "Enter a valid http or https URL before adding it.",
+        variant: "destructive",
       })
-      setLinkUrl("")
-      setLinkTitle("")
+      return
     }
+    const limitError = getAttachmentLimitError("link")
+    if (limitError) {
+      toast({ title: "Attachment limit reached", description: limitError, variant: "destructive" })
+      return
+    }
+    setUploadedFiles((prev) => [
+      ...prev,
+      {
+        url: normalizedUrl,
+        type: "link",
+        title: linkTitle.trim() || normalizedUrl,
+        filename: normalizedUrl,
+      },
+    ])
+    toast({
+      title: "Success",
+      description: "Link added successfully",
+    })
+    setLinkUrl("")
+    setLinkTitle("")
   }
 
   const handleRemoveFile = (index: number) => {
@@ -333,17 +398,6 @@ export function CreatePostDialog({
         )}
 
         <div className="space-y-4">
-          {/* Title (Optional) */}
-          <div>
-            <label className="text-sm font-medium">Title (Optional)</label>
-            <Input
-              placeholder="Give your post a title..."
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-
           {/* Content */}
           <div>
             <label className="text-sm font-medium">Content *</label>
@@ -364,7 +418,7 @@ export function CreatePostDialog({
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
+              disabled={isLoading || attachmentCounts.photo >= MAX_IMAGES || attachmentCounts.total >= MAX_ATTACHMENTS}
               className="hover:bg-blue-50 hover:text-blue-600"
             >
               <ImageIcon className="h-4 w-4 mr-2" />
@@ -384,7 +438,7 @@ export function CreatePostDialog({
               variant="outline"
               size="sm"
               onClick={() => videoInputRef.current?.click()}
-              disabled={isLoading}
+              disabled={isLoading || attachmentCounts.video >= MAX_VIDEOS || attachmentCounts.total >= MAX_ATTACHMENTS}
               className="hover:bg-red-50 hover:text-red-600"
             >
               <Video className="h-4 w-4 mr-2" />
@@ -411,6 +465,9 @@ export function CreatePostDialog({
             </Button>
 
             <div className="flex-1" />
+            <p className="w-full text-xs text-muted-foreground">
+              Attachments: {attachmentCounts.total}/{MAX_ATTACHMENTS} · Photos {attachmentCounts.photo}/{MAX_IMAGES} · Videos {attachmentCounts.video}/{MAX_VIDEOS} · Links {attachmentCounts.link}/{MAX_LINKS}
+            </p>
           </div>
 
           {/* Emoji Picker */}
@@ -455,7 +512,7 @@ export function CreatePostDialog({
                 variant="secondary"
                 size="sm"
                 onClick={handleAddLink}
-                disabled={!linkUrl.trim()}
+                disabled={!linkUrl.trim() || attachmentCounts.link >= MAX_LINKS || attachmentCounts.total >= MAX_ATTACHMENTS}
               >
                 Add Link
               </Button>
@@ -500,41 +557,58 @@ export function CreatePostDialog({
             </div>
           )}
 
-          {/* Tags */}
-          <div>
-            <label className="text-sm font-medium">Tags</label>
-            <div className="flex gap-2 mt-2">
-              <Input
-                placeholder="Add tag and press Enter"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                    handleAddTag()
-                  }
-                }}
-              />
-              <Button type="button" variant="outline" onClick={handleAddTag}>
-                Add
-              </Button>
-            </div>
-            {tags.length > 0 && (
-              <div className="flex gap-2 flex-wrap mt-2">
-                {tags.map((tag) => (
-                  <Badge key={tag} variant="secondary">
-                    {tag}
-                    <button
-                      onClick={() => handleRemoveTag(tag)}
-                      className="ml-1 hover:text-red-600"
-                    >
-                      ×
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
+          <Accordion type="single" collapsible className="rounded-lg border px-3">
+            <AccordionItem value="more" className="border-0">
+              <AccordionTrigger>More options</AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Title</label>
+                  <Input
+                    placeholder="Give your post a title..."
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Tags</label>
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      placeholder="Add tag and press Enter"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          handleAddTag()
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="outline" onClick={handleAddTag}>
+                      Add
+                    </Button>
+                  </div>
+                  {tags.length > 0 && (
+                    <div className="flex gap-2 flex-wrap mt-2">
+                      {tags.map((tag) => (
+                        <Badge key={tag} variant="secondary">
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTag(tag)}
+                            className="ml-1 hover:text-red-600"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           {/* Submit Button */}
           <Button

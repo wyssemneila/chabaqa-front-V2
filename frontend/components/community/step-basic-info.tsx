@@ -1,88 +1,61 @@
 "use client"
 
+import { Globe2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { ImageUpload } from "@/app/(dashboard)/components/image-upload"
 
 interface StepBasicInfoProps {
   formData: {
     name: string
-    bio: string
     country: string
-    logo: string
-    coverImage: string
+    socialLinks: {
+      website: string
+    }
   }
   updateFormData: (field: string, value: any) => void
 }
 
 export function StepBasicInfo({ formData, updateFormData }: StepBasicInfoProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-3">Name your community</h2>
-        <p className="text-gray-600">You can always change these details later.</p>
+        <h2 className="text-xl font-semibold text-gray-950">Community basics</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Only the required setup fields. Branding can be added after creation.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1">
-          <label className="block text-sm font-semibold text-gray-700 mb-4">Community Logo *</label>
-          <div className="bg-gray-50 rounded-2xl p-6">
-            <ImageUpload
-              currentImage={formData.logo}
-              onImageChange={(url) => updateFormData("logo", url)}
-              aspectRatio="square"
-              maxSize={2}
-              showPreview={true}
-            />
-            <p className="text-xs text-gray-500 mt-4">Up to 2MB, Square format recommended (1:1)</p>
-          </div>
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-900">Community name</label>
+          <Input
+            placeholder="e.g. Motion School"
+            value={formData.name}
+            onChange={(event) => updateFormData("name", event.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Use the name members will recognize in the dashboard.</p>
         </div>
 
-        <div className="lg:col-span-2 space-y-6">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">Community Name *</label>
-            <Input
-              placeholder="e.g Creators Club, Digital Pioneers"
-              value={formData.name}
-              onChange={(e) => updateFormData("name", e.target.value)}
-              className="text-lg py-3 px-4 border-2 border-gray-200 rounded-xl focus:border-[#8e78fb] focus:ring-0 focus:ring-[#8e78fb] transition-colors"
-            />
-            <p className="text-xs text-gray-500 mt-2">Choose a name that represents your community</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">Country *</label>
-            <Input
-              placeholder="e.g Tunisia, France, Morocco"
-              value={formData.country}
-              onChange={(e) => updateFormData("country", e.target.value)}
-              className="text-lg py-3 px-4 border-2 border-gray-200 rounded-xl focus:border-[#8e78fb] focus:ring-0 transition-colors"
-            />
-          </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-900">Country</label>
+          <Input
+            placeholder="e.g. Tunisia"
+            value={formData.country}
+            onChange={(event) => updateFormData("country", event.target.value)}
+          />
         </div>
       </div>
 
-      <div className="bg-gray-50 rounded-2xl p-6">
-        <label className="block text-sm font-semibold text-gray-700 mb-3">Cover Image (optional)</label>
-        <ImageUpload
-          currentImage={formData.coverImage}
-          onImageChange={(url) => updateFormData("coverImage", url)}
-          aspectRatio="wide"
-          maxSize={5}
-          showPreview={true}
-        />
-        <p className="text-xs text-gray-500 mt-4">Up to 5MB, Landscape format recommended (16:9)</p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-3">Bio (optional)</label>
-        <Textarea
-          placeholder="Tell people what your community is about. What value does it provide? Who should join?"
-          value={formData.bio}
-          onChange={(e) => updateFormData("bio", e.target.value)}
-          className="min-h-[140px] text-base px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#8e78fb] focus:ring-0 transition-colors resize-none"
-        />
-        <p className="text-xs text-gray-500 mt-2">{formData.bio.length}/500 characters</p>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-900">Main link</label>
+        <div className="relative">
+          <Globe2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="url"
+            placeholder="https://your-site.com"
+            value={formData.socialLinks.website}
+            onChange={(event) => updateFormData("socialLinks.website", event.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">A website, profile, or public page is needed for the current backend community draft.</p>
       </div>
     </div>
   )

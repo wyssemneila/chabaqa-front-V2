@@ -14,6 +14,7 @@ import { ResourcesTab } from "./tabs/resources-tab"
 import { ReviewsTab } from "./tabs/reviews-tab"
 import { AnalyticsTab } from "./tabs/analytics-tab"
 import { SettingsTab } from "./tabs/settings-tab"
+import { AiTutorInsightsTab } from "./tabs/ai-tutor-insights-tab"
 import { getCreatorVideoUrlError, normalizeVideoUrl } from "@/lib/utils/video-source"
 
 export function CourseManager({ courseId }: { courseId: string }) {
@@ -484,8 +485,18 @@ export function CourseManager({ courseId }: { courseId: string }) {
           />
         )}
 
+        {activeTab === "ai-tutor" && (
+          <AiTutorInsightsTab courseId={String(course.mongoId || course.id)} />
+        )}
+
         {activeTab === "settings" && (
-          <SettingsTab courseId={String(course.mongoId || course.id)} />
+          <SettingsTab
+            courseId={String(course.mongoId || course.id)}
+            initialSettings={{
+              sequentialProgression: (course as any).sequentialProgression,
+              aiTutorEnabled: (course as any).aiTutorEnabled,
+            }}
+          />
         )}
       </CourseTabs>
     </div>

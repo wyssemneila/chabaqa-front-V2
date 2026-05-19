@@ -389,9 +389,33 @@ describe("EnhancedVideoPlayer YouTube tracking", () => {
     expect(playerCtor).toHaveBeenCalledTimes(1)
   })
 
-  it("marks chapter complete once at >=90% and emits progress update event", async () => {
+  it("does not mark chapter complete before 99%", async () => {
     jest.useFakeTimers()
     const { playerCtor, playerInstance } = mockYoutubePlayer({ currentTime: 95, duration: 100 })
+
+    renderYoutubePlayer("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    await waitFor(() => expect(playerCtor).toHaveBeenCalledTimes(1))
+    const options = (playerCtor as any).lastOptions
+
+    await flushInitialEffects()
+    await act(async () => {
+      options.events.onReady({ target: playerInstance })
+    })
+    await act(async () => {
+      options.events.onStateChange({ data: (window as any).YT.PlayerState.PLAYING })
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(2500)
+      await Promise.resolve()
+    })
+
+    await waitFor(() => expect(playerInstance.getCurrentTime).toHaveBeenCalled())
+    expect(coursesApi.completeChapterEnrollment).not.toHaveBeenCalled()
+  })
+
+  it("marks chapter complete once at >=99% and emits progress update event", async () => {
+    jest.useFakeTimers()
+    const { playerCtor, playerInstance } = mockYoutubePlayer({ currentTime: 99, duration: 100 })
     const progressUpdatedListener = jest.fn()
     window.addEventListener("course-progress-updated", progressUpdatedListener)
 
