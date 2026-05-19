@@ -47,6 +47,11 @@ export class HttpCacheInterceptor implements NestInterceptor {
       '/wallet',
       '/admin/',
       '/auth/',
+      '/course-session',
+      '/unlocked-chapters',
+      '/track/progress',
+      '/chapters/',
+      '/chapitres/',
     ];
 
     if (skipPatterns.some((pattern) => String(url).includes(pattern))) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Rocket, Save, TrendingUp, Users, Wrench } from "lucide-react";
+import { TbDeviceFloppy, TbRocket, TbTool, TbTrendingUp, TbUsers } from "react-icons/tb";
 import { useCommunityGuard } from "@/hooks/use-community-guard";
 import { api } from "@/lib/api";
 import { AiShellLayout } from "@/components/ai/ai-shell-layout";
@@ -64,23 +64,23 @@ export default function AiCofounderPage() {
       <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
         <Tabs
           defaultValue="build"
-          className="rounded-xl border border-[var(--bd)] bg-card p-4 shadow-sm"
+          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
         >
           <TabsList className="grid h-auto w-full grid-cols-2 rounded-lg bg-muted p-1 lg:grid-cols-4">
             <TabsTrigger value="build">
-              <Users className="mr-2 h-4 w-4" />
+              <TbUsers className="mr-2 h-4 w-4" />
               Build
             </TabsTrigger>
             <TabsTrigger value="launch">
-              <Rocket className="mr-2 h-4 w-4" />
+              <TbRocket className="mr-2 h-4 w-4" />
               Launch
             </TabsTrigger>
             <TabsTrigger value="fix">
-              <Wrench className="mr-2 h-4 w-4" />
+              <TbTool className="mr-2 h-4 w-4" />
               Fix
             </TabsTrigger>
             <TabsTrigger value="grow">
-              <TrendingUp className="mr-2 h-4 w-4" />
+              <TbTrendingUp className="mr-2 h-4 w-4" />
               Grow
             </TabsTrigger>
           </TabsList>
@@ -171,14 +171,14 @@ export default function AiCofounderPage() {
           </TabsContent>
         </Tabs>
 
-        <aside className="rounded-xl border border-[var(--bd)] bg-card p-4 shadow-sm">
+        <aside className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="font-semibold">Draft review</h2>
             <MemberAiBadge />
           </div>
           {result ? (
             <>
-              <pre className="max-h-[520px] overflow-auto rounded-lg border border-[var(--bd)] bg-[var(--t1)] p-4 text-xs text-[var(--p2)]">
+              <pre className="max-h-[520px] overflow-auto rounded-lg border border-gray-800 bg-[var(--t1)] p-4 text-xs text-[var(--p2)]">
                 {JSON.stringify(result, null, 2)}
               </pre>
               <Button
@@ -190,12 +190,12 @@ export default function AiCofounderPage() {
                     .then(() => toast.success("Draft copied"))
                 }
               >
-                <Save className="mr-2 h-4 w-4" />
+                <TbDeviceFloppy className="mr-2 h-4 w-4" />
                 Copy draft
               </Button>
             </>
           ) : (
-            <div className="flex min-h-80 items-center justify-center rounded-lg border border-dashed border-[var(--bd2)] bg-[var(--p2)]/30 text-center text-sm text-muted-foreground">
+            <div className="flex min-h-80 items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-center text-sm text-muted-foreground">
               Cofounder output appears here for review before publishing.
             </div>
           )}

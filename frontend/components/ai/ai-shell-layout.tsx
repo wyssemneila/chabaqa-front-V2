@@ -3,14 +3,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { Bot, Gauge, Rocket, Sparkles, Wand2 } from "lucide-react";
+import { TbGauge, TbRobot, TbRocket, TbSparkles, TbWand } from "react-icons/tb";
 import { cn } from "@/lib/utils";
 
 const nav = [
-  { href: "/creator/ai", label: "Overview", icon: Gauge },
-  { href: "/creator/ai/staff", label: "AI Staff", icon: Bot },
-  { href: "/creator/ai/cofounder", label: "Cofounder", icon: Rocket },
-  { href: "/creator/ai/create", label: "Create with AI", icon: Wand2 },
+  { href: "/creator/ai", label: "Overview", icon: TbGauge },
+  { href: "/creator/ai/staff", label: "AI Staff", icon: TbRobot },
+  { href: "/creator/ai/cofounder", label: "Cofounder", icon: TbRocket },
+  { href: "/creator/ai/create", label: "Create with AI", icon: TbWand },
 ];
 
 export function AiShellLayout({
@@ -24,12 +24,12 @@ export function AiShellLayout({
 }) {
   const pathname = usePathname();
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[var(--bg)] text-foreground">
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[220px_1fr] lg:px-8">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gray-50 text-foreground">
+      <div className="grid w-full gap-6 py-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-20 lg:h-fit">
           <div className="mb-4 flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              <TbSparkles className="h-4 w-4" aria-hidden="true" />
             </div>
             <div>
               <p className="text-sm font-semibold">Chabaqa AI</p>
@@ -63,7 +63,7 @@ export function AiShellLayout({
           </nav>
         </aside>
         <main id="ai-main" className="space-y-6">
-          <header className="rounded-xl border border-[var(--bd)] bg-gradient-to-br from-card via-card to-[var(--p2)]/60 p-6 shadow-sm">
+          <header className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary">
               Chabaqa AI · Review before publish
             </p>

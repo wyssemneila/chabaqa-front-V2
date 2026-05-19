@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, RefreshCw } from "lucide-react";
+import { TbPlus, TbRefresh } from "react-icons/tb";
 import { useCommunityGuard } from "@/hooks/use-community-guard";
 import { api, type AiAgent } from "@/lib/api";
 import { AiShellLayout } from "@/components/ai/ai-shell-layout";
@@ -38,12 +38,12 @@ export default function AiStaffPage() {
     >
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={reindex}>
-          <RefreshCw className="mr-2 h-4 w-4" />
+          <TbRefresh className="mr-2 h-4 w-4" />
           Reindex knowledge
         </Button>
         <Button asChild>
           <Link href="/creator/ai/staff/new">
-            <Plus className="mr-2 h-4 w-4" />
+            <TbPlus className="mr-2 h-4 w-4" />
             New agent
           </Link>
         </Button>
@@ -56,7 +56,7 @@ export default function AiStaffPage() {
           <AgentCard key={agent._id} agent={agent} />
         ))}
         {!agents.length && (
-          <div className="rounded-lg border border-dashed bg-card p-8 text-center text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
+          <div className="rounded-lg border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
             No AI staff yet. Create a concierge to give members a clear first
             place to ask for help.
           </div>

@@ -2,29 +2,29 @@
 
 import Link from "next/link";
 import {
-  Bot,
-  Headphones,
-  Megaphone,
-  MessageCircleQuestion,
-  Trophy,
-  GraduationCap,
-} from "lucide-react";
+  TbHeadphones,
+  TbMessageCircleQuestion,
+  TbRobot,
+  TbSchool,
+  TbSpeakerphone,
+  TbTrophy,
+} from "react-icons/tb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AiAgent } from "@/lib/api";
 
 const icons = {
-  concierge: Bot,
-  tutor: GraduationCap,
-  challenge_coach: Trophy,
-  support: Headphones,
-  sales: Megaphone,
+  concierge: TbRobot,
+  tutor: TbSchool,
+  challenge_coach: TbTrophy,
+  support: TbHeadphones,
+  sales: TbSpeakerphone,
 };
 
 export function AgentCard({ agent }: { agent: AiAgent }) {
-  const Icon = icons[agent.type] || MessageCircleQuestion;
+  const Icon = icons[agent.type] || TbMessageCircleQuestion;
   return (
-    <article className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm transition hover:border-primary/40 hover:shadow-md">
+    <article className="rounded-lg border border-gray-200 bg-white p-4 text-card-foreground shadow-sm transition hover:border-primary/40 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-md bg-primary/10 text-primary">
