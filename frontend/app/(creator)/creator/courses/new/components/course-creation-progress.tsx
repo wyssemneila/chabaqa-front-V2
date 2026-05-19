@@ -4,10 +4,10 @@ import { CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 
 const steps = [
-  { id: 1, title: "Basic Info", description: "Course title, description, and thumbnail" },
-  { id: 2, title: "Pricing & Details", description: "Set price, category, and level" },
-  { id: 3, title: "Course Content", description: "Add sections and chapters" },
-  { id: 4, title: "Review & Publish", description: "Review and publish your course" },
+  { id: 1, title: "Start", description: "Title, description, and cover" },
+  { id: 2, title: "Lessons", description: "First lesson and structure" },
+  { id: 3, title: "Details", description: "Price, category, and outcomes" },
+  { id: 4, title: "Publish checks", description: "Review blockers before going live" },
 ]
 
 interface CourseCreationProgressProps {
@@ -22,7 +22,7 @@ export function CourseCreationProgress({ currentStep = 1, setCurrentStep = () =>
     <EnhancedCard>
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold">Course Creation Progress</h3>
+          <h3 className="font-semibold">Course Setup</h3>
           <span className="text-sm text-muted-foreground">
             {currentStep} of {steps.length}
           </span>

@@ -12,6 +12,7 @@ import { Plus, X, Coins, Mic, Ticket, Upload, ImageIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { storageApi } from "@/lib/api/storage.api"
 import { useToast } from "@/hooks/use-toast"
+import { CreatorAdvancedSection } from "@/components/creator-dashboard/create-flow"
 
 interface SpeakersTicketsStepProps {
   formData: any
@@ -114,146 +115,150 @@ export function SpeakersTicketsStep({
         <CardDescription>Add speakers and ticket options for your event</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Speakers Section */}
-        <div className="space-y-4">
-          <Label className="text-base font-medium">Speakers</Label>
-          {formData.speakers.length === 0 ? (
-            <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-              <Mic className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No speakers added yet</h3>
-              <p className="text-muted-foreground mb-4">Add speakers to showcase who will be presenting</p>
-              <Button onClick={addEventSpeaker}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add First Speaker
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {formData.speakers.map((speaker: any, index: number) => (
-                <div key={speaker.id} className="border-2 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">Speaker #{index + 1}</h3>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeEventSpeaker(index)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Name *</Label>
-                        <Input
-                          placeholder="Speaker name"
-                          value={speaker.name}
-                          onChange={(e) => updateEventSpeaker(index, "name", e.target.value)}
-                          className={getSpeakerError(index, "name") ? "border-red-500" : ""}
-                        />
-                        {getSpeakerError(index, "name") && (
-                          <p className="text-sm text-red-500">{getSpeakerError(index, "name")}</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Title *</Label>
-                        <Input
-                          placeholder="Speaker title/position"
-                          value={speaker.title}
-                          onChange={(e) => updateEventSpeaker(index, "title", e.target.value)}
-                          className={getSpeakerError(index, "title") ? "border-red-500" : ""}
-                        />
-                        {getSpeakerError(index, "title") && (
-                          <p className="text-sm text-red-500">{getSpeakerError(index, "title")}</p>
-                        )}
-                      </div>
+        <CreatorAdvancedSection
+          title="Speakers"
+          description="Optional speaker profiles for workshops, panels, and webinars."
+          status={formData.speakers.length ? `${formData.speakers.length} added` : "Optional"}
+        >
+          <div className="space-y-4">
+            {formData.speakers.length === 0 ? (
+              <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                <Mic className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No speakers added yet</h3>
+                <p className="text-muted-foreground mb-4">Add speakers only when the event needs presenter profiles.</p>
+                <Button onClick={addEventSpeaker}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add First Speaker
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {formData.speakers.map((speaker: any, index: number) => (
+                  <div key={speaker.id} className="border-2 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Speaker #{index + 1}</h3>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEventSpeaker(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>Bio *</Label>
-                      <Textarea
-                        placeholder="Speaker bio and background..."
-                        rows={3}
-                        value={speaker.bio}
-                        onChange={(e) => updateEventSpeaker(index, "bio", e.target.value)}
-                        className={getSpeakerError(index, "bio") ? "border-red-500" : ""}
-                      />
-                      {getSpeakerError(index, "bio") && (
-                        <p className="text-sm text-red-500">{getSpeakerError(index, "bio")}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Photo</Label>
-                      <input
-                        ref={(el) => { photoInputRefs.current[index] = el }}
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) handleSpeakerPhotoUpload(index, file)
-                        }}
-                        className="hidden"
-                      />
-                      
-                      {speaker.photo ? (
-                        <div className="relative group">
-                          <div className="relative w-32 h-32 overflow-hidden rounded-lg bg-gray-100 border-2 border-gray-300">
-                            <img
-                              src={speaker.photo}
-                              alt={speaker.name || "Speaker photo"}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm h-6 w-6 p-0"
-                            onClick={() => updateEventSpeaker(index, "photo", "")}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs h-6 px-2"
-                            onClick={() => photoInputRefs.current[index]?.click()}
-                            disabled={uploadingPhotos[index]}
-                          >
-                            <Upload className="w-3 h-3 mr-1" />
-                            Replace
-                          </Button>
-                        </div>
-                      ) : (
-                        <div
-                          className={`
-                            border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer
-                            ${uploadingPhotos[index] ? 'opacity-50 pointer-events-none' : 'border-gray-300 hover:border-events-500'}
-                          `}
-                          onClick={() => photoInputRefs.current[index]?.click()}
-                        >
-                          {uploadingPhotos[index] ? (
-                            <>
-                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-events-500 mx-auto mb-2"></div>
-                              <p className="text-sm text-gray-600">Uploading...</p>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                              <p className="text-sm text-gray-600">Click to upload speaker photo</p>
-                              <p className="text-xs text-gray-500 mt-1">JPG or PNG up to 2MB</p>
-                            </>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Name</Label>
+                          <Input
+                            placeholder="Speaker name"
+                            value={speaker.name}
+                            onChange={(e) => updateEventSpeaker(index, "name", e.target.value)}
+                            className={getSpeakerError(index, "name") ? "border-red-500" : ""}
+                          />
+                          {getSpeakerError(index, "name") && (
+                            <p className="text-sm text-red-500">{getSpeakerError(index, "name")}</p>
                           )}
                         </div>
-                      )}
+                        <div className="space-y-2">
+                          <Label>Title</Label>
+                          <Input
+                            placeholder="Speaker title/position"
+                            value={speaker.title}
+                            onChange={(e) => updateEventSpeaker(index, "title", e.target.value)}
+                            className={getSpeakerError(index, "title") ? "border-red-500" : ""}
+                          />
+                          {getSpeakerError(index, "title") && (
+                            <p className="text-sm text-red-500">{getSpeakerError(index, "title")}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Bio</Label>
+                        <Textarea
+                          placeholder="Speaker bio and background..."
+                          rows={3}
+                          value={speaker.bio}
+                          onChange={(e) => updateEventSpeaker(index, "bio", e.target.value)}
+                          className={getSpeakerError(index, "bio") ? "border-red-500" : ""}
+                        />
+                        {getSpeakerError(index, "bio") && (
+                          <p className="text-sm text-red-500">{getSpeakerError(index, "bio")}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Photo</Label>
+                        <input
+                          ref={(el) => { photoInputRefs.current[index] = el }}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleSpeakerPhotoUpload(index, file)
+                          }}
+                          className="hidden"
+                        />
+
+                        {speaker.photo ? (
+                          <div className="relative group">
+                            <div className="relative w-32 h-32 overflow-hidden rounded-lg bg-gray-100 border-2 border-gray-300">
+                              <img
+                                src={speaker.photo}
+                                alt={speaker.name || "Speaker photo"}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm h-6 w-6 p-0"
+                              onClick={() => updateEventSpeaker(index, "photo", "")}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs h-6 px-2"
+                              onClick={() => photoInputRefs.current[index]?.click()}
+                              disabled={uploadingPhotos[index]}
+                            >
+                              <Upload className="w-3 h-3 mr-1" />
+                              Replace
+                            </Button>
+                          </div>
+                        ) : (
+                          <div
+                            className={`
+                              border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer
+                              ${uploadingPhotos[index] ? 'opacity-50 pointer-events-none' : 'border-gray-300 hover:border-events-500'}
+                            `}
+                            onClick={() => photoInputRefs.current[index]?.click()}
+                          >
+                            {uploadingPhotos[index] ? (
+                              <>
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-events-500 mx-auto mb-2"></div>
+                                <p className="text-sm text-gray-600">Uploading...</p>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                                <p className="text-sm text-gray-600">Click to upload speaker photo</p>
+                                <p className="text-xs text-gray-500 mt-1">JPG or PNG up to 2MB</p>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CreatorAdvancedSection>
 
         {/* Tickets Section */}
         <div className="space-y-4">

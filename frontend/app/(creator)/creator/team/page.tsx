@@ -67,6 +67,80 @@ function getInitials(staff: CommunityStaffMember): string {
   return u.email?.slice(0, 2).toUpperCase() ?? "?"
 }
 
+const SEEDED_MEMBER_AVATARS: Record<string, string> = {
+  ahmedbenali: "https://randomuser.me/api/portraits/men/11.jpg",
+  fatmamseddi: "https://randomuser.me/api/portraits/women/12.jpg",
+  mohamedtrabelsi: "https://randomuser.me/api/portraits/men/13.jpg",
+  sarrakhemiri: "https://randomuser.me/api/portraits/women/13.jpg",
+  youssefbouallegue: "https://randomuser.me/api/portraits/men/14.jpg",
+  nesrinehadded: "https://randomuser.me/api/portraits/women/15.jpg",
+  bilelhamdi: "https://randomuser.me/api/portraits/men/16.jpg",
+  mariembenammar: "https://randomuser.me/api/portraits/women/17.jpg",
+  anasbenabdallah: "https://randomuser.me/api/portraits/men/18.jpg",
+  raniaghanmi: "https://randomuser.me/api/portraits/women/19.jpg",
+  hedimansouri: "https://randomuser.me/api/portraits/men/20.jpg",
+  inesbensalem: "https://randomuser.me/api/portraits/women/21.jpg",
+  malekdhahbi: "https://randomuser.me/api/portraits/men/22.jpg",
+  amirazouari: "https://randomuser.me/api/portraits/women/23.jpg",
+  omarlaabidi: "https://randomuser.me/api/portraits/men/24.jpg",
+  "louay-rjili": "/professional-man-avatar.png",
+}
+
+const DEFAULT_MEMBER_AVATARS = [
+  "/professional-avatar.png",
+  "/professional-man-avatar.png",
+  "/professional-woman-avatar.png",
+  "/placeholder-user.jpg",
+]
+
+function stableIndex(value: string, length: number): number {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+  return hash % length
+}
+
+function getSeededFallbackAvatar(user: any, name: string): string {
+  const username = String(user?.username || "").trim().toLowerCase()
+  if (username && SEEDED_MEMBER_AVATARS[username]) return SEEDED_MEMBER_AVATARS[username]
+  return DEFAULT_MEMBER_AVATARS[stableIndex(username || name || "member", DEFAULT_MEMBER_AVATARS.length)]
+}
+
+function getUserAvatarUrl(user: any): string | undefined {
+  return resolveImageUrl(
+    user?.profileImage ||
+      user?.avatar ||
+      user?.photo_profil ||
+      user?.profile_picture ||
+      user?.image ||
+      user?.photo,
+  )
+}
+
+function StaffAvatar({ user, name, initials, className = "h-10 w-10" }: { user: any; name: string; initials: string; className?: string }) {
+  const fallbackAvatar = getSeededFallbackAvatar(user, name)
+  const [src, setSrc] = useState(() => getUserAvatarUrl(user) || fallbackAvatar)
+
+  useEffect(() => {
+    setSrc(getUserAvatarUrl(user) || fallbackAvatar)
+  }, [fallbackAvatar, user])
+
+  return (
+    <Avatar className={className}>
+      <AvatarImage
+        src={src}
+        alt={name}
+        className="object-cover"
+        onLoadingStatusChange={(status) => {
+          if (status === "error" && src !== fallbackAvatar) setSrc(fallbackAvatar)
+        }}
+      />
+      <AvatarFallback>{initials}</AvatarFallback>
+    </Avatar>
+  )
+}
+
 // ── Role permissions tooltip card ──────────────────────────────────────────
 
 function RolePermissionsInfo({ role }: { role: CommunityRole }) {
@@ -325,10 +399,7 @@ export default function TeamRolesPage() {
                   key={s._id}
                   className="flex items-center gap-4 py-3 first:pt-0 last:pb-0"
                 >
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={resolveImageUrl(s.user?.profileImage)} />
-                    <AvatarFallback>{getInitials(s)}</AvatarFallback>
-                  </Avatar>
+                  <StaffAvatar user={s.user} name={getDisplayName(s)} initials={getInitials(s)} />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{getDisplayName(s)}</p>
                     <p className="text-sm text-muted-foreground truncate">
@@ -420,10 +491,12 @@ export default function TeamRolesPage() {
                           isSelected ? "bg-accent" : ""
                         }`}
                       >
-                        <Avatar className="h-7 w-7">
-                          <AvatarImage src={resolveImageUrl(u.profileImage ?? u.avatar)} />
-                          <AvatarFallback>{(name?.[0] ?? "?").toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        <StaffAvatar
+                          user={u}
+                          name={name}
+                          initials={(name?.[0] ?? "?").toUpperCase()}
+                          className="h-7 w-7"
+                        />
                         <div className="flex-1 min-w-0">
                           <p className="truncate font-medium">{name}</p>
                           <p className="truncate text-xs text-muted-foreground">{u.email}</p>

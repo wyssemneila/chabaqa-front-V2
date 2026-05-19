@@ -33,6 +33,7 @@ describe('PaymentController webhook hardening', () => {
       {} as any,
       {} as any,
       paymentAuditService as any,
+      { fromPayload: jest.fn((_provider: string, payload: any) => payload) } as any,
       {} as any,
       {} as any,
       {} as any,

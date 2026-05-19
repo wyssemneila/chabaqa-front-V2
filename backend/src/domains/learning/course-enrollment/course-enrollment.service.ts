@@ -35,8 +35,8 @@ import { applyWatchTimePolicy } from '@/shared/utils/watch-time-policy.util';
 @Injectable()
 export class CourseEnrollmentService {
   // Auto-complete threshold (percent). Chapters watched this percent or higher are auto-completed.
-  // Default: 90 (aligns with frontend ~90% behaviour)
-  private readonly AUTO_COMPLETE_THRESHOLD = 90;
+  // Default: 99 (treat ended / near-finished playback as complete).
+  private readonly AUTO_COMPLETE_THRESHOLD = 99;
 
   constructor(
     @InjectModel(CourseEnrollment.name)
@@ -713,8 +713,22 @@ export class CourseEnrollmentService {
       }
     }
 
+    const courseProgressSnapshot = this.computeEnrollmentCourseProgress(
+      course,
+      enrollment,
+    );
+
     // Rebuild access context AFTER completion so the caller gets the latest next-chapter action.
-    let nextChapterAction: { action: string; chapterId?: string; chapterTitle?: string; lockCode?: string; reason?: string; needsPayment?: boolean } | undefined;
+    let nextChapterAction: {
+      action: string;
+      chapterId?: string;
+      chapterTitle?: string;
+      sectionId?: string;
+      lockCode?: string;
+      reason?: string;
+      needsPayment?: boolean;
+      chapterPrice?: number;
+    } | undefined;
     try {
       const freshContext = await this.buildAccessContext(userId, course);
       const action = this.chapterAccessService.resolveNextChapterAction(freshContext, chapterId);
@@ -722,9 +736,11 @@ export class CourseEnrollmentService {
         action: action.action,
         chapterId: action.chapterId,
         chapterTitle: action.chapterTitle,
+        sectionId: action.sectionId,
         lockCode: action.lockCode,
         reason: action.reason,
         needsPayment: action.needsPayment,
+        chapterPrice: action.chapterPrice,
       };
     } catch {
       // Non-critical; caller can fall back to a session refresh if missing.
@@ -736,6 +752,9 @@ export class CourseEnrollmentService {
       chapterId: chapterId,
       completedAt: existingProgress.completedAt,
       courseJustCompleted,
+      courseProgressPercent: courseProgressSnapshot.progressPercent,
+      completedChapters: courseProgressSnapshot.completedChapters,
+      totalChapters: courseProgressSnapshot.totalChapters,
       nextChapterAction,
     };
   }
@@ -874,7 +893,7 @@ export class CourseEnrollmentService {
       if (deltaSeconds > 0 && course?.creatorId) {
         const todayUTC = new Date();
         const dayStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), todayUTC.getUTCDate()));
-        
+
         try {
           await this.analyticsDailyModel.updateOne(
             {
@@ -900,7 +919,10 @@ export class CourseEnrollmentService {
 
     progress.lastAccessedAt = new Date();
     progress.updatedAt = new Date();
-    let watchPercentage = 0;
+    let watchPercentage =
+      chapterDurationSeconds > 0
+        ? (Number(progress.watchTime || 0) / chapterDurationSeconds) * 100
+        : 0;
 
     // Get chapter duration for percentage calculation
     if (
@@ -908,7 +930,6 @@ export class CourseEnrollmentService {
       chapterDurationSeconds &&
       chapterDurationSeconds > 0
     ) {
-      watchPercentage = (progress.watchTime / chapterDurationSeconds) * 100;
 
       console.log(
         `   📊 Watch progress: ${progress.watchTime}s / ${chapterDurationSeconds}s = ${watchPercentage.toFixed(1)}%`,
@@ -971,6 +992,10 @@ export class CourseEnrollmentService {
       enrollment,
       isAutoCompleted ? 'watch_time_auto_complete' : 'watch_time_update',
     );
+    const courseProgressSnapshot = this.computeEnrollmentCourseProgress(
+      course,
+      enrollment,
+    );
 
     // Check for achievements if chapter was auto-completed
     if (chapterJustCompleted && course && course.communityId) {
@@ -989,23 +1014,31 @@ export class CourseEnrollmentService {
       }
     }
 
-    // When a chapter was just completed (manual or auto), include next-chapter action metadata.
-    let nextChapterAction: { action: string; chapterId?: string; chapterTitle?: string; lockCode?: string; reason?: string; needsPayment?: boolean } | undefined;
-    if (chapterJustCompleted) {
-      try {
-        const freshContext = await this.buildAccessContext(userId, course);
-        const action = this.chapterAccessService.resolveNextChapterAction(freshContext, chapterId);
-        nextChapterAction = {
-          action: action.action,
-          chapterId: action.chapterId,
-          chapterTitle: action.chapterTitle,
-          lockCode: action.lockCode,
-          reason: action.reason,
-          needsPayment: action.needsPayment,
-        };
-      } catch {
-        // Non-critical
-      }
+    let nextChapterAction: {
+      action: string;
+      chapterId?: string;
+      chapterTitle?: string;
+      sectionId?: string;
+      lockCode?: string;
+      reason?: string;
+      needsPayment?: boolean;
+      chapterPrice?: number;
+    } | undefined;
+    try {
+      const freshContext = await this.buildAccessContext(userId, course);
+      const action = this.chapterAccessService.resolveNextChapterAction(freshContext, chapterId);
+      nextChapterAction = {
+        action: action.action,
+        chapterId: action.chapterId,
+        chapterTitle: action.chapterTitle,
+        sectionId: action.sectionId,
+        lockCode: action.lockCode,
+        reason: action.reason,
+        needsPayment: action.needsPayment,
+        chapterPrice: action.chapterPrice,
+      };
+    } catch {
+      // Non-critical
     }
 
     return {
@@ -1019,6 +1052,9 @@ export class CourseEnrollmentService {
       isCompleted: progress.isCompleted,
       isAutoCompleted,
       courseJustCompleted,
+      courseProgressPercent: courseProgressSnapshot.progressPercent,
+      completedChapters: courseProgressSnapshot.completedChapters,
+      totalChapters: courseProgressSnapshot.totalChapters,
       lastAccessedAt: progress.lastAccessedAt,
       nextChapterAction,
     };
@@ -1088,7 +1124,7 @@ export class CourseEnrollmentService {
 
     const accessContext = await this.buildAccessContext(userId, course);
 
-    // Vérifier la progression de chaque chapitre (completion réelle: >=90% + accès autorisé)
+    // Check each chapter progress (real completion: >=99% + authorized access)
     const chaptersProgress = sectionChapters.map((chapter) => {
       const progress = enrollment.progression.find(
         (p) => p.chapterId === chapter.id,

@@ -13,6 +13,7 @@ type Counters = {
   completionDowngraded: number;
   completedAtFixed: number;
   purchasedEntitlementsSynced: number;
+  fullCourseEntitlementsSynced: number;
 };
 
 type OrderedChapter = {
@@ -90,10 +91,12 @@ async function run() {
     completionDowngraded: 0,
     completedAtFixed: 0,
     purchasedEntitlementsSynced: 0,
+    fullCourseEntitlementsSynced: 0,
   };
 
   const courseCache = new Map<string, any>();
   const paidChapterOrdersCache = new Map<string, Set<string>>();
+  const paidCourseOrdersCache = new Map<string, Set<string>>();
 
   const cursor = enrollments.find({ isActive: true });
    
@@ -119,6 +122,7 @@ async function run() {
     }
 
     const orderedChapters = toOrderedChapters(course);
+    const sequentialProgressionEnabled = Boolean(course?.sequentialProgression);
     const chapterMap = new Map<string, OrderedChapter>(
       orderedChapters.map((chapter) => [chapter.id, chapter]),
     );
@@ -158,7 +162,7 @@ async function run() {
     const buyerId = enrollment?.userId?.toString?.() || String(enrollment?.userId || '');
     if (buyerId && isObjectIdLike(buyerId)) {
       if (!paidChapterOrdersCache.has(buyerId)) {
-        const paidOrders = await orders
+        const paidChapterOrders = await orders
           .find({
             buyerId: new Types.ObjectId(buyerId),
             status: 'paid',
@@ -169,7 +173,25 @@ async function run() {
         paidChapterOrdersCache.set(
           buyerId,
           new Set(
-            paidOrders
+            paidChapterOrders
+              .map((row: any) => String(row?.contentId || ''))
+              .filter(Boolean),
+          ),
+        );
+      }
+      if (!paidCourseOrdersCache.has(buyerId)) {
+        const paidCourseOrders = await orders
+          .find({
+            buyerId: new Types.ObjectId(buyerId),
+            status: 'paid',
+            contentType: { $in: ['course'] },
+          })
+          .project({ contentId: 1 })
+          .toArray();
+        paidCourseOrdersCache.set(
+          buyerId,
+          new Set(
+            paidCourseOrders
               .map((row: any) => String(row?.contentId || ''))
               .filter(Boolean),
           ),
@@ -181,6 +203,26 @@ async function run() {
           purchasedSet.add(chapterId);
           changed = true;
           counters.purchasedEntitlementsSynced += 1;
+        }
+      }
+
+      const paidCoursesByOrder = paidCourseOrdersCache.get(buyerId) || new Set<string>();
+      const currentCourseIds = [
+        String(course?._id || ''),
+        String(course?.id || ''),
+      ].filter(Boolean);
+      const hasFullCourseOrder = currentCourseIds.some((id) =>
+        paidCoursesByOrder.has(id),
+      );
+      if (hasFullCourseOrder) {
+        for (const chapter of orderedChapters) {
+          if (!chapter.isPaidChapter || chapter.isPreview) continue;
+          if (!purchasedSet.has(chapter.id)) {
+            purchasedSet.add(chapter.id);
+            changed = true;
+            counters.purchasedEntitlementsSynced += 1;
+            counters.fullCourseEntitlementsSynced += 1;
+          }
         }
       }
     }
@@ -214,7 +256,7 @@ async function run() {
       const shouldBeCompleted =
         watchPercentage >= AUTO_COMPLETE_THRESHOLD &&
         hasEntitlement &&
-        previousCompleted;
+        (!sequentialProgressionEnabled || previousCompleted);
 
       const wasCompleted = Boolean(progress?.isCompleted);
       if (wasCompleted !== shouldBeCompleted) {

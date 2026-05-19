@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { MailerService } from '@nestjs-modules/mailer';
 import * as nodemailer from 'nodemailer';
 import { EmailTemplateName } from '@/shared/services/email-template-names';
 
@@ -494,7 +495,7 @@ export class EmailService {
     }
   }
 
-  constructor(_mailerService?: unknown) {
+  constructor(@Optional() _mailerService?: MailerService) {
     this.mailerService =
       _mailerService && typeof (_mailerService as any).sendMail === 'function'
         ? (_mailerService as { sendMail: (options: any) => Promise<any> })

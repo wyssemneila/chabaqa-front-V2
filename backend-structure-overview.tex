@@ -1,0 +1,143 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue
+}
+
+\setlist[itemize]{leftmargin=1.4em, itemsep=0.25em}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.65em}
+
+\title{\textbf{Chabaqa Backend Structure Overview}}
+\author{Engineering Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Executive Summary}
+
+The backend has been reorganized into a domain-oriented NestJS architecture. The new structure separates application bootstrapping, business capabilities, infrastructure concerns, shared cross-cutting utilities, and type definitions. This makes the codebase easier to navigate, easier to scale by team ownership, and safer to extend without spreading features across unrelated folders.
+
+The main entry point is \texttt{backend/src/main.ts}. The root application module is \texttt{backend/src/app/app.module.ts}. Business logic now lives primarily under \texttt{backend/src/domains}, while database schemas, cache adapters, external integrations, and storage support live under \texttt{backend/src/infrastructure}.
+
+\section*{Top-Level Layout}
+
+\begin{verbatim}
+backend/src
+  app/              Root application module, controller, and service
+  config/           Environment and configuration files
+  domains/          Business domains and feature modules
+  infrastructure/   Database schemas, cache, storage, external services
+  shared/           Cross-cutting modules, guards, filters, utils, DTOs
+  types/            Shared TypeScript interfaces and type definitions
+\end{verbatim}
+
+\section*{Layer Responsibilities}
+
+\begin{center}
+\begin{tabular}{p{0.24\linewidth} p{0.68\linewidth}}
+\toprule
+\textbf{Layer} & \textbf{Responsibility} \\
+\midrule
+\texttt{app} & Starts the NestJS application composition. It imports global modules, registers database schemas, and wires the root controllers and providers. \\
+\texttt{domains} & Owns business capabilities. Each domain contains controllers, services, DTOs, modules, and feature-specific tests. \\
+\texttt{infrastructure} & Contains implementation details for persistence, cache, storage, analytics, email, OAuth, and payment providers. \\
+\texttt{shared} & Contains reusable technical building blocks such as guards, interceptors, filters, middleware, validators, permissions, and common services. \\
+\texttt{types} & Contains shared interfaces used across modules without coupling business domains together. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{Domain Map}
+
+\begin{center}
+\begin{tabular}{p{0.25\linewidth} p{0.67\linewidth}}
+\toprule
+\textbf{Domain} & \textbf{Scope} \\
+\midrule
+\texttt{admin} & Admin users, dashboards, moderation, content management, community management, financial management, security audit, and admin common utilities. \\
+\texttt{analytics} & Platform analytics, creator insights, scheduled analytics jobs, and GA4 reporting. \\
+\texttt{auth} & User authentication, JWT strategies, guards, 2FA flows, verification codes, and login activity. \\
+\texttt{commerce} & Payments, subscriptions, wallet, payouts, products, sessions, events, fees, promo codes, and commerce orchestration. \\
+\texttt{communication} & Email, campaigns, notifications, direct messages, live support, and Google Calendar integration. \\
+\texttt{community} & Communities, access control, invitations, page content, affiliate flows, and creator-community joining. \\
+\texttt{content} & Posts, resources, media, and feedback. \\
+\texttt{learning} & Courses, enrollment, challenges, progression, learning paths, tracking, and achievements. \\
+\texttt{shared} & Shared product capabilities such as upload, video, AI, and achievements that are used by multiple domains. \\
+\texttt{user} & User profile and account operations outside authentication. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{Domain Aggregation}
+
+Several domain aggregator modules make dependency boundaries clearer:
+
+\begin{itemize}
+  \item \texttt{CommerceDomainModule} groups payments, subscriptions, wallet, payouts, products, sessions, events, fees, promos, and payment providers.
+  \item \texttt{CommunityDomainModule} groups communities, community access, affiliate creator join, page content, posts, notifications, direct messages, and live support.
+  \item \texttt{LearningDomainModule} groups courses, course enrollment, achievements, progression, and tracking.
+  \item \texttt{CommunicationModule} groups email, email campaigns, notifications, direct messages, live support, and calendar integration.
+  \item \texttt{ContentModule} groups posts, resources, media, and feedback.
+  \item \texttt{SharedDomainModule} groups upload, video, achievements, and AI capabilities.
+\end{itemize}
+
+\section*{Infrastructure Organization}
+
+Database schemas are now grouped by business area under:
+
+\begin{verbatim}
+backend/src/infrastructure/database/schemas
+  analytics/
+  auth/
+  commerce/
+  communication/
+  community/
+  content/
+  learning/
+  shared/
+\end{verbatim}
+
+This keeps persistence models close to their ownership area while still making them reusable through schema index files. External integrations are also separated from business services:
+
+\begin{verbatim}
+backend/src/infrastructure/external
+  analytics/
+  email/
+  oauth/
+  payments/
+\end{verbatim}
+
+\section*{Runtime Composition}
+
+At runtime, \texttt{main.ts} creates the Nest application from \texttt{AppModule}. It configures validation, global exception handling, upload URL normalization, CORS, security headers, request metrics, access logging, static upload serving, and Swagger documentation when enabled.
+
+\texttt{AppModule} registers global configuration, scheduling, MongoDB, static uploads, core schemas, and the main domain modules. This keeps bootstrapping centralized while feature logic remains inside domain folders.
+
+\section*{Team Guidelines}
+
+\begin{itemize}
+  \item New business features should start inside the closest folder under \texttt{domains}.
+  \item Provider-specific code should live under \texttt{infrastructure/external}, not inside controllers.
+  \item Database schemas should be added to the matching folder under \texttt{infrastructure/database/schemas}.
+  \item Reusable technical utilities should go to \texttt{shared}; avoid placing product-specific business logic there.
+  \item Use existing domain modules and path aliases such as \texttt{@/domains/...}, \texttt{@/shared/...}, and \texttt{@/infrastructure/...}.
+  \item Keep controllers thin: request parsing, authorization, and response handling belong there; business decisions belong in services.
+\end{itemize}
+
+\section*{Result}
+
+The backend is now structured around clear ownership boundaries. The team can work by domain, reuse shared infrastructure safely, and onboard faster because the folder layout reflects the product architecture instead of a flat technical grouping.
+
+\end{document}

@@ -12,6 +12,7 @@ import { KonnectPaymentService } from '@/shared/services/konnect-payment.service
 import { ManualPaymentService } from '@/shared/services/manual-payment.service';
 import { PaymentFulfillmentService } from '@/shared/services/payment-fulfillment.service';
 import { PaymentAuditService } from '@/shared/services/payment-audit.service';
+import { PaymentVerificationService } from '@/shared/services/payment-verification.service';
 import { UploadService } from '@/domains/shared/upload/upload.service';
 import { Community, CommunityDocument } from '@/infrastructure/database/schemas/community/community.schema';
 import { User, UserDocument } from '@/infrastructure/database/schemas/auth/user.schema';
@@ -79,6 +80,7 @@ export class PaymentController {
     private readonly uploadService: UploadService,
     private readonly paymentFulfillmentService: PaymentFulfillmentService,
     private readonly paymentAuditService: PaymentAuditService,
+    private readonly paymentVerificationService: PaymentVerificationService,
     private readonly notificationService: NotificationService,
     private readonly emailService: EmailService,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
@@ -571,9 +573,18 @@ export class PaymentController {
 
   @Get('verify')
   @ApiOperation({ summary: 'Vérifier un paiement Flouci' })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async verify(@Query('paymentId') paymentId: string) {
+  async verify(
+    @Query('paymentId') paymentId: string,
+    @Query('sessionId') sessionId?: string,
+  ) {
+    if (sessionId) {
+      return this.verifyStripeLink(sessionId);
+    }
+
+    if (!paymentId) {
+      throw new BadRequestException('paymentId or sessionId is required');
+    }
+
     // Support offline: if paymentId equals an Order _id, use it directly
     let order: any = await this.orderModel.findOne({ paymentId });
     if (!order) {
@@ -635,22 +646,22 @@ export class PaymentController {
       }
 
       if (order.contentType === TrackableContentType.SESSION && order.metadata?.fulfillmentStatus === 'requires_booking') {
-        return {
+        return this.paymentVerificationService.fromPayload('flouci', {
           status: 'paid_action_required',
           action: 'choose_session_slot',
           message: 'Payment received. Please choose a session slot to finalize your booking.',
           orderId: order._id,
           sessionContentId: order.metadata?.contentId || order.contentId,
           ...(await this.enrichOrderDetails(order)),
-        };
+        });
       }
       const enriched = await this.enrichOrderDetails(order);
-      return { status: 'paid', orderId: order._id, ...enriched };
+      return this.paymentVerificationService.fromPayload('flouci', { status: 'paid', orderId: order._id, ...enriched });
     }
 
     order.status = 'pending';
     await order.save();
-    return { status: verify.status };
+    return this.paymentVerificationService.fromPayload('flouci', { status: verify.status, orderId: order._id });
   }
 
   @Get('order/:orderId')
@@ -2128,8 +2139,6 @@ export class PaymentController {
 
   @Get('stripe-link/verify')
   @ApiOperation({ summary: 'Verify Stripe Link payment' })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   async verifyStripeLink(@Query('sessionId') sessionId: string) {
     const normalizedSessionId = String(sessionId || '').trim();
     if (!normalizedSessionId) {
@@ -2142,9 +2151,21 @@ export class PaymentController {
     const verify = await this.stripe.verifyLinkPayment(normalizedSessionId);
     if (!verify.success) throw new BadRequestException(verify.error);
 
-    // Find the order by session ID
+    const metadataOrderId = verify.sessionMetadata?.orderId;
     let order: any = await this.orderModel.findOne({ paymentId: normalizedSessionId });
-    if (!order) throw new BadRequestException('Order not found');
+    if (!order && metadataOrderId && Types.ObjectId.isValid(metadataOrderId)) {
+      order = await this.orderModel.findById(metadataOrderId);
+      if (order && !order.paymentId) {
+        order.paymentId = normalizedSessionId;
+        await order.save();
+      }
+    }
+    if (!order) {
+      this.logger.warn(
+        `Stripe verify could not resolve order for sessionId=${normalizedSessionId} metadataOrderId=${metadataOrderId || 'none'}`,
+      );
+      throw new BadRequestException('Order not found');
+    }
 
     if (verify.status === 'paid' || verify.status === 'succeeded' || verify.status === 'complete') {
       let requiresBookingAction = false;
@@ -2254,7 +2275,7 @@ export class PaymentController {
       }
 
       if (requiresBookingAction) {
-        return {
+        return this.paymentVerificationService.fromPayload('stripe', {
           status: 'paid_action_required',
           action: 'choose_session_slot',
           message: 'Payment received. Please choose a session slot to finalize your booking.',
@@ -2264,22 +2285,22 @@ export class PaymentController {
           customerId: verify.customerId,
           ...(isChapterOrder ? { chapterId, courseId: chapterCourseId || order.metadata?.courseId } : {}),
           ...(await this.enrichOrderDetails(order)),
-        };
+        });
       }
 
-      return {
+      return this.paymentVerificationService.fromPayload('stripe', {
         status: 'paid',
         paymentMethod: verify.paymentMethod,
         customerId: verify.customerId,
         orderId: order._id,
         ...(isChapterOrder ? { chapterId, courseId: chapterCourseId || order.metadata?.courseId } : {}),
         ...(await this.enrichOrderDetails(order))
-      };
+      });
     }
 
     order.status = 'pending';
     await order.save();
-    return { status: verify.status };
+    return this.paymentVerificationService.fromPayload('stripe', { status: verify.status, orderId: order._id });
   }
 
   @Post('session/finalize-booking')
@@ -3884,8 +3905,6 @@ export class PaymentController {
   @Get('konnect/verify')
   @ApiOperation({ summary: 'Verify Konnect payment status' })
   @ApiQuery({ name: 'paymentRef', required: true })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   async verifyKonnectPayment(@Query('paymentRef') paymentRef: string) {
     if (!paymentRef) throw new BadRequestException('paymentRef is required');
 
@@ -3941,18 +3960,18 @@ export class PaymentController {
       }
 
       if (order.contentType === TrackableContentType.SESSION && order.metadata?.fulfillmentStatus === 'requires_booking') {
-        return {
+        return this.paymentVerificationService.fromPayload('konnect', {
           status: 'paid_action_required',
           action: 'choose_session_slot',
           message: 'Payment received. Please choose a session slot to finalize your booking.',
           orderId: order._id,
           sessionContentId: order.metadata?.contentId || order.contentId,
           ...(await this.enrichOrderDetails(order)),
-        };
+        });
       }
 
       const enriched = await this.enrichOrderDetails(order);
-      return { status: 'paid', orderId: order._id, provider: 'konnect', ...enriched };
+      return this.paymentVerificationService.fromPayload('konnect', { status: 'paid', orderId: order._id, ...enriched });
     }
 
     if (details.status === 'failed') {
@@ -3960,10 +3979,10 @@ export class PaymentController {
         order.status = 'failed';
         await order.save();
       }
-      return { status: 'failed', orderId: order._id, provider: 'konnect' };
+      return this.paymentVerificationService.fromPayload('konnect', { status: 'failed', orderId: order._id });
     }
 
-    return { status: 'pending', orderId: order._id, provider: 'konnect' };
+    return this.paymentVerificationService.fromPayload('konnect', { status: 'pending', orderId: order._id });
   }
 
   @Get('konnect/webhook')

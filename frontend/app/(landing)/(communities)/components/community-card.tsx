@@ -6,9 +6,10 @@ import { Explore } from "@/lib/data-communities"
 import { resolveExploreCardRouting } from "@/app/(landing)/(communities)/components/explore-card-routing"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { getUserProfileHref } from "@/lib/profile-handle"
+import { getExploreAvatarFallback, getExploreImageFallback } from "@/lib/explore-image-fallbacks"
+import { ExploreSafeImage } from "@/app/(landing)/(communities)/components/explore-safe-image"
 
 type ItemType = "community" | "course" | "challenge" | "product" | "oneToOne" | "event"
 
@@ -95,6 +96,16 @@ export function CommunityCard({ community, viewMode = "grid", accessAware = fals
   })
 
   const itemType = ((community.type ?? "community") as ItemType)
+  const imageFallback = getExploreImageFallback({
+    category: community.category,
+    title: community.name,
+    type: (community.type || "community") as any,
+  })
+  const avatarFallback = getExploreAvatarFallback({
+    creator: community.creator,
+    creatorInitials: (community as any).creatorInitials,
+  })
+  const imageSrc = (community.image as string) || (community as any).coverImage || (community as any).banner || (community as any).logo || community.creatorAvatar
   
   // Fix: Use communitySlug if available (for courses/challenges/etc) otherwise use community.slug
   const slug = (community as any).communitySlug || community.slug
@@ -125,8 +136,9 @@ export function CommunityCard({ community, viewMode = "grid", accessAware = fals
         <div className="flex h-48">
           {/* Image Section */}
           <div className="relative w-98 aspect-video flex-shrink-0 overflow-hidden rounded-2xl bg-gray-100">
-            <Image
-              src={(community.image as string) || (community as any).coverImage || (community as any).banner || (community as any).logo || community.creatorAvatar || "/placeholder.svg"}
+            <ExploreSafeImage
+              src={imageSrc}
+              fallbackSrc={imageFallback}
               alt={community.name}
               fill
               className="object-cover"
@@ -186,8 +198,9 @@ export function CommunityCard({ community, viewMode = "grid", accessAware = fals
               {/* Creator */}
               <Link href={creatorProfileHref} className="flex items-center gap-2 min-w-0 hover:opacity-90 transition-opacity">
                 <div className="relative w-8 h-8 flex-shrink-0">
-                  <Image
-                    src={community.creatorAvatar || "/placeholder.svg"}
+                  <ExploreSafeImage
+                    src={community.creatorAvatar}
+                    fallbackSrc={avatarFallback}
                     alt={community.creator}
                     fill
                     className="rounded-full ring-2 ring-chabaqa-primary/20 shadow-md object-cover"
@@ -275,8 +288,9 @@ export function CommunityCard({ community, viewMode = "grid", accessAware = fals
     <Card className="group hover:shadow-xl transition-all duration-500 border border-gray-100 rounded-2xl overflow-hidden bg-white hover:scale-[1.015]">
       {/* Image Section */}
       <div className="relative w-full aspect-[16/9] mb-1 overflow-hidden rounded-2xl bg-gray-100">
-        <Image
-          src={(community.image as string) || (community as any).coverImage || (community as any).banner || (community as any).logo || community.creatorAvatar || "/placeholder.svg"}
+        <ExploreSafeImage
+          src={imageSrc}
+          fallbackSrc={imageFallback}
           alt={community.name}
           fill
           className="object-cover"
@@ -310,17 +324,14 @@ export function CommunityCard({ community, viewMode = "grid", accessAware = fals
         {/* Creator */}
         <Link href={creatorProfileHref} className="flex items-center gap-2 min-w-0 hover:opacity-90 transition-opacity">
           <div className="relative w-5 h-5 flex-shrink-0">
-            <Image
-              src={community.creatorAvatar || "/placeholder.svg"}
+            <ExploreSafeImage
+              src={community.creatorAvatar}
+              fallbackSrc={avatarFallback}
               alt={community.creator}
               fill
               className="rounded-full ring-1 ring-gray-200 object-cover"
               sizes="20px"
               unoptimized
-              onError={(e) => {
-                const target = e.target as HTMLImageElement
-                target.src = "/placeholder.svg"
-              }}
             />
           </div>
           <div className="min-w-0">

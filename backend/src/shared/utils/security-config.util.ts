@@ -132,5 +132,9 @@ export function getCorsOriginHandler(): (origin: string | undefined, callback: (
 }
 
 export function isSwaggerEnabled(): boolean {
-  return true;
+  const explicit = process.env.ENABLE_SWAGGER;
+  if (explicit !== undefined) {
+    return explicit.toLowerCase() === 'true';
+  }
+  return !isProductionEnvironment();
 }

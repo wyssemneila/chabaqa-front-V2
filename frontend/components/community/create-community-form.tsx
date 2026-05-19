@@ -12,7 +12,6 @@ import { communitiesApi, type CreateCommunityData } from "@/lib/api/communities.
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { StepBasicInfo } from "./step-basic-info"
 import { StepCommunitySettings } from "./step-community-settings"
-import { StepSocialLinks } from "./step-social-links"
 import { PrivateCommunitySuccess } from "./private-community-success"
 
 interface CreateCommunityFormProps {
@@ -72,6 +71,17 @@ export function CreateCommunityForm({
       }))
     } else {
       setFormData((prev) => ({ ...prev, [field]: value }))
+    }
+  }
+
+  const hasValidMainLink = () => {
+    const value = formData.socialLinks.website.trim()
+    if (!value) return false
+    try {
+      const parsed = new URL(value)
+      return parsed.protocol === "http:" || parsed.protocol === "https:"
+    } catch {
+      return false
     }
   }
 
@@ -138,22 +148,19 @@ export function CreateCommunityForm({
   const canContinue = () => {
     switch (currentStep) {
       case 1:
-        return formData.name.trim() !== "" && formData.country.trim() !== ""
+        return formData.name.trim() !== "" && formData.country.trim() !== "" && hasValidMainLink()
       case 2:
         if (formData.joinFee === "paid") {
           return formData.feeAmount && parseFloat(formData.feeAmount) > 0
         }
         return true
-      case 3:
-        const socialLinks = formData.socialLinks
-        return Object.values(socialLinks).some(link => link && link.trim() !== "")
       default:
         return false
     }
   }
 
   const nextStep = () => {
-    if (canContinue() && currentStep < 3) {
+    if (canContinue() && currentStep < 2) {
       setCurrentStep(currentStep + 1)
     }
   }
@@ -170,8 +177,6 @@ export function CreateCommunityForm({
         return <StepBasicInfo formData={formData} updateFormData={updateFormData} />
       case 2:
         return <StepCommunitySettings formData={formData} updateFormData={updateFormData} />
-      case 3:
-        return <StepSocialLinks socialLinks={formData.socialLinks} updateFormData={updateFormData} />
       default:
         return null
     }
@@ -200,39 +205,38 @@ export function CreateCommunityForm({
 
   return (
     <div className="w-full">
-      {/* Header Section */}
-      <div className="mb-12">
+      <div className="mb-8">
         <Button
           variant="ghost"
           onClick={() => router.push(backUrl)}
-          className="mb-6 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          className="mb-5 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
+          {backLabel}
         </Button>
 
         <div className="max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">Create Your Community</h1>
-          <p className="text-lg text-gray-600 mt-4">Build a thriving space for your audience in just 3 steps</p>
+          <h1 className="text-2xl md:text-3xl font-semibold text-gray-950 leading-tight">Create Community</h1>
+          <p className="text-sm text-gray-600 mt-2">Set up the required basics now. Branding and social polish can come after creation.</p>
         </div>
       </div>
 
-      {/* Progress Steps */}
-      <div className="flex items-center gap-3 md:gap-4 mb-12">
-        {[1, 2, 3].map((step) => (
+      <div className="flex items-center gap-3 md:gap-4 mb-8">
+        {[1, 2].map((step) => (
           <div key={step} className="flex items-center">
             <div
-              className={`flex items-center justify-center w-12 h-12 rounded-full text-sm font-bold transition-all duration-300 shadow-md ${step === currentStep
-                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white scale-105"
+              className={`flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold transition-colors ${step === currentStep
+                ? "bg-chabaqa-primary text-white"
                 : step < currentStep
-                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                  ? "bg-emerald-600 text-white"
                   : "bg-gray-200 text-gray-500"
                 }`}
             >
               {step < currentStep ? <Check className="w-5 h-5" /> : step}
             </div>
-            {step < 3 && (
+            {step < 2 && (
               <div
-                className={`h-1 mx-2 md:mx-4 rounded-full transition-all duration-300 w-8 md:w-16 ${step < currentStep ? "bg-gradient-to-r from-purple-500 to-pink-500" : "bg-gray-200"
+                className={`h-px mx-2 md:mx-4 transition-colors w-10 md:w-20 ${step < currentStep ? "bg-emerald-600" : "bg-gray-200"
                   }`}
               />
             )}
@@ -242,19 +246,18 @@ export function CreateCommunityForm({
 
       {/* Error & Success Messages */}
       {error && (
-        <div className="mb-8 p-4 bg-red-50 border-2 border-red-200 rounded-2xl text-red-700 text-sm font-medium">
-          ✕ {error}
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 text-sm font-medium">
+          {error}
         </div>
       )}
 
       {success && (
-        <div className="mb-8 p-4 bg-green-50 border-2 border-green-200 rounded-2xl text-green-700 text-sm font-medium">
-          ✓ Your community has been created successfully! Redirecting...
+        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700 text-sm font-medium">
+          Your community has been created successfully. Redirecting...
         </div>
       )}
 
-      {/* Form Content */}
-      <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8 md:p-10 lg:p-12 mb-10">
+      <div className="bg-white rounded-lg border border-gray-200 p-6 md:p-8 mb-8">
         {renderStepContent()}
       </div>
 
@@ -272,10 +275,10 @@ export function CreateCommunityForm({
         ) : <div />}
 
         <Button
-          onClick={currentStep === 3 ? submitCommunity : nextStep}
+          onClick={currentStep === 2 ? submitCommunity : nextStep}
           disabled={!canContinue() || isSubmitting}
-          className={`px-8 py-3 rounded-xl font-semibold text-white transition-all duration-300 ${canContinue() && !isSubmitting
-            ? "bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg hover:shadow-xl hover:scale-105 text-white"
+          className={`px-8 py-3 rounded-lg font-semibold text-white transition-colors ${canContinue() && !isSubmitting
+            ? "bg-chabaqa-primary hover:bg-chabaqa-primary/90 text-white"
             : "bg-gray-300 cursor-not-allowed"
             }`}
         >
@@ -287,7 +290,7 @@ export function CreateCommunityForm({
               </svg>
               Creating Community...
             </div>
-          ) : currentStep === 3 ? (
+          ) : currentStep === 2 ? (
             <>
               Create Community
               <Check className="w-4 h-4 ml-2" />

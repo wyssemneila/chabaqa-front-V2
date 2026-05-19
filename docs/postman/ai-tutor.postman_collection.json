@@ -1,0 +1,119 @@
+{
+  "info": {
+    "name": "Chabaqa AI Tutor",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "AI Course Tutor endpoints (chat, summary, quiz, simplify, history, insights)."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api" },
+    { "key": "token", "value": "" },
+    { "key": "courseId", "value": "" },
+    { "key": "chapterId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Ask — chat",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mode\": \"chat\",\n  \"question\": \"What is the main idea of this chapter?\"\n}"
+        },
+        "url": "{{baseUrl}}/ai/courses/{{courseId}}/chapters/{{chapterId}}/ask"
+      }
+    },
+    {
+      "name": "Ask — summary",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mode\": \"summary\"\n}"
+        },
+        "url": "{{baseUrl}}/ai/courses/{{courseId}}/chapters/{{chapterId}}/ask"
+      }
+    },
+    {
+      "name": "Ask — quiz",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mode\": \"quiz\"\n}"
+        },
+        "url": "{{baseUrl}}/ai/courses/{{courseId}}/chapters/{{chapterId}}/ask"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200 or 201', function () {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "const body = pm.response.json();",
+              "const payload = body.data || body;",
+              "pm.test('quiz mode', function () {",
+              "  pm.expect(payload.mode).to.eql('quiz');",
+              "});",
+              "pm.test('has questions', function () {",
+              "  pm.expect(Array.isArray(payload.questions)).to.be.true;",
+              "  pm.expect(payload.questions.length).to.be.above(0);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ask — simplify",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mode\": \"simplify\"\n}"
+        },
+        "url": "{{baseUrl}}/ai/courses/{{courseId}}/chapters/{{chapterId}}/ask"
+      }
+    },
+    {
+      "name": "Chapter history",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/ai/courses/{{courseId}}/chapters/{{chapterId}}/history"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('ok', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const payload = body.data || body;",
+              "pm.test('messages array', function () {",
+              "  pm.expect(Array.isArray(payload.messages)).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tutor insights (creator)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/ai/courses/{{courseId}}/tutor-insights"
+      }
+    }
+  ]
+}

@@ -3,8 +3,9 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { X, Award, Plus, BookOpen } from "lucide-react"
+import { Award, Plus, BookOpen } from "lucide-react"
 import { ChallengeResourceCard } from "./challenge-resource-card"
+import { CreatorAdvancedSection } from "@/components/creator-dashboard/create-flow"
 
 interface ChallengeStepCardProps {
   step: {
@@ -86,12 +87,12 @@ export function ChallengeStepCard({ step, index, formData, setFormData, validati
         <CardTitle className="text-lg">Day {step.day}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_140px] gap-4">
           <div className="space-y-2">
-            <Label>Step Title *</Label>
+            <Label>Task Title *</Label>
             <Input
               id={`step-${index}-title`}
-              placeholder="e.g., HTML Basics"
+              placeholder="e.g., Publish your first landing page"
               value={step.title}
               onChange={(e) => updateChallengeStep("title", e.target.value)}
               className={stepError("title") ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -118,22 +119,7 @@ export function ChallengeStepCard({ step, index, formData, setFormData, validati
         </div>
 
         <div className="space-y-2">
-          <Label>Description *</Label>
-          <Textarea
-            id={`step-${index}-description`}
-            placeholder="Describe what participants will learn or do..."
-            rows={2}
-            value={step.description}
-            onChange={(e) => updateChallengeStep("description", e.target.value)}
-            className={stepError("description") ? "border-red-500 focus-visible:ring-red-500" : ""}
-          />
-          {stepError("description") && (
-            <p className="text-sm text-red-500">{stepError("description")}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Deliverable *</Label>
+          <Label>What should they submit? *</Label>
           <Textarea
             id={`step-${index}-deliverable`}
             placeholder="What should participants submit or complete?"
@@ -147,51 +133,73 @@ export function ChallengeStepCard({ step, index, formData, setFormData, validati
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label>Detailed Instructions (Markdown)</Label>
-          <Textarea
-            id={`step-${index}-instructions`}
-            placeholder="Provide detailed instructions using Markdown..."
-            rows={5}
-            value={step.instructions}
-            onChange={(e) => updateChallengeStep("instructions", e.target.value)}
-            className={stepError("instructions") ? "border-red-500 focus-visible:ring-red-500" : ""}
-          />
-          {stepError("instructions") && (
-            <p className="text-sm text-red-500">{stepError("instructions")}</p>
-          )}
-        </div>
+        <CreatorAdvancedSection
+          title="Task details"
+          description="Add instructions and resources before publishing for a clearer participant experience."
+          status={step.description || step.instructions || step.resources.length ? "Added" : "Optional"}
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                id={`step-${index}-description`}
+                placeholder="Describe what participants will learn or do..."
+                rows={2}
+                value={step.description}
+                onChange={(e) => updateChallengeStep("description", e.target.value)}
+                className={stepError("description") ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {stepError("description") && (
+                <p className="text-sm text-red-500">{stepError("description")}</p>
+              )}
+            </div>
 
-        {/* Resources for this step */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-base font-medium">Resources</Label>
-            <Button type="button" variant="outline" size="sm" onClick={addResourceToStep}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Resource
-            </Button>
+            <div className="space-y-2">
+              <Label>Detailed Instructions (Markdown)</Label>
+              <Textarea
+                id={`step-${index}-instructions`}
+                placeholder="Provide detailed instructions using Markdown..."
+                rows={5}
+                value={step.instructions}
+                onChange={(e) => updateChallengeStep("instructions", e.target.value)}
+                className={stepError("instructions") ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {stepError("instructions") && (
+                <p className="text-sm text-red-500">{stepError("instructions")}</p>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Resources</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addResourceToStep}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Resource
+                </Button>
+              </div>
+              {step.resources.length === 0 ? (
+                <div className="text-center py-4 border border-dashed border-gray-200 rounded-lg bg-gray-50">
+                  <BookOpen className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm text-muted-foreground">No resources added for this task</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {step.resources.map((resource, resIndex) => (
+                    <ChallengeResourceCard
+                      key={resource.id}
+                      resource={resource}
+                      resIndex={resIndex}
+                      stepIndex={index}
+                      updateResource={updateResource}
+                      removeResource={removeResource}
+                      getError={(field) => getError(`steps.${index}.resources.${resIndex}.${field}`)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          {step.resources.length === 0 ? (
-            <div className="text-center py-4 border border-dashed border-gray-200 rounded-lg bg-gray-50">
-              <BookOpen className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-              <p className="text-sm text-muted-foreground">No resources added for this step</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {step.resources.map((resource, resIndex) => (
-                <ChallengeResourceCard
-                  key={resource.id}
-                  resource={resource}
-                  resIndex={resIndex}
-                  stepIndex={index}
-                  updateResource={updateResource}
-                  removeResource={removeResource}
-                  getError={(field) => getError(`steps.${index}.resources.${resIndex}.${field}`)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        </CreatorAdvancedSection>
       </CardContent>
     </Card>
   )

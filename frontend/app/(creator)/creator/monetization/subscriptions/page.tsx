@@ -1,13 +1,14 @@
 'use client'
 
 import { PageShell } from "@/components/creator-dashboard"
+import { useCommunityGuard } from "@/hooks/use-community-guard"
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Search, Filter, Download, Plus, MoreHorizontal, CheckCircle, AlertCircle, Clock, RefreshCw, Loader2, ExternalLink } from "lucide-react"
+import { Search, Plus, MoreHorizontal, CheckCircle, AlertCircle, Clock, RefreshCw, Loader2 } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -35,13 +36,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { api } from "@/lib/api"
 import { subscriptionApi, CreatorSubscription, SubscriptionStats, SubscriptionStatus, PlanTier, CreatePlanData } from "@/lib/api/subscription.api"
 import { format, parseISO } from 'date-fns';
 
 const SubscriptionsPage = () => {
+  const { guard, selectedCommunity, selectedCommunityId, isLoading: communityLoading } = useCommunityGuard()
   const [subscriptions, setSubscriptions] = useState<CreatorSubscription[]>([]);
   const [stats, setStats] = useState<SubscriptionStats | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,13 +63,22 @@ const SubscriptionsPage = () => {
   });
 
   const loadSubscriptions = useCallback(async () => {
+    if (communityLoading) return;
+    if (!selectedCommunityId) {
+      setSubscriptions([]);
+      setPagination(prev => ({ ...prev, total: 0, totalPages: 1 }));
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const filters = {
         status: activeTab === 'all' ? undefined : activeTab,
         page: pagination.page,
         limit: pagination.limit,
-      };
+        communityId: selectedCommunityId,
+      } as any;
       const response = await subscriptionApi.getAllSubscriptions(filters);
       setSubscriptions(response.data);
       setPagination(response.pagination);
@@ -83,9 +92,16 @@ const SubscriptionsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, pagination.page, pagination.limit]);
+  }, [activeTab, communityLoading, pagination.page, pagination.limit, selectedCommunityId]);
 
   const loadStats = useCallback(async () => {
+    if (communityLoading) return;
+    if (!selectedCommunityId) {
+      setStats(null);
+      setStatsLoading(false);
+      return;
+    }
+
     setStatsLoading(true);
     try {
       const response = await subscriptionApi.getSubscriptionStats();
@@ -100,7 +116,7 @@ const SubscriptionsPage = () => {
     } finally {
       setStatsLoading(false);
     }
-  }, []);
+  }, [communityLoading, selectedCommunityId]);
 
   useEffect(() => {
     loadSubscriptions();
@@ -181,18 +197,20 @@ const SubscriptionsPage = () => {
     sub.plan.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  if (guard) return guard
+
   return (
     <PageShell>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Subscriptions</h1>
-          <p className="text-gray-600 mt-1">Manage your recurring subscription plans and subscribers</p>
+          <p className="text-gray-600 mt-1">Recurring revenue and subscribers for {selectedCommunity?.name || "this community"}.</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={loadStats} disabled={statsLoading}>
             {statsLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Refresh Stats
+            Refresh
           </Button>
           <Dialog open={showNewPlanDialog} onOpenChange={setShowNewPlanDialog}>
             <DialogTrigger asChild>
@@ -273,7 +291,7 @@ const SubscriptionsPage = () => {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Subscription Value</CardTitle>
+            <CardTitle className="text-sm font-medium">Average Value</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -286,8 +304,8 @@ const SubscriptionsPage = () => {
       {/* Subscription Management */}
       <Card>
         <CardHeader>
-          <CardTitle>Subscription Management</CardTitle>
-          <CardDescription>Manage your subscribers and subscription plans</CardDescription>
+          <CardTitle>Subscribers</CardTitle>
+          <CardDescription>Search, review, and manage recurring subscriptions for the selected community.</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SubscriptionStatus | 'all')}>

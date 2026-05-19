@@ -47,10 +47,38 @@ jest.mock(
   () => ({
     __esModule: true,
     default: ({ isChapterAccessible }: { isChapterAccessible: (chapterId: string) => boolean }) => (
-      <div data-testid="paid-chapter-access">{String(isChapterAccessible("chapter-2"))}</div>
+      <div>
+        <div data-testid="chapter-1-access">{String(isChapterAccessible("chapter-1"))}</div>
+        <div data-testid="chapter-2-access">{String(isChapterAccessible("chapter-2"))}</div>
+        <div data-testid="chapter-3-access">{String(isChapterAccessible("chapter-3"))}</div>
+      </div>
     ),
   }),
 )
+
+const makeCourseSession = (accessibleIds: string[]) =>
+  ({
+    chapters: [
+      { chapterId: "chapter-1", access: { canAccess: accessibleIds.includes("chapter-1") } },
+      { chapterId: "chapter-2", access: { canAccess: accessibleIds.includes("chapter-2") } },
+      { chapterId: "chapter-3", access: { canAccess: accessibleIds.includes("chapter-3") } },
+    ],
+    currentChapterId: accessibleIds[0] ?? null,
+    isChapterAccessible: (chapterId: string) => accessibleIds.includes(chapterId),
+    selectChapter: jest.fn(async (chapterId: string) =>
+      accessibleIds.includes(chapterId)
+        ? { success: true }
+        : {
+            success: false,
+            reason: "Finish this chapter to unlock the next one.",
+            lockCode: "previous_chapter_incomplete",
+          },
+    ),
+    goToNextChapter: jest.fn(),
+    reportWatchTime: jest.fn(),
+    reportChapterComplete: jest.fn(),
+    refreshSession: jest.fn(),
+  }) as any
 
 describe("CoursePlayer paid chapter access cache", () => {
   beforeEach(() => {
@@ -105,9 +133,46 @@ describe("CoursePlayer paid chapter access cache", () => {
         enrollment={{ progress: [{ chapterId: "chapter-1", isCompleted: true }], progressPercentage: 50 }}
         unlockedChapters={[{ id: "chapter-2", isUnlocked: true }]}
         sequentialProgressionEnabled
+        courseSession={makeCourseSession(["chapter-1", "chapter-2"])}
       />,
     )
 
-    expect(screen.getByTestId("paid-chapter-access")).toHaveTextContent("true")
+    expect(screen.getByTestId("chapter-2-access")).toHaveTextContent("true")
+  })
+
+  it("fails closed for enrolled free later chapters while session decisions are empty", () => {
+    const course = {
+      id: "course-1",
+      mongoId: "65f0f0f0f0f0f0f0f0f0f0f0",
+      creator: { name: "Creator", avatar: "" },
+      sections: [
+        {
+          id: "section-1",
+          title: "Section 1",
+          chapters: [
+            { id: "chapter-1", title: "Intro", sectionId: "section-1", duration: 600, isPreview: true, isPaidChapter: false },
+            { id: "chapter-2", title: "Free Later", sectionId: "section-1", duration: 600, isPreview: true, isPaidChapter: false },
+            { id: "chapter-3", title: "Another Later", sectionId: "section-1", duration: 600, isPreview: true, isPaidChapter: false },
+          ],
+        },
+      ],
+    }
+
+    render(
+      <CoursePlayer
+        creatorSlug="creator"
+        slug="community"
+        courseId={String(course.mongoId)}
+        course={course}
+        enrollment={{ progress: [], progressPercentage: 0 }}
+        unlockedChapters={[{ id: "chapter-2", isUnlocked: true }, { id: "chapter-3", isUnlocked: true }]}
+        sequentialProgressionEnabled={false}
+        courseSession={{ chapters: [], isChapterAccessible: jest.fn(() => false) } as any}
+      />,
+    )
+
+    expect(screen.getByTestId("chapter-1-access")).toHaveTextContent("true")
+    expect(screen.getByTestId("chapter-2-access")).toHaveTextContent("false")
+    expect(screen.getByTestId("chapter-3-access")).toHaveTextContent("false")
   })
 })

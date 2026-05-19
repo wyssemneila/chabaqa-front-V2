@@ -229,7 +229,7 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
       ? allCourseChapters.find((chapter: any) => String(chapter?.id) === String(targetChapterId))
       : null
     const chapterRequiresPayment = targetChapter
-      ? Boolean(targetChapter?.isPaidChapter) && !Boolean(targetChapter?.isPreview)
+      ? Boolean(targetChapter?.isPaidChapter)
       : targetChapterPaid
     console.info("[CourseNextFlow] handleEnrollmentRequest", {
       source: options?.source,

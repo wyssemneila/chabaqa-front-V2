@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { SessionHeader } from "./session-header"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { SessionProgress } from "./session-progress"
 import { BasicInfoStep } from "./basic-info-step"
 import { PricingDurationStep } from "./pricing-duration-step"
@@ -13,11 +12,27 @@ import { NavigationButtons } from "./navigation-buttons"
 import { sessionsApi, type CreateSessionData } from "@/lib/api/sessions.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
+import {
+  CreatorCreateShell,
+  CreatorDraftRestoreBanner,
+  CreatorPublishChecklist,
+  CreatorValidationSummary,
+  useCreatorCreateDraftStorage,
+} from "@/components/creator-dashboard/create-flow"
+import {
+  type SessionCreateValues,
+  getCreatorCreateTemplate,
+  getSessionPublishChecklist,
+  validateSessionDraft,
+  validateSessionPublish,
+} from "@/lib/creator-content"
 
 export function SessionCreationContainer() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   
   // Use the selected community from context
@@ -28,8 +43,8 @@ export function SessionCreationContainer() {
     title: "",
     description: "",
     thumbnail: "",
-    duration: "",
-    price: "",
+    duration: "60",
+    price: "0",
     currency: "TND",
     maxBookingsPerWeek: "",
     requirements: "",
@@ -49,12 +64,52 @@ export function SessionCreationContainer() {
   })
 
   const steps = [
-    { id: 1, title: "Basic Info", description: "Session title, description, and category" },
-    { id: 2, title: "Pricing & Duration", description: "Set price, duration, and availability" },
-    { id: 3, title: "Session Details", description: "Format, requirements, and what participants get" },
-    { id: 4, title: "Availability", description: "Set your weekly availability for bookings" },
-    { id: 5, title: "Review & Publish", description: "Review and publish your session" },
+    { id: 1, title: "Start", description: "Title, description, duration, and price" },
+    { id: 2, title: "Details", description: "Format, outcomes, and preparation" },
+    { id: 3, title: "Availability", description: "Choose a booking preset" },
+    { id: 4, title: "Publish checks", description: "Review blockers before going live" },
   ]
+
+  const sessionCreateValues = useMemo<SessionCreateValues>(() => ({
+    title: formData.title,
+    description: formData.description,
+    thumbnail: formData.thumbnail,
+    duration: formData.duration || "60",
+    price: formData.price || "0",
+    currency: (formData.currency || "TND") as SessionCreateValues["currency"],
+    communitySlug,
+    maxBookingsPerWeek: formData.maxBookingsPerWeek,
+    notes: formData.requirements || formData.preparationMaterials || undefined,
+    isActive: formData.isPublished,
+    resources: [],
+    recurringAvailability: formData.recurringAvailability,
+  }), [communitySlug, formData])
+
+  const draftValidation = useMemo(() => validateSessionDraft(sessionCreateValues), [sessionCreateValues])
+  const publishValidation = useMemo(() => validateSessionPublish(sessionCreateValues), [sessionCreateValues])
+  const publishChecklist = useMemo(() => getSessionPublishChecklist(sessionCreateValues), [sessionCreateValues])
+  const draftStorage = useCreatorCreateDraftStorage({
+    contentType: "session",
+    communityId: communitySlug || selectedCommunity?.id || "unknown",
+    values: formData,
+    enabled: !isSubmitting,
+  })
+  const appliedTemplateRef = useRef(false)
+
+  useEffect(() => {
+    if (appliedTemplateRef.current) return
+    const template = getCreatorCreateTemplate("session", searchParams.get("template"))
+    if (!template) return
+    appliedTemplateRef.current = true
+    setFormData((prev) => ({
+      ...prev,
+      ...template.data,
+      duration: template.data.duration || prev.duration,
+      price: template.data.price || prev.price,
+      currency: template.data.currency || prev.currency,
+      whatYoullGet: Array.isArray(template.data.whatYoullGet) ? template.data.whatYoullGet : prev.whatYoullGet,
+    }))
+  }, [searchParams])
 
   const handleInputChange = (field: string, value: any) => {
     if (field.includes(".")) {
@@ -107,7 +162,7 @@ export function SessionCreationContainer() {
   const validateCurrentStep = () => {
     const errors: Record<string, string> = {}
     
-    // Step 1: Basic Info validation
+    // Step 1: Start validation
     if (currentStep === 1) {
       if (!formData.title || formData.title.trim().length < 2) {
         errors.title = 'Session title must be at least 2 characters.'
@@ -115,10 +170,6 @@ export function SessionCreationContainer() {
       if (!formData.description || formData.description.trim().length < 10) {
         errors.description = 'Session description must be at least 10 characters.'
       }
-    }
-    
-    // Step 2: Pricing & Duration validation
-    if (currentStep === 2) {
       const duration = Number(formData.duration || 0)
       if (!duration || duration < 15 || duration > 480) {
         errors.duration = 'Session duration must be between 15 and 480 minutes.'
@@ -137,8 +188,7 @@ export function SessionCreationContainer() {
         }
       }
     }
-    
-    // Step 3 and 4: No validation required (Session Details and Weekly Availability are optional)
+    // Details and availability can be completed later for drafts.
     
     setValidationErrors(errors)
     
@@ -201,8 +251,40 @@ export function SessionCreationContainer() {
     return Object.keys(errors).length === 0 ? null : Object.values(errors)[0]
   }
 
-  const handleSubmit = async () => {
+  const restoreDraft = () => {
+    const stored = draftStorage.storedValues as Partial<typeof formData> | null
+    if (!stored) return
+    setFormData((prev) => ({
+      ...prev,
+      ...stored,
+      duration: stored.duration || "60",
+      price: stored.price || "0",
+      currency: stored.currency || "TND",
+      recurringAvailability: Array.isArray(stored.recurringAvailability) ? stored.recurringAvailability : [],
+    } as typeof formData))
+    draftStorage.clearDraft()
+  }
+
+  const handleSubmit = async (options?: { publish?: boolean }) => {
+    if (isSubmitting) return
+    const publishRequested = Boolean(options?.publish ?? formData.isPublished)
+    const modelValidation = publishRequested ? publishValidation : draftValidation
+
+    if (!modelValidation.ok) {
+      setValidationErrors(modelValidation.fieldErrors)
+      toast({
+        title: publishRequested ? "Publish checks need attention" : "Draft needs a few fields",
+        description:
+          modelValidation.publishBlockers[0] ||
+          Object.values(modelValidation.fieldErrors)[0] ||
+          "Please review the highlighted fields.",
+        variant: "destructive" as any,
+      })
+      return
+    }
+
     try {
+      setIsSubmitting(true)
       if (!communitySlug) {
         toast({ title: 'Missing community', description: 'No community found for this creator.', variant: 'destructive' as any })
         return
@@ -218,15 +300,14 @@ export function SessionCreationContainer() {
         title: formData.title,
         description: formData.description,
         thumbnail: formData.thumbnail?.trim() || undefined,
-        duration: Number(formData.duration || 0),
+        duration: Number(formData.duration || 60),
         price: Number(formData.price || 0),
         currency: (formData.currency || 'TND') as CreateSessionData['currency'],
         communitySlug,
         category: undefined,
         maxBookingsPerWeek: formData.maxBookingsPerWeek ? Number(formData.maxBookingsPerWeek) : undefined,
         notes: formData.requirements || formData.preparationMaterials || undefined,
-        // Use isPublished to determine if session should be active
-        isActive: formData.isPublished || false,
+        isActive: publishRequested && publishValidation.ok,
         resources: [],
       }
 
@@ -270,32 +351,91 @@ export function SessionCreationContainer() {
         }
       }
 
-      toast({ title: 'Session created as draft', description: `${payload.title} - Publish it from the sessions page once you have an active subscription.` })
+      draftStorage.clearDraft()
+      toast({
+        title: publishRequested ? 'Session created' : 'Session created as draft',
+        description: publishRequested
+          ? `${payload.title} is ready with booking settings.`
+          : `${payload.title} - add availability and publish when ready.`,
+      })
       router.push('/creator/sessions')
     } catch (e: any) {
       toast({ title: 'Failed to create session', description: e?.message || 'Please review required fields.', variant: 'destructive' as any })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 p-5">
-      <SessionHeader />
+    <CreatorCreateShell
+      title="Create New Session"
+      description="Create a bookable 1:1 offer for your community"
+      backHref="/creator/sessions"
+      backLabel="Back to sessions"
+      communityName={selectedCommunity?.name}
+      communityMeta={selectedCommunity?.slug}
+      autosaveStatus={draftStorage.status}
+      publishBlocked={!publishValidation.ok}
+      previewAction={{ label: "Preview", onClick: () => setCurrentStep(4), disabled: isSubmitting }}
+      mobileMode="limited"
+      actions={[
+        {
+          label: "Save Draft",
+          icon: "save",
+          variant: "outline",
+          onClick: () => handleSubmit({ publish: false }),
+          disabled: isSubmitting || !draftValidation.ok,
+          loading: isSubmitting,
+        },
+        {
+          label: "Publish",
+          icon: "publish",
+          onClick: () => {
+            if (!publishValidation.ok) {
+              toast({
+                title: "Publish checks need attention",
+                description: publishValidation.publishBlockers[0] || Object.values(publishValidation.fieldErrors)[0],
+                variant: "destructive" as any,
+              })
+              if (publishValidation.publishBlockers.some((blocker) => blocker.toLowerCase().includes("availability"))) {
+                setCurrentStep(3)
+              }
+              return
+            }
+            void handleSubmit({ publish: true })
+          },
+          disabled: isSubmitting,
+          loading: isSubmitting,
+        },
+      ]}
+      sidebar={
+        <>
+          <CreatorValidationSummary result={currentStep === 4 ? publishValidation : draftValidation} />
+          <CreatorPublishChecklist items={publishChecklist} />
+        </>
+      }
+    >
+      <CreatorDraftRestoreBanner
+        visible={draftStorage.hasStoredDraft}
+        label="A locally saved session draft was found for this community."
+        onRestore={restoreDraft}
+        onDismiss={draftStorage.clearDraft}
+      />
       <SessionProgress currentStep={currentStep} setCurrentStep={setCurrentStep} steps={steps} />
       
       {currentStep === 1 && (
-        <BasicInfoStep formData={formData} handleInputChange={handleInputChange} validationErrors={validationErrors} />
+        <div className="space-y-6">
+          <BasicInfoStep formData={formData} handleInputChange={handleInputChange} validationErrors={validationErrors} />
+          <PricingDurationStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            handleDayToggle={handleDayToggle}
+            validationErrors={validationErrors}
+          />
+        </div>
       )}
 
       {currentStep === 2 && (
-        <PricingDurationStep
-          formData={formData}
-          handleInputChange={handleInputChange}
-          handleDayToggle={handleDayToggle}
-          validationErrors={validationErrors}
-        />
-      )}
-
-      {currentStep === 3 && (
         <SessionDetailsStep
           formData={formData}
           handleInputChange={handleInputChange}
@@ -305,14 +445,14 @@ export function SessionCreationContainer() {
         />
       )}
 
-      {currentStep === 4 && (
+      {currentStep === 3 && (
         <AvailabilityStep
           formData={formData}
           handleInputChange={handleInputChange}
         />
       )}
 
-      {currentStep === 5 && (
+      {currentStep === 4 && (
         <ReviewPublishStep
           formData={formData}
           handleInputChange={handleInputChange}
@@ -323,9 +463,11 @@ export function SessionCreationContainer() {
         currentStep={currentStep}
         stepsLength={steps.length}
         setCurrentStep={setCurrentStep}
-        handleSubmit={handleSubmit}
+        handleSubmit={() => handleSubmit({ publish: false })}
         onNextStep={handleNextStep}
+        isSubmitting={isSubmitting}
+        hideSubmitAction
       />
-    </div>
+    </CreatorCreateShell>
   )
 }

@@ -119,7 +119,7 @@ export function AIInsightsPanel({
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[var(--p)]" />
-          AI Explainer
+          AI Creator Insights
         </CardTitle>
         <div className="flex gap-2">
           {insights && (

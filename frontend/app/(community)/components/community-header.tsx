@@ -53,7 +53,7 @@ import { communitiesApi } from "@/lib/api/communities.api"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { authApi } from "@/lib/api/auth.api"
 import type { Community } from "@/lib/api/types"
-import { resolveImageUrl } from "@/lib/resolve-image-url"
+import { toCommunityViewModel } from "@/lib/view-models/community-view-model"
 import { api } from "@/lib/api"
 import type { Conversation } from "@/lib/api/types"
 import { useSocket } from "@/lib/socket-context"
@@ -80,12 +80,41 @@ const navigationItems = [
 ]
 
 
-const getCommunityLogoUrl = (community?: Community | null): string | undefined => {
-  if (!community) return undefined
-  return resolveImageUrl(
-    (community as any).logo ||
-      (community as any).image ||
-      (community as any).settings?.logo
+const CommunityLogo = ({
+  community,
+  size,
+}: {
+  community: Community
+  size: "sm" | "md"
+}) => {
+  const viewModel = useMemo(() => toCommunityViewModel(community), [community])
+  const dimensionClass = size === "md" ? "w-10 h-10" : "w-8 h-8"
+  const textClass = size === "md" ? "text-sm" : "text-sm"
+  const primaryColor = viewModel.primaryColor || "#3b82f6"
+
+  return (
+    <div
+      className={cn(
+        "relative flex-shrink-0 overflow-hidden rounded-lg",
+        dimensionClass,
+      )}
+      style={{ backgroundColor: primaryColor }}
+    >
+      {viewModel.logoUrl ? (
+        <Image
+          src={viewModel.logoUrl}
+          alt={`${viewModel.name} logo`}
+          fill
+          sizes={size === "md" ? "40px" : "32px"}
+          className="object-cover"
+          unoptimized
+        />
+      ) : (
+        <div className={cn("flex h-full w-full items-center justify-center font-semibold text-white", textClass)}>
+          {viewModel.name.charAt(0)}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -335,19 +364,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                   <Button variant="ghost" className="flex items-center space-x-2 px-3 h-10">
                     {community && (
                       <>
-                        <Avatar className="w-8 h-8 rounded-lg">
-                          <AvatarImage
-                            src={getCommunityLogoUrl(community) || undefined}
-                            alt={`${community.name} logo`}
-                            className="object-cover"
-                          />
-                          <AvatarFallback
-                            className="text-white text-sm font-semibold rounded-lg"
-                            style={{ backgroundColor: (community as any).settings?.primaryColor || '#3b82f6' }}
-                          >
-                            {community.name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <CommunityLogo community={community} size="sm" />
                         <div className="text-left">
                           <div className="font-medium text-sm">{community.name}</div>
                           <div className="text-xs text-muted-foreground">
@@ -374,19 +391,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                             comm.slug === currentCommunity && "bg-accent"
                           )}
                         >
-                          <Avatar className="w-10 h-10 rounded-lg flex-shrink-0">
-                            <AvatarImage
-                              src={getCommunityLogoUrl(comm) || undefined}
-                              alt={`${comm.name} logo`}
-                              className="object-cover"
-                            />
-                            <AvatarFallback
-                              className="text-white text-sm font-semibold rounded-lg"
-                              style={{ backgroundColor: (comm as any).settings?.primaryColor || '#3b82f6' }}
-                            >
-                              {comm.name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <CommunityLogo community={comm} size="md" />
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">{comm.name}</div>
                             <div className="text-xs text-muted-foreground">
@@ -488,19 +493,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                         >
                           <Link href={`/${creatorSlug}/${comm.slug}/home`}>
                             <div className="flex items-center space-x-3">
-                              <Avatar className="w-8 h-8 rounded-lg">
-                                <AvatarImage
-                                  src={getCommunityLogoUrl(comm) || undefined}
-                                  alt={`${comm.name} logo`}
-                                  className="object-cover"
-                                />
-                                <AvatarFallback
-                                  className="text-white text-sm font-semibold rounded-lg"
-                                  style={{ backgroundColor: (comm as any).settings?.primaryColor || '#3b82f6' }}
-                                >
-                                  {comm.name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
+                              <CommunityLogo community={comm} size="sm" />
                               <div className="flex-1">
                                 <div className="font-medium">{comm.name}</div>
                                 <div className="text-xs text-muted-foreground">

@@ -21,6 +21,7 @@ export default function CreatorSessionsPage() {
   const [bookings, setBookings] = useState<CreatorBookingViewModel[]>([])
   const [revenue, setRevenue] = useState<number | null>(null)
   const [isSwitchLoading, setIsSwitchLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
   const requestIdRef = useRef(0)
 
   const loadSessions = useCallback(async (communityId: string, options?: { force?: boolean; keepCurrentData?: boolean }) => {
@@ -31,9 +32,11 @@ export default function CreatorSessionsPage() {
       setSessions([])
       setBookings([])
       setRevenue(null)
+      setError(null)
     }
 
     try {
+      setError(null)
       const payload = await loadSessionsCached(communityId, { force: options?.force })
       if (requestId !== requestIdRef.current) return
 
@@ -41,11 +44,13 @@ export default function CreatorSessionsPage() {
       setBookings(payload.bookings)
       setRevenue(payload.revenue)
     } catch (e: any) {
+      const message = e?.message || "Failed to load sessions"
       toast(TOAST_MESSAGES.error("load sessions"))
       if (requestId !== requestIdRef.current) return
       setSessions([])
       setBookings([])
       setRevenue(null)
+      setError(message)
     } finally {
       if (requestId === requestIdRef.current) {
         setIsSwitchLoading(false)
@@ -61,6 +66,7 @@ export default function CreatorSessionsPage() {
       setSessions([])
       setBookings([])
       setRevenue(null)
+      setError(null)
       setIsSwitchLoading(false)
       return
     }
@@ -82,6 +88,8 @@ export default function CreatorSessionsPage() {
       allBookings={bookings}
       revenue={revenue ?? undefined}
       isSwitchLoading={isSwitchLoading}
+      error={error}
+      onRetry={handleSessionsUpdate}
       onSessionsUpdate={handleSessionsUpdate}
     />
   )

@@ -9,6 +9,8 @@ import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
+import { Sparkles } from "lucide-react"
 
 interface SettingsTabProps {
   courseId: string
@@ -18,6 +20,9 @@ interface SettingsTabProps {
 export function SettingsTab({ courseId, initialSettings }: SettingsTabProps) {
   const [sequentialProgression, setSequentialProgression] = useState(initialSettings?.sequentialProgression || false)
   const [unlockMessage, setUnlockMessage] = useState(initialSettings?.unlockMessage || "Please complete the previous chapter to unlock this one.")
+  const [aiTutorEnabled, setAiTutorEnabled] = useState(
+    initialSettings?.aiTutorEnabled !== false,
+  )
   const { toast } = useToast()
 
   const handleToggleSequential = async (enabled: boolean) => {
@@ -30,8 +35,48 @@ export function SettingsTab({ courseId, initialSettings }: SettingsTabProps) {
     }
   }
 
+  const handleToggleAiTutor = async (enabled: boolean) => {
+    try {
+      await api.ai.updateCourseTutorSettings(courseId, enabled)
+      setAiTutorEnabled(enabled)
+      toast({ title: enabled ? "AI tutor enabled" : "AI tutor disabled for this course" })
+    } catch {
+      toast({ title: "Failed to update AI tutor settings", variant: "destructive" })
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <EnhancedCard>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-teal-700" />
+            <CardTitle>AI Course Tutor</CardTitle>
+          </div>
+          <CardDescription>
+            Let learners ask chapter-grounded questions with citations, summaries, and quizzes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">Enable AI tutor</h4>
+              <p className="text-sm text-muted-foreground">
+                Show the AI tab on all chapters in this course
+              </p>
+            </div>
+            <Switch checked={aiTutorEnabled} onCheckedChange={handleToggleAiTutor} />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Community-wide controls:{" "}
+            <Link href="/creator/ai" className="font-medium text-teal-700 underline">
+              Chabaqa AI hub
+            </Link>
+            . View learner questions in the AI Tutor tab.
+          </p>
+        </CardContent>
+      </EnhancedCard>
+
       <EnhancedCard>
         <CardHeader>
           <CardTitle>Course Settings</CardTitle>

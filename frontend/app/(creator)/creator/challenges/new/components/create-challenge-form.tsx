@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { ChallengeHeader } from "./challenge-header"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ChallengeProgress } from "./challenge-progress"
 import { BasicInfoStep } from "./basic-info-step"
 import { TimelinePricingStep } from "./timeline-pricing-step"
@@ -16,16 +15,41 @@ import { extractApiError } from "@/lib/api/error-parser"
 import {
   mapBackendErrorsToCreatorFields,
   normalizeDifficultyToBackend,
-  validateCreateStep,
   validateTasks,
 } from "../../_validation/challenge-validation"
+import {
+  CreatorCreateShell,
+  CreatorDraftRestoreBanner,
+  CreatorPublishChecklist,
+  CreatorValidationSummary,
+  useCreatorCreateDraftStorage,
+} from "@/components/creator-dashboard/create-flow"
+import {
+  type ChallengeCreateValues,
+  getChallengePublishChecklist,
+  getCreatorCreateTemplate,
+  validateChallengeDraft,
+  validateChallengePublish,
+} from "@/lib/creator-content"
+
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+const getDurationDays = (duration: string) => {
+  const match = duration.match(/(\d+)\s*days?/i)
+  return match ? Number(match[1]) : 7
+}
 
 export function CreateChallengeForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
-  const [startDate, setStartDate] = useState<Date>()
-  const [endDate, setEndDate] = useState<Date>()
+  const [startDate, setStartDate] = useState<Date | undefined>(() => new Date())
+  const [endDate, setEndDate] = useState<Date | undefined>(() => addDays(new Date(), 6))
   const [formData, setFormData] = useState(initialFormData)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
@@ -33,6 +57,66 @@ export function CreateChallengeForm() {
   // Use the selected community from context
   const { selectedCommunity } = useCreatorCommunity()
   const communitySlug = selectedCommunity?.slug || ""
+
+  const challengeCreateValues = useMemo<ChallengeCreateValues>(() => ({
+    title: formData.title,
+    description: formData.description,
+    communitySlug,
+    startDate: (startDate || new Date()).toISOString(),
+    endDate: (endDate || startDate || new Date()).toISOString(),
+    participationFee: formData.participationFee || 0,
+    currency: (formData.currency || "TND") as ChallengeCreateValues["currency"],
+    category: formData.category || "General",
+    difficulty: (formData.difficulty || "beginner") as ChallengeCreateValues["difficulty"],
+    duration: formData.duration || "7 days",
+    thumbnail: formData.thumbnail,
+    sequentialProgression: Boolean(formData.sequentialProgression),
+    unlockMessage: formData.unlockMessage,
+    isActive: Boolean(formData.isPublished),
+    tasks: (formData.steps || []).map((step) => ({
+      day: step.day,
+      title: step.title,
+      description: step.description,
+      deliverable: step.deliverable,
+      points: step.points,
+      instructions: step.instructions,
+      resources: step.resources,
+    })),
+  }), [communitySlug, endDate, formData, startDate])
+
+  const draftValidation = useMemo(() => validateChallengeDraft(challengeCreateValues), [challengeCreateValues])
+  const publishValidation = useMemo(() => validateChallengePublish(challengeCreateValues), [challengeCreateValues])
+  const publishChecklist = useMemo(() => getChallengePublishChecklist(challengeCreateValues), [challengeCreateValues])
+  const draftStorage = useCreatorCreateDraftStorage({
+    contentType: "challenge",
+    communityId: communitySlug || "unknown",
+    values: {
+      formData,
+      startDate: startDate?.toISOString(),
+      endDate: endDate?.toISOString(),
+    },
+    enabled: !isSubmitting,
+  })
+  const appliedTemplateRef = useRef(false)
+
+  useEffect(() => {
+    if (appliedTemplateRef.current) return
+    const template = getCreatorCreateTemplate("challenge", searchParams.get("template"))
+    if (!template) return
+    appliedTemplateRef.current = true
+    const nextStartDate = new Date()
+    const durationDays = getDurationDays(template.data.duration || "7 days")
+    setStartDate(nextStartDate)
+    setEndDate(addDays(nextStartDate, Math.max(1, durationDays) - 1))
+    setFormData((prev) => ({
+      ...prev,
+      ...template.data,
+      category: template.data.category || prev.category,
+      difficulty: template.data.difficulty || prev.difficulty,
+      currency: template.data.currency || prev.currency,
+      steps: Array.isArray(template.data.steps) && template.data.steps.length ? template.data.steps : prev.steps,
+    }))
+  }, [searchParams])
 
   const scrollToFirstError = (errors: Record<string, string>) => {
     const first = Object.keys(errors)[0]
@@ -68,7 +152,51 @@ export function CreateChallengeForm() {
   }
 
   const validateCurrentStep = () => {
-    const result = validateCreateStep(currentStep, formData, { startDate, endDate })
+    const fieldErrors: Record<string, string> = {}
+
+    if (currentStep === 1) {
+      if (!formData.title.trim() || formData.title.trim().length < 2) fieldErrors.title = "Title must be at least 2 characters."
+      if (!formData.description.trim()) fieldErrors.description = "Description is required."
+      if (formData.sequentialProgression && (formData.unlockMessage || "").length > 500) {
+        fieldErrors.unlockMessage = "Unlock message must be 500 characters or less."
+      }
+    }
+
+    if (currentStep === 2) {
+      if (!startDate) fieldErrors.startDate = "Please select a start date."
+      if (!endDate) fieldErrors.endDate = "End date is required."
+      if (startDate && endDate && endDate < startDate) {
+        fieldErrors.startDate = "Start date must be before end date."
+        fieldErrors.endDate = "End date must be after start date."
+      }
+      const numericFields = [
+        ["participationFee", formData.participationFee],
+        ["depositAmount", formData.depositAmount],
+        ["maxParticipants", formData.maxParticipants],
+        ["completionReward", formData.rewards?.completionReward],
+        ["topPerformerBonus", formData.rewards?.topPerformerBonus],
+        ["streakBonus", formData.rewards?.streakBonus],
+      ] as const
+      numericFields.forEach(([key, value]) => {
+        if (value !== "" && value !== undefined && value !== null && (!Number.isFinite(Number(value)) || Number(value) < 0)) {
+          fieldErrors[key] = "Must be 0 or greater."
+        }
+      })
+    }
+
+    if (currentStep === 3) {
+      if (!formData.steps?.length) {
+        fieldErrors.tasks = "Please add at least one challenge task."
+      } else if (!formData.steps[0]?.title?.trim()) {
+        fieldErrors["steps.0.title"] = "Add a title for the first task."
+      }
+    }
+
+    const result = {
+      isValid: Object.keys(fieldErrors).length === 0,
+      fieldErrors,
+      globalErrors: [] as string[],
+    }
     setValidationErrors(result.fieldErrors)
 
     if (!result.isValid) {
@@ -95,13 +223,26 @@ export function CreateChallengeForm() {
   }
 
   const steps = [
-    { id: 1, title: "Basic Info", description: "Challenge title, description, and settings" },
-    { id: 2, title: "Timeline & Pricing", description: "Set dates, deposit, and rewards" },
-    { id: 3, title: "Challenge Steps", description: "Define daily tasks and deliverables" },
-    { id: 4, title: "Review & Publish", description: "Review and publish your challenge" },
+    { id: 1, title: "Start", description: "Title, description, and duration" },
+    { id: 2, title: "Schedule", description: "Dates and optional pricing" },
+    { id: 3, title: "Tasks", description: "Daily work and deliverables" },
+    { id: 4, title: "Publish checks", description: "Review blockers before going live" },
   ]
 
-  const handleSubmit = async () => {
+  const restoreDraft = () => {
+    const stored = draftStorage.storedValues as any
+    if (!stored?.formData) return
+    setFormData({
+      ...initialFormData,
+      ...stored.formData,
+      steps: Array.isArray(stored.formData.steps) && stored.formData.steps.length ? stored.formData.steps : initialFormData.steps,
+    })
+    if (stored.startDate) setStartDate(new Date(stored.startDate))
+    if (stored.endDate) setEndDate(new Date(stored.endDate))
+    draftStorage.clearDraft()
+  }
+
+  const handleSubmit = async (options?: { publish?: boolean }) => {
     if (isSubmitting) return
 
     try {
@@ -120,9 +261,18 @@ export function CreateChallengeForm() {
         toast({ title: "Validation Error", description: "Please add at least one challenge step.", variant: "destructive" })
         return
       }
-      const stepOneValidation = validateCreateStep(1, formData, { startDate, endDate })
-      const stepTwoValidation = validateCreateStep(2, formData, { startDate, endDate })
-      const stepThreeValidation = validateTasks(formData.steps || [])
+      const stepOneValidation = {
+        isValid: draftValidation.ok,
+        fieldErrors: draftValidation.fieldErrors,
+      }
+      const stepTwoValidation = { isValid: true, fieldErrors: {} as Record<string, string> }
+      const stepThreeValidation = options?.publish
+        ? validateTasks(formData.steps || [])
+        : {
+            isValid: Boolean(formData.steps?.length && formData.steps[0]?.title?.trim()),
+            fieldErrors: formData.steps?.[0]?.title?.trim() ? {} : { "steps.0.title": "Add a title for the first task." },
+            globalErrors: formData.steps?.length ? [] : ["Please add at least one challenge task."],
+          }
       const allErrors = {
         ...stepOneValidation.fieldErrors,
         ...stepTwoValidation.fieldErrors,
@@ -154,9 +304,9 @@ export function CreateChallengeForm() {
         return {
         day: Number(s.day),
         title: sanitizeText(s.title),
-        description: sanitizeText(s.description),
-        deliverable: sanitizeText(s.deliverable),
-        points: Number(s.points || 0),
+        description: sanitizeText(s.description) || sanitizeText(formData.description),
+        deliverable: sanitizeText(s.deliverable) || "Complete the task",
+        points: Number(s.points || 100),
         instructions: sanitizeText(s.instructions) || undefined,
         notes: undefined,
         resources: rawResources.map((r) => ({
@@ -180,14 +330,14 @@ export function CreateChallengeForm() {
         completionReward: formData.rewards?.completionReward ? Number(formData.rewards.completionReward) : undefined,
         topPerformerBonus: formData.rewards?.topPerformerBonus ? Number(formData.rewards.topPerformerBonus) : undefined,
         streakBonus: formData.rewards?.streakBonus ? Number(formData.rewards.streakBonus) : undefined,
-        category: sanitizeText(formData.category) || undefined,
-        difficulty: formData.difficulty ? normalizeDifficultyToBackend(formData.difficulty) : undefined,
-        duration: sanitizeText(formData.duration) || undefined,
+        category: sanitizeText(formData.category) || "General",
+        difficulty: formData.difficulty ? normalizeDifficultyToBackend(formData.difficulty) : "beginner",
+        duration: sanitizeText(formData.duration) || "7 days",
         thumbnail: sanitizeText(formData.thumbnail) || undefined,
         sequentialProgression: Boolean(formData.sequentialProgression),
         unlockMessage: sanitizeText(formData.unlockMessage) || undefined,
         // Use isPublished to determine if challenge should be published immediately
-        isActive: formData.isPublished || false,
+        isActive: Boolean(options?.publish ?? formData.isPublished),
         resources: [],
         tasks: tasks || [],
       }
@@ -196,13 +346,15 @@ export function CreateChallengeForm() {
 
       const res = await challengesApi.create(payload)
       const created = (res as any)?.data || res
-      const statusMessage = formData.isPublished 
+      const shouldPublish = Boolean(options?.publish ?? formData.isPublished)
+      const statusMessage = shouldPublish
         ? 'Challenge published successfully!' 
         : 'Challenge created as draft - Publish it from the management page once you have an active subscription.'
       toast({ 
-        title: formData.isPublished ? 'Challenge published' : 'Challenge created as draft', 
+        title: shouldPublish ? 'Challenge published' : 'Challenge created as draft',
         description: statusMessage 
       })
+      draftStorage.clearDraft()
       const id = created?.id || created?._id || created?.challenge?.id || created?.challenge?._id
       if (id) router.push(`/creator/challenges/${id}/manage`)
       else router.push('/creator/challenges')
@@ -231,9 +383,60 @@ export function CreateChallengeForm() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 p-5">
-      <ChallengeHeader />
-      
+    <CreatorCreateShell
+      title="Create New Challenge"
+      description="Build a focused challenge your members can join and complete"
+      backHref="/creator/challenges"
+      backLabel="Back to challenges"
+      communityName={selectedCommunity?.name}
+      communityMeta={communitySlug}
+      autosaveStatus={draftStorage.status}
+      publishBlocked={!publishValidation.ok}
+      previewAction={{ label: "Preview", onClick: () => setCurrentStep(4), disabled: isSubmitting }}
+      mobileMode="limited"
+      actions={[
+        {
+          label: "Save Draft",
+          icon: "save",
+          variant: "outline",
+          onClick: () => handleSubmit({ publish: false }),
+          disabled: isSubmitting || !draftValidation.ok,
+          loading: isSubmitting,
+        },
+        {
+          label: "Publish",
+          icon: "publish",
+          onClick: () => {
+            if (!publishValidation.ok) {
+              toast({
+                title: "Publish checks need attention",
+                description: publishValidation.publishBlockers[0] || Object.values(publishValidation.fieldErrors)[0],
+                variant: "destructive",
+              })
+              if (publishValidation.publishBlockers.some((blocker) => blocker.toLowerCase().includes("task"))) {
+                setCurrentStep(3)
+              }
+              return
+            }
+            void handleSubmit({ publish: true })
+          },
+          disabled: isSubmitting,
+          loading: isSubmitting,
+        },
+      ]}
+      sidebar={
+        <>
+          <CreatorValidationSummary result={currentStep === 4 ? publishValidation : draftValidation} />
+          <CreatorPublishChecklist items={publishChecklist} />
+        </>
+      }
+    >
+      <CreatorDraftRestoreBanner
+        visible={draftStorage.hasStoredDraft}
+        label="A locally saved challenge draft was found for this community."
+        onRestore={restoreDraft}
+        onDismiss={draftStorage.clearDraft}
+      />
       <ChallengeProgress 
         currentStep={currentStep} 
         steps={steps} 
@@ -282,11 +485,12 @@ export function CreateChallengeForm() {
         steps={steps}
         onNext={handleNextStep}
         onBack={handlePrevStep}
-        onSubmit={handleSubmit}
+        onSubmit={() => handleSubmit()}
         isPublished={formData.isPublished}
         isSubmitting={isSubmitting}
+        hideSubmitAction
       />
-    </div>
+    </CreatorCreateShell>
   )
 }
 
@@ -298,9 +502,9 @@ const initialFormData = {
   depositAmount: "",
   participationFee: "",
   maxParticipants: "",
-  category: "",
-  difficulty: "",
-  duration: "",
+  category: "General",
+  difficulty: "beginner",
+  duration: "7 days",
   sequentialProgression: false,
   unlockMessage: "",
   isPublished: false,
@@ -310,7 +514,15 @@ const initialFormData = {
     topPerformerBonus: "",
     streakBonus: "",
   },
-  steps: [] as Array<{
+  steps: [{
+    day: 1,
+    title: "",
+    description: "",
+    deliverable: "Complete the task",
+    points: 100,
+    resources: [],
+    instructions: "",
+  }] as Array<{
     id?: string
     day: number
     title: string

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import type { ComponentType } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -10,10 +11,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   LayoutDashboard,
   Users,
   Settings,
-  BarChart3,
   CreditCard,
   Bell,
   HelpCircle,
@@ -35,12 +43,11 @@ import {
   UserPlus,
   MessageSquare,
   Palette,
-  Lock,
   ExternalLink,
   Star,
-  type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { launchIcons } from "@/components/icons/launch-icons"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   Select,
@@ -62,7 +69,7 @@ import { CommunityPermission, type CommunityPermissionValue } from "@/lib/permis
 interface NavItem {
   title: string
   href?: string
-  icon: LucideIcon
+  icon: ComponentType<{ className?: string }>
   badge?: string | null
   requiredPermission?: CommunityPermissionValue
   external?: boolean
@@ -73,7 +80,7 @@ interface NavItem {
 interface NavGroup {
   label: string
   section: string
-  icon: LucideIcon
+  icon: ComponentType<{ className?: string }>
   expandable: true
   items: NavItem[]
   requiredPermission?: CommunityPermissionValue
@@ -155,116 +162,85 @@ export function DashboardSidebar({ user, onLogout }: DashboardSidebarProps) {
       .forEach((id) => void prefetchCommunity(id))
   }, [communities, selectedCommunityId])
 
-  // Community feed URL
-  const communityFeedUrl = selectedCommunity
-    ? `/${encodeURIComponent(selectedCommunity.creator?.name || "creator")}/${selectedCommunity.slug}/home`
-    : "/creator/posts"
-
   // Community-specific base path for settings/customize
   const communityBasePath = selectedCommunity
     ? `/creator/community/${selectedCommunity.slug}`
     : "/creator"
+
+  const canCreateContent = Boolean(selectedCommunityId) && canPermission(CommunityPermission.CONTENT_MANAGE as CommunityPermissionValue)
 
   /* ──────────────────────────────────────────────────────────
      Information Architecture — grouped navigation
      ────────────────────────────────────────────────────────── */
 
   const navigation: NavEntry[] = [
-    // ── Run the Business ──
     {
-      title: "Overview",
+      label: "Home",
+      section: "home",
       icon: LayoutDashboard,
-      href: "/creator/dashboard",
+      expandable: true,
+      items: [
+        { title: "Overview", href: "/creator/dashboard", icon: LayoutDashboard },
+        { title: "Analytics", href: "/creator/analytics", icon: ChartSpline, requiredPermission: CommunityPermission.ANALYTICS_VIEW as CommunityPermissionValue },
+      ],
     },
-    {
-      title: "Communities",
-      icon: Building,
-      href: "/creator/communities",
-    },
-    {
-      title: "Analytics",
-      icon: ChartSpline,
-      href: "/creator/analytics",
-      requiredPermission: CommunityPermission.ANALYTICS_VIEW as CommunityPermissionValue,
-    },
-
-    // ── Manage Content ──
     {
       label: "Content",
       section: "content",
-      icon: FileText,
+      icon: launchIcons.post,
       expandable: true,
-      requiredPermission: CommunityPermission.CONTENT_MANAGE as CommunityPermissionValue,
       items: [
-        { title: "Courses", href: "/creator/courses", icon: BookOpen },
-        { title: "Challenges", href: "/creator/challenges", icon: Zap },
-        { title: "Sessions", href: "/creator/sessions", icon: Calendar },
-        { title: "Events", href: "/creator/events", icon: Star },
-        { title: "Products", href: "/creator/products", icon: ShoppingBag },
-        { title: "Posts", href: communityFeedUrl, icon: FileText, external: communityFeedUrl.startsWith("/") && !communityFeedUrl.startsWith("/creator") },
+        { title: "Courses", href: "/creator/courses", icon: launchIcons.course, requiredPermission: CommunityPermission.CONTENT_MANAGE as CommunityPermissionValue },
+        { title: "Posts", href: "/creator/posts", icon: launchIcons.post, requiredPermission: CommunityPermission.CONTENT_MANAGE as CommunityPermissionValue },
+        { title: "Products", href: "/creator/products", icon: launchIcons.product, requiredPermission: CommunityPermission.CONTENT_MANAGE as CommunityPermissionValue },
+        { title: "Sessions", href: "/creator/sessions", icon: launchIcons.session, requiredPermission: CommunityPermission.CONTENT_MANAGE as CommunityPermissionValue },
+        { title: "Events", href: "/creator/events", icon: launchIcons.event, requiredPermission: CommunityPermission.CONTENT_MANAGE as CommunityPermissionValue },
+        { title: "Challenges", href: "/creator/challenges", icon: launchIcons.challenge, requiredPermission: CommunityPermission.CONTENT_MANAGE as CommunityPermissionValue },
       ],
     },
-
-    // ── Manage Revenue ──
     {
-      label: "Monetization",
-      section: "monetization",
-      icon: CreditCard,
+      label: "Money",
+      section: "money",
+      icon: launchIcons.payout,
       expandable: true,
-      requiredPermission: CommunityPermission.FINANCE_VIEW as CommunityPermissionValue,
       items: [
-        { title: "Subscriptions", href: "/creator/monetization/subscriptions", icon: CreditCard },
-        { title: "Payouts", href: "/creator/monetization/payouts", icon: CreditCard },
-        { title: "Manual Payments", href: "/creator/monetization/manual-payments", icon: CreditCard },
+        { title: "Payouts", href: "/creator/monetization/payouts", icon: launchIcons.payout, requiredPermission: CommunityPermission.FINANCE_VIEW as CommunityPermissionValue },
+        { title: "Subscriptions", href: "/creator/monetization/subscriptions", icon: launchIcons.pricing, requiredPermission: CommunityPermission.FINANCE_VIEW as CommunityPermissionValue },
+        { title: "Manual Payments", href: "/creator/monetization/manual-payments", icon: CreditCard, requiredPermission: CommunityPermission.FINANCE_VIEW as CommunityPermissionValue },
       ],
     },
-
-    // ── Manage Growth ──
     {
-      label: "Marketing",
-      section: "marketing",
-      icon: Zap,
+      label: "Community",
+      section: "community",
+      icon: launchIcons.community,
       expandable: true,
-      requiredPermission: CommunityPermission.MARKETING_MANAGE as CommunityPermissionValue,
       items: [
-        { title: "Email Campaigns", href: "/creator/marketing/emails", icon: Mail },
-        { title: "Affiliates", href: "/creator/marketing/affiliates", icon: UserPlus, soon: true },
-        { title: "Affiliate Portal", href: "/dashboard/affiliate", icon: ExternalLink, soon: true },
-        { title: "Messages", href: "/creator/marketing/messages", icon: MessageSquare, soon: true },
-        { title: "WhatsApp", href: "/creator/marketing/whatsapp", icon: MessageSquare, soon: true },
+        { title: "Communities", href: "/creator/communities", icon: launchIcons.community },
+        { title: "Customize", href: `${communityBasePath}/customize`, icon: launchIcons.branding },
+        { title: "Team & Roles", href: "/creator/team", icon: Shield, requiredPermission: CommunityPermission.ROLES_MANAGE as CommunityPermissionValue },
       ],
     },
-
-    // ── Configure Workspace ──
     {
-      title: "Team & Roles",
-      icon: Shield,
-      href: "/creator/team",
-      requiredPermission: CommunityPermission.ROLES_MANAGE as CommunityPermissionValue,
+      label: "Growth",
+      section: "growth",
+      icon: launchIcons.audience,
+      expandable: true,
+      items: [
+        { title: "Email Campaigns", href: "/creator/marketing/emails", icon: Mail, requiredPermission: CommunityPermission.MARKETING_MANAGE as CommunityPermissionValue },
+        { title: "Affiliates", href: "/creator/marketing/affiliates", icon: UserPlus, requiredPermission: CommunityPermission.MARKETING_MANAGE as CommunityPermissionValue },
+        { title: "Notifications", href: "/creator/notifications", icon: Bell, badge: unreadCount > 0 ? unreadCount.toString() : null },
+      ],
     },
     {
-      title: "Customize",
-      icon: Palette,
-      href: `${communityBasePath}/customize`,
-    },
-    {
-      title: "Integrations",
-      icon: Globe,
-      href: "/creator/integrations",
-      badge: "soon",
-    },
-
-    // ── System ──
-    {
-      title: "Notifications",
-      icon: Bell,
-      href: "/creator/notifications",
-      badge: unreadCount > 0 ? unreadCount.toString() : null,
-    },
-    {
-      title: "Help & Support",
+      label: "Help",
+      section: "help",
       icon: HelpCircle,
-      href: "/creator/help",
+      expandable: true,
+      items: [
+        { title: "Integrations", href: "/creator/integrations", icon: Globe, badge: "soon" },
+        { title: "Help", href: "/creator/help", icon: HelpCircle },
+        { title: "Affiliate Portal", href: "/dashboard/affiliate", icon: ExternalLink },
+      ],
     },
   ]
 
@@ -298,9 +274,14 @@ export function DashboardSidebar({ user, onLogout }: DashboardSidebarProps) {
 
   const [expandedSections, setExpandedSections] = useState<string[]>(getInitialExpanded)
 
+  useEffect(() => {
+    setExpandedSections(getInitialExpanded())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
   const toggleSection = (section: string) => {
     setExpandedSections((prev) =>
-      prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section],
+      prev.includes(section) ? [] : [section],
     )
   }
 
@@ -373,21 +354,47 @@ export function DashboardSidebar({ user, onLogout }: DashboardSidebarProps) {
     )
   }
 
+  const getVisibleItems = (group: NavGroup) => (
+    group.items.filter((item) => {
+      if (!item.requiredPermission) return true
+      return canPermission(item.requiredPermission)
+    })
+  )
+
+  const isGroupActive = (group: NavGroup) => (
+    group.items.some((item) => item.href && !item.soon && isActive(item.href))
+  )
+
+  const renderCreateMenuItem = (
+    label: string,
+    href: string,
+    Icon: ComponentType<{ className?: string }>,
+    disabled = false,
+  ) => {
+    if (disabled) {
+      return (
+        <DropdownMenuItem key={label} disabled className="text-xs">
+          <Icon className="h-4 w-4" />
+          {label}
+        </DropdownMenuItem>
+      )
+    }
+
+    return (
+      <DropdownMenuItem key={label} asChild className="text-xs">
+        <Link href={href}>
+          <Icon className="h-4 w-4" />
+          {label}
+        </Link>
+      </DropdownMenuItem>
+    )
+  }
+
   /* ──────────────────────────────────────────────────────────
      Render
      ────────────────────────────────────────────────────────── */
 
-  // Separate entries into top-level groups by semantic section
-  const topEntries = visibleNav.filter(
-    (e) => !e.expandable && ["Overview", "Communities", "Analytics"].includes((e as NavItem).title),
-  )
-  const contentGroups = visibleNav.filter((e) => e.expandable) as NavGroup[]
-  const configEntries = visibleNav.filter(
-    (e) => !e.expandable && ["Team & Roles", "Customize", "Integrations"].includes((e as NavItem).title),
-  )
-  const systemEntries = visibleNav.filter(
-    (e) => !e.expandable && ["Notifications", "Help & Support"].includes((e as NavItem).title),
-  )
+  const navGroups = visibleNav.filter((entry) => entry.expandable) as NavGroup[]
 
   return (
     <div className="flex flex-col h-full bg-white border-r border-gray-200 text-xs">
@@ -432,115 +439,124 @@ export function DashboardSidebar({ user, onLogout }: DashboardSidebarProps) {
         </div>
       </div>
 
-      {/* ── User Profile ── */}
+      {/* ── Create Menu ── */}
       <div className="p-3 border-b border-gray-200">
-        <div className="flex items-center space-x-2">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name || "User"} />
-            <AvatarFallback>{user?.name?.charAt(0) || "U"}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-gray-900 truncate">{user?.name}</p>
-            <p className="text-[11px] text-gray-500 truncate">{user?.email}</p>
-          </div>
-          {user?.verified && <Badge className="bg-blue-100 text-blue-800 text-[10px]">Pro</Badge>}
-        </div>
-      </div>
-
-      {/* ── Create Community CTA ── */}
-      <div className="p-3 border-b border-gray-200">
-        <Link href="/creator/communities/create" className="block">
-          <Button
-            className="w-full bg-gradient-to-r from-chabaqa-primary to-chabaqa-secondary1 text-white hover:from-chabaqa-primary/90 hover:to-chabaqa-secondary1/90 text-xs h-8"
-            size="sm"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            {communities.length === 0 ? "Build Your First Community" : "Create Community"}
-          </Button>
-        </Link>
+        {communities.length === 0 ? (
+          <Link href="/creator/communities/create" className="block">
+            <Button
+              className="w-full bg-gradient-to-r from-chabaqa-primary to-chabaqa-secondary1 text-white hover:from-chabaqa-primary/90 hover:to-chabaqa-secondary1/90 text-xs h-8"
+              size="sm"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Build Your First Community
+            </Button>
+          </Link>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                className="w-full bg-gradient-to-r from-chabaqa-primary to-chabaqa-secondary1 text-white hover:from-chabaqa-primary/90 hover:to-chabaqa-secondary1/90 text-xs h-8"
+                size="sm"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Create
+                <ChevronDown className="w-3.5 h-3.5 ml-auto" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start" className="w-56">
+              <DropdownMenuLabel className="text-xs">Create</DropdownMenuLabel>
+              {renderCreateMenuItem("Community", "/creator/communities/create", Building)}
+              <DropdownMenuSeparator />
+              {renderCreateMenuItem("Course", "/creator/courses/new", BookOpen, !canCreateContent)}
+              {renderCreateMenuItem("Challenge", "/creator/challenges/new", Zap, !canCreateContent)}
+              {renderCreateMenuItem("Session", "/creator/sessions/new", Calendar, !canCreateContent)}
+              {renderCreateMenuItem("Event", "/creator/events/new", Star, !canCreateContent)}
+              {renderCreateMenuItem("Product", "/creator/products/new", ShoppingBag, !canCreateContent)}
+              {renderCreateMenuItem("Post", "/creator/posts?create=1", FileText, !canCreateContent)}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* ── Navigation ── */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-        {/* Run the Business */}
         <div className="space-y-0.5">
-          {topEntries.map((entry) => renderNavItem(entry as NavItem))}
-        </div>
+          {navGroups.map((group, index) => {
+            const visibleItems = getVisibleItems(group)
+            if (visibleItems.length === 0) return null
+            const active = isGroupActive(group)
 
-        <Separator className="my-2" />
-
-        {/* Content / Monetization / Marketing groups */}
-        <div className="space-y-0.5">
-          {contentGroups.map((group) => (
-            <Collapsible
-              key={group.section}
-              open={expandedSections.includes(group.section)}
-              onOpenChange={() => toggleSection(group.section)}
-            >
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-between text-left font-normal h-9",
-                    expandedSections.includes(group.section) && "bg-gray-50",
-                  )}
+            return (
+              <div key={group.section}>
+                {index > 0 && <Separator className="my-2" />}
+                <Collapsible
+                  open={expandedSections.includes(group.section)}
+                  onOpenChange={() => toggleSection(group.section)}
                 >
-                  <div className="flex items-center">
-                    <group.icon className="w-3.5 h-3.5 mr-2 text-gray-500" />
-                    <span className="text-xs font-medium">{group.label}</span>
-                  </div>
-                  {expandedSections.includes(group.section) ? (
-                    <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                  ) : (
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-0.5 mt-0.5">
-                {group.items
-                  .filter((item) => {
-                    if (!item.requiredPermission) return true
-                    return canPermission(item.requiredPermission)
-                  })
-                  .map((item) => renderNavItem(item, true))}
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
-        </div>
-
-        <Separator className="my-2" />
-
-        {/* Configure Workspace */}
-        <div className="space-y-0.5">
-          {configEntries.map((entry) => renderNavItem(entry as NavItem))}
-        </div>
-
-        <Separator className="my-2" />
-
-        {/* System */}
-        <div className="space-y-0.5">
-          {systemEntries.map((entry) => renderNavItem(entry as NavItem))}
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-between text-left font-normal h-9",
+                        expandedSections.includes(group.section) && "bg-gray-50",
+                        active && "text-chabaqa-primary",
+                      )}
+                    >
+                      <div className="flex items-center">
+                        <group.icon className={cn("w-3.5 h-3.5 mr-2", active ? "text-chabaqa-primary" : "text-gray-500")} />
+                        <span className="text-xs font-medium">{group.label}</span>
+                      </div>
+                      {expandedSections.includes(group.section) ? (
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-0.5 mt-0.5">
+                    {visibleItems.map((item) => renderNavItem(item, true))}
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            )
+          })}
         </div>
       </nav>
 
       {/* ── Footer ── */}
       <div className="p-3 border-t border-gray-200">
-        <div className="flex items-center justify-between space-x-2">
-          <Link href="/profile" className="flex-1">
-            <Button variant="ghost" className="w-full justify-start text-left font-normal h-8 text-xs">
-              <User className="w-3.5 h-3.5 mr-2 text-gray-500" />
-              Profile
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="w-full h-auto justify-start gap-2 px-2 py-2 text-left">
+              <Avatar className="w-7 h-7">
+                <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name || "User"} />
+                <AvatarFallback>{user?.name?.charAt(0) || "U"}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <p className="truncate text-xs font-medium text-gray-900">{user?.name}</p>
+                  {user?.verified && <Badge className="bg-blue-100 text-blue-800 text-[10px] leading-none">Pro</Badge>}
+                </div>
+                <p className="truncate text-[11px] font-normal text-gray-500">{user?.email}</p>
+              </div>
+              <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
             </Button>
-          </Link>
-          <Button
-            variant="ghost"
-            onClick={onLogout}
-            className="flex-1 justify-start text-left font-normal h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <LogOut className="w-3.5 h-3.5 mr-2" />
-            Sign Out
-          </Button>
-        </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-56">
+            <DropdownMenuLabel className="text-xs">Account</DropdownMenuLabel>
+            <DropdownMenuItem asChild className="text-xs">
+              <Link href="/profile">
+                <User className="h-4 w-4" />
+                Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onLogout} className="text-xs text-red-600 focus:text-red-700">
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   )

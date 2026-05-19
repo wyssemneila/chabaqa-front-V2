@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { MulterModule } from '@nestjs/platform-express';
 import { UploadController } from '@/domains/shared/upload/upload.controller';
 import { UploadService } from '@/domains/shared/upload/upload.service';
+import { MediaResolverService } from '@/shared/services/media-resolver.service';
 import { PolicyModule } from '@/shared/modules/policy.module';
 import { StorageUsage, StorageUsageSchema } from '@/infrastructure/database/schemas/shared/storage-usage.schema';
 import { MediaAsset, MediaAssetSchema } from '@/infrastructure/database/schemas/content/media-asset.schema';
@@ -81,7 +82,7 @@ import { ensureUploadDirectories, resolveUploadTypeDir, resolveUploadsRoot } fro
     }),
   ],
   controllers: [UploadController],
-  providers: [UploadService],
-  exports: [UploadService], // Exporter le service pour utilisation dans d'autres modules
+  providers: [UploadService, MediaResolverService],
+  exports: [UploadService, MediaResolverService], // Exporter le service pour utilisation dans d'autres modules
 })
 export class UploadModule {}

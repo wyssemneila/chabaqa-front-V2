@@ -1,20 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CreatorCoursesHeader } from "./components/creator-courses-header"
-import { CreatorCoursesStats } from "./components/creator-courses-stats"
-import { CreatorCoursesSearch } from "./components/creator-courses-search"
 import { CreatorCoursesTabs } from "./components/creator-courses-tabs"
 import { CreatorCoursesPerformance } from "./components/creator-courses-performance"
 import { api, apiClient } from "@/lib/api"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
 import {
-  PageShell,
-  PageHeader,
-  PageState,
   ModuleEmptyState,
-  TOAST_MESSAGES,
+  ModulePage,
 } from "@/components/creator-dashboard"
+import { BookOpen, Coins, Plus, Rocket, Users } from "lucide-react"
 
 export default function CreatorCoursesPage() {
   const {
@@ -27,6 +22,8 @@ export default function CreatorCoursesPage() {
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [reloadKey, setReloadKey] = useState(0)
   const [topCourses, setTopCourses] = useState<any[]>([])
   const [revenue, setRevenue] = useState<number | null>(null)
 
@@ -81,36 +78,37 @@ export default function CreatorCoursesPage() {
       }
     }
     load()
-  }, [selectedCommunityId, selectedCommunity])
+  }, [selectedCommunityId, selectedCommunity, reloadKey])
 
   // Community guard
   if (guard) return guard
 
-  if (loading) return <PageState variant="loading" compact />
-
-  if (error) {
-    return <PageState variant="error" description={error} onRetry={() => { setError(null); setLoading(true) }} />
-  }
-
-  if (courses.length === 0) {
-    return (
-      <PageShell>
-        <PageHeader
-          title="Courses"
-          breadcrumbs={[{ label: "Dashboard", href: "/creator/dashboard" }, { label: "Courses" }]}
-        />
-        <ModuleEmptyState module="courses" />
-      </PageShell>
-    )
-  }
-
   return (
-    <PageShell>
-      <CreatorCoursesHeader />
-      <CreatorCoursesStats allCourses={courses} revenue={revenue} />
-      <CreatorCoursesSearch />
-      <CreatorCoursesTabs allCourses={courses} onDeleted={handleDeleted} />
+    <ModulePage
+      title="Courses"
+      description={`Create and manage educational content for ${selectedCommunity?.name || "this community"}.`}
+      primaryAction={{ label: "Create Course", href: "/creator/courses/new", icon: Plus }}
+      metrics={[
+        { title: "Courses", value: courses.length, icon: BookOpen, color: "courses" },
+        { title: "Published", value: courses.filter((course) => course.isPublished).length, icon: Rocket, color: "success" },
+        { title: "Enrollments", value: courses.reduce((sum, course) => sum + Number(course.students || course.enrollments || course.membersCount || 0), 0), icon: Users, color: "primary" },
+        { title: "Revenue", value: revenue == null ? "..." : `${revenue.toLocaleString()} TND`, icon: Coins, color: "success" },
+      ]}
+      searchValue={searchQuery}
+      onSearchChange={setSearchQuery}
+      searchPlaceholder="Search courses..."
+      dataFreshnessLabel="Courses and revenue refresh when you switch communities or retry."
+      density="compact"
+      loading={loading}
+      error={error}
+      onRetry={() => {
+        setError(null)
+        setReloadKey((key) => key + 1)
+      }}
+      emptyState={!loading && !error && courses.length === 0 ? <ModuleEmptyState module="courses" /> : null}
+    >
+      <CreatorCoursesTabs allCourses={courses} onDeleted={handleDeleted} searchQuery={searchQuery} />
       {topCourses.length > 0 && <CreatorCoursesPerformance topCourses={topCourses} />}
-    </PageShell>
+    </ModulePage>
   )
 }

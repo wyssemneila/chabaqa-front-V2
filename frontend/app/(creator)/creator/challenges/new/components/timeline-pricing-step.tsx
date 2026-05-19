@@ -10,6 +10,7 @@ import { CalendarIcon, Users } from "lucide-react"
 import { format, addDays } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Dispatch, SetStateAction, useEffect } from "react"
+import { CreatorAdvancedSection } from "@/components/creator-dashboard/create-flow"
 
 interface TimelinePricingStepProps {
   formData: {
@@ -75,9 +76,9 @@ export function TimelinePricingStep({
       <CardHeader>
         <CardTitle className="flex items-center">
           <CalendarIcon className="h-5 w-5 mr-2 text-challenges-500" />
-          Timeline & Pricing
+          Schedule & Pricing
         </CardTitle>
-        <CardDescription>Set your challenge dates, deposit, and reward structure</CardDescription>
+        <CardDescription>Pick when the challenge starts. Pricing can stay free until you are ready.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -164,51 +165,63 @@ export function TimelinePricingStep({
             {getError("participationFee") && <p className="text-sm text-red-500">{getError("participationFee")}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="depositAmount">Deposit Amount (Refundable)</Label>
-            <div className="flex">
-              <Select value={formData.currency || 'TND'} onValueChange={(value) => handleInputChange('currency', value)}>
-                <SelectTrigger className="w-20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="TND">TND</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                id="depositAmount"
-                type="number"
-                placeholder="0"
-                className={cn("rounded-l-none", getError("depositAmount") && "border-red-500")}
-                value={formData.depositAmount}
-                onChange={(e) => handleInputChange("depositAmount", e.target.value)}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">Optional deposit returned on completion</p>
-            {getError("depositAmount") && <p className="text-sm text-red-500">{getError("depositAmount")}</p>}
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="maxParticipants">Max Participants</Label>
-            <div className="relative">
-              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="maxParticipants"
-                type="number"
-                placeholder="100"
-                className={cn("pl-10", getError("maxParticipants") && "border-red-500")}
-                value={formData.maxParticipants}
-                onChange={(e) => handleInputChange("maxParticipants", e.target.value)}
-              />
+        <CreatorAdvancedSection
+          title="Participant limits and deposit"
+          description="Optional controls for paid or accountability challenges."
+          status={formData.depositAmount || formData.maxParticipants ? "Configured" : "Optional"}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="depositAmount">Deposit Amount (Refundable)</Label>
+              <div className="flex">
+                <Select value={formData.currency || 'TND'} onValueChange={(value) => handleInputChange('currency', value)}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TND">TND</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="depositAmount"
+                  type="number"
+                  placeholder="0"
+                  className={cn("rounded-l-none", getError("depositAmount") && "border-red-500")}
+                  value={formData.depositAmount}
+                  onChange={(e) => handleInputChange("depositAmount", e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Optional deposit returned on completion</p>
+              {getError("depositAmount") && <p className="text-sm text-red-500">{getError("depositAmount")}</p>}
             </div>
-            {getError("maxParticipants") && <p className="text-sm text-red-500">{getError("maxParticipants")}</p>}
-          </div>
-        </div>
 
-        <div className="space-y-4">
-          <Label>Reward Structure</Label>
+            <div className="space-y-2">
+              <Label htmlFor="maxParticipants">Max Participants</Label>
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="maxParticipants"
+                  type="number"
+                  placeholder="100"
+                  className={cn("pl-10", getError("maxParticipants") && "border-red-500")}
+                  value={formData.maxParticipants}
+                  onChange={(e) => handleInputChange("maxParticipants", e.target.value)}
+                />
+              </div>
+              {getError("maxParticipants") && <p className="text-sm text-red-500">{getError("maxParticipants")}</p>}
+            </div>
+          </div>
+        </CreatorAdvancedSection>
+
+        <CreatorAdvancedSection
+          title="Reward structure"
+          description="Optional bonuses for completion, streaks, or top performers."
+          status={Object.values(formData.rewards).some(Boolean) ? "Configured" : "Optional"}
+        >
+          <div className="space-y-4">
+          <Label>Rewards</Label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="completionReward" className="text-sm">
@@ -285,7 +298,8 @@ export function TimelinePricingStep({
               {getError("streakBonus") && <p className="text-sm text-red-500">{getError("streakBonus")}</p>}
             </div>
           </div>
-        </div>
+          </div>
+        </CreatorAdvancedSection>
       </CardContent>
     </EnhancedCard>
   )

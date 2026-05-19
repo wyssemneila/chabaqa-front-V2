@@ -151,7 +151,7 @@ export function DateLocationStep({
 
         {formData.type !== "Online" && (
           <div className="space-y-2">
-            <Label htmlFor="location">Location *</Label>
+            <Label htmlFor="location">Location before publish</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -165,12 +165,15 @@ export function DateLocationStep({
             {errors.location && (
               <p className="text-sm text-red-500">{errors.location}</p>
             )}
+            {!errors.location && (
+              <p className="text-xs text-muted-foreground">You can save a draft now and add the venue before publishing.</p>
+            )}
           </div>
         )}
 
         {formData.type !== "In-person" && (
           <div className="space-y-2">
-            <Label htmlFor="onlineUrl">Online Event URL *</Label>
+            <Label htmlFor="onlineUrl">Online event link before publish</Label>
             <div className="relative">
               <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -183,6 +186,9 @@ export function DateLocationStep({
             </div>
             {errors.onlineUrl && (
               <p className="text-sm text-red-500">{errors.onlineUrl}</p>
+            )}
+            {!errors.onlineUrl && (
+              <p className="text-xs text-muted-foreground">Save the draft without a link, then add Zoom, Meet, or another event URL when it is ready.</p>
             )}
           </div>
         )}

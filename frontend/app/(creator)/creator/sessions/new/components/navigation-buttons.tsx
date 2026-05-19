@@ -7,6 +7,8 @@ interface NavigationButtonsProps {
   setCurrentStep: (step: number) => void
   handleSubmit: () => void
   onNextStep: () => void
+  isSubmitting?: boolean
+  hideSubmitAction?: boolean
 }
 
 export function NavigationButtons({
@@ -15,6 +17,8 @@ export function NavigationButtons({
   setCurrentStep,
   handleSubmit,
   onNextStep,
+  isSubmitting = false,
+  hideSubmitAction = false,
 }: NavigationButtonsProps) {
   return (
     <div className="flex items-center justify-between">
@@ -31,11 +35,12 @@ export function NavigationButtons({
           <Button
             onClick={onNextStep}
             className="bg-sessions-500 hover:bg-sessions-600"
+            disabled={isSubmitting}
           >
             Next Step
           </Button>
-        ) : (
-          <Button onClick={handleSubmit} className="bg-sessions-500 hover:bg-sessions-600">
+        ) : hideSubmitAction ? null : (
+          <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-sessions-500 hover:bg-sessions-600">
             Save Session Draft
           </Button>
         )}

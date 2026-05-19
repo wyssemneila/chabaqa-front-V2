@@ -237,7 +237,7 @@ export default function NotificationsPage() {
   return (
     <PageShell className="container mx-auto space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Notifications</h1>
           <p className="text-gray-500">Stay updated with your community activities</p>
@@ -246,7 +246,7 @@ export default function NotificationsPage() {
           <Button
             onClick={handleMarkAllAsRead}
             variant="outline"
-            className="flex items-center gap-2"
+            className="hidden items-center gap-2 md:flex"
           >
             <CheckCheck className="w-4 h-4" />
             Mark All as Read
@@ -260,7 +260,7 @@ export default function NotificationsPage() {
             <Bell className="h-4 w-4" />
             Notifications
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
+          <TabsTrigger value="settings" className="hidden items-center gap-2 md:flex">
             <Settings className="h-4 w-4" />
             Settings
           </TabsTrigger>
@@ -324,7 +324,7 @@ export default function NotificationsPage() {
               className="pl-10"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant={filterType === "all" ? "default" : "outline"}
               size="sm"
@@ -416,7 +416,7 @@ export default function NotificationsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 flex-shrink-0">
+                  <div className="hidden items-center space-x-2 flex-shrink-0 md:flex">
                     {!notification.isRead && (
                       <Button
                         variant="ghost"
@@ -475,7 +475,7 @@ export default function NotificationsPage() {
 
         </TabsContent>
 
-        <TabsContent value="settings" className="space-y-6">
+        <TabsContent value="settings" className="hidden space-y-6 md:block">
           <PushSettings userId={user?._id} />
           <NotificationPreferences />
           <MutesList />

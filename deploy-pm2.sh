@@ -11,6 +11,30 @@ DEPLOY_USER="${DEPLOY_USER:-ubuntu}"
 
 echo "[pm2-deploy] project=${PROJECT_DIR}"
 
+if [ "$(id -u)" -eq 0 ] && ! id -u "${DEPLOY_USER}" >/dev/null 2>&1; then
+  echo "[pm2-deploy] DEPLOY_USER=${DEPLOY_USER} does not exist; refusing to run privileged app processes"
+  exit 1
+fi
+
+cleanup_root_pm2_apps() {
+  if [ "$(id -u)" -ne 0 ] || ! command -v pm2 >/dev/null 2>&1; then
+    return
+  fi
+
+  local removed=0
+  for app in chabaqa-backend chabaqa-frontend; do
+    if pm2 jlist 2>/dev/null | grep -q '"name":"'"${app}"'"'; then
+      echo "[pm2-deploy] deleting root-owned PM2 app: ${app}"
+      pm2 delete "${app}" || true
+      removed=1
+    fi
+  done
+
+  if [ "${removed}" = "1" ]; then
+    pm2 save --force || true
+  fi
+}
+
 run_pm2() {
   if [ "$(id -u)" -eq 0 ] && id -u "${DEPLOY_USER}" >/dev/null 2>&1; then
     sudo -u "${DEPLOY_USER}" pm2 "$@"
@@ -50,9 +74,21 @@ get_pm2_pid() {
 }
 
 assert_port_owned_by_pm2() {
-  local port="$2"
-  if ! ss -ltn "( sport = :${port} )" | awk 'NR>1 {found=1} END {exit found ? 0 : 1}'; then
+  local port="$1"
+  if ! ss -ltnp "( sport = :${port} )" | awk 'NR>1 {found=1} END {exit found ? 0 : 1}'; then
     echo "[pm2-deploy] nothing is listening on port ${port}"
+    exit 1
+  fi
+}
+
+assert_http_status() {
+  local url="$1"
+  local expected="$2"
+  local label="$3"
+  local status
+  status="$(curl -sS -o /dev/null -w "%{http_code}" "${url}" || true)"
+  if [ "${status}" != "${expected}" ]; then
+    echo "[pm2-deploy] ${label} failed: expected ${expected}, got ${status} (${url})"
     exit 1
   fi
 }
@@ -67,6 +103,8 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
+cleanup_root_pm2_apps
+
 mkdir -p \
   "${BACKEND_DIR}/uploads/image" \
   "${BACKEND_DIR}/uploads/video" \
@@ -77,6 +115,8 @@ mkdir -p \
 
 if [ "$(id -u)" -eq 0 ] && id -u "${DEPLOY_USER}" >/dev/null 2>&1; then
   chown -R "${DEPLOY_USER}:${DEPLOY_USER}" \
+    "${BACKEND_DIR}/src/domains/communication/email-templates/compiled" \
+    "${BACKEND_DIR}/dist" \
     "${BACKEND_DIR}/uploads" \
     "${BACKEND_DIR}/hls-output" \
     "${FRONTEND_DIR}/.next"
@@ -95,10 +135,10 @@ echo "[pm2-deploy] building frontend"
 run_as_deploy_user npm --prefix "${FRONTEND_DIR}" run build
 
 echo "[pm2-deploy] syncing frontend standalone static assets"
-rm -rf "${FRONTEND_DIR}/.next/standalone/public" "${FRONTEND_DIR}/.next/standalone/.next/static"
-mkdir -p "${FRONTEND_DIR}/.next/standalone/.next"
+rm -rf "${FRONTEND_DIR}/.next/standalone/public"
+mkdir -p "${FRONTEND_DIR}/.next/standalone/.next/static"
 cp -R "${FRONTEND_DIR}/public" "${FRONTEND_DIR}/.next/standalone/public"
-cp -R "${FRONTEND_DIR}/.next/static" "${FRONTEND_DIR}/.next/standalone/.next/static"
+cp -R "${FRONTEND_DIR}/.next/static/." "${FRONTEND_DIR}/.next/standalone/.next/static/"
 
 if [ "$(id -u)" -eq 0 ] && id -u "${DEPLOY_USER}" >/dev/null 2>&1; then
   chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${FRONTEND_DIR}/.next"
@@ -142,13 +182,33 @@ if [ "${FRONTEND_STATUS}" != "200" ] && [ "${FRONTEND_STATUS}" != "307" ]; then
   exit 1
 fi
 
-if [ "${UPLOADS_STATUS}" != "403" ] && [ "${UPLOADS_STATUS}" != "404" ]; then
+if [ "${UPLOADS_STATUS}" != "301" ] && [ "${UPLOADS_STATUS}" != "403" ] && [ "${UPLOADS_STATUS}" != "404" ]; then
   echo "[pm2-deploy] uploads route returned unexpected status: ${UPLOADS_STATUS}"
   exit 1
 fi
 
+assert_http_status "http://127.0.0.1:8081/logo_chabaqa.png" "200" "frontend logo asset"
+assert_http_status "http://127.0.0.1:8081/Logos/PNG/frensh1.png" "200" "frontend header logo asset"
+assert_http_status "http://127.0.0.1:8081/banners-community/community-1-email-marketing.png" "200" "frontend image fallback asset"
+assert_http_status "http://127.0.0.1:8081/placeholder-user.jpg" "200" "frontend avatar fallback asset"
+
+NEXT_LAYOUT_CHUNK="$(find "${FRONTEND_DIR}/.next/standalone/.next/static/chunks/app" -maxdepth 1 -name 'layout-*.js' -print -quit 2>/dev/null || true)"
+if [ -z "${NEXT_LAYOUT_CHUNK}" ]; then
+  echo "[pm2-deploy] frontend app layout chunk is missing from standalone static assets"
+  exit 1
+fi
+assert_http_status "http://127.0.0.1:8081/_next/static/chunks/app/$(basename "${NEXT_LAYOUT_CHUNK}")" "200" "frontend app layout chunk"
+
+NEXT_FONT_ASSET="$(find "${FRONTEND_DIR}/.next/standalone/.next/static/media" -maxdepth 1 -name '*.woff2' -print -quit 2>/dev/null || true)"
+if [ -n "${NEXT_FONT_ASSET}" ]; then
+  assert_http_status "http://127.0.0.1:8081/_next/static/media/$(basename "${NEXT_FONT_ASSET}")" "200" "frontend font asset"
+fi
+
 assert_port_owned_by_pm2 3000
 assert_port_owned_by_pm2 8081
+
+"${PROJECT_DIR}/scripts/verify-production.sh"
+"${PROJECT_DIR}/scripts/smoke-production.sh"
 
 run_pm2 save
 run_pm2 status

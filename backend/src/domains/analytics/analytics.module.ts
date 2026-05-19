@@ -11,12 +11,14 @@ import { CoursSchema, CourseEnrollmentSchema } from '@/infrastructure/database/s
 import { Subscription, SubscriptionSchema } from '@/infrastructure/database/schemas/commerce/subscription.schema';
 import { AnalyticsScheduler } from '@/domains/analytics/analytics.scheduler';
 import { CreatorInsightsService } from '@/domains/analytics/creator-insights.service';
+import { CacheModule } from '@/infrastructure/cache/cache.module';
 
 @Global()
 @Module({
   imports: [
     SubscriptionModule,
     PolicyModule,
+    CacheModule,
     MongooseModule.forFeature([
       { name: AnalyticsDaily.name, schema: AnalyticsDailySchema },
       { name: 'Cours', schema: CoursSchema },
@@ -31,5 +33,4 @@ import { CreatorInsightsService } from '@/domains/analytics/creator-insights.ser
   exports: [AnalyticsService],
 })
 export class AnalyticsModule { }
-
 

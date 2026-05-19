@@ -14,7 +14,7 @@
     "start:dev": "npm run email:compile && NODE_OPTIONS='--max-old-space-size=4096' nest start --watch",
     "start:dev:localdb": "node scripts/run-with-local-db-env.js nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node -r tsconfig-paths/register dist/main.js",
+  "start:prod": "node -r tsconfig-paths/register dist/src/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",

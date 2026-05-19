@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { api } from "@/lib/api"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 import {
   Sidebar,
   SidebarContent,
@@ -20,16 +20,16 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   LayoutDashboard,
   BookOpen,
@@ -44,7 +44,8 @@ import {
   LogOut,
   User,
   Loader2,
-} from "lucide-react"
+  Sparkles,
+} from "lucide-react";
 
 const menuItems = [
   {
@@ -91,6 +92,11 @@ const menuItems = [
     key: "members",
   },
   {
+    title: "Chabaqa AI",
+    url: "/creator/ai",
+    icon: Sparkles,
+  },
+  {
     title: "Landing Page",
     url: "/creator/landing",
     icon: Palette,
@@ -100,7 +106,14 @@ const menuItems = [
     url: "/creator/settings",
     icon: Settings,
   },
-]
+];
+
+const aiMenuItems = [
+  { title: "Overview", url: "/creator/ai" },
+  { title: "AI Staff", url: "/creator/ai/staff" },
+  { title: "Cofounder", url: "/creator/ai/cofounder" },
+  { title: "Create with AI", url: "/creator/ai/create" },
+];
 
 // Color palette for communities
 const COMMUNITY_COLORS = [
@@ -112,118 +125,168 @@ const COMMUNITY_COLORS = [
   "#1890ff",
   "#eb2f96",
   "#faad14",
-]
+];
 
 function getColorForCommunity(index: number): string {
-  return COMMUNITY_COLORS[index % COMMUNITY_COLORS.length]
+  return COMMUNITY_COLORS[index % COMMUNITY_COLORS.length];
 }
 
 export function CreatorSidebar() {
-  const pathname = usePathname()
-  const [selectedCommunity, setSelectedCommunity] = useState<any>(null)
-  const [communities, setCommunities] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const pathname = usePathname();
+  const [selectedCommunity, setSelectedCommunity] = useState<any>(null);
+  const [communities, setCommunities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [counts, setCounts] = useState<Record<string, string>>({
     courses: "0",
     challenges: "0",
     sessions: "0",
     posts: "0",
     members: "0",
-  })
+  });
 
   // Fetch counts for sidebar badges
   const fetchCounts = async () => {
     try {
       // Get current user ID
-      const me = await api.auth.me().catch(() => null)
-      const user = me?.data || (me as any)?.user || null
-      const userId = user?._id || user?.id
+      const me = await api.auth.me().catch(() => null);
+      const user = me?.data || (me as any)?.user || null;
+      const userId = user?._id || user?.id;
 
-      if (!userId) return
+      if (!userId) return;
 
       // Fetch all counts in parallel
-      const [coursesRes, challengesRes, sessionsRes, postsRes] = await Promise.all([
-        api.courses.getByCreator(userId, { limit: 1 }).catch(() => ({ data: { courses: [], pagination: { total: 0, page: 1, limit: 1, totalPages: 0 } } })),
-        api.challenges.getByCreator(userId, { limit: 1 } as any).catch(() => ({ data: { courses: [], pagination: { total: 0, page: 1, limit: 1, totalPages: 0 } } })),
-        api.sessions.getByCreator(userId, { limit: 1 }).catch(() => ({ data: { courses: [], pagination: { total: 0, page: 1, limit: 1, totalPages: 0 } } })),
-        api.posts.getByCreator(userId, { page: 1, limit: 1 }).catch(() => ({ posts: [], pagination: { total: 0, page: 1, limit: 1, totalPages: 0 } } as any)),
-      ])
+      const [coursesRes, challengesRes, sessionsRes, postsRes] =
+        await Promise.all([
+          api.courses
+            .getByCreator(userId, { limit: 1 })
+            .catch(() => ({
+              data: {
+                courses: [],
+                pagination: { total: 0, page: 1, limit: 1, totalPages: 0 },
+              },
+            })),
+          api.challenges
+            .getByCreator(userId, { limit: 1 } as any)
+            .catch(() => ({
+              data: {
+                courses: [],
+                pagination: { total: 0, page: 1, limit: 1, totalPages: 0 },
+              },
+            })),
+          api.sessions
+            .getByCreator(userId, { limit: 1 })
+            .catch(() => ({
+              data: {
+                courses: [],
+                pagination: { total: 0, page: 1, limit: 1, totalPages: 0 },
+              },
+            })),
+          api.posts
+            .getByCreator(userId, { page: 1, limit: 1 })
+            .catch(
+              () =>
+                ({
+                  posts: [],
+                  pagination: { total: 0, page: 1, limit: 1, totalPages: 0 },
+                }) as any,
+            ),
+        ]);
 
       // Calculate total members across all manageable communities
-      const communitiesResponse = await api.communities.getMyManageable()
-      const communitiesData = communitiesResponse?.data || []
-      const totalMembers = communitiesData.reduce((sum: number, community: any) => {
-        return sum + (community.membersCount || community.members?.length || 0)
-      }, 0)
+      const communitiesResponse = await api.communities.getMyManageable();
+      const communitiesData = communitiesResponse?.data || [];
+      const totalMembers = communitiesData.reduce(
+        (sum: number, community: any) => {
+          return (
+            sum + (community.membersCount || community.members?.length || 0)
+          );
+        },
+        0,
+      );
 
       // Format numbers
       const formatNumber = (num: number) => {
         if (num >= 1000) {
-          return `${(num / 1000).toFixed(1)}k`
+          return `${(num / 1000).toFixed(1)}k`;
         }
-        return num.toString()
-      }
+        return num.toString();
+      };
 
-      const challengesCount = challengesRes.data?.pagination?.total || challengesRes.data?.length || 0
+      const challengesCount =
+        challengesRes.data?.pagination?.total ||
+        challengesRes.data?.length ||
+        0;
       setCounts({
-        courses: formatNumber(coursesRes.data?.pagination?.total || coursesRes.data?.length || 0),
+        courses: formatNumber(
+          coursesRes.data?.pagination?.total || coursesRes.data?.length || 0,
+        ),
         challenges: challengesCount > 0 ? `${challengesCount} Active` : "0",
-        sessions: formatNumber(sessionsRes.data?.pagination?.total || sessionsRes.data?.length || 0),
-        posts: formatNumber(postsRes.pagination?.total || postsRes.posts?.length || 0),
+        sessions: formatNumber(
+          sessionsRes.data?.pagination?.total || sessionsRes.data?.length || 0,
+        ),
+        posts: formatNumber(
+          postsRes.pagination?.total || postsRes.posts?.length || 0,
+        ),
         members: formatNumber(totalMembers),
-      })
+      });
     } catch (err) {
-      console.error('Failed to fetch counts:', err)
+      console.error("Failed to fetch counts:", err);
       // Keep default values on error
     }
-  }
+  };
 
   // Fetch communities and counts on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
 
         // Fetch communities and counts in parallel
         const [communitiesResponse] = await Promise.all([
           api.communities.getMyCreated(),
           fetchCounts(),
-        ])
+        ]);
 
-        const communitiesData = communitiesResponse?.data || []
+        const communitiesData = communitiesResponse?.data || [];
 
-        setCommunities(communitiesData)
-        
+        setCommunities(communitiesData);
+
         // Set first community as default, or try to restore from localStorage
         if (communitiesData.length > 0) {
-          const savedCommunityId = localStorage.getItem('creator_selected_community_id')
+          const savedCommunityId = localStorage.getItem(
+            "creator_selected_community_id",
+          );
           const defaultCommunity = savedCommunityId
-            ? communitiesData.find((c: any) => c._id === savedCommunityId) || communitiesData[0]
-            : communitiesData[0]
-          
-          setSelectedCommunity(defaultCommunity)
+            ? communitiesData.find((c: any) => c._id === savedCommunityId) ||
+              communitiesData[0]
+            : communitiesData[0];
+
+          setSelectedCommunity(defaultCommunity);
         }
       } catch (err) {
-        console.error('Failed to fetch communities:', err)
-        setError('Failed to load communities')
+        console.error("Failed to fetch communities:", err);
+        setError("Failed to load communities");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   // Handle community selection and save to localStorage
   const handleSelectCommunity = (community: any) => {
-    setSelectedCommunity(community)
-    localStorage.setItem('creator_selected_community_id', community._id || community.id)
-    
+    setSelectedCommunity(community);
+    localStorage.setItem(
+      "creator_selected_community_id",
+      community._id || community.id,
+    );
+
     // Optionally redirect to community dashboard
     // router.push(`/creator/community/${community._id || community.id}/dashboard`)
-  }
+  };
 
   // Show loading state
   if (loading) {
@@ -240,7 +303,7 @@ export function CreatorSidebar() {
           </SidebarMenu>
         </SidebarHeader>
       </Sidebar>
-    )
+    );
   }
 
   // Show error state
@@ -257,7 +320,7 @@ export function CreatorSidebar() {
           </SidebarMenu>
         </SidebarHeader>
       </Sidebar>
-    )
+    );
   }
 
   return (
@@ -278,17 +341,23 @@ export function CreatorSidebar() {
                         style={{
                           backgroundColor:
                             selectedCommunity.color ||
-                            getColorForCommunity(communities.indexOf(selectedCommunity)),
+                            getColorForCommunity(
+                              communities.indexOf(selectedCommunity),
+                            ),
                         }}
                       >
-                        <span className="text-sm">{selectedCommunity.name?.charAt(0) || 'C'}</span>
+                        <span className="text-sm">
+                          {selectedCommunity.name?.charAt(0) || "C"}
+                        </span>
                       </div>
                       <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-semibold">{selectedCommunity.name}</span>
+                        <span className="truncate font-semibold">
+                          {selectedCommunity.name}
+                        </span>
                         <span className="truncate text-xs text-muted-foreground">
                           {selectedCommunity.members?.toLocaleString?.() ||
                             selectedCommunity.memberCount ||
-                            0}{' '}
+                            0}{" "}
                           members
                         </span>
                       </div>
@@ -309,7 +378,9 @@ export function CreatorSidebar() {
                   <div className="flex size-6 items-center justify-center rounded-sm border">
                     <Plus className="size-4" />
                   </div>
-                  <div className="font-medium text-muted-foreground">Create Community</div>
+                  <div className="font-medium text-muted-foreground">
+                    Create Community
+                  </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {communities.length > 0 ? (
@@ -322,15 +393,21 @@ export function CreatorSidebar() {
                       <div
                         className="flex size-6 items-center justify-center rounded-sm font-semibold text-white"
                         style={{
-                          backgroundColor: community.color || getColorForCommunity(index),
+                          backgroundColor:
+                            community.color || getColorForCommunity(index),
                         }}
                       >
-                        <span className="text-xs">{community.name?.charAt(0)}</span>
+                        <span className="text-xs">
+                          {community.name?.charAt(0)}
+                        </span>
                       </div>
                       <div className="flex-1">
                         <div className="font-medium">{community.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {community.members?.toLocaleString?.() || community.memberCount || 0} members
+                          {community.members?.toLocaleString?.() ||
+                            community.memberCount ||
+                            0}{" "}
+                          members
                         </div>
                       </div>
                       {selectedCommunity?._id === community._id ||
@@ -357,7 +434,11 @@ export function CreatorSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url} className="group">
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.url}
+                    className="group"
+                  >
                     <Link href={item.url}>
                       <item.icon className="size-4" />
                       <span>{item.title}</span>
@@ -366,9 +447,12 @@ export function CreatorSidebar() {
                           variant="secondary"
                           className={cn(
                             "ml-auto text-xs",
-                            item.color === "courses" && "bg-courses-100 text-courses-700",
-                            item.color === "challenges" && "bg-challenges-100 text-challenges-700",
-                            item.color === "sessions" && "bg-sessions-100 text-sessions-700",
+                            item.color === "courses" &&
+                              "bg-courses-100 text-courses-700",
+                            item.color === "challenges" &&
+                              "bg-challenges-100 text-challenges-700",
+                            item.color === "sessions" &&
+                              "bg-sessions-100 text-sessions-700",
                           )}
                         >
                           {counts[item.key]}
@@ -376,6 +460,24 @@ export function CreatorSidebar() {
                       )}
                     </Link>
                   </SidebarMenuButton>
+                  {item.title === "Chabaqa AI" &&
+                    pathname.startsWith("/creator/ai") && (
+                      <div className="ml-7 mt-1 grid gap-1 border-l border-sidebar-border pl-2">
+                        {aiMenuItems.map((subItem) => (
+                          <Link
+                            key={subItem.url}
+                            href={subItem.url}
+                            className={cn(
+                              "rounded-md px-2 py-1.5 text-xs text-muted-foreground outline-none transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-ring",
+                              pathname === subItem.url &&
+                                "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
+                            )}
+                          >
+                            {subItem.title}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -393,12 +495,19 @@ export function CreatorSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src="/placeholder.svg?height=32&width=32" alt="Sarah Johnson" />
+                    <AvatarImage
+                      src="/placeholder.svg?height=32&width=32"
+                      alt="Sarah Johnson"
+                    />
                     <AvatarFallback className="rounded-lg">SJ</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Sarah Johnson</span>
-                    <span className="truncate text-xs text-muted-foreground">Creator</span>
+                    <span className="truncate font-semibold">
+                      Sarah Johnson
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      Creator
+                    </span>
                   </div>
                   <ChevronDown className="ml-auto size-4" />
                 </SidebarMenuButton>
@@ -428,7 +537,7 @@ export function CreatorSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
 
 export function CreatorLayout({ children }: { children: React.ReactNode }) {
@@ -446,7 +555,9 @@ export function CreatorLayout({ children }: { children: React.ReactNode }) {
                     <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-primary-600 rounded flex items-center justify-center">
                       <span className="text-white font-bold text-xs">C</span>
                     </div>
-                    <span className="font-semibold gradient-text">Chabaqa Creator</span>
+                    <span className="font-semibold gradient-text">
+                      Chabaqa Creator
+                    </span>
                   </div>
                 </div>
               </div>
@@ -456,5 +567,5 @@ export function CreatorLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </SidebarProvider>
-  )
+  );
 }

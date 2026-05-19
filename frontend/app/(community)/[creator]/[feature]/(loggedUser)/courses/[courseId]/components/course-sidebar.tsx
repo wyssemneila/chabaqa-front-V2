@@ -43,15 +43,15 @@ interface CourseSidebarProps {
   courseSession?: CourseSession
 }
 
-export default function CourseSidebar({ 
-  course, 
-  enrollment, 
-  allChapters, 
-  progress, 
+export default function CourseSidebar({
+  course,
+  enrollment,
+  allChapters,
+  progress,
   completedChaptersCount,
   remainingChaptersCount,
-  selectedChapter, 
-  setSelectedChapter, 
+  selectedChapter,
+  setSelectedChapter,
   isChapterAccessible,
   currentChapterProgress,
   courseId,
@@ -99,16 +99,16 @@ export default function CourseSidebar({
   const handleSaveNote = async () => {
     // If no chapter selected, try to use the first one available
     const targetChapter = selectedChapter || (allChapters?.[0]?.id ?? null)
-    
+
     if (!targetChapter || !noteContent.trim()) {
-      toast({ 
-        title: "Cannot save note", 
+      toast({
+        title: "Cannot save note",
         description: "Please select a chapter and enter some text",
-        variant: "destructive" 
+        variant: "destructive"
       })
       return
     }
-    
+
     try {
       await api.courses.createNote(course.id, targetChapter, noteContent)
       setNoteContent("")
@@ -116,9 +116,9 @@ export default function CourseSidebar({
       loadNotes()
     } catch (error) {
       console.error(error)
-      toast({ 
-        title: "Error saving note", 
-        variant: "destructive" 
+      toast({
+        title: "Error saving note",
+        variant: "destructive"
       })
     }
   }
@@ -175,7 +175,7 @@ export default function CourseSidebar({
   const handleNextChapter = async (nextChapter: any) => {
     if (!nextChapter) return;
     const nextChapterId = String(nextChapter.id)
-    const nextChapterRequiresPayment = Boolean(nextChapter.isPaidChapter) && !Boolean(nextChapter.isPreview)
+    const nextChapterRequiresPayment = Boolean(nextChapter.isPaidChapter)
     console.info("[CourseNextFlow] Sidebar Next clicked", {
       nextChapterId,
       nextChapterRequiresPayment,
@@ -230,13 +230,13 @@ export default function CourseSidebar({
         }
       } catch (error) {
         console.error("Chapter checkout init failed:", error)
-        toast({ 
-          title: "Error starting payment", 
+        toast({
+          title: "Error starting payment",
           description:
             typeof error === "object" && error && "message" in error
               ? String((error as any).message)
               : "Please try again later",
-          variant: "destructive" 
+          variant: "destructive"
         });
       } finally {
         setPurchasing(false);
@@ -311,7 +311,7 @@ export default function CourseSidebar({
     }
 
     if (!isCurrentChapterCompleted) {
-      const reason = "Complete at least 90% of the current chapter to unlock the next one."
+      const reason = "Finish this chapter to unlock the next one."
       console.warn("[CourseNextFlow] Next chapter click blocked", {
         nextChapterId,
         reason,
@@ -407,7 +407,7 @@ export default function CourseSidebar({
                           const isFirstPreviewChapter =
                             !isUserEnrolled &&
                             Boolean(firstChapterId && String(chapter.id) === firstChapterId)
-                          
+
                           // Calculate chapter progress percentage
                           const watchTime = Number(chapterProgress?.watchTime ?? 0)
                           const duration = Number(chapterProgress?.videoDuration ?? chapter.duration ?? 0)
@@ -426,7 +426,7 @@ export default function CourseSidebar({
                                 })
                                 if (!accessible) {
                                   const reason = isUserEnrolled
-                                    ? "This chapter is still locked. Complete the previous chapter first."
+                                    ? "Finish this chapter to unlock the next one."
                                     : "You need to enroll to open this chapter."
                                   console.warn("[CourseNextFlow] Sidebar chapter click blocked", {
                                     chapterId,
@@ -459,11 +459,11 @@ export default function CourseSidebar({
                                     <Lock className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
                                   )}
                                 </div>
-                                
+
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between gap-2">
                                     <div className="flex-1 min-w-0">
-                                      <span className={`text-xs md:text-sm font-semibold block line-clamp-2 ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                                      <span className={`text-xs md:text-sm font-semibold block line-clamp-2 ${isActive ? 'text-primary' : accessible ? 'text-foreground' : 'text-muted-foreground'}`}>
                                         {chapterIndex + 1}. {chapter.title}
                                       </span>
                                     </div>
@@ -474,17 +474,17 @@ export default function CourseSidebar({
                                       </span>
                                     )}
                                   </div>
-                                  
+
                                   {/* Progress bar for in-progress chapters */}
                                   {!isCompleted && progressPct > 0 && (
                                     <div className="mt-1.5 md:mt-2">
                                       <Progress value={progressPct} className="h-0.5 md:h-1" />
                                     </div>
                                   )}
-                                  
+
                                   {/* Chapter badges */}
                                   <div className="flex items-center gap-1.5 mt-1.5">
-                                    {(chapter.isPreview || isFirstPreviewChapter) && accessible && (
+                                    {isFirstPreviewChapter && accessible && (
                                       <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">
                                         Preview
                                       </span>
@@ -523,10 +523,10 @@ export default function CourseSidebar({
                 const currentChapter = Array.isArray(allChapters)
                   ? allChapters.find((c: any) => String(c.id) === String(currentId))
                   : null
-                
+
                 // --- HIGH WATER MARK LOGIC FOR SIDEBAR ---
                 // We want the sidebar to always show the MAX progress reached, even if the player seeks back.
-                
+
                 // 1. Get backend progress
                 const chapterProgress = enrollment?.progress?.find((p: any) => String(p.chapterId) === String(currentId))
                 const backendWatchTime = Number(chapterProgress?.watchTime ?? 0)
@@ -543,7 +543,7 @@ export default function CourseSidebar({
                   resolvedCourseId && currentId
                     ? `course_progress_${userScopeId}_${resolvedCourseId}_${currentId}`
                     : null
-                
+
                 if (typeof window !== 'undefined' && storageKey) {
                   const localData = localStorage.getItem(storageKey)
                   if (localData) {
@@ -553,32 +553,31 @@ export default function CourseSidebar({
                     } catch (e) {}
                   }
                 }
-                
+
                 // 3. Get live player progress
                 const liveWatchTime = currentChapterProgress?.watchTime ?? 0
-                
+
                 // 4. Calculate effective High-Water Mark to display
                 const effectiveWatchTime = Math.max(maxStoredTime, liveWatchTime)
-                
+
                 const duration = currentChapterProgress?.duration ?? Number((chapterProgress && (chapterProgress as any).videoDuration) ?? currentChapter?.duration ?? 0)
-                
+
                 // Calculate percentage
-                let currentPct = isCompleted 
-                  ? 100 
+                let currentPct = isCompleted
+                  ? 100
                   : (duration > 0 ? Math.min((effectiveWatchTime / duration) * 100, 100) : 0)
 
-                // AUTO-COMPLETE TRIGGER (Sidebar High-Water Mark)
-                // If effective progress is sufficient, treat as completed for UI purposes immediately
-                let effectiveIsCompleted = isCompleted
-                if (!isCompleted && duration > 0 && effectiveWatchTime >= duration * 0.9) {
-                   currentPct = 100;
-                   effectiveIsCompleted = true; // Visually treat as completed
+                const sessionCurrentCompleted = Boolean(
+                  courseSession?.isCurrentChapterCompleted &&
+                  String(courseSession.currentChapterId ?? currentId) === String(currentId)
+                )
+                let effectiveIsCompleted = Boolean(isCompleted || sessionCurrentCompleted)
+                if (effectiveIsCompleted) {
+                  currentPct = 100
                 }
-                
-                // Adjust counts based on local effective status
-                // If backend says NOT completed but we locally say YES, increment completed count
-                const adjustedCompletedCount = completedChaptersCount + (effectiveIsCompleted && !isCompleted ? 1 : 0)
-                const adjustedRemainingCount = Math.max(0, remainingChaptersCount - (effectiveIsCompleted && !isCompleted ? 1 : 0))
+
+                const adjustedCompletedCount = completedChaptersCount
+                const adjustedRemainingCount = Math.max(0, remainingChaptersCount)
 
                 // NEXT CHAPTER LOGIC
                 const currentIndex = allChapters.findIndex(c => String(c.id) === String(currentId));
@@ -597,7 +596,7 @@ export default function CourseSidebar({
                       </div>
                       <Progress value={currentPct} className="h-1.5" />
                     </div>
-                    
+
                     <div className="flex items-center justify-between text-xs pt-1.5">
                       <div className="flex items-center gap-1">
                         <CheckCircle className="h-3 w-3 text-green-600" />
@@ -608,24 +607,25 @@ export default function CourseSidebar({
                       </div>
                     </div>
 
-                    {/* NEXT CHAPTER BUTTON */}
-                    {nextChapter && (
-                      <Button 
-                        className={`w-full gap-2 mt-1.5 h-8 ${!effectiveIsCompleted ? "opacity-90" : ""}`} 
+                    {/* NEXT CHAPTER ACTION */}
+                    {nextChapter && !effectiveIsCompleted && (
+                      <div className="flex items-center justify-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                        <Lock className="h-3 w-3" />
+                        Finish this chapter to unlock the next one.
+                      </div>
+                    )}
+                    {nextChapter && effectiveIsCompleted && (
+                      <Button
+                        className="w-full gap-2 mt-1.5 h-8"
                         size="sm"
                         disabled={purchasing}
-                        aria-disabled={!effectiveIsCompleted || purchasing}
-                        variant={effectiveIsCompleted ? "default" : "secondary"}
-                        onClick={() => void handleNextChapterClick(nextChapter, effectiveIsCompleted)}
+                        aria-disabled={purchasing}
+                        variant="default"
+                        onClick={() => void handleNextChapterClick(nextChapter, true)}
                       >
                         {purchasing ? (
                           "Processing..."
-                        ) : !effectiveIsCompleted ? (
-                          <>
-                            <Lock className="h-3 w-3" />
-                            Complete to Unlock
-                          </>
-                        ) : nextChapter.isPaidChapter && !isChapterAccessible(nextChapter.id) && !nextChapter.isPreview ? (
+                        ) : nextChapter.isPaidChapter && !isChapterAccessible(nextChapter.id) ? (
                           <>
                             <ShoppingCart className="h-3 w-3" />
                             Buy Next
@@ -660,8 +660,8 @@ export default function CourseSidebar({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Textarea 
-                placeholder="Type your notes for this chapter here..." 
+              <Textarea
+                placeholder="Type your notes for this chapter here..."
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
                 rows={4}
@@ -687,7 +687,7 @@ export default function CourseSidebar({
                           variant="ghost"
                           size="sm"
                           className="h-auto p-0 text-xs text-blue-500"
-                          onClick={() => void setSelectedChapter(note.chapterId)}
+                          onClick={() => void requestChapterSelection(String(note.chapterId), "chapter-list")}
                         >
                           Jump to Chapter
                         </Button>

@@ -38,6 +38,18 @@ export class PlanLimits {
 
   @Prop({ type: Number, default: 0 })
   sessionBookingsPerMonth: number;
+
+  @Prop({ type: Number, default: 1 })
+  aiAgentsMax: number;
+
+  @Prop({ type: Number, default: 10 })
+  aiCofounderRunsPerMonth: number;
+
+  @Prop({ type: Number, default: 2 })
+  aiKnowledgeReindexPerMonth: number;
+
+  @Prop({ type: Number, default: 100 })
+  aiStaffChatTurnsPerMonth: number;
 }
 
 export const PlanLimitsSchema = SchemaFactory.createForClass(PlanLimits);
@@ -116,5 +128,3 @@ export class Plan {
 }
 
 export const PlanSchema = SchemaFactory.createForClass(Plan);
-
-

@@ -8,6 +8,8 @@ interface CreateEventNavigationProps {
   setCurrentStep: (step: number) => void
   handleSubmit: () => void
   onNextStep?: () => void
+  isSubmitting?: boolean
+  hideSubmitAction?: boolean
 }
 
 export function CreateEventNavigation({
@@ -16,6 +18,8 @@ export function CreateEventNavigation({
   setCurrentStep,
   handleSubmit,
   onNextStep,
+  isSubmitting = false,
+  hideSubmitAction = false,
 }: CreateEventNavigationProps) {
   const handleNext = () => {
     if (onNextStep) {
@@ -26,14 +30,6 @@ export function CreateEventNavigation({
   }
 
   const isLastStep = currentStep >= steps.length
-  
-  // Debug: log to see what's happening
-  console.log('Navigation Debug:', { 
-    currentStep, 
-    stepsLength: steps.length, 
-    isLastStep,
-    steps: steps 
-  })
 
   return (
     <div className="flex items-center justify-between">
@@ -50,11 +46,12 @@ export function CreateEventNavigation({
           <Button
             onClick={handleNext}
             className="bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={isSubmitting}
           >
             Next Step
           </Button>
-        ) : (
-          <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700 text-white">
+        ) : hideSubmitAction ? null : (
+          <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 text-white">
             Save Event Draft
           </Button>
         )}

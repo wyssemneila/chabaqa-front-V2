@@ -1,11 +1,13 @@
 "use client"
 
 import type React from "react"
+import type { ComponentType } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { EnhancedCard } from "@/components/ui/enhanced-card"
 import { CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { CREATOR_EMPTY_STATE_DEFINITIONS, type CreatorEmptyStateModule } from "@/lib/creator-dashboard/empty-state-definitions"
 import {
   Loader2,
   AlertCircle,
@@ -17,9 +19,10 @@ import {
   RefreshCw,
   ArrowRight,
   Plus,
-  type LucideIcon,
 } from "lucide-react"
 import Link from "next/link"
+
+type CreatorStateIcon = ComponentType<{ className?: string }>
 
 export type PageStateVariant =
   | "loading"
@@ -37,14 +40,14 @@ interface PageStateAction {
   href?: string
   onClick?: () => void
   variant?: "default" | "outline" | "ghost" | "secondary"
-  icon?: LucideIcon
+  icon?: CreatorStateIcon
 }
 
 interface PageStateProps {
   variant: PageStateVariant
   title?: string
   description?: string
-  icon?: LucideIcon
+  icon?: CreatorStateIcon
   actions?: PageStateAction[]
   onRetry?: () => void
   className?: string
@@ -54,7 +57,7 @@ interface PageStateProps {
 
 const VARIANT_DEFAULTS: Record<
   PageStateVariant,
-  { icon: LucideIcon; title: string; description: string }
+  { icon: CreatorStateIcon; title: string; description: string }
 > = {
   loading: { icon: Loader2, title: "Loading…", description: "Fetching your data, please wait." },
   refreshing: { icon: RefreshCw, title: "Refreshing…", description: "Updating your data." },
@@ -143,27 +146,34 @@ export function PageStateSkeleton({ className }: { className?: string }) {
   )
 }
 
-const EMPTY_STATES: Record<string, { icon: LucideIcon; title: string; description: string; action: PageStateAction }> = {
-  communities: { icon: Building, title: "No communities yet", description: "Communities are the home for your audience. Create one to start sharing content and growing your business.", action: { label: "Create Your First Community", href: "/creator/communities/create", icon: Plus } },
-  courses: { icon: PackageOpen, title: "No courses yet", description: "Courses let you package and sell your knowledge. Create your first course to start teaching and earning.", action: { label: "Create Course", href: "/creator/courses/new", icon: Plus } },
-  challenges: { icon: PackageOpen, title: "No challenges yet", description: "Challenges help your community stay engaged and accountable. Launch your first challenge today.", action: { label: "Create Challenge", href: "/creator/challenges/new", icon: Plus } },
-  sessions: { icon: PackageOpen, title: "No sessions yet", description: "Sessions let you offer live or scheduled 1-on-1 calls. Set up your first session to start booking.", action: { label: "Create Session", href: "/creator/sessions/new", icon: Plus } },
-  events: { icon: PackageOpen, title: "No events yet", description: "Events bring your community together. Create a live event, workshop, or webinar.", action: { label: "Create Event", href: "/creator/events/new", icon: Plus } },
-  products: { icon: PackageOpen, title: "No products yet", description: "Sell digital or physical products directly to your community. Add your first product to get started.", action: { label: "Add Product", href: "/creator/products/new", icon: Plus } },
-  posts: { icon: PackageOpen, title: "No posts yet", description: "Posts keep your community informed and engaged. Share your first update.", action: { label: "Write a Post", href: "/creator/posts/new", icon: Plus } },
-  subscriptions: { icon: PackageOpen, title: "No subscriptions yet", description: "Recurring subscriptions give you predictable revenue. Create a plan for your community members.", action: { label: "Create Plan", href: "/creator/monetization/subscriptions", icon: Plus } },
-  payouts: { icon: PackageOpen, title: "No payouts yet", description: "Your payout history will appear here once you have earnings to withdraw.", action: { label: "View Revenue", href: "/creator/monetization/subscriptions", icon: ArrowRight } },
-  notifications: { icon: PackageOpen, title: "All caught up", description: "You have no new notifications. Check back later for updates.", action: { label: "Go to Dashboard", href: "/creator/dashboard", icon: ArrowRight } },
-  analytics: { icon: PackageOpen, title: "No analytics data yet", description: "Analytics will populate once your community has activity. Start by publishing content.", action: { label: "Create Content", href: "/creator/courses", icon: ArrowRight } },
-  team: { icon: PackageOpen, title: "No team members yet", description: "Invite collaborators to help manage your community. Assign roles and permissions.", action: { label: "Invite Member", href: "/creator/team", icon: Plus } },
-  emails: { icon: PackageOpen, title: "No email campaigns yet", description: "Reach your community directly with email campaigns. Create your first campaign.", action: { label: "Create Campaign", href: "/creator/marketing/emails/new", icon: Plus } },
-  affiliates: { icon: PackageOpen, title: "No affiliates yet", description: "Let others promote your content and earn commissions. Set up your affiliate program.", action: { label: "Set Up Affiliates", href: "/creator/marketing/affiliates", icon: Plus } },
-}
+interface ModuleEmptyStateProps { module: CreatorEmptyStateModule; hasSearchQuery?: boolean; className?: string; compact?: boolean; showTips?: boolean }
 
-interface ModuleEmptyStateProps { module: keyof typeof EMPTY_STATES; hasSearchQuery?: boolean; className?: string }
-
-export function ModuleEmptyState({ module, hasSearchQuery = false, className }: ModuleEmptyStateProps) {
+export function ModuleEmptyState({ module, hasSearchQuery = false, className, compact = false, showTips = true }: ModuleEmptyStateProps) {
   if (hasSearchQuery) return <PageState variant="no-results" description="Try adjusting your search terms or clearing your filters." className={className} />
-  const config = EMPTY_STATES[module]
-  return <PageState variant="empty" icon={config.icon} title={config.title} description={config.description} actions={[config.action]} className={className} />
+  const config = CREATOR_EMPTY_STATE_DEFINITIONS[module]
+  return (
+    <PageState
+      variant="empty"
+      icon={config.icon}
+      title={config.title}
+      description={config.description}
+      actions={config.action ? [{ label: config.action.label, href: config.action.href, icon: config.action.icon }] : undefined}
+      className={className}
+      compact={compact}
+    >
+      {showTips && !compact && config.tips && config.tips.length > 0 && (
+        <div className="mb-6 w-full max-w-md rounded-lg bg-muted/60 p-4 text-left">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Tips</p>
+          <ul className="space-y-1.5">
+            {config.tips.slice(0, 3).map((tip) => (
+              <li key={tip} className="flex items-start gap-2 text-sm text-muted-foreground">
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                <span>{tip}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </PageState>
+  )
 }

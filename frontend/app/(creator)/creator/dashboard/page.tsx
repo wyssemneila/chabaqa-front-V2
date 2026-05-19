@@ -22,6 +22,9 @@ import {
   Plus,
   Eye,
   FileText,
+  CreditCard,
+  AlertCircle,
+  ShoppingBag,
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -29,15 +32,26 @@ import { CommunityManager } from "@/app/(creator)/creator/components/community-m
 import { api } from "@/lib/api"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
-import { PageShell, PageState } from "@/components/creator-dashboard"
+import {
+  AttentionQueue,
+  ContentSnapshot,
+  CreateContentMenu,
+  PageShell,
+  RevenueSnapshot,
+  SetupChecklist,
+  type AttentionQueueItem,
+  type ContentSnapshotRow,
+} from "@/components/creator-dashboard"
 import { loadDashboardCoreCached, loadDashboardGrowthCached } from "@/app/(creator)/creator/context/community-switch-cache"
-
+import { toCreatorDashboardViewModel } from "@/lib/view-models/creator-dashboard-view-model"
+import { launchIcons } from "@/components/icons/launch-icons"
 
 import { useAuthContext } from "@/app/providers/auth-provider"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function CreatorDashboardPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user: authUser, isAuthenticated, loading: authLoading } = useAuthContext()
 
   // Use shared community context with guard
@@ -53,6 +67,7 @@ export default function CreatorDashboardPage() {
   const communityFeedUrl = selectedCommunity
     ? `/${encodeURIComponent(selectedCommunity.creator?.name || authUser?.name || 'creator')}/${selectedCommunity.slug}/home`
     : '/creator/posts'
+  const memberPreviewUrl = `${communityFeedUrl}${communityFeedUrl.includes("?") ? "&" : "?"}previewAs=member`
 
   const [activeTab, setActiveTab] = useState("overview")
   const [isSwitchLoading, setIsSwitchLoading] = useState(true)
@@ -61,11 +76,16 @@ export default function CreatorDashboardPage() {
   const [creatorChallenges, setCreatorChallenges] = useState<any[]>([])
   const [creatorSessions, setCreatorSessions] = useState<any[]>([])
   const [creatorPosts, setCreatorPosts] = useState<any[]>([])
+  const [creatorProducts, setCreatorProducts] = useState<any[]>([])
+  const [creatorEvents, setCreatorEvents] = useState<any[]>([])
   const [userCommunities, setUserCommunities] = useState<any[]>([])
   const [overview, setOverview] = useState<any | null>(null)
   const [recentActivity, setRecentActivity] = useState<any[]>([])
   const [membersCount, setMembersCount] = useState<number>(0)
   const [topContent, setTopContent] = useState<any[]>([])
+  const [availableBalance, setAvailableBalance] = useState<number | null>(null)
+  const [pendingPayout, setPendingPayout] = useState<number | null>(null)
+  const [bankConfigured, setBankConfigured] = useState<boolean | null>(null)
   const [previousMonthCounts, setPreviousMonthCounts] = useState<{
     courses: number
     challenges: number
@@ -107,10 +127,15 @@ export default function CreatorDashboardPage() {
       setCreatorChallenges([])
       setCreatorSessions([])
       setCreatorPosts([])
+      setCreatorProducts([])
+      setCreatorEvents([])
       setOverview(null)
       setRecentActivity([])
       setTopContent([])
       setMembersCount(0)
+      setAvailableBalance(null)
+      setPendingPayout(null)
+      setBankConfigured(null)
       setPreviousMonthCounts({ courses: 0, challenges: 0, sessions: 0, revenue: 0, engagement: 0 })
       return
     }
@@ -132,10 +157,15 @@ export default function CreatorDashboardPage() {
       setCreatorChallenges([])
       setCreatorSessions([])
       setCreatorPosts([])
+      setCreatorProducts([])
+      setCreatorEvents([])
       setOverview(null)
       setRecentActivity([])
       setTopContent([])
       setMembersCount(0)
+      setAvailableBalance(null)
+      setPendingPayout(null)
+      setBankConfigured(null)
       setPreviousMonthCounts({ courses: 0, challenges: 0, sessions: 0, revenue: 0, engagement: 0 })
 
       try {
@@ -145,11 +175,29 @@ export default function CreatorDashboardPage() {
         const courses = Array.isArray(core.courses) ? core.courses : []
         const challenges = Array.isArray(core.challenges) ? core.challenges : []
         const sessions = Array.isArray(core.sessions) ? core.sessions : []
+        const creatorId = String(authUser?._id || authUser?.id || "")
+
+        const [productsRes, eventsRes] = await Promise.all([
+          creatorId
+            ? api.products.getByCreator(creatorId, { limit: 50, communityId: selectedCommunityId }).catch(() => null as any)
+            : Promise.resolve(null as any),
+          creatorId
+            ? api.events.getByCreator(creatorId, { limit: 50, communityId: selectedCommunityId } as any).catch(() => null as any)
+            : Promise.resolve(null as any),
+        ])
+        if (requestId !== requestIdRef.current) return
+
+        const productsRaw = productsRes?.data?.products || productsRes?.products || productsRes?.data?.items || productsRes?.items || productsRes?.data || []
+        const eventsRaw = eventsRes?.data?.events || eventsRes?.events || eventsRes?.data?.items || eventsRes?.items || eventsRes?.data || []
+        const products = Array.isArray(productsRaw) ? productsRaw : []
+        const events = Array.isArray(eventsRaw) ? eventsRaw : []
 
         setCreatorCourses(courses)
         setCreatorChallenges(challenges)
         setCreatorSessions(sessions)
         setCreatorPosts(Array.isArray(core.posts) ? core.posts : [])
+        setCreatorProducts(products)
+        setCreatorEvents(events)
         setOverview(core.overview)
 
         const recentActivityItems: any[] = []
@@ -201,6 +249,36 @@ export default function CreatorDashboardPage() {
               createdAt: session.createdAt
             }))
           recentActivityItems.push(...recentSessions)
+        }
+
+        if (products.length > 0) {
+          const recentProducts = products
+            .filter((product: any) => product.createdAt)
+            .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 1)
+            .map((product: any) => ({
+              id: `product-${product.id || product._id}`,
+              title: `New product: ${product.title || product.name || 'Untitled product'}`,
+              message: `${Number(product.sales ?? product.salesCount ?? 0)} sales`,
+              type: 'product_created',
+              createdAt: product.createdAt
+            }))
+          recentActivityItems.push(...recentProducts)
+        }
+
+        if (events.length > 0) {
+          const recentEvents = events
+            .filter((event: any) => event.createdAt || event.startDate)
+            .sort((a: any, b: any) => new Date(b.createdAt || b.startDate).getTime() - new Date(a.createdAt || a.startDate).getTime())
+            .slice(0, 1)
+            .map((event: any) => ({
+              id: `event-${event.id || event._id}`,
+              title: `New event: ${event.title || 'Untitled event'}`,
+              message: `${Array.isArray(event.attendees) ? event.attendees.length : Number(event.attendeesCount ?? 0)} attendees`,
+              type: 'event_created',
+              createdAt: event.createdAt || event.startDate
+            }))
+          recentActivityItems.push(...recentEvents)
         }
 
         setRecentActivity(
@@ -267,6 +345,40 @@ export default function CreatorDashboardPage() {
           topContentItems.push(...topSessions)
         }
 
+        if (products.length > 0) {
+          const topProducts = [...products]
+            .sort((a: any, b: any) => Number(b.sales ?? b.salesCount ?? 0) - Number(a.sales ?? a.salesCount ?? 0))
+            .slice(0, 1)
+            .map((product: any) => ({
+              id: product.id || product._id,
+              title: product.title || product.name || 'Untitled product',
+              type: 'product',
+              metricLabel: 'sales',
+              metricValue: Number(product.sales ?? product.salesCount ?? 0),
+              href: `/creator/products/${product.id || product._id}/manage`
+            }))
+          topContentItems.push(...topProducts)
+        }
+
+        if (events.length > 0) {
+          const topEvents = [...events]
+            .sort((a: any, b: any) => {
+              const aCount = Array.isArray(a.attendees) ? a.attendees.length : Number(a.attendeesCount ?? 0)
+              const bCount = Array.isArray(b.attendees) ? b.attendees.length : Number(b.attendeesCount ?? 0)
+              return bCount - aCount
+            })
+            .slice(0, 1)
+            .map((event: any) => ({
+              id: event.id || event._id,
+              title: event.title || 'Untitled event',
+              type: 'event',
+              metricLabel: 'attendees',
+              metricValue: Array.isArray(event.attendees) ? event.attendees.length : Number(event.attendeesCount ?? 0),
+              href: `/creator/events/${event.id || event._id}`
+            }))
+          topContentItems.push(...topEvents)
+        }
+
         setTopContent(topContentItems.sort((a, b) => b.metricValue - a.metricValue).slice(0, 4))
       } catch (e) {
         console.error('[Dashboard] Core load error:', e)
@@ -286,6 +398,31 @@ export default function CreatorDashboardPage() {
         if (requestId === requestIdRef.current) {
           setIsGrowthLoading(false)
         }
+      }
+
+      try {
+        const [payoutStatsRes, balanceRes, bankRes] = await Promise.all([
+          api.creatorAnalytics.getPayoutStats({ communityId: selectedCommunityId }).catch(() => null as any),
+          api.creatorAnalytics.getAvailableBalance({ communityId: selectedCommunityId }).catch(() => null as any),
+          api.creatorAnalytics.getBankCredentials().catch(() => null as any),
+        ])
+        if (requestId !== requestIdRef.current) return
+
+        const statsPayload = payoutStatsRes?.data || payoutStatsRes || null
+        const balancePayload = balanceRes?.data || balanceRes || null
+        const bankPayload = bankRes?.data || bankRes || null
+        const resolvedAvailable = Number(balancePayload?.availableBalance ?? balancePayload?.balance ?? 0)
+        const resolvedPending = Number(statsPayload?.pendingAmount ?? statsPayload?.pendingPayout ?? statsPayload?.pending ?? 0)
+
+        setAvailableBalance(Number.isFinite(resolvedAvailable) ? resolvedAvailable : 0)
+        setPendingPayout(Number.isFinite(resolvedPending) ? resolvedPending : 0)
+        setBankConfigured(Boolean(bankPayload?.isConfigured))
+      } catch (e) {
+        console.error('[Dashboard] Revenue snapshot load error:', e)
+        if (requestId !== requestIdRef.current) return
+        setAvailableBalance(null)
+        setPendingPayout(null)
+        setBankConfigured(null)
       }
     }
 
@@ -378,6 +515,395 @@ export default function CreatorDashboardPage() {
   ]
 
   if (guard) return guard
+
+  const showLegacyDashboard = searchParams.get("legacy") === "1"
+  const activeContentCount = creatorCourses.length + creatorChallenges.length + creatorSessions.length + creatorProducts.length + creatorEvents.length + creatorPosts.length
+  const latestPost = [...creatorPosts]
+    .filter((post: any) => post?.createdAt)
+    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+  const paidOfferCount = [
+    ...creatorCourses.map((course: any) => Number(course.prix ?? course.price ?? 0)),
+    ...creatorChallenges.map((challenge: any) => Number(challenge.price ?? challenge.depositAmount ?? 0)),
+    ...creatorSessions.map((session: any) => Number(session.price ?? 0)),
+    ...creatorProducts.map((product: any) => Number(product?.pricing?.price ?? product.price ?? 0)),
+    ...creatorEvents.flatMap((event: any) => Array.isArray(event.tickets) ? event.tickets.map((ticket: any) => Number(ticket.price ?? 0)) : [Number(event.price ?? 0)]),
+  ].filter((price) => Number.isFinite(price) && price > 0).length
+
+  const creatorDashboard = toCreatorDashboardViewModel({
+    community: selectedCommunity,
+    posts: creatorPosts,
+    courses: creatorCourses,
+    sessions: creatorSessions,
+    products: creatorProducts,
+    challenges: creatorChallenges,
+    events: creatorEvents,
+    membersCount: membersCount || (selectedCommunity as any)?.membersCount || (selectedCommunity as any)?.members || 0,
+    activeMembers: Number(overview?.activeMembers ?? overview?.activeToday ?? 0),
+    postsThisWeek: Number(overview?.postsThisWeek ?? 0),
+    revenue: currentRevenueValue,
+    paidOfferCount,
+    bankConfigured,
+    courseCompletionRate: overview?.courseCompletionRate,
+    churnRiskCount: overview?.churnRiskCount,
+  })
+
+  const nextBestAction = (() => {
+    const setupNext = creatorDashboard.setup.nextAction
+    if (setupNext) {
+      return {
+        id: setupNext.id,
+        title: setupNext.title,
+        description: setupNext.description,
+        href: setupNext.actionUrl,
+        label: setupNext.actionLabel,
+        icon: setupNext.id.includes("logo") || setupNext.id.includes("cover")
+          ? launchIcons.branding
+          : setupNext.id.includes("pricing")
+            ? launchIcons.pricing
+            : setupNext.id.includes("post")
+              ? launchIcons.post
+              : setupNext.id.includes("offer")
+                ? launchIcons.launch
+                : setupNext.id.includes("payout")
+                  ? launchIcons.payout
+                  : launchIcons.checklist,
+      }
+    }
+    if (paidOfferCount === 0) {
+      return {
+        id: "paid-offer",
+        title: "Add a paid offer",
+        description: "Create something members can buy, book, or unlock.",
+        href: "/creator/products/new",
+        label: "Create Product",
+        icon: launchIcons.pricing,
+      }
+    }
+    return {
+      id: "analytics",
+      title: "Review your analytics",
+      description: "Check what is working and decide what to improve next.",
+      href: "/creator/analytics",
+      label: "View Analytics",
+      icon: launchIcons.activity,
+    }
+  })()
+
+  const rawAttentionItems = [
+    bankConfigured === false && {
+      id: "payout-setup",
+      title: "Set up payouts",
+      description: "Add your bank details so earnings can be withdrawn.",
+      href: "/creator/monetization/payouts",
+      icon: launchIcons.payout,
+      priority: "high" as const,
+    },
+    activeContentCount === 0 && {
+      id: "first-content",
+      title: "Create your first offer",
+      description: "Start with a course, session, challenge, event, product, or post.",
+      href: "/creator/courses/new",
+      icon: launchIcons.launch,
+      priority: "high" as const,
+    },
+    activeContentCount > 0 && paidOfferCount === 0 && {
+      id: "paid-offer",
+      title: "Add a paid offer",
+      description: "Create something members can buy or book.",
+      href: "/creator/products/new",
+      icon: launchIcons.pricing,
+      priority: "medium" as const,
+    },
+    creatorPosts.length === 0 && {
+      id: "first-post",
+      title: "Share a community update",
+      description: "Post a welcome note or announcement for your members.",
+      href: "/creator/posts?create=1",
+      icon: launchIcons.post,
+      priority: "medium" as const,
+    },
+    overview === null && !isSwitchLoading && {
+      id: "analytics-warmup",
+      title: "Analytics are warming up",
+      description: "Share content now; metrics will appear once activity starts.",
+      href: "/creator/analytics",
+      icon: launchIcons.activity,
+      priority: "low" as const,
+    },
+  ].filter(Boolean) as AttentionQueueItem[]
+
+  const attentionItems = rawAttentionItems
+    .filter((item) => item.id !== nextBestAction.id && item.href !== nextBestAction.href)
+    .slice(0, 5)
+
+  const contentRows: ContentSnapshotRow[] = [
+    {
+      label: "Courses",
+      count: creatorCourses.length,
+      detail: topContent.find((item) => item.type === "course")?.title || "No course yet",
+      href: "/creator/courses",
+      icon: launchIcons.course,
+    },
+    {
+      label: "Challenges",
+      count: creatorChallenges.length,
+      detail: topContent.find((item) => item.type === "challenge")?.title || "No challenge yet",
+      href: "/creator/challenges",
+      icon: launchIcons.challenge,
+    },
+    {
+      label: "Sessions",
+      count: creatorSessions.length,
+      detail: topContent.find((item) => item.type === "session")?.title || "No session yet",
+      href: "/creator/sessions",
+      icon: launchIcons.session,
+    },
+    {
+      label: "Events",
+      count: creatorEvents.length,
+      detail: topContent.find((item) => item.type === "event")?.title || "No event yet",
+      href: "/creator/events",
+      icon: launchIcons.event,
+    },
+    {
+      label: "Products",
+      count: creatorProducts.length,
+      detail: topContent.find((item) => item.type === "product")?.title || "No product yet",
+      href: "/creator/products",
+      icon: launchIcons.product,
+    },
+    {
+      label: "Posts",
+      count: creatorPosts.length,
+      detail: latestPost?.title || "No post yet",
+      href: "/creator/posts",
+      icon: launchIcons.post,
+    },
+  ]
+
+  const formatMoney = (value: number | null | undefined) => {
+    const amount = Number(value ?? 0)
+    return `${Number.isFinite(amount) ? amount.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "0"} TND`
+  }
+
+  const healthStats = [
+    {
+      title: "Members",
+      value: membersCount || (selectedCommunity as any)?.membersCount || (selectedCommunity as any)?.members || 0,
+      icon: Users,
+      color: "primary" as const,
+      meta: "Live community total",
+    },
+    {
+      title: "Revenue",
+      value: formatMoney(currentRevenueValue),
+      change: getGrowthChange(currentRevenueValue, previousMonthCounts.revenue),
+      icon: launchIcons.pricing,
+      color: "success" as const,
+      meta: isGrowthLoading ? "Refreshing growth" : "Updated this session",
+    },
+    {
+      title: "Active Content",
+      value: activeContentCount,
+      icon: launchIcons.launch,
+      color: "courses" as const,
+      meta: "Courses, posts, products, sessions, events",
+    },
+    {
+      title: "Needs Action",
+      value: attentionItems.length,
+      icon: AlertCircle,
+      color: attentionItems.length > 0 ? "warning" as const : "success" as const,
+      meta: attentionItems.length > 0 ? "After next best action" : "All clear",
+    },
+  ]
+
+  const createNextItems = [
+    { label: "Course", description: "Build structured learning", href: "/creator/courses/new", icon: launchIcons.course },
+    { label: "Post", description: "Publish a quick update", href: "/creator/posts?create=1", icon: launchIcons.post },
+    { label: "Product", description: "Sell a digital resource", href: "/creator/products/new", icon: launchIcons.product },
+  ]
+
+  if (!showLegacyDashboard) {
+    const NextIcon = nextBestAction.icon
+    const LaunchSetupIcon = launchIcons.checklist
+
+    return (
+      <PageShell>
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {selectedCommunity?.name || "Creator Home"}
+                </h1>
+                <Badge variant="secondary" className="text-xs">Home</Badge>
+              </div>
+              <p className="mt-1 text-sm text-gray-600">
+                What needs attention, what is growing, and what to do next.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <CreateContentMenu disabled={isSwitchLoading} recommendedHref={nextBestAction.href} className="hidden md:inline-flex" />
+              <Button size="sm" variant="outline" asChild={!isSwitchLoading} disabled={isSwitchLoading} className="gap-2">
+                {isSwitchLoading ? (
+                  <span className="inline-flex items-center"><Eye className="h-4 w-4" />Preview member view</span>
+                ) : (
+                  <Link href={memberPreviewUrl} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" />Preview member view</Link>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {isSwitchLoading ? (
+              [0, 1, 2, 3].map((index) => <Skeleton key={index} className="h-28 rounded-lg" />)
+            ) : (
+              healthStats.map((stat) => (
+                <MetricCard key={stat.title} title={stat.title} value={stat.value} change={stat.change} icon={stat.icon} color={stat.color} meta={stat.meta} />
+              ))
+            )}
+          </div>
+
+          <EnhancedCard>
+            <CardHeader className="pb-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <LaunchSetupIcon className="h-5 w-5 text-chabaqa-primary" />
+                    Launch setup
+                  </CardTitle>
+                  <CardDescription>
+                    {creatorDashboard.setup.nextAction
+                      ? `Next: ${creatorDashboard.setup.nextAction.title}`
+                      : "Your community has the essentials ready for members."}
+                  </CardDescription>
+                </div>
+                <div className="rounded-lg border bg-white px-3 py-2 text-right">
+                  <div className="text-2xl font-bold text-chabaqa-primary">{creatorDashboard.setup.percent}%</div>
+                  <div className="text-xs text-gray-500">ready</div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <SetupChecklist
+                items={creatorDashboard.setup.items}
+                title="Creator launch checklist"
+                subtitle="Complete these items before sending paid traffic to the community."
+                showProgress={false}
+                collapseCompletedAfterPercent={80}
+              />
+            </CardContent>
+          </EnhancedCard>
+
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <EnhancedCard className="xl:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <NextIcon className="h-5 w-5 text-chabaqa-primary" />
+                  Next best action
+                </CardTitle>
+                <CardDescription>One useful move based on the current community state.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-4 rounded-lg border bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900">{nextBestAction.title}</h2>
+                    <p className="mt-1 text-sm text-gray-600">{nextBestAction.description}</p>
+                  </div>
+                  <Button asChild className="shrink-0">
+                    <Link href={nextBestAction.href}>
+                      {nextBestAction.label}
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </EnhancedCard>
+
+            <RevenueSnapshot
+              monthRevenue={formatMoney(currentRevenueValue)}
+              availableBalance={availableBalance == null ? "..." : formatMoney(availableBalance)}
+              pendingPayout={pendingPayout == null ? "..." : formatMoney(pendingPayout)}
+              bankConfigured={bankConfigured}
+            />
+          </div>
+
+          <EnhancedCard>
+            <CardHeader className="pb-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle className="text-lg">Create next</CardTitle>
+                  <CardDescription>Start the next useful content item without hunting through navigation.</CardDescription>
+                </div>
+                <CreateContentMenu disabled={isSwitchLoading} recommendedHref={nextBestAction.href} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {createNextItems.map((item) => {
+                  const ItemIcon = item.icon
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-gray-50"
+                    >
+                      <div className="rounded-md bg-primary/10 p-2 text-primary">
+                        <ItemIcon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                        <p className="truncate text-xs text-gray-500">{item.description}</p>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </EnhancedCard>
+
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <AttentionQueue items={attentionItems} loading={isSwitchLoading} />
+            <ContentSnapshot rows={contentRows} loading={isSwitchLoading} />
+          </div>
+
+          <EnhancedCard>
+            <CardHeader>
+              <CardTitle className="text-lg">Recent Activity</CardTitle>
+              <CardDescription>Latest meaningful movement across your content.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isSwitchLoading ? (
+                <div className="space-y-3">
+                  {[0, 1, 2].map((index) => <Skeleton key={index} className="h-14 rounded-lg" />)}
+                </div>
+              ) : recentActivity.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-6 text-center text-sm text-gray-500">
+                  No recent activity yet.
+                </div>
+              ) : (
+                <div className="divide-y rounded-lg border">
+                  {recentActivity.map((activity, index) => (
+                    <div key={activity.id || index} className="flex items-center gap-3 p-3">
+                      <div className="h-2 w-2 rounded-full bg-green-500" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-gray-900">{activity.title || activity.message || "Activity"}</p>
+                        <p className="truncate text-xs text-gray-500">{activity.message}</p>
+                      </div>
+                      <span className="text-xs text-gray-400">{new Date(activity.createdAt || Date.now()).toLocaleDateString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </EnhancedCard>
+
+          <CommunityManager communities={userCommunities} />
+        </div>
+      </PageShell>
+    )
+  }
 
   return (
     <PageShell>
@@ -610,7 +1136,7 @@ export default function CreatorDashboardPage() {
                       <h3 className="text-lg font-medium text-gray-900">No challenges yet</h3>
                       <p className="text-gray-500 mb-4">Create your first community challenge to engage your members.</p>
                       <Button asChild className="bg-challenges-500 hover:bg-challenges-600">
-                         <Link href="/creator/challenges/create">Create Challenge</Link>
+                         <Link href="/creator/challenges/new">Create Challenge</Link>
                       </Button>
                     </div>
                   )}
@@ -650,7 +1176,7 @@ export default function CreatorDashboardPage() {
                       <h3 className="text-lg font-medium text-gray-900">No sessions yet</h3>
                       <p className="text-gray-500 mb-4">Start offering 1-on-1 coaching or consulting sessions.</p>
                       <Button asChild>
-                         <Link href="/creator/sessions/create">Create Session</Link>
+                         <Link href="/creator/sessions/new">Create Session</Link>
                       </Button>
                     </div>
                   )}

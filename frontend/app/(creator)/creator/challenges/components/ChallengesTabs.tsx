@@ -1,15 +1,16 @@
 "use client"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ModuleEmptyState } from "@/components/creator-dashboard"
 import ChallengeCard from "./ChallengeCard"
-import NoChallengesCard from "./NoChallengesCard"
 import { useState, useMemo } from "react"
 
 interface ChallengesTabsProps {
   allChallenges: any[]
+  hasSearchQuery?: boolean
 }
 
-export default function ChallengesTabs({ allChallenges }: ChallengesTabsProps) {
+export default function ChallengesTabs({ allChallenges, hasSearchQuery = false }: ChallengesTabsProps) {
   const [activeTab, setActiveTab] = useState("all")
 
   const getChallengeStatus = (challenge: any) => {
@@ -63,9 +64,9 @@ export default function ChallengesTabs({ allChallenges }: ChallengesTabsProps) {
 
       <TabsContent value={activeTab} className="mt-6">
         {filteredChallenges.length === 0 ? (
-          <NoChallengesCard />
+          <ModuleEmptyState module="challenges" hasSearchQuery={hasSearchQuery || allChallenges.length > 0} />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {filteredChallenges.map((challenge) => (
               <ChallengeCard key={challenge.id} challenge={challenge} />
             ))}

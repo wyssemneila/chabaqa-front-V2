@@ -38,6 +38,7 @@ export interface ChapterAccessContext {
   enrollment: CourseEnrollmentDocument | null;
   orderedChapters: OrderedChapterDescriptor[];
   purchasedChapterIds: Set<string>;
+  hasCoursePurchase: boolean;
   progressMap: Map<string, CourseProgress>;
 }
 
@@ -139,12 +140,18 @@ export class ChapterAccessService {
     });
   }
 
-  private async resolvePaidChapterOrderIds(userId: string): Promise<Set<string>> {
+  private async resolvePaidEntitlements(
+    userId: string,
+    course: CoursDocument,
+  ): Promise<{ paidChapterOrderIds: Set<string>; hasCoursePurchase: boolean }> {
     if (!Types.ObjectId.isValid(userId)) {
-      return new Set<string>();
+      return {
+        paidChapterOrderIds: new Set<string>(),
+        hasCoursePurchase: false,
+      };
     }
 
-    const rows = await this.orderModel
+    const chapterRows = await this.orderModel
       .find({
         buyerId: new Types.ObjectId(userId),
         contentType: { $in: [TrackableContentType.CHAPTER, 'chapter'] },
@@ -154,11 +161,25 @@ export class ChapterAccessService {
       .lean()
       .exec();
 
-    return new Set(
-      (rows || [])
+    const courseIds = [String(course?._id || ''), String((course as any)?.id || '')]
+      .filter(Boolean);
+    const coursePurchase = courseIds.length > 0
+      ? await this.orderModel.exists({
+          buyerId: new Types.ObjectId(userId),
+          contentType: { $in: [TrackableContentType.COURSE, 'course'] },
+          contentId: { $in: courseIds },
+          status: 'paid',
+        })
+      : null;
+
+    return {
+      paidChapterOrderIds: new Set(
+        (chapterRows || [])
         .map((row: any) => String(row?.contentId || ''))
         .filter(Boolean),
-    );
+      ),
+      hasCoursePurchase: Boolean(coursePurchase),
+    };
   }
 
   private async maybeBackfillEnrollmentEntitlements(
@@ -200,7 +221,8 @@ export class ChapterAccessService {
         : courseIdOrDocument;
 
     const enrollment = await this.resolveEnrollment(userId, course);
-    const paidChapterOrderIds = await this.resolvePaidChapterOrderIds(userId);
+    const { paidChapterOrderIds, hasCoursePurchase } =
+      await this.resolvePaidEntitlements(userId, course);
     const purchasedChapterIds = await this.maybeBackfillEnrollmentEntitlements(
       enrollment,
       paidChapterOrderIds,
@@ -219,6 +241,7 @@ export class ChapterAccessService {
       enrollment,
       orderedChapters,
       purchasedChapterIds,
+      hasCoursePurchase,
       progressMap,
     };
   }
@@ -243,24 +266,22 @@ export class ChapterAccessService {
     }
 
     const nextDescriptor = context.orderedChapters[descriptor.index + 1];
-    const isPaidChapter =
-      Boolean(descriptor.chapter?.isPaidChapter) &&
-      !descriptor.chapter?.isPreview;
+    const isPaidChapter = Boolean(descriptor.chapter?.isPaidChapter);
     const chapterPrice = Number(descriptor.chapter?.prix || 0);
     const hasEnrollment = Boolean(context.enrollment);
     const hasChapterPurchase = isPaidChapter
-      ? context.purchasedChapterIds.has(String(descriptor.chapter?.id))
+      ? Boolean(context.hasCoursePurchase) ||
+        context.purchasedChapterIds.has(String(descriptor.chapter?.id))
       : false;
 
-    const isPreviewChapter = Boolean(descriptor.chapter?.isPreview);
 
     if (!hasEnrollment) {
-      // Preview policy: first chapter or any chapter explicitly marked as preview.
-      if (descriptor.index === 0 || isPreviewChapter) {
+      // Strict playback policy: only the first chapter is available before enrollment.
+      if (descriptor.index === 0) {
         return {
           canAccess: true,
           lockCode: 'allowed',
-          reason: isPreviewChapter ? 'chapter_preview' : 'first_chapter_preview',
+          reason: 'first_chapter_preview',
           hasCourseEnrollment: false,
           hasChapterPurchase: false,
           isPaidChapter,
@@ -274,14 +295,36 @@ export class ChapterAccessService {
       return {
         canAccess: false,
         lockCode: 'not_enrolled_preview_only',
-        reason: 'Only preview chapters are available before enrollment.',
+        reason: 'Enroll to access this chapter.',
         hasCourseEnrollment: false,
         hasChapterPurchase: false,
         isPaidChapter,
-        needsPayment: isPaidChapter,
+        needsPayment: false,
         chapterPrice: chapterPrice > 0 ? chapterPrice : undefined,
         nextChapter: this.toChapterReference(nextDescriptor),
       };
+    }
+
+    // Strict sequential policy: chapter N requires chapter N-1 completed.
+    if (descriptor.index > 0) {
+      const previous = context.orderedChapters[descriptor.index - 1];
+      const previousProgress = previous?.chapter?.id
+        ? context.progressMap.get(String(previous.chapter.id))
+        : undefined;
+      if (!previousProgress?.isCompleted) {
+        return {
+          canAccess: false,
+          lockCode: 'previous_chapter_incomplete',
+          reason: 'Finish this chapter to unlock the next one.',
+          hasCourseEnrollment: true,
+          hasChapterPurchase: hasChapterPurchase || !isPaidChapter,
+          isPaidChapter,
+          needsPayment: false,
+          chapterPrice: chapterPrice > 0 ? chapterPrice : undefined,
+          requiredChapter: this.toChapterReference(previous),
+          nextChapter: this.toChapterReference(nextDescriptor),
+        };
+      }
     }
 
     if (isPaidChapter && !hasChapterPurchase) {
@@ -296,27 +339,6 @@ export class ChapterAccessService {
         chapterPrice: chapterPrice > 0 ? chapterPrice : undefined,
         nextChapter: this.toChapterReference(nextDescriptor),
       };
-    }
-
-    // Sequential policy: chapter N requires chapter N-1 completed.
-    // Sequential locks apply strictly to all chapters if the user is enrolled.
-    if (descriptor.index > 0) {
-      const previous = context.orderedChapters[descriptor.index - 1];
-      const previousProgress = context.progressMap.get(String(previous.chapter?.id));
-      if (!previousProgress?.isCompleted) {
-        return {
-          canAccess: false,
-          lockCode: 'previous_chapter_incomplete',
-          reason: 'Vous devez terminer le chapitre précédent pour débloquer ce contenu.',
-          hasCourseEnrollment: true,
-          hasChapterPurchase: hasChapterPurchase || !isPaidChapter,
-          isPaidChapter,
-          needsPayment: false,
-          chapterPrice: chapterPrice > 0 ? chapterPrice : undefined,
-          requiredChapter: this.toChapterReference(previous),
-          nextChapter: this.toChapterReference(nextDescriptor),
-        };
-      }
     }
 
     return {
@@ -361,9 +383,7 @@ export class ChapterAccessService {
         sectionTitle: String(descriptor.section?.titre || ''),
         index: descriptor.index,
         isPreview: Boolean(descriptor.chapter?.isPreview),
-        isPaidChapter:
-          Boolean(descriptor.chapter?.isPaidChapter) &&
-          !descriptor.chapter?.isPreview,
+        isPaidChapter: Boolean(descriptor.chapter?.isPaidChapter),
         isCompleted: Boolean(progress?.isCompleted),
         watchTime: Number(progress?.watchTime || 0),
         videoDuration: Number((progress as any)?.videoDuration || 0),

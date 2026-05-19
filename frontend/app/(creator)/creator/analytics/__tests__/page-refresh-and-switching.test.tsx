@@ -222,7 +222,7 @@ describe("Creator analytics refresh and switching", () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText("Refreshing...")).toBeInTheDocument()
+      expect(screen.getByText("Refreshing now")).toBeInTheDocument()
     })
     expect(screen.getAllByText("191").length).toBeGreaterThan(0)
 
@@ -231,7 +231,7 @@ describe("Creator analytics refresh and switching", () => {
     })
 
     await waitFor(() => {
-      expect(screen.queryByText("Refreshing...")).not.toBeInTheDocument()
+      expect(screen.queryByText("Refreshing now")).not.toBeInTheDocument()
     })
   })
 
@@ -239,10 +239,11 @@ describe("Creator analytics refresh and switching", () => {
     render(<CommunityAnalyticsPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Sync Data/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /Advanced/i })).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole("button", { name: /Sync Data/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Advanced/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Refresh/i }))
 
     await waitFor(() => {
       expect(mockBackfill).toHaveBeenCalledWith(90)
@@ -270,9 +271,10 @@ describe("Creator analytics refresh and switching", () => {
     render(<CommunityAnalyticsPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Export CSV/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /Advanced/i })).toBeInTheDocument()
     })
 
+    fireEvent.click(screen.getByRole("button", { name: /Advanced/i }))
     fireEvent.click(screen.getByRole("button", { name: /Export CSV/i }))
 
     await waitFor(() => {

@@ -4,14 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
-import { PageShell } from "@/components/creator-dashboard"
+import { ModuleEmptyState, ModulePage } from "@/components/creator-dashboard"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Loader2 } from "lucide-react"
-import Link from "next/link"
+import { FileText, Heart, MessageSquare, Plus } from "lucide-react"
 import { CreatePostDialog } from "./components/create-post-dialog"
 import { PostsList } from "./components/posts-list"
 import type { Post } from "@/lib/api/types"
@@ -25,6 +22,8 @@ export default function CreatorPostsPage() {
 
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
   const [isPostDialogOpen, setIsPostDialogOpen] = useState(false)
   const [editingPost, setEditingPost] = useState<Post | null>(null)
   const [stats, setStats] = useState({
@@ -33,6 +32,7 @@ export default function CreatorPostsPage() {
     comments: 0,
   })
   const editPostId = searchParams.get("edit")
+  const shouldOpenCreate = searchParams.get("create") === "1"
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -51,6 +51,7 @@ export default function CreatorPostsPage() {
     }
 
     setLoading(true)
+    setError(null)
     try {
       const response = await api.posts.getByCreator(authUser._id || authUser.id, {
         page: 1,
@@ -62,6 +63,7 @@ export default function CreatorPostsPage() {
       setPosts(postsList)
     } catch (error: any) {
       console.error('Failed to load posts:', error)
+      setError(error?.message || "Failed to load posts")
       toast({
         title: "Error",
         description: "Failed to load posts",
@@ -95,53 +97,57 @@ export default function CreatorPostsPage() {
     setIsPostDialogOpen(true)
   }, [editPostId, posts])
 
+  useEffect(() => {
+    if (!shouldOpenCreate || editPostId) return
+    setEditingPost(null)
+    setIsPostDialogOpen(true)
+  }, [editPostId, shouldOpenCreate])
+
   const handlePostSaved = useCallback(() => {
     setEditingPost(null)
     setIsPostDialogOpen(false)
-    if (editPostId) {
+    if (editPostId || shouldOpenCreate) {
       router.replace("/creator/posts")
     }
     void refreshPosts()
-  }, [editPostId, refreshPosts, router])
+  }, [editPostId, refreshPosts, router, shouldOpenCreate])
 
   const handleOpenCreate = useCallback(() => {
     setEditingPost(null)
     setIsPostDialogOpen(true)
-    if (editPostId) {
+    if (editPostId || shouldOpenCreate) {
       router.replace("/creator/posts")
     }
-  }, [editPostId, router])
+  }, [editPostId, router, shouldOpenCreate])
 
   const handleDialogOpenChange = useCallback((open: boolean) => {
     setIsPostDialogOpen(open)
     if (!open) {
       setEditingPost(null)
-      if (editPostId) {
+      if (editPostId || shouldOpenCreate) {
         router.replace("/creator/posts")
       }
     }
-  }, [editPostId, router])
+  }, [editPostId, router, shouldOpenCreate])
 
   const mode = useMemo(() => (editingPost ? "edit" : "create"), [editingPost])
+
+  const filteredPosts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return posts
+    return posts.filter((post) => {
+      const title = post.title || ""
+      const content = post.content || ""
+      return title.toLowerCase().includes(query) || content.toLowerCase().includes(query)
+    })
+  }, [posts, searchQuery])
 
 
 
   if (guard) return guard
 
   return (
-    <PageShell className="max-w-6xl mx-auto space-y-8 p-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Posts Management</h1>
-          <p className="text-gray-600 mt-1">Manage posts for {selectedCommunity.name}</p>
-        </div>
-        <Button onClick={handleOpenCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Post
-        </Button>
-      </div>
-
+    <>
       <CreatePostDialog
         open={isPostDialogOpen}
         onOpenChange={handleDialogOpenChange}
@@ -152,65 +158,40 @@ export default function CreatorPostsPage() {
         showTrigger={false}
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Posts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.total}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Likes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.likes}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Comments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.comments}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Posts List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Posts</CardTitle>
-          <CardDescription>View and manage all your posts</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600 mb-4">No posts yet</p>
-              <Button onClick={handleOpenCreate}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Post
-              </Button>
-            </div>
-          ) : (
-            <PostsList
-              posts={posts}
-              onPostDeleted={handlePostSaved}
-              onEdit={(post) => {
-                setEditingPost(post)
-                setIsPostDialogOpen(true)
-              }}
-            />
-          )}
-        </CardContent>
-      </Card>
-    </PageShell>
+      <ModulePage
+        title="Posts"
+        description={`Share updates and announcements for ${selectedCommunity.name}.`}
+        primaryAction={{ label: "Create Post", onClick: handleOpenCreate, icon: Plus }}
+        metrics={[
+          { title: "Posts", value: stats.total, icon: FileText, color: "courses" },
+          { title: "Likes", value: stats.likes, icon: Heart, color: "success" },
+          { title: "Comments", value: stats.comments, icon: MessageSquare, color: "primary" },
+        ]}
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search posts..."
+        dataFreshnessLabel="Post metrics refresh after publishing, editing, or deleting a post."
+        density="compact"
+        loading={loading}
+        error={error}
+        onRetry={refreshPosts}
+        emptyState={
+          !loading && !error && posts.length === 0 ? (
+            <ModuleEmptyState module="posts" />
+          ) : !loading && !error && filteredPosts.length === 0 ? (
+            <ModuleEmptyState module="posts" hasSearchQuery />
+          ) : null
+        }
+      >
+        <PostsList
+          posts={filteredPosts}
+          onPostDeleted={handlePostSaved}
+          onEdit={(post) => {
+            setEditingPost(post)
+            setIsPostDialogOpen(true)
+          }}
+        />
+      </ModulePage>
+    </>
   )
 }

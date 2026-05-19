@@ -23,7 +23,7 @@ jest.mock("@/lib/api/courses.api", () => ({
 }))
 
 describe("CourseSidebar chapter selection", () => {
-  it("calls setSelectedChapter even when chapter is currently rendered as locked", () => {
+  it("does not call setSelectedChapter when chapter is locked", () => {
     const setSelectedChapter = jest.fn()
 
     render(
@@ -73,6 +73,43 @@ describe("CourseSidebar chapter selection", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /premium chapter/i }))
 
-    expect(setSelectedChapter).toHaveBeenCalledWith("chapter-2")
+    expect(setSelectedChapter).not.toHaveBeenCalled()
+    expect(screen.getByText("Locked")).toBeInTheDocument()
+  })
+
+  it("does not show Preview badges for later chapters with stale preview flags", () => {
+    render(
+      <CourseSidebar
+        course={{
+          id: "course-1",
+          mongoId: "65f0f0f0f0f0f0f0f0f0f0f0",
+          creator: { name: "Creator", avatar: "", bio: "Instructor" },
+          sections: [
+            {
+              id: "section-1",
+              title: "Section 1",
+              chapters: [
+                { id: "chapter-1", title: "Intro", sectionId: "section-1", duration: 60, isPreview: true, isPaidChapter: false },
+                { id: "chapter-2", title: "Old Preview", sectionId: "section-1", duration: 60, isPreview: true, isPaidChapter: false },
+              ],
+            },
+          ],
+        }}
+        enrollment={null}
+        allChapters={[
+          { id: "chapter-1", title: "Intro", sectionId: "section-1", duration: 60, isPreview: true, isPaidChapter: false },
+          { id: "chapter-2", title: "Old Preview", sectionId: "section-1", duration: 60, isPreview: true, isPaidChapter: false },
+        ]}
+        progress={0}
+        completedChaptersCount={0}
+        remainingChaptersCount={2}
+        selectedChapter={null}
+        setSelectedChapter={jest.fn()}
+        isChapterAccessible={(id) => id === "chapter-1"}
+      />,
+    )
+
+    expect(screen.getAllByText("Preview")).toHaveLength(1)
+    expect(screen.getByText("Locked")).toBeInTheDocument()
   })
 })

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from "react"
-import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
 import { PageShell } from "@/components/creator-dashboard"
 
@@ -38,8 +37,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { api } from "@/lib/api"
 
 interface PayoutData {
@@ -81,6 +80,7 @@ export default function PayoutsPage() {
   const [bankLoading, setBankLoading] = useState(false);
   const [bankSaving, setBankSaving] = useState(false);
   const [isBankEditing, setIsBankEditing] = useState(false);
+  const [isBankPanelOpen, setIsBankPanelOpen] = useState(false);
 
   const loadPayouts = async () => {
     setLoading(true);
@@ -127,6 +127,7 @@ export default function PayoutsPage() {
         rib: bankData?.bankDetails?.rib || "",
       });
       setIsBankEditing(!Boolean(bankData?.isConfigured));
+      setIsBankPanelOpen(!Boolean(bankData?.isConfigured));
     } catch (error) {
       console.error('Failed to load payouts:', error);
       toast({
@@ -194,6 +195,20 @@ export default function PayoutsPage() {
     const currency = p.currency || 'TND';
     return `${currency} ${p.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
+
+  const formatMoney = (amount: number | null | undefined, currency = 'TND') => {
+    const parsed = Number(amount ?? 0);
+    const safeAmount = Number.isFinite(parsed) ? parsed : 0;
+    return `${currency} ${safeAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const pendingAmountRaw = Number(stats?.pendingAmount ?? payouts.filter((p) => p.status === "pending" || p.status === "scheduled").reduce((sum, payout) => sum + payout.amount, 0));
+  const paidOutAmountRaw = Number(stats?.totalPaid ?? payouts.filter((p) => p.status === "completed").reduce((sum, payout) => sum + payout.amount, 0));
+  const successRateRaw = Number(stats?.successRate ?? 0);
+  const failedPayouts = payouts.filter((p) => p.status === "failed" || p.status === "cancelled");
+  const pendingAmount = Number.isFinite(pendingAmountRaw) ? pendingAmountRaw : 0;
+  const paidOutAmount = Number.isFinite(paidOutAmountRaw) ? paidOutAmountRaw : 0;
+  const successRate = Math.round(Number.isFinite(successRateRaw) ? successRateRaw : 0);
 
   const normalizeRib = (value: string) => value.replace(/\s+/g, "");
 
@@ -366,7 +381,7 @@ export default function PayoutsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Payouts</h1>
-          <p className="text-gray-600 mt-1">Manage your earnings and payment requests</p>
+          <p className="text-gray-600 mt-1">Available, pending, and paid out earnings for this community.</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={loadStats} disabled={statsLoading}>
@@ -375,7 +390,7 @@ export default function PayoutsPage() {
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Refresh Stats
+            Refresh
           </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
@@ -383,7 +398,7 @@ export default function PayoutsPage() {
           </Button>
           <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" className="hidden md:inline-flex">
                 <Plus className="h-4 w-4 mr-2" />
                 Request Payout
               </Button>
@@ -434,121 +449,58 @@ export default function PayoutsPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <CardTitle>Tunisian Banking Credentials</CardTitle>
-              <CardDescription>Used for bank transfer payouts sent by admins.</CardDescription>
-            </div>
-            <Badge variant={bankConfigured ? "default" : "outline"}>
-              {bankLoading ? "Checking..." : bankConfigured ? "Configured" : "Not configured"}
-            </Badge>
+      {/* Money overview */}
+      <div className="rounded-lg border bg-white p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Payout status</h2>
+            <p className="text-xs text-muted-foreground">
+              {bankConfigured
+                ? "Bank details are ready. Review pending and failed payouts before requesting more."
+                : "Set up bank details before requesting bank transfer payouts."}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!isBankEditing && (
-            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              Banking credentials are locked. Click Edit to update them.
-            </div>
-          )}
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="bank-owner-name">Account holder name</Label>
-              <Input
-                id="bank-owner-name"
-                value={bankCredentials.ownerName}
-                onChange={(e) => setBankCredentials(prev => ({ ...prev, ownerName: e.target.value }))}
-                placeholder="Full legal name"
-                disabled={bankSaving || bankLoading || !isBankEditing}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bank-name">Bank name</Label>
-              <Input
-                id="bank-name"
-                value={bankCredentials.bankName}
-                onChange={(e) => setBankCredentials(prev => ({ ...prev, bankName: e.target.value }))}
-                placeholder="Banque de Tunisie..."
-                disabled={bankSaving || bankLoading || !isBankEditing}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bank-rib">RIB (20 digits)</Label>
-              <Input
-                id="bank-rib"
-                value={bankCredentials.rib}
-                onChange={(e) => setBankCredentials(prev => ({ ...prev, rib: e.target.value.replace(/[^\d\s]/g, '') }))}
-                placeholder="12345678901234567890"
-                disabled={bankSaving || bankLoading || !isBankEditing}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end">
-            {isBankEditing ? (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={handleCancelBankEdit} disabled={bankSaving}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveBankCredentials} disabled={bankSaving}>
-                  {bankSaving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : "Save banking credentials"}
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={handleStartBankEdit} disabled={bankLoading}>
-                <Edit3 className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          <Badge variant={bankConfigured ? "default" : "outline"}>
+            {bankLoading ? "Checking" : bankConfigured ? "Ready for payouts" : "Setup needed"}
+          </Badge>
+        </div>
+      </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Earned</CardTitle>
+            <CardTitle className="text-sm font-medium">Available</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${Number(stats?.totalPaid ?? 0).toLocaleString()}
+              {formatMoney(availableBalance)}
             </div>
-            <p className="text-xs text-muted-foreground">Completed payouts</p>
+            <p className="text-xs text-muted-foreground">Ready to request</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available Balance</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${Number(availableBalance ?? stats?.pendingAmount ?? 0).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">Ready or pending</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Next Payout</CardTitle>
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
             <Clock className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats?.recentPayouts?.[0]?.scheduledFor
-                ? new Date(stats.recentPayouts[0].scheduledFor).toLocaleDateString()
-                : '—'}
+              {formatMoney(pendingAmount)}
             </div>
-            <p className="text-xs text-muted-foreground">Scheduled payout</p>
+            <p className="text-xs text-muted-foreground">Requested or scheduled</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Paid Out</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatMoney(paidOutAmount)}
+            </div>
+            <p className="text-xs text-muted-foreground">Completed payouts</p>
           </CardContent>
         </Card>
         <Card>
@@ -558,15 +510,112 @@ export default function PayoutsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Math.round(Number(stats?.successRate ?? 0))}%
+              {successRate}%
             </div>
             <p className="text-xs text-muted-foreground">Successful payouts</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Failed</CardTitle>
+            <AlertCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{failedPayouts.length}</div>
+            <p className="text-xs text-muted-foreground">Needs review</p>
+          </CardContent>
+        </Card>
       </div>
 
+      <Collapsible open={isBankPanelOpen} onOpenChange={setIsBankPanelOpen} className="hidden md:block">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Bank Setup</CardTitle>
+                <CardDescription>Only open this when you need to add or update payout details.</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={bankConfigured ? "default" : "outline"}>
+                  {bankLoading ? "Checking..." : bankConfigured ? "Ready" : "Needed"}
+                </Badge>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    {isBankPanelOpen ? "Hide" : bankConfigured ? "Edit Bank" : "Set Up Bank"}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              {!isBankEditing && (
+                <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  Banking credentials are locked. Click Edit to update them.
+                </div>
+              )}
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="bank-owner-name">Account holder name</Label>
+                  <Input
+                    id="bank-owner-name"
+                    value={bankCredentials.ownerName}
+                    onChange={(e) => setBankCredentials(prev => ({ ...prev, ownerName: e.target.value }))}
+                    placeholder="Full legal name"
+                    disabled={bankSaving || bankLoading || !isBankEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bank-name">Bank name</Label>
+                  <Input
+                    id="bank-name"
+                    value={bankCredentials.bankName}
+                    onChange={(e) => setBankCredentials(prev => ({ ...prev, bankName: e.target.value }))}
+                    placeholder="Banque de Tunisie..."
+                    disabled={bankSaving || bankLoading || !isBankEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bank-rib">RIB (20 digits)</Label>
+                  <Input
+                    id="bank-rib"
+                    value={bankCredentials.rib}
+                    onChange={(e) => setBankCredentials(prev => ({ ...prev, rib: e.target.value.replace(/[^\d\s]/g, '') }))}
+                    placeholder="12345678901234567890"
+                    disabled={bankSaving || bankLoading || !isBankEditing}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                {isBankEditing ? (
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={handleCancelBankEdit} disabled={bankSaving}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveBankCredentials} disabled={bankSaving}>
+                      {bankSaving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : "Save banking credentials"}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button onClick={handleStartBankEdit} disabled={bankLoading}>
+                    <Edit3 className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
       {/* Payout Management */}
-      <Card>
+      <Card className="hidden md:block">
         <CardHeader>
           <CardTitle>Payout Management</CardTitle>
           <CardDescription>View and manage your payout history and requests</CardDescription>
@@ -906,7 +955,7 @@ export default function PayoutsPage() {
           </Tabs>
           <CardFooter className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              Showing <strong>5</strong> of <strong>5</strong> payouts
+              Showing <strong>{filteredPayouts.length}</strong> of <strong>{payouts.length}</strong> payouts
             </div>
             <div className="flex items-center space-x-2">
               <Button 
