@@ -106,10 +106,11 @@ export const coursesApi = {
     return apiClient.put(`/course-enrollment/${courseId}/chapters/${chapterId}/complete`);
   },
 
-  updateChapterWatchTime: async (courseId: string, chapterId: string, watchTime: number, videoDuration?: number): Promise<any> => {
+  updateChapterWatchTime: async (courseId: string, chapterId: string, watchTime: number, videoDuration?: number, isFinal?: boolean): Promise<any> => {
     return apiClient.put(`/course-enrollment/${courseId}/chapters/${chapterId}/watch-time`, {
       watchTime,
       videoDuration,
+      isFinal,
     });
   },
 

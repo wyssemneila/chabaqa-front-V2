@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, Save } from "lucide-react";
+import { TbDeviceFloppy, TbRobot } from "react-icons/tb";
 import { useCommunityGuard } from "@/hooks/use-community-guard";
 import {
   api,
@@ -75,7 +75,7 @@ export default function NewAiAgentPage() {
       title="New AI agent"
       description="Choose a role, personality, knowledge behavior, and where this agent is allowed to appear."
     >
-      <section className="grid gap-4 rounded-lg border bg-card p-5 text-card-foreground shadow-sm lg:grid-cols-[1fr_320px]">
+      <section className="grid gap-4 rounded-lg border border-gray-200 bg-white p-5 text-card-foreground shadow-sm lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -165,12 +165,12 @@ export default function NewAiAgentPage() {
             />
           </div>
           <Button onClick={save} disabled={saving}>
-            <Save className="mr-2 h-4 w-4" />
+            <TbDeviceFloppy className="mr-2 h-4 w-4" />
             Create agent
           </Button>
         </div>
-        <aside className="rounded-lg border border-primary/20 bg-primary/5 p-5">
-          <Bot className="mb-4 h-8 w-8 text-primary" aria-hidden="true" />
+        <aside className="rounded-lg border border-gray-200 bg-gray-50 p-5">
+          <TbRobot className="mb-4 h-8 w-8 text-primary" aria-hidden="true" />
           <h2 className="text-xl font-semibold">{name || "New agent"}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{bio}</p>
           <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-primary">

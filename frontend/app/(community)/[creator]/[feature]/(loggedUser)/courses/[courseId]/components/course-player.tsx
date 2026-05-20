@@ -278,13 +278,25 @@ export default function CoursePlayer({
   const isChapterAccessible = useCallback(
     (chapterId: string) => {
       const key = String(chapterId)
+      const chapter = allChapters.find((c: any) => String(c.id) === key)
+      if (!chapter) return false
+
+      const isPendingPaidUnlock =
+        chapterUnlockState === "unlocked" &&
+        pendingPaidChapterId &&
+        key === String(pendingPaidChapterId)
+      const unlockedEntry = unlockedMap.get(key)
+      if (isPendingPaidUnlock || (Boolean(chapter.isPaidChapter) && Boolean(unlockedEntry?.isUnlocked))) {
+        return true
+      }
+      if (accessibleChapters[key] === true) {
+        return true
+      }
+
       // Prefer the centralized session's access decisions (backend-authoritative, no stale closure).
       if (courseSession && courseSession.chapters.length > 0) {
         return courseSession.isChapterAccessible(key)
       }
-
-      const chapter = allChapters.find((c: any) => String(c.id) === key)
-      if (!chapter) return false
 
       // Fail closed while the backend/session source of truth is not ready.
       // The only runtime fallback is the first chapter public preview.
@@ -294,12 +306,15 @@ export default function CoursePlayer({
       allChapters,
       firstChapterId,
       courseSession,
+      unlockedMap,
+      chapterUnlockState,
+      pendingPaidChapterId,
+      accessibleChapters,
     ],
   )
 
   useEffect(() => {
     if (!isUserEnrolled) return
-    if (effectiveSequentialProgressionEnabled) return
     if (!Array.isArray(unlockedChapters) || unlockedChapters.length === 0) return
 
     const unlockedIds = unlockedChapters
@@ -524,7 +539,7 @@ export default function CoursePlayer({
     if (!courseSession || courseSession.chapters.length === 0) return
 
     const sessionCurrentId = courseSession.currentChapterId ? String(courseSession.currentChapterId) : null
-    if (sessionCurrentId && sessionCurrentId !== selectedChapter && courseSession.isChapterAccessible(sessionCurrentId)) {
+    if (!selectedChapter && sessionCurrentId && courseSession.isChapterAccessible(sessionCurrentId)) {
       setSelectedChapter(sessionCurrentId)
       return
     }
@@ -712,6 +727,18 @@ export default function CoursePlayer({
     })
 
     if (courseSession) {
+      const hasFreshPaidUnlock =
+        Boolean(chapter.isPaidChapter) &&
+        (Boolean(unlockedMap.get(String(chapterId))?.isUnlocked) ||
+          (chapterUnlockState === "unlocked" &&
+            pendingPaidChapterId &&
+            String(pendingPaidChapterId) === String(chapterId)))
+
+      if (hasFreshPaidUnlock) {
+        setSelectedChapter(String(chapterId))
+        return true
+      }
+
       if (courseSession.chapters.length === 0) {
         const isFirstChapter = Boolean(firstChapterId && String(chapterId) === firstChapterId)
         if (isFirstChapter) {
@@ -763,6 +790,9 @@ export default function CoursePlayer({
     courseSession,
     mapLockCodeToReason,
     firstChapterId,
+    unlockedMap,
+    chapterUnlockState,
+    pendingPaidChapterId,
   ])
 
   const handleSelectChapter = useCallback(async (chapterId: string) => {
@@ -963,9 +993,10 @@ export default function CoursePlayer({
                 if (courseSession) {
                   const result = await courseSession.goToNextChapter()
                   if (!result.success) {
+                    const resultChapterId = result.chapterId ? String(result.chapterId) : nextChapterId
                     if (result.needsPayment && onOpenEnrollment) {
                       await onOpenEnrollment({
-                        targetChapterId: nextChapterId,
+                        targetChapterId: resultChapterId,
                         targetChapterPaid: true,
                         source: "sidebar-next",
                       })
@@ -975,6 +1006,18 @@ export default function CoursePlayer({
                         description: result.reason || "Finish this chapter to unlock the next one.",
                         variant: "destructive",
                       })
+                    }
+                  } else {
+                    const targetChapterId = result.chapterId ? String(result.chapterId) : nextChapterId
+                    setSelectedChapter(targetChapterId)
+                    setAccessibleChapters({})
+                    setChapterAccessReason({})
+                    accessCheckInFlight.current = {}
+                    if (onRefreshProgress) {
+                      await onRefreshProgress().catch(() => null)
+                    }
+                    if (onRefreshUnlockedChapters) {
+                      await onRefreshUnlockedChapters().catch(() => null)
                     }
                   }
                   return
