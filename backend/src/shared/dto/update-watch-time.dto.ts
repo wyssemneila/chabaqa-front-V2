@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class UpdateTotalWatchTimeDto {
   @ApiProperty({
@@ -25,6 +25,14 @@ export class UpdateTotalWatchTimeDto {
   @Min(1)
   @Max(86400)
   videoDuration?: number;
+
+  @ApiPropertyOptional({
+    description: 'True when the client is syncing an ended or >=99% playback position.',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isFinal?: boolean;
 }
 
 export class UpdateIncrementalWatchTimeDto {

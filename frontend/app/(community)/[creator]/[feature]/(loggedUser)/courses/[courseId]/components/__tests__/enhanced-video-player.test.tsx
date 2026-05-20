@@ -471,6 +471,33 @@ describe("EnhancedVideoPlayer watermark overlay", () => {
     expect(await screen.findByTestId("chabaqa-watermark")).toBeInTheDocument()
   })
 
+  it("uses Chabaqa custom controls instead of native browser controls for local video", async () => {
+    render(
+      <EnhancedVideoPlayer
+        creatorSlug="creator"
+        slug="community"
+        courseId="course-1"
+        currentChapter={{
+          id: "chapter-local-controls",
+          title: "Local Controls",
+          videoUrl: "/uploads/chapter-local-controls.mp4",
+          duration: 120,
+          isPreview: true,
+        }}
+        isChapterAccessible={() => true}
+        enrollment={{ progress: [] }}
+      />,
+    )
+
+    expect(await screen.findByTestId("chabaqa-video-controls")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument()
+    expect(screen.getByRole("slider", { name: "Seek video" })).toBeInTheDocument()
+    expect(screen.getByRole("slider", { name: "Volume" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Playback speed" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Fullscreen" })).toBeInTheDocument()
+    expect(document.querySelector("video")).not.toHaveAttribute("controls")
+  })
+
   it("renders logo watermark overlay for YouTube branch", async () => {
     mockYoutubePlayer()
     renderYoutubePlayer("https://www.youtube.com/watch?v=dQw4w9WgXcQ")

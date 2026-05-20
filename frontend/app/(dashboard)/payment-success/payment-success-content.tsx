@@ -19,6 +19,8 @@ interface VerificationResponse {
     communitySlug?: string;
     creatorSlug?: string;
     targetId?: string;
+    courseId?: string;
+    chapterId?: string;
     paymentMethod?: {
       type: string;
       card?: {
@@ -48,6 +50,8 @@ interface VerificationResponse {
   communitySlug?: string;
   creatorSlug?: string;
   targetId?: string;
+  courseId?: string;
+  chapterId?: string;
 }
 
 export default function PaymentSuccessContent() {
@@ -213,6 +217,7 @@ export default function PaymentSuccessContent() {
       redirectDone.current = true;
       const courseTargetId =
         searchParams.get('courseId') ||
+        paymentData?.courseId ||
         paymentData?.sessionContentId ||
         paymentData?.targetId;
       if (courseTargetId) {

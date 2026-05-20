@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bot, GraduationCap, Headphones, Rocket, Wand2 } from "lucide-react";
+import { TbHeadphones, TbRobot, TbRocket, TbSchool, TbWand } from "react-icons/tb";
 import { useCommunityGuard } from "@/hooks/use-community-guard";
 import { api } from "@/lib/api";
 import { AiShellLayout } from "@/components/ai/ai-shell-layout";
@@ -15,19 +15,19 @@ const actions = [
   {
     title: "AI Staff",
     href: "/creator/ai/staff",
-    icon: Bot,
+    icon: TbRobot,
     copy: "Create concierge, support, tutor, sales, and coach agents.",
   },
   {
     title: "AI Cofounder",
     href: "/creator/ai/cofounder",
-    icon: Rocket,
+    icon: TbRocket,
     copy: "Build communities, launch plans, growth campaigns, and funnel fixes.",
   },
   {
     title: "Create offer",
     href: "/creator/ai/create",
-    icon: Wand2,
+    icon: TbWand,
     copy: "Turn one rough idea into a reviewable Chabaqa draft.",
   },
 ];
@@ -85,7 +85,7 @@ export default function AiHubPage() {
           return (
             <article
               key={action.href}
-              className="rounded-xl border border-[var(--bd)] bg-card p-5 shadow-sm transition hover:border-primary/30 hover:shadow-md"
+              className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-primary/30 hover:shadow-md"
             >
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Icon className="h-5 w-5" aria-hidden="true" />
@@ -105,38 +105,38 @@ export default function AiHubPage() {
       </section>
 
       <section
-        className="grid gap-3 rounded-xl border border-[var(--bd)] bg-card p-4 shadow-sm"
+        className="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
         aria-label="AI settings"
       >
         {[
           [
             "courseTutorEnabled",
             "Course tutor",
-            GraduationCap,
+            TbSchool,
             "Chapter-aware answers inside the course player.",
           ],
           [
             "supportAgentEnabled",
             "Support agent",
-            Headphones,
+            TbHeadphones,
             "First response for common member questions.",
           ],
           [
             "agentsEnabled",
             "AI Staff",
-            Bot,
+            TbRobot,
             "Enable configurable agents across community surfaces.",
           ],
           [
             "cofounderEnabled",
             "AI Cofounder",
-            Rocket,
+            TbRocket,
             "Enable object creation and launch planning flows.",
           ],
         ].map(([key, label, Icon, copy]: any) => (
           <div
             key={key}
-            className="flex items-center justify-between gap-4 rounded-lg border border-[var(--bd)] bg-background/80 p-3"
+            className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 p-3"
           >
             <div className="flex items-center gap-3">
               <Icon className="h-5 w-5 text-primary" aria-hidden="true" />

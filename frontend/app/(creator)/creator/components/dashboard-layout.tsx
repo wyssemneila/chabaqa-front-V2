@@ -3,9 +3,10 @@
 import type React from "react"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { DashboardSidebar } from "./dashboard-sidebar"
 import { useAuthContext } from "@/app/providers/auth-provider"
+import { cn } from "@/lib/utils"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -13,7 +14,12 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, loading, isAuthenticated, logout } = useAuthContext()
+  const normalizedPathname = pathname.replace(/^\/(en|ar)(?=\/)/, "")
+  const isAiDashboard =
+    normalizedPathname === "/creator/ai" ||
+    normalizedPathname.startsWith("/creator/ai/")
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -42,7 +48,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
-        <main className="mx-auto w-full max-w-7xl px-6 py-6 lg:px-10 lg:py-8">
+        <main
+          className={cn(
+            "mx-auto w-full px-6 py-6 lg:px-10 lg:py-8",
+            isAiDashboard ? "max-w-none" : "max-w-7xl",
+          )}
+        >
           {children}
         </main>
       </div>
