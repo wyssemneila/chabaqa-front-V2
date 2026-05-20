@@ -75,7 +75,15 @@ const config: Config = {
           courses: "#47c7ea",
           sessions: "#f65887",
         },
-         challenges: {
+        brand: {
+          violet: "#8e78fb",
+          sessions: "#f65887",
+          courses: "#47c7ea",
+          challenges: "#ff9b28",
+          slateDark: "#0f172a",
+          slateCard: "#1e293b",
+        },
+        challenges: {
           DEFAULT: "#ff9b28",
           50: "#fff7ed",
           100: "#ffedd5",

@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Link as LinkIcon, FileText, X, Image as ImageIcon, Upload, Camera } from "lucide-react"
 import { toast } from "sonner"
 import Image from "next/image"
+import confetti from "canvas-confetti"
 import { mediaApi } from "@/lib/api/media.api"
 import { apiClient } from "@/lib/api/client"
 
@@ -137,6 +138,11 @@ export default function SubmitProjectModal({
       })
 
       console.log('Submission success')
+      confetti({
+        particleCount: 120,
+        spread: 70,
+        origin: { y: 0.65 },
+      })
       toast.success("Project submitted successfully!")
       onSubmitSuccess?.()
       onClose()

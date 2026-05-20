@@ -299,6 +299,7 @@ export const PostCard = memo(function PostCard({
 
   // ── Like ────────────────────────────────────────────────────────────────────
   const [isLiking, setIsLiking] = useState(false)
+  const [poppedReaction, setPoppedReaction] = useState<string | null>(null)
 
   const handleLike = async () => {
     if (!currentUserId) {
@@ -307,6 +308,10 @@ export const PostCard = memo(function PostCard({
     }
     if (isLiking) return
     setIsLiking(true)
+
+    setPoppedReaction(`${post.id}-like`)
+    setTimeout(() => setPoppedReaction(null), 300)
+
     try {
       const response = post.isLikedByUser
         ? await postsApi.unlike(post.id)
@@ -587,9 +592,9 @@ export const PostCard = memo(function PostCard({
   return (
     <Card
       id={`post-${post.id}`}
-      className={`overflow-hidden transition-all duration-300 bg-white border rounded-2xl ${
-        post.isPinned ? "border-amber-200 shadow-amber-50" : "border-slate-200/70"
-      } shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] active:scale-[0.995] ${isHighlighted ? "ring-2 ring-primary-400 shadow-md" : ""}`}
+      className={`overflow-hidden transition-all duration-300 bg-white dark:bg-slate-900/50 rounded-xl ${
+        post.isPinned ? "border border-amber-200 shadow-amber-50" : "border border-slate-100/80 dark:border-slate-800/40 shadow-sm hover:shadow-md"
+      } active:scale-[0.995] ${isHighlighted ? "ring-2 ring-primary-400 shadow-md" : ""}`}
     >
       {/* ── Pinned banner ───────────────────────────────────────────────────── */}
       {post.isPinned && (
@@ -799,6 +804,7 @@ export const PostCard = memo(function PostCard({
               onClick={handleLike}
               disabled={isLiking}
               className={`h-8 px-2.5 rounded-full text-xs gap-1.5 transition-all disabled:opacity-50 ${
+                poppedReaction === `${post.id}-like` ? "scale-125 text-pink-500 animate-bounce-gentle" :
                 post.isLikedByUser
                   ? "text-red-500 bg-red-50 hover:bg-red-100"
                   : "text-slate-500 hover:text-red-500 hover:bg-red-50"

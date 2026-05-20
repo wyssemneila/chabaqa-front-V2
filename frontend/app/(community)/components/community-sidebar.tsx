@@ -102,7 +102,7 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
   const userChallenge = challenges.length > 0 ? getUserChallengeParticipation("2", challenges[0].id) : null
 
   return (
-    <Sidebar className="border-r">
+    <Sidebar className="border-r hidden lg:block w-64 shrink-0 sticky top-24 self-start space-y-6">
       <SidebarHeader>
         <div className="px-3 py-2">
           <div className="flex items-center space-x-3">
@@ -133,7 +133,14 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
 
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive} className="group">
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className={cn(
+                        "group relative pl-3 transition-all duration-300 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-0 before:bg-[#8e78fb] before:rounded-r-md before:transition-all before:duration-300",
+                        isActive && "before:h-3/4 text-[#8e78fb]"
+                      )}
+                    >
                       <Link href={href}>
                         <item.icon className="size-4" />
                         <span>{item.title}</span>

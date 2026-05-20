@@ -4,6 +4,13 @@
 
 /* ── Brand tokens (light) ─────────────────────────────────────────────── */
 :root {
+  --primary-violet: #8e78fb;
+  --sessions-pink: #f65887;
+  --courses-cyan: #47c7ea;
+  --challenges-orange: #ff9b28;
+  --slate-dark: #0f172a;
+  --slate-card: #1e293b;
+
   --p:        #8e78fb;
   --p-dark:   #6c52f0;
   --p2:       #ede9ff;
@@ -359,11 +366,25 @@
   }
 
   .glass-card {
-    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-xl;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    box-shadow: 0 4px 30px rgba(15, 23, 42, 0.03);
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
   }
 
   .glass-card-dark {
-    @apply bg-black/10 backdrop-blur-md border border-white/10 shadow-xl;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
+  }
+
+  .dark .glass-card {
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
   }
 
   .gradient-text {
@@ -422,6 +443,15 @@
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: rgba(142, 120, 251, 0.5);
+  }
+
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 
   .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
@@ -753,6 +783,17 @@ body {
     text-wrap: balance;
   }
 
+  .shimmer-glow {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-movement 1.8s infinite;
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -775,6 +816,22 @@ body {
       opacity: 1;
       transform: translateY(0);
     }
+  }
+}
+
+@keyframes shimmer-movement {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-glow {
+    animation: none !important;
+    background-position: 0 0;
   }
 }
 

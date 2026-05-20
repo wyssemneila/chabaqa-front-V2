@@ -91,6 +91,10 @@ const userBlueprints = [
   ['Nour Dridi', 'nour-dridi', 'nour.member@chabaqa.demo', 'user', 'Nabeul', 'Designer interested in productized services.'],
   ['Karim Mansour', 'karim-mansour', 'karim.member@chabaqa.demo', 'user', 'Monastir', 'Founder testing paid education offers.'],
   ['Lina Gharbi', 'lina-gharbi', 'lina.member@chabaqa.demo', 'user', 'Tunis', 'Student practicing analytics and content systems.'],
+  ['Fares Mejri', 'fares-mejri', 'fares.member@chabaqa.demo', 'user', 'Bizerte', 'No-code builder testing product launch workflows.'],
+  ['Ines Saidi', 'ines-saidi', 'ines.member@chabaqa.demo', 'user', 'Tunis', 'Growth marketer practicing daily shipping habits.'],
+  ['Mehdi Ayari', 'mehdi-ayari', 'mehdi.member@chabaqa.demo', 'user', 'Sousse', 'Junior developer building public portfolio projects.'],
+  ['Rania Belaid', 'rania-belaid', 'rania.member@chabaqa.demo', 'user', 'Ariana', 'Operations analyst learning dashboard storytelling.'],
 ];
 
 const communityBlueprints = [
@@ -284,6 +288,7 @@ async function main() {
       db.collection('courseenrollments').deleteMany({ id: /^demo-enrollment-/ }),
       db.collection('contentprogresses').deleteMany({ seedKey: SEED_KEY }),
       db.collection('challenges').deleteMany({ id: /^demo-challenge-/ }),
+      db.collection('challengesubmissions').deleteMany({ seedKey: SEED_KEY }),
       db.collection('events').deleteMany({ id: /^demo-event-/ }),
       db.collection('sessions').deleteMany({ id: /^demo-session-/ }),
       db.collection('products').deleteMany({ id: /^demo-product-/ }),
@@ -584,7 +589,201 @@ async function main() {
         updatedAt: now,
       };
     });
+
+    const leaderboardCommunity = communitiesBySlug.get('creator-launch-studio') || Array.from(communitiesBySlug.values())[0];
+    const leaderboardId = 'demo-challenge-leaderboard-points-arena';
+    const leaderboardTaskTitles = [
+      'Set your public shipping goal',
+      'Publish the first proof-of-work post',
+      'Create the working prototype',
+      'Collect peer feedback',
+      'Improve the strongest feature',
+      'Submit the final demo',
+    ];
+    const leaderboardTasks = leaderboardTaskTitles.map((title, taskIndex) => ({
+      id: `${leaderboardId}-task-${taskIndex + 1}`,
+      day: taskIndex + 1,
+      title,
+      description: [
+        'Define the outcome, target user, and success metric for the mini project.',
+        'Share a screenshot, sketch, or outline so peers can react early.',
+        'Build the smallest usable version of the offer, workflow, or interface.',
+        'Ask for specific feedback and respond to at least two reviewers.',
+        'Apply the most useful critique and document what changed.',
+        'Submit the finished project with links, images, and a concise recap.',
+      ][taskIndex],
+      deliverable: [
+        'Goal statement plus one measurable success metric.',
+        'Community post with one screenshot or artifact link.',
+        'Prototype URL, repo, Figma file, or screen recording.',
+        'Feedback summary with two peer comments addressed.',
+        'Before/after note showing the improvement.',
+        'Final project submission with evidence and next steps.',
+      ][taskIndex],
+      isCompleted: false,
+      isActive: taskIndex <= 3,
+      points: [80, 100, 140, 120, 160, 200][taskIndex],
+      resources: [
+        {
+          id: `${leaderboardId}-task-${taskIndex + 1}-resource`,
+          title: `${title} checklist`,
+          type: 'link',
+          url: DOC_URL,
+          description: 'Daily checklist used by the seeded leaderboard challenge.',
+        },
+      ],
+      instructions: 'Complete the task, attach evidence, and submit it for review.',
+      notes: taskIndex === 3 ? 'This day has pending seeded submissions for testing review states.' : undefined,
+      createdAt: now,
+    }));
+    const leaderboardParticipantPlans = [
+      ['sarra-kefi', 5, 640, 83, 5],
+      ['omar-jaziri', 4, 590, 67, 4],
+      ['nour-dridi', 4, 560, 67, 3],
+      ['karim-mansour', 3, 440, 50, 3],
+      ['lina-gharbi', 3, 410, 50, 2],
+      ['fares-mejri', 2, 280, 33, 2],
+      ['ines-saidi', 2, 260, 33, 2],
+      ['mehdi-ayari', 1, 120, 17, 1],
+      ['rania-belaid', 1, 100, 17, 1],
+      ['amina-trabelsi', 0, 0, 0, 0],
+      ['youssef-haddad', 0, 0, 0, 0],
+      ['meriem-ben-salah', 0, 0, 0, 0],
+    ];
+    const leaderboardParticipants = leaderboardParticipantPlans
+      .map(([username, completedCount, totalPoints, progress, streak], index) => {
+        const user = usersByUsername.get(username);
+        if (!user) return null;
+        return {
+          id: `demo-participant-${leaderboardId}-${username}`,
+          userId: user._id,
+          joinedAt: new Date(now.getTime() - (12 - index) * 60 * 60 * 1000),
+          isActive: true,
+          progress,
+          totalPoints,
+          completedTasks: leaderboardTasks.slice(0, completedCount).map((task) => task.id),
+          streak,
+          lastActivityAt: new Date(now.getTime() - index * 45 * 60 * 1000),
+        };
+      })
+      .filter(Boolean);
+    const leaderboardChallenge = {
+      _id: oid(`challenge:${leaderboardId}`),
+      id: leaderboardId,
+      title: 'Leaderboard Points Arena',
+      description: 'A seeded challenge built specifically to test podium overlays, ranks 4+, current-user position, task locks, pending submissions, approved submissions, points, streaks, rewards, posts, and resources.',
+      communityId: String(leaderboardCommunity._id),
+      creatorId: leaderboardCommunity.createur,
+      startDate: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+      endDate: new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000),
+      isActive: true,
+      participants: leaderboardParticipants,
+      posts: [
+        {
+          id: `demo-challenge-post-${leaderboardId}-kickoff`,
+          content: 'Leaderboard test kickoff: post your goal, then submit every day so the podium keeps moving.',
+          images: [asset('challenge-post', leaderboardId, 4)],
+          userId: usersByUsername.get('sarra-kefi')._id,
+          likes: 9,
+          comments: [
+            {
+              id: `demo-challenge-comment-${leaderboardId}-1`,
+              content: 'The points race makes it easy to see who is shipping consistently.',
+              userId: usersByUsername.get('omar-jaziri')._id,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ],
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      depositAmount: 15,
+      maxParticipants: 120,
+      completionReward: 30,
+      topPerformerBonus: 75,
+      streakBonus: 20,
+      category: 'Testing',
+      difficulty: 'intermediate',
+      duration: '6 days',
+      thumbnail: asset('challenge', leaderboardId, 7),
+      notes: 'Seeded challenge with realistic leaderboard points and mixed submission states for UI testing.',
+      resources: [
+        { id: `${leaderboardId}-resource-1`, title: 'Leaderboard QA script', type: 'pdf', url: DOC_URL, description: 'Checklist for validating podium, rows, points, and current-user state.', order: 1 },
+        { id: `${leaderboardId}-resource-2`, title: 'Submission demo video', type: 'video', url: VIDEO_URL, description: 'Working MP4 used to test resource playback links.', order: 2 },
+        { id: `${leaderboardId}-resource-3`, title: 'Final project template', type: 'link', url: 'https://example.com/chabaqa-leaderboard-template', description: 'Example project submission template.', order: 3 },
+      ],
+      tasks: leaderboardTasks,
+      sequentialProgression: true,
+      unlockMessage: 'This arena is sequential: finish the previous day before opening the next one.',
+      pricing: {
+        ...priceConfig(49, 'TND', 'one-time', ['Podium leaderboard', 'Daily review', 'Final certificate', 'Reward eligibility']),
+        participationFee: 49,
+        depositRequired: true,
+        depositAmount: 15,
+        completionReward: 30,
+        topPerformerBonus: 75,
+        streakBonus: 20,
+        isPremium: true,
+        premiumFeatures: {
+          personalMentoring: true,
+          exclusiveResources: true,
+          priorityFeedback: true,
+          certificate: true,
+          liveSessions: true,
+          communityAccess: true,
+        },
+      },
+      averageRating: 4.9,
+      ratingCount: 24,
+      seedKey: SEED_KEY,
+      createdAt: now,
+      updatedAt: now,
+    };
+    challengeDocs.push(leaderboardChallenge);
     for (const challenge of challengeDocs) await upsertBy(db, 'challenges', { id: challenge.id }, challenge);
+
+    const leaderboardSubmissionUsers = [
+      ['sarra-kefi', 5],
+      ['omar-jaziri', 4],
+      ['nour-dridi', 4],
+      ['karim-mansour', 3],
+      ['lina-gharbi', 3],
+      ['fares-mejri', 2],
+      ['ines-saidi', 2],
+      ['mehdi-ayari', 1],
+      ['rania-belaid', 1],
+    ];
+    const leaderboardSubmissions = leaderboardSubmissionUsers.flatMap(([username, submittedCount]) => {
+      const user = usersByUsername.get(username);
+      return leaderboardTasks.slice(0, submittedCount).map((task, taskIndex) => {
+        const isLatestPending = taskIndex === submittedCount - 1 && submittedCount < 5;
+        return {
+          _id: oid(`challenge-submission:${leaderboardId}:${username}:${task.id}`),
+          challengeId: leaderboardChallenge._id,
+          taskId: task.id,
+          userId: user._id,
+          content: `${user.name} seeded submission for ${task.title}. Includes notes, evidence, and a clear next step for reviewer testing.`,
+          links: [`https://example.com/${username}/${task.id}`],
+          files: [asset('submission', `${leaderboardId}-${username}-${task.id}`, taskIndex)],
+          status: isLatestPending ? 'pending' : 'approved',
+          feedback: isLatestPending ? undefined : 'Approved in the rich demo seed. Points are reflected in the leaderboard.',
+          reviewedBy: isLatestPending ? undefined : leaderboardCommunity.createur,
+          reviewedAt: isLatestPending ? undefined : new Date(now.getTime() - (submittedCount - taskIndex) * 30 * 60 * 1000),
+          pointsAwarded: isLatestPending ? 0 : task.points,
+          seedKey: SEED_KEY,
+          createdAt: new Date(now.getTime() - (submittedCount - taskIndex + 1) * 60 * 60 * 1000),
+          updatedAt: now,
+        };
+      });
+    });
+    for (const submission of leaderboardSubmissions) {
+      await upsertBy(db, 'challengesubmissions', {
+        challengeId: submission.challengeId,
+        userId: submission.userId,
+        taskId: submission.taskId,
+      }, submission);
+    }
 
     const productDocs = Array.from(communitiesBySlug.values()).map((community, index) => {
       const id = `demo-product-${slugify(community.name)}-toolkit`;

@@ -1935,6 +1935,7 @@ export class ChallengeService {
         progress: participant.progress,
         totalPoints: participant.totalPoints,
         completedTasks: participant.completedTasks,
+        streak: Number((participant as any).streak || 0),
         lastActivityAt: participant.lastActivityAt.toISOString(),
       };
     });
@@ -3558,6 +3559,7 @@ export class ChallengeService {
           userAvatar: this.uploadService.ensureAbsoluteUrl(user?.profile_picture || user?.photo_profil) || null,
           totalPoints: participant.totalPoints || 0,
           completedTasks: participant.completedTasks?.length || 0,
+          streak: Number((participant as any).streak || 0),
           progress: participant.progress || 0,
           joinedAt: participant.joinedAt,
           lastActivityAt: participant.lastActivityAt,
