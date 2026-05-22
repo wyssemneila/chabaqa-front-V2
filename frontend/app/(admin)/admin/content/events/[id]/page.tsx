@@ -126,6 +126,18 @@ export default function EventDetailPage() {
     }
   }
 
+  const handleFeature = async () => {
+    try {
+      const nextFeatured = !event?.isFeatured
+      await adminApi.content.featureEvent(eventId, nextFeatured)
+      toast.success(nextFeatured ? t("featureSuccess") : t("unfeatureSuccess"))
+      const response = await adminApi.content.getEventById(eventId)
+      if (response.success) setEvent(response.data)
+    } catch (error) {
+      toast.error(t("featureError"))
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -176,6 +188,10 @@ export default function EventDetailPage() {
               {t("actions.approve")}
             </Button>
           )}
+          <Button variant={event.isFeatured ? "default" : "outline"} onClick={handleFeature}>
+            <Star className="h-4 w-4 mr-2" />
+            {event.isFeatured ? t("actions.unfeature") : t("actions.feature")}
+          </Button>
           {event.eventStatus !== "cancelled" && event.eventStatus !== "ended" && (
             <Button variant="destructive" onClick={handleCancel}>
               <AlertCircle className="h-4 w-4 mr-2" />

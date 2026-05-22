@@ -445,6 +445,39 @@ export class Event {
   isPublished: boolean;
 
   @Prop({
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'suspended'],
+    default: 'approved',
+    index: true
+  })
+  approvalStatus?: string;
+
+  @Prop({
+    type: Boolean,
+    default: false,
+    index: true
+  })
+  isFeatured?: boolean;
+
+  @Prop({ type: Boolean, default: false, index: true })
+  isCancelled?: boolean;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  rejectionReason?: string;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  rejectionNotes?: string;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  cancellationReason?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  cancelledBy?: Types.ObjectId;
+
+  @Prop({ type: Date })
+  cancelledAt?: Date;
+
+  @Prop({
     type: Date
   })
   publishedAt?: Date;

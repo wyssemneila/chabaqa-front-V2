@@ -52,6 +52,7 @@ export interface RevenueMetrics {
   subscriptionRevenue: number;
   oneTimeRevenue: number;
   averageRevenuePerUser: number;
+  revenueChange: number;
   monthlyRecurringRevenue: number;
   churnRate: number;
   lifetimeValue: number;
@@ -224,9 +225,9 @@ export class AnalyticsService {
       createdAt: { $gte: previousPeriodStart, $lt: startDate }
     });
 
-    const growthRate = previousUsers > 0 
-      ? ((newUsers - previousUsers) / previousUsers) * 100 
-      : (newUsers > 0 ? 100 : 0);
+    const growthRate = previousUsers > 0
+      ? ((newUsers - previousUsers) / previousUsers) * 100
+      : 0;
 
     const activeUsers = await this.getActiveUsersCount(startDate, endDate);
 
@@ -383,6 +384,28 @@ export class AnalyticsService {
     const totalRevenue = revenueAggregation.length > 0 ? revenueAggregation[0].total : 0;
     const transactionCount = revenueAggregation.length > 0 ? revenueAggregation[0].count : 0;
 
+    const periodLength = endDate.getTime() - startDate.getTime();
+    const previousStartDate = new Date(startDate.getTime() - periodLength);
+    const previousRevenueAggregation = await this.orderModel.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: previousStartDate, $lt: startDate },
+          status: 'paid',
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amountDT' },
+        }
+      }
+    ]);
+    const previousRevenue =
+      previousRevenueAggregation.length > 0 ? previousRevenueAggregation[0].total : 0;
+    const revenueChange = previousRevenue > 0
+      ? ((totalRevenue - previousRevenue) / previousRevenue) * 100
+      : 0;
+
     const subOrders = await this.orderModel.aggregate([
       {
         $match: {
@@ -433,6 +456,7 @@ export class AnalyticsService {
       subscriptionRevenue,
       oneTimeRevenue,
       averageRevenuePerUser,
+      revenueChange: Math.round(revenueChange * 100) / 100,
       monthlyRecurringRevenue,
       churnRate,
       lifetimeValue: Math.round(averageRevenuePerUser * 12 * 100) / 100,

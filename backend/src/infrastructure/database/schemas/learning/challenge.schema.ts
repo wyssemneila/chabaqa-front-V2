@@ -69,10 +69,10 @@ export class ChallengeTaskResource {
 
   @Prop({
     required: true,
-    enum: ['video', 'article', 'code', 'tool'],
+    enum: ['video', 'article', 'code', 'tool', 'pdf', 'link'],
     type: String
   })
-  type: 'video' | 'article' | 'code' | 'tool';
+  type: 'video' | 'article' | 'code' | 'tool' | 'pdf' | 'link';
 
   @Prop({
     required: true,
@@ -141,6 +141,27 @@ export class ChallengeTask {
     default: true
   })
   isActive: boolean;
+
+  @Prop({
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'suspended'],
+    default: 'approved',
+    index: true
+  })
+  approvalStatus?: string;
+
+  @Prop({
+    type: Boolean,
+    default: false,
+    index: true
+  })
+  isFeatured?: boolean;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  rejectionReason?: string;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  rejectionNotes?: string;
 
   @Prop({
     type: Number,
@@ -348,6 +369,10 @@ export interface ChallengeDocument extends Document {
   startDate: Date;
   endDate: Date;
   isActive: boolean;
+  approvalStatus?: string;
+  isFeatured?: boolean;
+  rejectionReason?: string;
+  rejectionNotes?: string;
   participants: ChallengeParticipant[];
   posts: ChallengePost[];
   createdAt: Date;
@@ -537,6 +562,27 @@ export class Challenge {
   /**
    * Participants au défi
    */
+  @Prop({
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'suspended'],
+    default: 'approved',
+    index: true
+  })
+  approvalStatus?: string;
+
+  @Prop({
+    type: Boolean,
+    default: false,
+    index: true
+  })
+  isFeatured?: boolean;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  rejectionReason?: string;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  rejectionNotes?: string;
+
   @Prop({
     type: [ChallengeParticipantSchema],
     default: []

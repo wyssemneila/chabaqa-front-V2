@@ -3,6 +3,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/adapters/handlebars.adapter';
 import { MongooseModule } from '@nestjs/mongoose';
 import * as nodemailer from 'nodemailer';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { EmailService as PlatformEmailService } from '@/shared/services/email.service';
 import { User, UserSchema } from '@/infrastructure/database/schemas/auth/user.schema';
@@ -46,6 +47,13 @@ function getFromHeader(): string {
 
 function getReplyToAddress(): string {
   return process.env.EMAIL_REPLY_TO || getFromAddress();
+}
+
+function getCompiledEmailTemplateDir(): string {
+  const sourceTemplateDir = join(process.cwd(), 'src', 'domains', 'communication', 'email-templates', 'compiled');
+  if (existsSync(sourceTemplateDir)) return sourceTemplateDir;
+
+  return join(__dirname, '..', 'email-templates', 'compiled');
 }
 
 function isSmtpConfigured(): boolean {
@@ -143,7 +151,7 @@ async function resolveMailTransport(): Promise<any> {
           replyTo: getReplyToAddress(),
         },
         template: {
-          dir: join(__dirname, '..', 'email-templates', 'compiled'),
+          dir: getCompiledEmailTemplateDir(),
           adapter: new HandlebarsAdapter(undefined, {
             inlineCssEnabled: true,
           }),

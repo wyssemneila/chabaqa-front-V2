@@ -15,6 +15,15 @@ dist/
 build/
 coverage/
 .next/
+*.tsbuildinfo
+
+# Local automation artifacts
+output/
+output-*.png
+frontend/output/
+
+# Local payment/download scratch files
+frontend/public/payement/
 
 # Runtime uploads
 backend/uploads/*

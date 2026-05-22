@@ -156,6 +156,16 @@ export default function ChallengesManagementPage() {
     }
   }
 
+  const handleFeature = async (challengeId: string, featured: boolean) => {
+    try {
+      await adminApi.content.featureChallenge(challengeId, featured)
+      toast.success(featured ? t("featureSuccess") : t("unfeatureSuccess"))
+      fetchChallenges()
+    } catch (error) {
+      toast.error(t("featureError"))
+    }
+  }
+
   const getStatusBadge = (status: string, challengeStatus: string) => {
     if (status === "pending") {
       return <Badge variant="outline" className="text-amber-600 border-amber-200">{t("status.pending")}</Badge>
@@ -351,7 +361,7 @@ export default function ChallengesManagementPage() {
                                 {t("actions.endEarly")}
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleFeature(challenge.id, !challenge.isFeatured)}>
                               <Star className="h-4 w-4 mr-2" />
                               {challenge.isFeatured ? t("actions.unfeature") : t("actions.feature")}
                             </DropdownMenuItem>
