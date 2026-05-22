@@ -218,7 +218,7 @@ describe('ContentManagementController', () => {
     it('should feature a course', async () => {
       mockService.featureCourse.mockResolvedValue(undefined);
 
-      const result = await controller.featureCourse('course-1', true, mockReq as any);
+      const result = await controller.featureCourse('course-1', { featured: true }, mockReq as any);
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Course featured successfully');
@@ -228,7 +228,7 @@ describe('ContentManagementController', () => {
     it('should unfeature a course', async () => {
       mockService.featureCourse.mockResolvedValue(undefined);
 
-      const result = await controller.featureCourse('course-1', false, mockReq as any);
+      const result = await controller.featureCourse('course-1', { featured: false }, mockReq as any);
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Course unfeatured successfully');
@@ -643,7 +643,7 @@ describe('ContentManagementController', () => {
     it('should feature a post', async () => {
       mockService.featurePost.mockResolvedValue(undefined);
 
-      const result = await controller.featurePost('post-1', true, mockReq as any);
+      const result = await controller.featurePost('post-1', { featured: true }, mockReq as any);
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Post featured successfully');
@@ -652,7 +652,7 @@ describe('ContentManagementController', () => {
     it('should unfeature a post', async () => {
       mockService.featurePost.mockResolvedValue(undefined);
 
-      const result = await controller.featurePost('post-1', false, mockReq as any);
+      const result = await controller.featurePost('post-1', { featured: false }, mockReq as any);
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Post unfeatured successfully');

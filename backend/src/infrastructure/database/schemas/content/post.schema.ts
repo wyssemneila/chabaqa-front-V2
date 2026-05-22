@@ -249,6 +249,13 @@ export class Post {
   isPinned: boolean;
 
   @Prop({
+    type: Boolean,
+    default: false,
+    index: true
+  })
+  isFeatured?: boolean;
+
+  @Prop({
     type: Date,
     required: false,
   })

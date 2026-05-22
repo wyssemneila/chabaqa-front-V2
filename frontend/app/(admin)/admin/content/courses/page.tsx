@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -31,6 +33,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { 
   Search, 
   MoreHorizontal, 
@@ -43,7 +53,10 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
-  Filter
+  Filter,
+  Clock,
+  Users,
+  Sparkles
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -65,6 +78,7 @@ interface Course {
   level?: string
   isFeatured: boolean
   createdAt: string
+  isPaidCourse?: boolean
 }
 
 interface PaginatedCourses {
@@ -88,6 +102,14 @@ export default function CoursesManagementPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all")
+  const [featuredFilter, setFeaturedFilter] = useState(searchParams.get("featured") || "all")
+  const [priceFilter, setPriceFilter] = useState(searchParams.get("price") || "all")
+  const [sortValue, setSortValue] = useState(searchParams.get("sort") || "createdAt:desc")
+  const [actionCourse, setActionCourse] = useState<Course | null>(null)
+  const [actionType, setActionType] = useState<"reject" | "suspend" | null>(null)
+  const [actionReason, setActionReason] = useState("")
+  const [actionNotes, setActionNotes] = useState("")
+  const [actionLoading, setActionLoading] = useState(false)
 
   const page = parseInt(searchParams.get("page") || "1", 10)
   const limit = 20
@@ -98,6 +120,12 @@ export default function CoursesManagementPage() {
       const filters: any = { page, limit }
       if (searchTerm) filters.searchTerm = searchTerm
       if (statusFilter && statusFilter !== "all") filters.status = statusFilter
+      if (featuredFilter !== "all") filters.isFeatured = featuredFilter === "featured"
+      if (priceFilter === "free") filters.maxPrice = 0
+      if (priceFilter === "paid") filters.minPrice = 1
+      const [sortBy, sortOrder] = sortValue.split(":")
+      filters.sortBy = sortBy
+      filters.sortOrder = sortOrder
       
       const response = await adminApi.content.getCourses(filters)
       if (response.success) {
@@ -109,7 +137,7 @@ export default function CoursesManagementPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, searchTerm, statusFilter, t])
+  }, [featuredFilter, page, priceFilter, searchTerm, sortValue, statusFilter, t])
 
   useEffect(() => {
     fetchCourses()
@@ -122,11 +150,15 @@ export default function CoursesManagementPage() {
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value)
+    updateQueryParam("status", value)
+  }
+
+  const updateQueryParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams)
     if (value === "all") {
-      params.delete("status")
+      params.delete(key)
     } else {
-      params.set("status", value)
+      params.set(key, value)
     }
     params.set("page", "1")
     router.push(`${pathname}?${params.toString()}`)
@@ -152,17 +184,60 @@ export default function CoursesManagementPage() {
     }
   }
 
+  const openCourseAction = (course: Course, type: "reject" | "suspend") => {
+    setActionCourse(course)
+    setActionType(type)
+    setActionReason("")
+    setActionNotes("")
+  }
+
+  const submitCourseAction = async () => {
+    if (!actionCourse || !actionType) return
+    if (actionReason.trim().length < 3) {
+      toast.error("Please add a clear reason.")
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      if (actionType === "reject") {
+        await adminApi.content.rejectCourse(actionCourse.id, actionReason.trim(), actionNotes.trim() || undefined)
+        toast.success("Course rejected.")
+      } else {
+        await adminApi.content.suspendCourse(actionCourse.id, actionReason.trim(), actionNotes.trim() || undefined)
+        toast.success("Course suspended.")
+      }
+      setActionCourse(null)
+      setActionType(null)
+      fetchCourses()
+    } catch (error) {
+      toast.error(actionType === "reject" ? "Failed to reject course." : "Failed to suspend course.")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const getStatusBadge = (status: string, isPublished: boolean) => {
-    if (!isPublished || status === "suspended") {
+    if (status === "suspended") {
       return <Badge variant="destructive">{t("status.suspended")}</Badge>
+    }
+    if (status === "rejected") {
+      return <Badge variant="destructive">Rejected</Badge>
     }
     if (status === "pending") {
       return <Badge variant="outline" className="text-amber-600 border-amber-200">{t("status.pending")}</Badge>
     }
-    if (status === "featured") {
+    if (status === "featured" || isPublished) {
       return <Badge className="bg-primary">{t("status.featured")}</Badge>
     }
-    return <Badge variant="secondary">{t("status.approved")}</Badge>
+    return <Badge variant="secondary">Draft</Badge>
+  }
+
+  const stats = {
+    total: courses?.total || 0,
+    pending: courses?.data.filter((course) => course.status === "pending").length || 0,
+    enrollments: courses?.data.reduce((sum, course) => sum + course.enrollmentCount, 0) || 0,
+    featured: courses?.data.filter((course) => course.isFeatured).length || 0,
   }
 
   return (
@@ -174,9 +249,33 @@ export default function CoursesManagementPage() {
         </div>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-4">
+        {[
+          { label: "Total courses", value: stats.total, icon: BookOpen },
+          { label: "Pending review", value: stats.pending, icon: Clock },
+          { label: "Page enrollments", value: stats.enrollments, icon: Users },
+          { label: "Featured on page", value: stats.featured, icon: Sparkles },
+        ].map((item) => {
+          const Icon = item.icon
+          return (
+            <Card key={item.label} className="admin-surface rounded-2xl border-0 shadow-none">
+              <CardContent className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                  <p className="mt-1 text-2xl font-semibold">{item.value}</p>
+                </div>
+                <span className="admin-icon-chip h-10 w-10 rounded-xl">
+                  <Icon className="h-5 w-5" />
+                </span>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
       <Card className="admin-surface overflow-hidden rounded-3xl border-0 shadow-none">
         <CardContent className="p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-md">
               <Input
                 placeholder={t("searchPlaceholder")}
@@ -189,7 +288,7 @@ export default function CoursesManagementPage() {
               </Button>
             </form>
 
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-wrap gap-2 items-center">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={statusFilter} onValueChange={handleStatusChange}>
                 <SelectTrigger className="w-[180px]">
@@ -199,8 +298,49 @@ export default function CoursesManagementPage() {
                   <SelectItem value="all">{t("allStatuses")}</SelectItem>
                   <SelectItem value="pending">{t("status.pending")}</SelectItem>
                   <SelectItem value="approved">{t("status.approved")}</SelectItem>
-                  <SelectItem value="featured">{t("status.featured")}</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                   <SelectItem value="suspended">{t("status.suspended")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={featuredFilter} onValueChange={(value) => {
+                setFeaturedFilter(value)
+                updateQueryParam("featured", value)
+              }}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Featured" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All visibility</SelectItem>
+                  <SelectItem value="featured">Featured</SelectItem>
+                  <SelectItem value="standard">Not featured</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={priceFilter} onValueChange={(value) => {
+                setPriceFilter(value)
+                updateQueryParam("price", value)
+              }}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Price" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All prices</SelectItem>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortValue} onValueChange={(value) => {
+                setSortValue(value)
+                updateQueryParam("sort", value)
+              }}>
+                <SelectTrigger className="w-[170px]">
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdAt:desc">Newest first</SelectItem>
+                  <SelectItem value="createdAt:asc">Oldest first</SelectItem>
+                  <SelectItem value="titre:asc">Title A-Z</SelectItem>
+                  <SelectItem value="prix:desc">Price high-low</SelectItem>
+                  <SelectItem value="prix:asc">Price low-high</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -254,7 +394,7 @@ export default function CoursesManagementPage() {
                               {course.title}
                             </Link>
                             <p className="text-sm text-muted-foreground">
-                              {course.sectionCount} sections • {course.chapterCount} chapters
+                              {course.sectionCount} sections - {course.chapterCount} chapters
                             </p>
                           </div>
                         </div>
@@ -262,7 +402,7 @@ export default function CoursesManagementPage() {
                       <TableCell>
                         <div className="text-sm">
                           <p className="font-medium">{course.creator.name}</p>
-                          <p className="text-muted-foreground">{course.creator.email}</p>
+                          <p className="max-w-[220px] truncate text-muted-foreground">{course.creator.email || "No email"}</p>
                         </div>
                       </TableCell>
                       <TableCell>{course.community.name}</TableCell>
@@ -295,12 +435,18 @@ export default function CoursesManagementPage() {
                                 {t("actions.approve")}
                               </DropdownMenuItem>
                             )}
+                            {course.status === "pending" && (
+                              <DropdownMenuItem onClick={() => openCourseAction(course, "reject")}>
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Reject
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={() => handleFeature(course.id, !course.isFeatured)}>
                               <Star className="h-4 w-4 mr-2" />
                               {course.isFeatured ? t("actions.unfeature") : t("actions.feature")}
                             </DropdownMenuItem>
                             {course.status !== "suspended" && (
-                              <DropdownMenuItem className="text-destructive">
+                              <DropdownMenuItem className="text-destructive" onClick={() => openCourseAction(course, "suspend")}>
                                 <AlertCircle className="h-4 w-4 mr-2" />
                                 {t("actions.suspend")}
                               </DropdownMenuItem>
@@ -350,6 +496,57 @@ export default function CoursesManagementPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!actionType} onOpenChange={(open) => {
+        if (!open && !actionLoading) {
+          setActionCourse(null)
+          setActionType(null)
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{actionType === "reject" ? "Reject course" : "Suspend course"}</DialogTitle>
+            <DialogDescription>
+              {actionCourse?.title
+                ? `This action will update "${actionCourse.title}" and save an audit log.`
+                : "This action will update the course and save an audit log."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="course-action-reason">Reason</Label>
+              <Textarea
+                id="course-action-reason"
+                value={actionReason}
+                onChange={(event) => setActionReason(event.target.value)}
+                placeholder="Add the moderation reason..."
+                className="min-h-24"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="course-action-notes">Internal notes</Label>
+              <Textarea
+                id="course-action-notes"
+                value={actionNotes}
+                onChange={(event) => setActionNotes(event.target.value)}
+                placeholder="Optional notes for the admin team..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={actionLoading} onClick={() => {
+              setActionCourse(null)
+              setActionType(null)
+            }}>
+              Cancel
+            </Button>
+            <Button variant={actionType === "suspend" ? "destructive" : "default"} disabled={actionLoading} onClick={submitCourseAction}>
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {actionType === "reject" ? "Reject course" : "Suspend course"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

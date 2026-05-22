@@ -177,7 +177,9 @@ export class AdminNotificationService {
       // Retry logic for failed notifications
       if (notification.retryCount < 3) {
         setTimeout(() => {
-          this.retryNotification(notification.id);
+          void this.retryNotification(notification.id).catch((retryError) => {
+            this.logger.error(`Notification retry failed for ${notification.id}:`, retryError);
+          });
         }, Math.pow(2, notification.retryCount) * 1000); // Exponential backoff
       }
     }

@@ -12,6 +12,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { 
   ArrowLeft, 
   BookOpen, 
@@ -92,6 +102,10 @@ export default function CourseDetailPage() {
 
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
+  const [actionType, setActionType] = useState<"reject" | "suspend" | null>(null)
+  const [actionReason, setActionReason] = useState("")
+  const [actionNotes, setActionNotes] = useState("")
+  const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -134,6 +148,50 @@ export default function CourseDetailPage() {
     }
   }
 
+  const refreshCourse = async () => {
+    const response = await adminApi.content.getCourseById(courseId)
+    if (response.success) setCourse(response.data)
+  }
+
+  const submitCourseAction = async () => {
+    if (!actionType) return
+    if (actionReason.trim().length < 3) {
+      toast.error("Please add a clear reason.")
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      if (actionType === "reject") {
+        await adminApi.content.rejectCourse(courseId, actionReason.trim(), actionNotes.trim() || undefined)
+        toast.success("Course rejected.")
+      } else {
+        await adminApi.content.suspendCourse(courseId, actionReason.trim(), actionNotes.trim() || undefined)
+        toast.success("Course suspended.")
+      }
+      setActionType(null)
+      setActionReason("")
+      setActionNotes("")
+      await refreshCourse()
+    } catch (error) {
+      toast.error(actionType === "reject" ? "Failed to reject course." : "Failed to suspend course.")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const getWorkflowStatusBadge = () => {
+    if (!course) return null
+    if (course.status === "suspended") return <Badge variant="destructive">{t("status.suspended")}</Badge>
+    if (course.status === "rejected") return <Badge variant="destructive">Rejected</Badge>
+    if (course.status === "pending") {
+      return <Badge variant="outline" className="border-amber-200 text-amber-600">{t("status.pending")}</Badge>
+    }
+    if (course.isFeatured) return <Badge className="bg-primary">{t("overview.featured")}</Badge>
+    if (course.isPublished) return <Badge variant="default">{t("overview.published")}</Badge>
+    return <Badge variant="secondary">{t("overview.draft")}</Badge>
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -174,12 +232,18 @@ export default function CourseDetailPage() {
               {t("actions.approve")}
             </Button>
           )}
+          {course.status === "pending" && (
+            <Button variant="outline" onClick={() => setActionType("reject")}>
+              <XCircle className="h-4 w-4 mr-2" />
+              Reject
+            </Button>
+          )}
           <Button variant={course.isFeatured ? "default" : "outline"} onClick={handleFeature}>
             <Star className="h-4 w-4 mr-2" />
             {course.isFeatured ? t("actions.unfeature") : t("actions.feature")}
           </Button>
           {course.status !== "suspended" && (
-            <Button variant="destructive">
+            <Button variant="destructive" onClick={() => setActionType("suspend")}>
               <AlertCircle className="h-4 w-4 mr-2" />
               {t("actions.suspend")}
             </Button>
@@ -212,12 +276,7 @@ export default function CourseDetailPage() {
                 {course.level && (
                   <Badge variant="outline">{course.level}</Badge>
                 )}
-                <Badge variant={course.isPublished ? "default" : "destructive"}>
-                  {course.isPublished ? t("overview.published") : t("overview.draft")}
-                </Badge>
-                {course.isFeatured && (
-                  <Badge className="bg-primary">{t("overview.featured")}</Badge>
-                )}
+                {getWorkflowStatusBadge()}
               </div>
 
               <Separator />
@@ -333,7 +392,7 @@ export default function CourseDetailPage() {
                           <FileText className="h-4 w-4 text-muted-foreground" />
                           <div className="flex-1">
                             <p className="font-medium">{resource.title}</p>
-                            <p className="text-sm text-muted-foreground">{resource.type} • {resource.description}</p>
+                            <p className="text-sm text-muted-foreground">{resource.type} - {resource.description}</p>
                           </div>
                         </div>
                       ))}
@@ -436,6 +495,49 @@ export default function CourseDetailPage() {
           </Button>
         </div>
       </div>
+
+      <Dialog open={!!actionType} onOpenChange={(open) => {
+        if (!open && !actionLoading) setActionType(null)
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{actionType === "reject" ? "Reject course" : "Suspend course"}</DialogTitle>
+            <DialogDescription>
+              Add a reason so the action is auditable and clear for the admin team.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="course-detail-action-reason">Reason</Label>
+              <Textarea
+                id="course-detail-action-reason"
+                value={actionReason}
+                onChange={(event) => setActionReason(event.target.value)}
+                placeholder="Add the moderation reason..."
+                className="min-h-24"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="course-detail-action-notes">Internal notes</Label>
+              <Textarea
+                id="course-detail-action-notes"
+                value={actionNotes}
+                onChange={(event) => setActionNotes(event.target.value)}
+                placeholder="Optional notes for the admin team..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={actionLoading} onClick={() => setActionType(null)}>
+              Cancel
+            </Button>
+            <Button variant={actionType === "suspend" ? "destructive" : "default"} disabled={actionLoading} onClick={submitCourseAction}>
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {actionType === "reject" ? "Reject course" : "Suspend course"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

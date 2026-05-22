@@ -77,6 +77,7 @@ describe('ContentManagementService', () => {
       find: createQueryMock([]),
       findById: createQueryMock(null),
       countDocuments: jest.fn().mockResolvedValue(0),
+      updateOne: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
     };
 
     // Mock Submission Model
@@ -91,6 +92,7 @@ describe('ContentManagementService', () => {
       find: createQueryMock([]),
       findById: createQueryMock(null),
       countDocuments: jest.fn().mockResolvedValue(0),
+      updateOne: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
     };
 
     // Mock Post Model
@@ -532,7 +534,10 @@ describe('ContentManagementService', () => {
 
       await service.approveChallenge(testChallengeId, testAdminId);
 
-      expect(mockChallenge.save).toHaveBeenCalled();
+      expect(mockChallengeModel.updateOne).toHaveBeenCalledWith(
+        { _id: testChallengeId },
+        { $set: { approvalStatus: ContentStatus.APPROVED } },
+      );
       expect(mockAuditLogService.logAction).toHaveBeenCalledWith(
         expect.objectContaining({
           action: AdminAction.CONTENT_APPROVE,
@@ -554,8 +559,10 @@ describe('ContentManagementService', () => {
 
       await service.endChallengeEarly(testChallengeId, testAdminId);
 
-      expect(mockChallenge.endDate).toBeInstanceOf(Date);
-      expect(mockChallenge.save).toHaveBeenCalled();
+      expect(mockChallengeModel.updateOne).toHaveBeenCalledWith(
+        { _id: testChallengeId },
+        { $set: { endDate: expect.any(Date) } },
+      );
       expect(mockAuditLogService.logAction).toHaveBeenCalledWith(
         expect.objectContaining({
           action: AdminAction.CONTENT_UPDATE,
@@ -689,7 +696,12 @@ describe('ContentManagementService', () => {
 
       await service.cancelEvent(testEventId, 'Weather emergency', testAdminId);
 
-      expect(mockEvent.save).toHaveBeenCalled();
+      const [, updatePayload] = mockEventModel.updateOne.mock.calls[0];
+      expect(updatePayload.$set).toMatchObject({
+        isCancelled: true,
+        cancellationReason: 'Weather emergency',
+      });
+      expect(String(updatePayload.$set.cancelledBy)).toBe(testAdminId);
       expect(mockAuditLogService.logAction).toHaveBeenCalledWith(
         expect.objectContaining({
           action: AdminAction.CONTENT_CANCEL,

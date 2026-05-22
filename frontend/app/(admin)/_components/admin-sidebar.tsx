@@ -20,7 +20,7 @@ import {
   LayoutDashboard,
   Users,
   Building2,
-  Shield,
+  ShieldCheck,
   Coins,
   BarChart3,
   Database,
@@ -31,17 +31,36 @@ import {
   ChevronRight,
   LogOut,
   FileText,
+  BookOpen,
+  Trophy,
+  CalendarDays,
+  MessageSquareText,
+  WalletCards,
+  Repeat2,
+  ReceiptText,
+  HandCoins,
+  Download,
+  Workflow,
+  ScrollText,
+  Siren,
+  Send,
+  FileCode2,
+  BellRing,
+  Headphones,
 } from "lucide-react"
+
+type SidebarIcon = React.ComponentType<{ className?: string }>
 
 interface NavigationItem {
   title: string
   href: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: SidebarIcon
   badge?: number
   hidden?: boolean
   children?: Array<{
     title: string
     href: string
+    icon: SidebarIcon
   }>
 }
 
@@ -54,6 +73,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
   const t = useTranslations("admin")
   const { sidebarOpen, closeSidebar } = useAdminLayout()
   const { admin, logout, capabilities } = useAdminAuth()
+  const [isDesktop, setIsDesktop] = useState(false)
   const [pendingCounts, setPendingCounts] = useState({
     users: 0,
     communities: 0,
@@ -62,6 +82,15 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
   })
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const canAccessOperations = capabilities.financial || capabilities.security || capabilities.analytics || capabilities.dashboard
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)")
+    const syncViewport = () => setIsDesktop(mediaQuery.matches)
+
+    syncViewport()
+    mediaQuery.addEventListener("change", syncViewport)
+    return () => mediaQuery.removeEventListener("change", syncViewport)
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -141,7 +170,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
     {
       title: "Content Moderation",
       href: "/admin/content-moderation",
-      icon: Shield,
+      icon: ShieldCheck,
       badge: pendingCounts.moderation,
       hidden: !capabilities.contentModeration,
     },
@@ -151,10 +180,10 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
       icon: FileText,
       hidden: !capabilities.contentManagement,
       children: [
-        { title: "Courses", href: "/admin/content/courses" },
-        { title: "Challenges", href: "/admin/content/challenges" },
-        { title: "Events", href: "/admin/content/events" },
-        { title: "Posts", href: "/admin/content/posts" },
+        { title: "Courses", href: "/admin/content/courses", icon: BookOpen },
+        { title: "Challenges", href: "/admin/content/challenges", icon: Trophy },
+        { title: "Events", href: "/admin/content/events", icon: CalendarDays },
+        { title: "Posts", href: "/admin/content/posts", icon: MessageSquareText },
       ],
     },
     {
@@ -163,10 +192,10 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
       icon: Coins,
       hidden: !capabilities.financial,
       children: [
-        { title: "Dashboard", href: "/admin/financial" },
-        { title: "Subscriptions", href: "/admin/financial/subscriptions" },
-        { title: "Transactions", href: "/admin/financial/transactions" },
-        { title: "Payouts", href: "/admin/financial/payouts" },
+        { title: "Dashboard", href: "/admin/financial", icon: WalletCards },
+        { title: "Subscriptions", href: "/admin/financial/subscriptions", icon: Repeat2 },
+        { title: "Transactions", href: "/admin/financial/transactions", icon: ReceiptText },
+        { title: "Payouts", href: "/admin/financial/payouts", icon: HandCoins },
       ],
     },
     {
@@ -181,8 +210,8 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
       icon: Database,
       hidden: !canAccessOperations,
       children: [
-        { title: "Export Center", href: "/admin/export" },
-        { title: "Bulk Operations", href: "/admin/data-management" },
+        { title: "Export Center", href: "/admin/export", icon: Download },
+        { title: "Bulk Operations", href: "/admin/data-management", icon: Workflow },
       ],
     },
     {
@@ -191,8 +220,8 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
       icon: Lock,
       hidden: !capabilities.security,
       children: [
-        { title: "Audit Logs", href: "/admin/security" },
-        { title: "Security Events", href: "/admin/security/events" },
+        { title: "Audit Logs", href: "/admin/security", icon: ScrollText },
+        { title: "Security Events", href: "/admin/security/events", icon: Siren },
       ],
     },
     {
@@ -202,11 +231,11 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
       badge: pendingCounts.support,
       hidden: !capabilities.communication && !capabilities.liveSupport,
       children: [
-        ...(capabilities.communication ? [{ title: "Campaigns", href: "/admin/communication" }] : []),
-        ...(capabilities.communication ? [{ title: "Templates", href: "/admin/communication/templates" }] : []),
-        ...(capabilities.communication ? [{ title: "Notifications", href: "/admin/communication/notifications" }] : []),
-        ...(capabilities.communication ? [{ title: "Communication Analytics", href: "/admin/communication/analytics" }] : []),
-        ...(capabilities.liveSupport ? [{ title: "Live Support", href: "/admin/communication/support" }] : []),
+        ...(capabilities.communication ? [{ title: "Campaigns", href: "/admin/communication", icon: Send }] : []),
+        ...(capabilities.communication ? [{ title: "Templates", href: "/admin/communication/templates", icon: FileCode2 }] : []),
+        ...(capabilities.communication ? [{ title: "Notifications", href: "/admin/communication/notifications", icon: BellRing }] : []),
+        ...(capabilities.communication ? [{ title: "Communication Analytics", href: "/admin/communication/analytics", icon: BarChart3 }] : []),
+        ...(capabilities.liveSupport ? [{ title: "Live Support", href: "/admin/communication/support", icon: Headphones }] : []),
       ],
     },
     {
@@ -284,6 +313,12 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
 
   const handleLogout = async () => {
     await logout()
+  }
+
+  const handleNavigationClick = () => {
+    if (!isDesktop) {
+      closeSidebar()
+    }
   }
 
   const sidebarContent = (
@@ -366,28 +401,34 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-0.5 space-y-0.5">
-                    {item.children?.map((child) => (
-                      <Button
-                        key={child.href}
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                        className={cn(
-                          "admin-nav-item h-10 rounded-xl px-2.5 py-2 text-sm",
-                          isActive(child.href) && "admin-nav-active"
-                        )}
-                      >
-                        <Link 
-                          href={child.href} 
-                          onClick={closeSidebar}
-                          className="flex w-full items-center justify-start text-left"
-                          aria-current={isActive(child.href) ? "page" : undefined}
+                    {item.children?.map((child) => {
+                      const ChildIcon = child.icon
+
+                      return (
+                        <Button
+                          key={child.href}
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          className={cn(
+                            "admin-nav-item h-10 rounded-xl px-2.5 py-2 text-sm",
+                            isActive(child.href) && "admin-nav-active"
+                          )}
                         >
-                          <span className="admin-icon-chip mr-2.5 h-8 w-8 rounded-xl opacity-70" aria-hidden="true" />
-                          <span className="flex-1 text-left">{child.title}</span>
-                        </Link>
-                      </Button>
-                    ))}
+                          <Link 
+                            href={child.href} 
+                            onClick={handleNavigationClick}
+                            className="flex w-full items-center justify-start text-left"
+                            aria-current={isActive(child.href) ? "page" : undefined}
+                          >
+                            <span className="admin-icon-chip mr-2.5 h-8 w-8 rounded-xl opacity-70">
+                              <ChildIcon className="h-4 w-4" aria-hidden="true" />
+                            </span>
+                            <span className="flex-1 text-left">{child.title}</span>
+                          </Link>
+                        </Button>
+                      )
+                    })}
                   </CollapsibleContent>
                 </Collapsible>
               )
@@ -405,7 +446,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
               >
                 <Link 
                   href={item.href} 
-                  onClick={closeSidebar}
+                  onClick={handleNavigationClick}
                   className="flex w-full items-center justify-start text-left"
                   aria-current={active ? "page" : undefined}
                   aria-label={`${item.title}${item.badge ? `, ${item.badge} pending items` : ''}`}
@@ -477,7 +518,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
   )
 
   // Mobile drawer
-  const mobileDrawer = (
+  const mobileDrawer = !isDesktop ? (
     <Sheet open={sidebarOpen} onOpenChange={closeSidebar}>
       <SheetContent 
         side="left" 
@@ -493,7 +534,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
         {sidebarContent}
       </SheetContent>
     </Sheet>
-  )
+  ) : null
 
   return (
     <>

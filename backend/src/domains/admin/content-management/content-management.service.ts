@@ -76,7 +76,10 @@ export class ContentManagementService {
   }
 
   private async getCommunitySummary(communityId: string): Promise<CommunitySummaryDto> {
-    const community = await this.communityModel.findOne({ id: communityId }).select('name slug').lean();
+    const query = Types.ObjectId.isValid(communityId)
+      ? { $or: [{ _id: new Types.ObjectId(communityId) }, { id: communityId }] }
+      : { id: communityId };
+    const community = await this.communityModel.findOne(query).select('name slug').lean();
     if (!community) {
       return { id: communityId, name: 'Unknown Community', slug: '' };
     }
@@ -94,15 +97,28 @@ export class ContentManagementService {
     adminUserId: string,
     metadata?: Record<string, any>,
   ): Promise<void> {
+    const normalizedEntityId = Types.ObjectId.isValid(entityId)
+      ? new Types.ObjectId(entityId)
+      : new Types.ObjectId();
+
     await this.auditLogService.logAction({
       action,
       entityType,
-      entityId: new Types.ObjectId(entityId),
+      entityId: normalizedEntityId,
       adminUserId: new Types.ObjectId(adminUserId),
       ipAddress: '127.0.0.1',
       userAgent: 'admin-panel',
-      metadata,
+      metadata: {
+        ...metadata,
+        sourceEntityId: entityId,
+      },
     } as any);
+  }
+
+  private getCourseLookupQuery(courseId: string): Record<string, any> {
+    return Types.ObjectId.isValid(courseId)
+      ? { $or: [{ _id: new Types.ObjectId(courseId) }, { id: courseId }] }
+      : { id: courseId };
   }
 
   // ==================== COURSES ====================
@@ -120,7 +136,17 @@ export class ContentManagementService {
       ];
     }
 
-    if (filters.status) {
+    const now = new Date();
+    if (filters.status === 'featured') {
+      query.isFeatured = true;
+    } else if (filters.status === 'active') {
+      query.startDate = { $lte: now };
+      query.endDate = { $gte: now };
+    } else if (filters.status === 'upcoming') {
+      query.startDate = { $gt: now };
+    } else if (filters.status === 'ended') {
+      query.endDate = { $lt: now };
+    } else if (filters.status) {
       query.approvalStatus = filters.status;
     }
 
@@ -132,13 +158,16 @@ export class ContentManagementService {
       query.creatorId = new Types.ObjectId(filters.creatorId);
     }
 
-    if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+    const minPrice = filters.minPrice !== undefined ? Number(filters.minPrice) : undefined;
+    const maxPrice = filters.maxPrice !== undefined ? Number(filters.maxPrice) : undefined;
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
       query.$and = query.$and || [];
-      if (filters.minPrice !== undefined) {
-        query.$and.push({ prix: { $gte: filters.minPrice } });
+      if (minPrice !== undefined && Number.isFinite(minPrice)) {
+        query.$and.push({ prix: { $gte: minPrice } });
       }
-      if (filters.maxPrice !== undefined) {
-        query.$and.push({ prix: { $lte: filters.maxPrice } });
+      if (maxPrice !== undefined && Number.isFinite(maxPrice)) {
+        query.$and.push({ prix: { $lte: maxPrice } });
       }
     }
 
@@ -161,7 +190,7 @@ export class ContentManagementService {
     }
 
     if (filters.isFeatured !== undefined) {
-      query.isFeatured = filters.isFeatured;
+      query.isFeatured = filters.isFeatured === true || String(filters.isFeatured).toLowerCase() === 'true';
     }
 
     const sortField = filters.sortBy || 'createdAt';
@@ -231,7 +260,7 @@ export class ContentManagementService {
   }
 
   async getCourseById(courseId: string): Promise<CourseDetailDto> {
-    const course = await this.courseModel.findOne({ id: courseId }).lean();
+    const course = await this.courseModel.findOne(this.getCourseLookupQuery(courseId)).lean();
     if (!course) {
       throw new NotFoundException('Course not found');
     }
@@ -273,7 +302,7 @@ export class ContentManagementService {
   }
 
   async approveCourse(courseId: string, adminUserId: string): Promise<void> {
-    const course = await this.courseModel.findOne({ id: courseId });
+    const course = await this.courseModel.findOne(this.getCourseLookupQuery(courseId));
     if (!course) {
       throw new NotFoundException('Course not found');
     }
@@ -286,7 +315,7 @@ export class ContentManagementService {
   }
 
   async rejectCourse(courseId: string, dto: RejectContentDto, adminUserId: string): Promise<void> {
-    const course = await this.courseModel.findOne({ id: courseId });
+    const course = await this.courseModel.findOne(this.getCourseLookupQuery(courseId));
     if (!course) {
       throw new NotFoundException('Course not found');
     }
@@ -300,7 +329,7 @@ export class ContentManagementService {
   }
 
   async featureCourse(courseId: string, featured: boolean, adminUserId: string): Promise<void> {
-    const course = await this.courseModel.findOne({ id: courseId });
+    const course = await this.courseModel.findOne(this.getCourseLookupQuery(courseId));
     if (!course) {
       throw new NotFoundException('Course not found');
     }
@@ -317,7 +346,7 @@ export class ContentManagementService {
   }
 
   async suspendCourse(courseId: string, dto: SuspendContentDto, adminUserId: string): Promise<void> {
-    const course = await this.courseModel.findOne({ id: courseId });
+    const course = await this.courseModel.findOne(this.getCourseLookupQuery(courseId));
     if (!course) {
       throw new NotFoundException('Course not found');
     }
@@ -325,6 +354,7 @@ export class ContentManagementService {
     course.isPublished = false;
     (course as any).approvalStatus = ContentStatus.SUSPENDED;
     (course as any).suspensionReason = dto.reason;
+    (course as any).suspensionNotes = dto.notes;
     await course.save();
 
     await this.logAction(AdminAction.CONTENT_SUSPEND, 'course', courseId, adminUserId, { reason: dto.reason });
@@ -334,7 +364,7 @@ export class ContentManagementService {
     courseId: string,
     pagination: PaginationDto,
   ): Promise<PaginatedResult<any>> {
-    const course = await this.courseModel.findOne({ id: courseId });
+    const course = await this.courseModel.findOne(this.getCourseLookupQuery(courseId));
     if (!course) {
       throw new NotFoundException('Course not found');
     }
@@ -356,7 +386,7 @@ export class ContentManagementService {
 
     return {
       data: enrollments.map((e: any) => ({
-        id: e.id,
+        id: e.id || e._id?.toString(),
         user: {
           id: e.userId?._id?.toString() || e.userId?.toString(),
           name: e.userId?.name || 'Unknown',
@@ -441,7 +471,7 @@ export class ContentManagementService {
     }
 
     if (filters.isFeatured !== undefined) {
-      query.isFeatured = filters.isFeatured;
+      query.isFeatured = filters.isFeatured === true || String(filters.isFeatured).toLowerCase() === 'true';
     }
 
     const sortField = filters.sortBy || 'createdAt';
@@ -634,8 +664,7 @@ export class ContentManagementService {
       throw new NotFoundException('Challenge not found');
     }
 
-    (challenge as any).approvalStatus = ContentStatus.APPROVED;
-    await challenge.save();
+    await this.challengeModel.updateOne({ _id: challenge._id }, { $set: { approvalStatus: ContentStatus.APPROVED } });
 
     await this.logAction(AdminAction.CONTENT_APPROVE, 'challenge', challengeId, adminUserId);
   }
@@ -646,11 +675,28 @@ export class ContentManagementService {
       throw new NotFoundException('Challenge not found');
     }
 
-    (challenge as any).approvalStatus = ContentStatus.REJECTED;
-    (challenge as any).rejectionReason = dto.reason;
-    await challenge.save();
+    await this.challengeModel.updateOne(
+      { _id: challenge._id },
+      { $set: { approvalStatus: ContentStatus.REJECTED, rejectionReason: dto.reason, rejectionNotes: dto.notes } },
+    );
 
     await this.logAction(AdminAction.CONTENT_REJECT, 'challenge', challengeId, adminUserId, { reason: dto.reason });
+  }
+
+  async featureChallenge(challengeId: string, featured: boolean, adminUserId: string): Promise<void> {
+    const challenge = await this.challengeModel.findById(challengeId);
+    if (!challenge) {
+      throw new NotFoundException('Challenge not found');
+    }
+
+    await this.challengeModel.updateOne({ _id: challenge._id }, { $set: { isFeatured: featured } });
+
+    await this.logAction(
+      featured ? AdminAction.CONTENT_FEATURE : AdminAction.CONTENT_UNFEATURE,
+      'challenge',
+      challengeId,
+      adminUserId,
+    );
   }
 
   async endChallengeEarly(challengeId: string, adminUserId: string): Promise<void> {
@@ -659,8 +705,7 @@ export class ContentManagementService {
       throw new NotFoundException('Challenge not found');
     }
 
-    challenge.endDate = new Date();
-    await challenge.save();
+    await this.challengeModel.updateOne({ _id: challenge._id }, { $set: { endDate: new Date() } });
 
     await this.logAction(AdminAction.CONTENT_UPDATE as any, 'challenge', challengeId, adminUserId, { action: 'ended_early' });
   }
@@ -713,7 +758,22 @@ export class ContentManagementService {
       ];
     }
 
-    if (filters.status) {
+    const now = new Date();
+    if (filters.status === 'featured') {
+      query.isFeatured = true;
+    } else if (filters.status === 'upcoming') {
+      query.startDate = { $gt: now };
+      query.isCancelled = { $ne: true };
+    } else if (filters.status === 'ongoing') {
+      query.startDate = { $lte: now };
+      query.endDate = { $gte: now };
+      query.isCancelled = { $ne: true };
+    } else if (filters.status === 'ended') {
+      query.endDate = { $lt: now };
+      query.isCancelled = { $ne: true };
+    } else if (filters.status === 'cancelled') {
+      query.isCancelled = true;
+    } else if (filters.status) {
       query.approvalStatus = filters.status;
     }
 
@@ -740,7 +800,7 @@ export class ContentManagementService {
     }
 
     if (filters.isFeatured !== undefined) {
-      query.isFeatured = filters.isFeatured;
+      query.isFeatured = filters.isFeatured === true || String(filters.isFeatured).toLowerCase() === 'true';
     }
 
     const sortField = filters.sortBy || 'startDate';
@@ -913,8 +973,7 @@ export class ContentManagementService {
       throw new NotFoundException('Event not found');
     }
 
-    (event as any).approvalStatus = ContentStatus.APPROVED;
-    await event.save();
+    await this.eventModel.updateOne({ _id: event._id }, { $set: { approvalStatus: ContentStatus.APPROVED } });
 
     await this.logAction(AdminAction.CONTENT_APPROVE, 'event', eventId, adminUserId);
   }
@@ -925,11 +984,28 @@ export class ContentManagementService {
       throw new NotFoundException('Event not found');
     }
 
-    (event as any).approvalStatus = ContentStatus.REJECTED;
-    (event as any).rejectionReason = dto.reason;
-    await event.save();
+    await this.eventModel.updateOne(
+      { _id: event._id },
+      { $set: { approvalStatus: ContentStatus.REJECTED, rejectionReason: dto.reason, rejectionNotes: dto.notes } },
+    );
 
     await this.logAction(AdminAction.CONTENT_REJECT, 'event', eventId, adminUserId, { reason: dto.reason });
+  }
+
+  async featureEvent(eventId: string, featured: boolean, adminUserId: string): Promise<void> {
+    const event = await this.eventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    await this.eventModel.updateOne({ _id: event._id }, { $set: { isFeatured: featured } });
+
+    await this.logAction(
+      featured ? AdminAction.CONTENT_FEATURE : AdminAction.CONTENT_UNFEATURE,
+      'event',
+      eventId,
+      adminUserId,
+    );
   }
 
   async cancelEvent(eventId: string, reason: string, adminUserId: string): Promise<void> {
@@ -938,11 +1014,17 @@ export class ContentManagementService {
       throw new NotFoundException('Event not found');
     }
 
-    (event as any).isCancelled = true;
-    (event as any).cancellationReason = reason;
-    (event as any).cancelledBy = new Types.ObjectId(adminUserId);
-    (event as any).cancelledAt = new Date();
-    await event.save();
+    await this.eventModel.updateOne(
+      { _id: event._id },
+      {
+        $set: {
+          isCancelled: true,
+          cancellationReason: reason,
+          cancelledBy: new Types.ObjectId(adminUserId),
+          cancelledAt: new Date(),
+        },
+      },
+    );
 
     await this.logAction(AdminAction.CONTENT_CANCEL as any, 'event', eventId, adminUserId, { reason });
   }
@@ -976,7 +1058,9 @@ export class ContentManagementService {
       ];
     }
 
-    if (filters.status) {
+    if (filters.status === 'featured') {
+      query.isFeatured = true;
+    } else if (filters.status) {
       query.isPublished = filters.status === ContentStatus.APPROVED;
     }
 
@@ -1007,7 +1091,7 @@ export class ContentManagementService {
     }
 
     if (filters.isFeatured !== undefined) {
-      query.isFeatured = filters.isFeatured;
+      query.isFeatured = filters.isFeatured === true || String(filters.isFeatured).toLowerCase() === 'true';
     }
 
     const sortField = filters.sortBy || 'createdAt';

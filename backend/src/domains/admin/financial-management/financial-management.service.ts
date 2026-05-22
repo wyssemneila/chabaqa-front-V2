@@ -20,6 +20,8 @@ import {
 import { Community, CommunityDocument } from '@/infrastructure/database/schemas/community/community.schema';
 import { User, UserDocument } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Plan, PlanDocument, PlanTier } from '@/infrastructure/database/schemas/commerce/plan.schema';
+import { Order, OrderDocument } from '@/infrastructure/database/schemas/commerce/order.schema';
+import { TrackableContentType } from '@/infrastructure/database/schemas/learning/content-tracking.schema';
 import {
   RevenueDashboardQueryDto,
   RevenueMetricsDto,
@@ -70,6 +72,8 @@ export class FinancialManagementService {
     private userModel: Model<UserDocument>,
     @InjectModel(Plan.name)
     private planModel: Model<PlanDocument>,
+    @InjectModel(Order.name)
+    private orderModel: Model<OrderDocument>,
   ) {}
 
   /**
@@ -1406,26 +1410,29 @@ export class FinancialManagementService {
     startDate: Date,
     endDate: Date,
   ): Promise<Omit<RevenueMetricsDto, 'growthRate' | 'period' | 'startDate' | 'endDate'>> {
-    // 1. Calculate revenue metrics using aggregation
+    // 1. Calculate revenue metrics from paid orders. Orders are the canonical record
+    // for platform sales; wallet transactions may be absent for manual/offline payments.
     const revenuePipeline = [
       {
         $match: {
-          type: WalletTransactionType.PURCHASE,
           createdAt: { $gte: startDate, $lte: endDate },
+          status: 'paid',
         },
       },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: { $abs: '$amount' } },
+          totalRevenue: { $sum: '$amountDT' },
+          platformFees: { $sum: '$platformFeeDT' },
           transactionCount: { $sum: 1 },
         },
       },
     ];
 
-    const revenueResult = await this.walletTransactionModel.aggregate(revenuePipeline).exec();
+    const revenueResult = await this.orderModel.aggregate(revenuePipeline).exec();
     const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
     const transactionCount = revenueResult.length > 0 ? revenueResult[0].transactionCount : 0;
+    const platformFeesFromOrders = revenueResult.length > 0 ? revenueResult[0].platformFees : 0;
 
     // 2. Calculate payout metrics using aggregation
     const payoutPipeline = [
@@ -1447,9 +1454,25 @@ export class FinancialManagementService {
     const creatorPayouts = payoutResult.length > 0 ? payoutResult[0].totalPayouts : 0;
 
     // Calculate derived metrics
-    const subscriptionRevenue = await this.calculateSubscriptionRevenue(startDate, endDate);
+    const subscriptionRevenueResult = await this.orderModel.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate, $lte: endDate },
+          status: 'paid',
+          contentType: TrackableContentType.SUBSCRIPTION,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$amountDT' },
+        },
+      },
+    ]).exec();
+    const subscriptionRevenue =
+      subscriptionRevenueResult.length > 0 ? subscriptionRevenueResult[0].totalRevenue : 0;
     const oneTimeRevenue = totalRevenue - subscriptionRevenue;
-    const platformFees = totalRevenue * 0.1;
+    const platformFees = platformFeesFromOrders || totalRevenue * 0.1;
     const averageTransactionValue = transactionCount > 0 ? totalRevenue / transactionCount : 0;
 
     return {
