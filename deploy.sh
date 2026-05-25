@@ -28,6 +28,28 @@ docker compose config >/dev/null
 echo "[deploy] building images"
 docker compose build --pull
 
+free_host_port() {
+  local port="$1"
+  local pids=""
+
+  if command -v fuser >/dev/null 2>&1; then
+    pids="$(fuser "${port}/tcp" 2>/dev/null || true)"
+  elif command -v lsof >/dev/null 2>&1; then
+    pids="$(lsof -tiTCP:"${port}" -sTCP:LISTEN 2>/dev/null || true)"
+  elif command -v ss >/dev/null 2>&1; then
+    pids="$(ss -ltnp "sport = :${port}" 2>/dev/null | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' | sort -u)"
+  fi
+
+  if [ -n "${pids}" ]; then
+    echo "[deploy] freeing host port ${port}"
+    kill ${pids} >/dev/null 2>&1 || true
+    sleep 2
+  fi
+}
+
+free_host_port 3000
+free_host_port 8081
+
 echo "[deploy] recreating services"
 docker compose up -d --force-recreate --remove-orphans
 
