@@ -21,7 +21,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run remote deployment
+      - name: Validate deployment secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          set -euo pipefail
+          test -n "$VPS_HOST" || (echo "Missing VPS_HOST secret" && exit 1)
+          test -n "$VPS_USER" || (echo "Missing VPS_USER secret" && exit 1)
+          test -n "$VPS_PASSWORD" || (echo "Missing VPS_PASSWORD secret" && exit 1)
+          test -n "$VPS_PORT" || (echo "Missing VPS_PORT secret" && exit 1)
+          echo "Deployment secrets are present. Using password SSH on port ${VPS_PORT}."
+
+      - name: Run remote deployment with password SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -41,6 +55,9 @@ jobs:
             export GIT_REPO="${{ github.repository }}"
             export GIT_AUTH_USER="x-access-token"
             export GIT_AUTH_TOKEN="${{ github.token }}"
+
+            echo "[github-actions] connected to $(hostname) as $(whoami)"
+            echo "[github-actions] deploying ${GIT_REPO}:${BRANCH} into ${PROJECT_DIR}"
 
             cd "$PROJECT_DIR"
             chmod +x ./deploy.sh
