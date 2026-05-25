@@ -1,4 +1,3 @@
-import 'tsconfig-paths/register';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '@/app/app.module';
 import { BadRequestException, ValidationPipe, ValidationError } from '@nestjs/common';
