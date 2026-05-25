@@ -2,8 +2,6 @@ services:
   mongo:
     image: mongo:7
     container_name: chabaqa-mongo
-    ports:
-      - "27017:27017"
     volumes:
       - mongo-data:/data/db
     restart: unless-stopped
@@ -31,8 +29,6 @@ services:
       retries: 5
 
   redis:
-    ports:
-      - "6379:6379"
     image: redis:7-alpine
     container_name: chabaqa-redis
     command: redis-server --requirepass c25ec1b1cba859697df4d726baa3a30c7d0f21e0b1e5971f81fd99ebeb0a2fb9
@@ -70,6 +66,11 @@ services:
       - "3000:3000"
     env_file:
       - ./backend/.env
+    environment:
+      MONGO_URI: mongodb://mongo:27017/chabaqa_local
+      MONGODB_URI: mongodb://mongo:27017/chabaqa_local
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
