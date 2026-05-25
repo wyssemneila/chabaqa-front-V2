@@ -26,7 +26,7 @@ jest.mock("@/app/(creator)/creator/context/community-switch-cache", () => ({
 
 jest.mock(
   "@/app/(creator)/creator/sessions/components/client-sessions-view",
-  () => (props: any) => mockClientSessionsView()
+  () => (props: any) => mockClientSessionsView(props)
 )
 
 describe("CreatorSessionsPage community switching", () => {
