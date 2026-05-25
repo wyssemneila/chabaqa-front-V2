@@ -19,6 +19,7 @@ COPY messages ./messages
 COPY middleware ./middleware
 COPY middleware.ts ./
 COPY public ./public
+COPY scripts ./scripts
 
 ARG NEXT_PUBLIC_API_URL=https://chabaqa.io/api
 ARG NEXT_PUBLIC_APP_URL=https://chabaqa.io
