@@ -458,6 +458,11 @@ export default function CreatorDashboardPage() {
     return Number.isFinite(normalized) ? normalized : 0
   })()
 
+  const revenueTrend = [
+    { date: "Prev", revenue: Number(previousMonthCounts.revenue || 0) },
+    { date: "Now", revenue: currentRevenueValue },
+  ]
+
   const stats = [
     {
       title: "Total Members",
@@ -588,6 +593,76 @@ export default function CreatorDashboardPage() {
       icon: launchIcons.activity,
     }
   })()
+
+  const normalizedCourseCompletionRate = (() => {
+    const raw = Number(creatorDashboard.metrics.courseCompletionRate ?? overview?.courseCompletionRate ?? 0)
+    if (!Number.isFinite(raw)) return 0
+    return raw > 1 ? raw : raw * 100
+  })()
+
+  const topContentItem = topContent[0]
+  const topContentType = String(topContentItem?.type || '').toLowerCase()
+  const topContentId = topContentItem?.id || topContentItem?._id || topContentItem?.contentId
+  const topContentHref = topContentType && topContentId
+    ? topContentType === 'course'
+      ? `/creator/courses/${topContentId}/manage`
+      : topContentType === 'challenge'
+        ? `/creator/challenges/${topContentId}/manage`
+        : topContentType === 'session'
+          ? `/creator/sessions/${topContentId}/edit`
+          : topContentType === 'event'
+            ? `/creator/events/${topContentId}`
+            : topContentType === 'product'
+              ? `/creator/products/${topContentId}/manage`
+              : '/creator/analytics'
+    : '/creator/analytics'
+
+  const actionInsightCards = [
+    normalizedCourseCompletionRate > 0 && normalizedCourseCompletionRate < 55 && creatorCourses.length > 0 && {
+      id: 'course-completion',
+      title: 'Improve course completion',
+      description: `${Math.round(normalizedCourseCompletionRate)}% completion. Review lessons where learners drop off.`,
+      href: '/creator/analytics',
+      label: 'Open analytics',
+      icon: launchIcons.course,
+      accent: 'bg-courses-50 text-courses-700 border-courses-100',
+    },
+    Number(creatorDashboard.metrics.churnRiskCount || 0) > 0 && {
+      id: 'churn-risk',
+      title: 'Review at-risk members',
+      description: `${creatorDashboard.metrics.churnRiskCount} member${creatorDashboard.metrics.churnRiskCount === 1 ? '' : 's'} may need attention.`,
+      href: '/creator/analytics',
+      label: 'Review members',
+      icon: Users,
+      accent: 'bg-amber-50 text-amber-800 border-amber-100',
+    },
+    activeContentCount > 0 && creatorDashboard.metrics.postsThisWeek === 0 && {
+      id: 'share-update',
+      title: 'Share a weekly update',
+      description: 'No posts this week. Re-engage members with a short update.',
+      href: '/creator/posts?create=1',
+      label: 'Write post',
+      icon: launchIcons.post,
+      accent: 'bg-purple-50 text-purple-700 border-purple-100',
+    },
+    topContentItem && {
+      id: 'top-content',
+      title: 'Double down on top content',
+      description: `${topContentItem.title || 'Your top content'} is already getting traction. Improve or promote it next.`,
+      href: topContentHref,
+      label: 'Open content',
+      icon: launchIcons.activity,
+      accent: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    },
+  ].filter(Boolean).slice(0, 3) as Array<{
+    id: string
+    title: string
+    description: string
+    href: string
+    label: string
+    icon: any
+    accent: string
+  }>
 
   const rawAttentionItems = [
     bankConfigured === false && {
@@ -720,6 +795,8 @@ export default function CreatorDashboardPage() {
 
   const createNextItems = [
     { label: "Course", description: "Build structured learning", href: "/creator/courses/new", icon: launchIcons.course },
+    { label: "Challenge", description: "Launch a practical mission", href: "/creator/challenges/new", icon: launchIcons.challenge },
+    { label: "Session", description: "Offer focused coaching", href: "/creator/sessions/new", icon: launchIcons.session },
     { label: "Post", description: "Publish a quick update", href: "/creator/posts?create=1", icon: launchIcons.post },
     { label: "Product", description: "Sell a digital resource", href: "/creator/products/new", icon: launchIcons.product },
   ]
@@ -826,8 +903,46 @@ export default function CreatorDashboardPage() {
               availableBalance={availableBalance == null ? "..." : formatMoney(availableBalance)}
               pendingPayout={pendingPayout == null ? "..." : formatMoney(pendingPayout)}
               bankConfigured={bankConfigured}
+              revenueTrend={revenueTrend}
             />
           </div>
+
+          {actionInsightCards.length > 0 && (
+            <EnhancedCard>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Recommended improvements</CardTitle>
+                <CardDescription>Action cards generated from your existing analytics and content signals.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  {actionInsightCards.map((item) => {
+                    const ItemIcon = item.icon
+                    return (
+                      <Link
+                        key={item.id}
+                        href={item.href}
+                        className={`group rounded-2xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${item.accent}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="rounded-xl bg-white/80 p-2 shadow-sm ring-1 ring-black/5">
+                            <ItemIcon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold">{item.title}</p>
+                            <p className="mt-1 line-clamp-2 text-xs opacity-80">{item.description}</p>
+                            <span className="mt-3 inline-flex items-center text-xs font-bold">
+                              {item.label}
+                              <ArrowRight className="ml-1 h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </EnhancedCard>
+          )}
 
           <EnhancedCard>
             <CardHeader className="pb-3">
@@ -840,7 +955,7 @@ export default function CreatorDashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 {createNextItems.map((item) => {
                   const ItemIcon = item.icon
                   return (

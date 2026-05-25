@@ -1,13 +1,51 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Star, ExternalLink, MessageCircle, Image as ImageIcon } from "lucide-react"
+import { AlertCircle, CheckCircle, Clock3, ExternalLink, Image as ImageIcon, MessageCircle, RefreshCcw, XCircle } from "lucide-react"
 import Image from "next/image"
 
 interface SubmissionsTabProps {
   challengeTasks: any[]
   submissions: any[]
   submissionByTaskId: Record<string, any>
+}
+
+function getSubmissionState(status?: string, fallbackCompleted?: boolean) {
+  const normalized = String(status || (fallbackCompleted ? "approved" : "pending")).toLowerCase()
+  if (normalized === "approved" || normalized === "completed") {
+    return {
+      label: "Approved, points awarded",
+      badge: "bg-green-500 text-white",
+      card: "border-green-200 bg-green-50/70",
+      iconWrap: "bg-green-500",
+      Icon: CheckCircle,
+    }
+  }
+  if (normalized === "feedback_required" || normalized === "needs_changes" || normalized === "changes_requested") {
+    return {
+      label: "Needs changes",
+      badge: "bg-amber-100 text-amber-800 hover:bg-amber-100",
+      card: "border-amber-200 bg-amber-50/70",
+      iconWrap: "bg-amber-500",
+      Icon: RefreshCcw,
+    }
+  }
+  if (normalized === "rejected") {
+    return {
+      label: "Not approved",
+      badge: "bg-red-100 text-red-700 hover:bg-red-100",
+      card: "border-red-200 bg-red-50/70",
+      iconWrap: "bg-red-500",
+      Icon: XCircle,
+    }
+  }
+  return {
+    label: "Awaiting review",
+    badge: "bg-blue-100 text-blue-700 hover:bg-blue-100",
+    card: "border-blue-200 bg-blue-50/70",
+    iconWrap: "bg-blue-500",
+    Icon: Clock3,
+  }
 }
 
 export default function SubmissionsTab({ challengeTasks, submissions, submissionByTaskId }: SubmissionsTabProps) {
@@ -33,15 +71,17 @@ export default function SubmissionsTab({ challengeTasks, submissions, submission
             submittedTasks.map((task) => {
                 const submission = submissionByTaskId[String(task.id)]
                 const isCompleted = task.isCompleted || (submission && submission.status === 'approved');
+                const state = getSubmissionState(submission?.status, isCompleted)
+                const StateIcon = state.Icon
                 
                 return (
                   <div
                     key={task.id}
-                    className="flex flex-col space-y-4 p-4 bg-green-50 rounded-lg border border-green-200"
+                    className={`flex flex-col space-y-4 rounded-xl border p-4 ${state.card}`}
                   >
                     <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shrink-0">
-                        <CheckCircle className="h-5 w-5 text-white" />
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${state.iconWrap}`}>
+                        <StateIcon className="h-5 w-5 text-white" />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold">
@@ -51,11 +91,17 @@ export default function SubmissionsTab({ challengeTasks, submissions, submission
                       </div>
                       <div className="flex items-center space-x-2">
                         <Badge className="bg-green-500">{task.points} pts</Badge>
-                        <Badge variant="outline" className="capitalize">
-                          {submission?.status || (isCompleted ? 'completed' : 'pending')}
+                        <Badge className={state.badge}>
+                          {state.label}
                         </Badge>
                       </div>
                     </div>
+                    {!submission && (
+                      <div className="flex items-start gap-2 rounded-lg border border-blue-100 bg-white/60 p-3 text-sm text-blue-700">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                        This task is marked complete, but the review record is still syncing.
+                      </div>
+                    )}
                     
                     {submission && (
                       <div className="pl-14 space-y-3">

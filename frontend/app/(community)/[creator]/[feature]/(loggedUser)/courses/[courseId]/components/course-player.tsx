@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 import { tokenStorage } from "@/lib/token-storage"
 import { useToast } from "@/components/ui/use-toast"
 import type { CourseSession } from "@/hooks/use-course-session"
-import { Maximize2, Minimize2, X } from "lucide-react"
+import { Focus, Maximize2, Minimize2, X } from "lucide-react"
 
 interface CoursePlayerProps {
   creatorSlug: string
@@ -973,26 +973,53 @@ export default function CoursePlayer({
   return (
     <div
       className={cn(
-        "min-h-screen transition-colors duration-500",
-        theaterMode ? "bg-gray-50 text-slate-950" : "bg-gray-50",
+        "min-h-dvh transition-colors duration-500",
+        theaterMode
+          ? "relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(142,120,251,0.18),transparent_34%),radial-gradient(circle_at_top_right,rgba(71,199,234,0.16),transparent_32%),linear-gradient(180deg,#fbfbff_0%,#f8fafc_52%,#eef2ff_100%)] text-slate-950"
+          : "bg-gray-50",
       )}
       data-testid={theaterMode ? "course-player-theater" : "course-player-standard"}
     >
       {theaterMode && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setTheaterMode(false)}
-          className="fixed right-4 top-4 z-[70] gap-2 rounded-full border border-slate-200 bg-white/95 px-3 text-slate-700 shadow-lg backdrop-blur hover:bg-white hover:text-slate-950 sm:right-6 sm:top-6"
-          data-testid="exit-theater-mode"
-        >
-          <X className="h-4 w-4" />
-          Exit theater
-        </Button>
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-[70] flex justify-center px-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+          <div className="pointer-events-auto flex w-full max-w-6xl flex-col gap-3 rounded-2xl border border-white/80 bg-white/88 p-2 shadow-xl shadow-slate-200/70 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3 px-2">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#8e78fb]/10 text-[#8e78fb]">
+                <Focus className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-slate-950">Light theater mode</p>
+                <p className="truncate text-xs text-slate-500">Focused lesson view with reduced navigation noise</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setTheaterMode(false)}
+                className="h-11 gap-2 rounded-xl border-slate-200 bg-white px-3 text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-950"
+                data-testid="exit-theater-mode"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+                Exit
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setTheaterMode(false)}
+                className="h-11 gap-2 rounded-xl bg-slate-950 px-3 text-white shadow-sm hover:bg-slate-800"
+                data-testid="theater-toolbar-standard-view"
+              >
+                <Minimize2 className="h-4 w-4" aria-hidden="true" />
+                Standard view
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
-      <div className={cn(theaterMode ? "mx-auto max-w-6xl px-4 py-8 sm:py-10" : "container mx-auto px-4 py-6")}>
+      <div className={cn(theaterMode ? "mx-auto max-w-6xl px-4 pb-10 pt-32 sm:pt-28" : "container mx-auto px-4 py-6")}>
         {!theaterMode && (
           <>
             <CourseHeader
@@ -1009,13 +1036,13 @@ export default function CoursePlayer({
               <Button
                 type="button"
                 size="sm"
-                variant="ghost"
+                variant="outline"
                 onClick={() => setTheaterMode(true)}
-                className="gap-2 rounded-full border border-slate-200 bg-white/95 px-3 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur hover:bg-white hover:text-slate-950"
+                className="btn-press-active h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:border-[#8e78fb]/40 hover:bg-[#8e78fb]/5 hover:text-[#8e78fb]"
                 data-testid="theater-mode-toggle"
               >
-                <Maximize2 className="h-3.5 w-3.5" />
-                Theater
+                <Maximize2 className="h-4 w-4" aria-hidden="true" />
+                Focus view
               </Button>
             </div>
           </>
@@ -1024,7 +1051,7 @@ export default function CoursePlayer({
         <div className={cn(theaterMode ? "grid grid-cols-1 gap-5" : "grid grid-cols-1 gap-6 lg:grid-cols-7 xl:grid-cols-3")}>
           <div className={cn(theaterMode ? "space-y-5" : "space-y-4 lg:col-span-4 xl:col-span-2")}>
             {isCourseCompleted ? (
-              <div className={cn("rounded-lg border p-4", theaterMode ? "border-slate-200 bg-white shadow-sm" : "bg-white")}>
+              <div className={cn("rounded-lg border p-4", theaterMode ? "border-white/80 bg-white/90 shadow-sm backdrop-blur" : "bg-white")}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-sm font-medium">You completed all chapters</div>
@@ -1039,9 +1066,12 @@ export default function CoursePlayer({
             <div
               className={cn(
                 "relative",
-                  theaterMode && "overflow-hidden rounded-2xl border border-slate-200 shadow-2xl shadow-slate-200/70",
+                theaterMode && "overflow-hidden rounded-[1.75rem] border border-white/90 bg-white p-2 shadow-[0_28px_90px_-28px_rgba(51,65,85,0.48)] ring-1 ring-slate-200/70",
               )}
             >
+              {theaterMode && (
+                <div className="pointer-events-none absolute inset-x-8 -top-8 h-16 rounded-full bg-[#8e78fb]/18 blur-3xl" aria-hidden="true" />
+              )}
               <EnhancedVideoPlayer
                 creatorSlug={creatorSlug}
                 currentChapter={currentChapter}

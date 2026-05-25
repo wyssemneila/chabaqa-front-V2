@@ -38,6 +38,15 @@ export function isProductionEnvironment(): boolean {
   return process.env.NODE_ENV === 'production';
 }
 
+export function isDevelopmentLifecycleCommand(): boolean {
+  const lifecycle = String(process.env.npm_lifecycle_event || '').toLowerCase();
+  return lifecycle.includes('dev') || lifecycle.includes('watch') || lifecycle.includes('debug');
+}
+
+export function isStrictProductionRuntime(): boolean {
+  return isProductionEnvironment() && !isDevelopmentLifecycleCommand();
+}
+
 export function getAllowedCorsOrigins(): string[] {
   const configured = [
     ...parseOrigins(process.env.FRONTEND_URL),
@@ -45,7 +54,7 @@ export function getAllowedCorsOrigins(): string[] {
     ...parseOrigins(process.env.CORS_ALLOWED_ORIGINS),
   ];
 
-  if (!isProductionEnvironment()) {
+  if (!isStrictProductionRuntime()) {
     configured.push(...LOCALHOST_ORIGINS);
   }
 
@@ -62,7 +71,11 @@ export function isCorsOriginAllowed(origin: string | undefined, allowlist: strin
     return false;
   }
 
-  // Allow Cloudflare quick-tunnel origins (used for mobile web dev via Expo)
+  if (isStrictProductionRuntime()) {
+    return allowlist.includes(normalized);
+  }
+
+  // Allow Cloudflare quick-tunnel origins only outside production.
   if (/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(normalized)) {
     return true;
   }

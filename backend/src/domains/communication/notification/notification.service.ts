@@ -90,16 +90,22 @@ export class NotificationService {
       return;
     }
 
-    const communityId = dto.data?.communityId || null;
+    const notificationData = { ...(dto.data || {}) };
+    if (!notificationData.url) {
+      notificationData.url = this.notificationRouting.resolveUrl(dto.type, notificationData);
+    }
+    const routedDto = { ...dto, data: notificationData };
+
+    const communityId = routedDto.data?.communityId || null;
     const preferences = await this.getUserPreferences(user._id.toString());
     const channelPreferences = await this.resolveChannelPreferences(
       preferences,
-      dto.type,
+      routedDto.type,
       user._id.toString(),
       communityId,
     );
 
-    const isHighPriority = HIGH_PRIORITY_TYPES.has(dto.type);
+    const isHighPriority = HIGH_PRIORITY_TYPES.has(routedDto.type);
     const inQuietHours = this.isInQuietHours(preferences);
 
     let inAppNotification: Notification | null = null;
@@ -108,7 +114,7 @@ export class NotificationService {
     if (channelPreferences.inApp) {
       try {
         inAppNotification = new this.notificationModel({
-          ...dto,
+          ...routedDto,
           channel: NotificationChannel.IN_APP,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         });
@@ -140,7 +146,7 @@ export class NotificationService {
         if (!inQuietHours || isHighPriority) {
           await this.sendPushNotification(
             user._id.toString(),
-            dto,
+            routedDto,
             inAppNotification ? String((inAppNotification as any)._id) : undefined,
           );
         }

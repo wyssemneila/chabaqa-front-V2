@@ -63,11 +63,11 @@ export default function ChapterTabs({
   const [isAiTutorOpen, setIsAiTutorOpen] = React.useState(false)
   const canUseAiTutor = Boolean(courseId && currentChapter?.id)
   const surfaceClassName = isTheaterMode
-    ? "border-slate-200 bg-white text-slate-950 shadow-sm"
+    ? "border-white/90 bg-white/92 text-slate-950 shadow-[0_18px_48px_-32px_rgba(51,65,85,0.45)] backdrop-blur"
     : "border shadow-sm"
   const mutedTextClassName = isTheaterMode ? "text-slate-500" : "text-muted-foreground"
   const tabTriggerClassName = cn(
-    "py-2.5 md:py-3 text-xs md:text-sm font-medium data-[state=active]:shadow-sm",
+    "min-h-11 py-2.5 md:py-3 text-xs md:text-sm font-medium data-[state=active]:shadow-sm",
     isTheaterMode
       ? "data-[state=active]:bg-white data-[state=active]:text-slate-950"
       : "data-[state=active]:bg-background",
@@ -115,7 +115,7 @@ export default function ChapterTabs({
       />
     ) : null}
     <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList className={cn("grid w-full grid-cols-5 md:grid-cols-5 lg:grid-cols-5 h-auto p-1.5", isTheaterMode ? "bg-white/80 text-slate-600 shadow-sm" : "bg-muted/50")}>
+      <TabsList className={cn("grid h-auto w-full grid-cols-5 gap-1 p-1.5", isTheaterMode ? "border border-white/80 bg-white/80 text-slate-600 shadow-sm backdrop-blur" : "bg-muted/50")}>
         <TabsTrigger value="content" className={tabTriggerClassName}>Content</TabsTrigger>
         <TabsTrigger value="ai-tutor" className={cn(tabTriggerClassName, "gap-1")}><Sparkles className="h-3 w-3 md:h-4 md:w-4 text-purple-500" /> AI</TabsTrigger>
         <TabsTrigger value="notes" className={tabTriggerClassName}>Notes</TabsTrigger>
@@ -142,7 +142,7 @@ export default function ChapterTabs({
 
             <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
               {isCurrentChapterCompleted && nextChapterId && onGoToNextChapter ? (
-                <Button type="button" onClick={() => void handleGoToNextChapterClick()} className="text-sm md:text-base">
+                <Button type="button" onClick={() => void handleGoToNextChapterClick()} className="h-11 rounded-xl text-sm md:text-base">
                   Next Chapter
                 </Button>
               ) : null}
@@ -153,22 +153,23 @@ export default function ChapterTabs({
 
       <TabsContent value="ai-tutor" className="mt-4 md:mt-6">
         {canUseAiTutor ? (
-          <Card className={surfaceClassName}>
-            <CardContent className="py-10 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-purple-50 dark:bg-purple-500/10">
-                <Sparkles className="h-7 w-7 text-purple-500" strokeWidth={1.75} />
+          <Card className={cn(surfaceClassName, "overflow-hidden")}>
+            <CardContent className="relative px-5 py-10 text-center md:px-8">
+              <div className="pointer-events-none absolute inset-x-10 top-0 h-20 rounded-full bg-[#8e78fb]/10 blur-3xl" aria-hidden="true" />
+              <div className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-white shadow-lg shadow-purple-100 ring-1 ring-purple-100">
+                <Sparkles className="h-8 w-8 text-[#8e78fb]" strokeWidth={1.75} aria-hidden="true" />
               </div>
-              <CardTitle className="text-base md:text-lg">AI Course Tutor</CardTitle>
-              <CardDescription className={cn("mx-auto mt-2 max-w-md text-xs md:text-sm", mutedTextClassName)}>
-                Open the chapter-aware tutor in a focused slide-over without leaving your lesson.
+              <CardTitle className="relative text-lg text-slate-950 md:text-xl">AI Course Tutor</CardTitle>
+              <CardDescription className={cn("relative mx-auto mt-2 max-w-md text-sm leading-relaxed md:text-base", mutedTextClassName)}>
+                Open a focused tutor that can summarize this chapter, simplify concepts, and generate a quick quiz.
               </CardDescription>
               <Button
                 type="button"
-                className="btn-press-active mt-5 gap-2 rounded-full bg-gradient-to-tr from-[#8e78fb] to-[#f65887] px-5 text-white shadow-lg shadow-purple-500/20 hover:scale-105"
+                className="btn-press-active relative mt-6 h-11 gap-2 rounded-xl bg-slate-950 px-5 text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800"
                 onClick={() => setIsAiTutorOpen(true)}
                 data-testid="open-ai-tutor-cta"
               >
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-4 w-4 text-[#47c7ea]" aria-hidden="true" />
                 Open AI Tutor
               </Button>
             </CardContent>
