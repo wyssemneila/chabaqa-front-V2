@@ -80,14 +80,22 @@ free_host_port 3000
 free_host_port 8081
 
 echo "[deploy] recreating services"
-docker compose up -d --force-recreate --remove-orphans
+if ! docker compose up -d --force-recreate --remove-orphans; then
+  echo "[deploy] docker compose up failed"
+  docker compose ps || true
+  docker logs chabaqa-backend --tail 200 || true
+  docker inspect --format '{{json .State.Health}}' chabaqa-backend || true
+  docker logs chabaqa-frontend --tail 120 || true
+  docker inspect --format '{{json .State.Health}}' chabaqa-frontend || true
+  exit 1
+fi
 
 echo "[deploy] waiting for services"
 sleep 15
 docker compose ps
 
 echo "[deploy] health checks"
-BACKEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/api || true)"
+BACKEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/api/health/ping || true)"
 FRONTEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:8081/ || true)"
 
 assert_http_status() {

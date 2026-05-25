@@ -9,8 +9,9 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json nest-cli.json tsconfig.json tsconfig.build.json ./
+COPY scripts ./scripts
 COPY src ./src
-RUN npx nest build
+RUN npm run build
 
 # ── Stage 3: Production image ────────────────────────────────────────────────
 FROM node:22-alpine AS runner
@@ -22,4 +23,4 @@ COPY --from=builder /app/dist ./dist
 COPY public ./public
 RUN mkdir -p uploads hls-output
 EXPOSE 3000
-CMD ["node", "--max-old-space-size=1024", "dist/main.js"]
+CMD ["node", "--max-old-space-size=1024", "dist/src/main.js"]
