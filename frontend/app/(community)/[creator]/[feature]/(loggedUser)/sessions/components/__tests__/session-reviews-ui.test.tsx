@@ -6,6 +6,7 @@ import BookedSessions from "@/app/(community)/[creator]/[feature]/(loggedUser)/s
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ replace: jest.fn() }),
   usePathname: () => "/community/test/sessions",
+  useParams: () => ({ creator: "test", feature: "sessions" }),
   useSearchParams: () => ({ get: jest.fn().mockReturnValue(null) }),
 }))
 

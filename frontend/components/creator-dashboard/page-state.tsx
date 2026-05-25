@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-import type { ComponentType } from "react"
+import React, { type ComponentType } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { EnhancedCard } from "@/components/ui/enhanced-card"
