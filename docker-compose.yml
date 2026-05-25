@@ -73,6 +73,28 @@ services:
       MONGODB_URI: mongodb://mongo:27017/chabaqa_local
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      PAYMENTS_STRIPE_DEFAULT: "true"
+      STRIPE_ENABLED: "true"
+      PAYMENTS_STRIPE_ENABLED: "true"
+      PAYMENTS_STRIPE_COMMUNITY_ENABLED: "true"
+      PAYMENTS_STRIPE_COURSE_ENABLED: "true"
+      PAYMENTS_STRIPE_CHAPTER_ENABLED: "true"
+      PAYMENTS_STRIPE_CHALLENGE_ENABLED: "true"
+      PAYMENTS_STRIPE_EVENT_ENABLED: "true"
+      PAYMENTS_STRIPE_PRODUCT_ENABLED: "true"
+      PAYMENTS_STRIPE_SESSION_ENABLED: "true"
+      PAYMENTS_ENABLE_WALLET_FALLBACK: "false"
+      PAYMENTS_ENABLE_MANUAL_FALLBACK: "false"
+      FLOUCI_ENABLED: "false"
+      PAYMENTS_FLOUCI_ENABLED: "false"
+      FLOUCI_APP_TOKEN: ""
+      FLOUCI_APP_SECRET: ""
+      FLOUCI_WEBHOOK_SECRET: ""
+      KONNECT_ENABLED: "false"
+      PAYMENTS_KONNECT_ENABLED: "false"
+      KONNECT_MOCK_MODE: "false"
+      KONNECT_API_KEY: ""
+      KONNECT_WALLET_ID: ""
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
