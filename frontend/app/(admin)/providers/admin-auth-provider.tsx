@@ -186,7 +186,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
           applySessionPayload(storedSession)
         }
 
-        if (!isAdminAuthPage && hasStoredSession) {
+        if (!isAdminAuthPage) {
           try {
             await syncSession()
           } catch (sessionError) {

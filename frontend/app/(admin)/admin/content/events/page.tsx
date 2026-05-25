@@ -163,6 +163,16 @@ export default function EventsManagementPage() {
     }
   }
 
+  const handleFeature = async (eventId: string, featured: boolean) => {
+    try {
+      await adminApi.content.featureEvent(eventId, featured)
+      toast.success(featured ? t("featureSuccess") : t("unfeatureSuccess"))
+      fetchEvents()
+    } catch (error) {
+      toast.error(t("featureError"))
+    }
+  }
+
   const getStatusBadge = (status: string, eventStatus: string) => {
     if (status === "pending") {
       return <Badge variant="outline" className="text-amber-600 border-amber-200">{t("status.pending")}</Badge>
@@ -348,6 +358,10 @@ export default function EventsManagementPage() {
                                 {t("actions.approve")}
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem onClick={() => handleFeature(event.id, !event.isFeatured)}>
+                              <Star className="h-4 w-4 mr-2" />
+                              {event.isFeatured ? t("actions.unfeature") : t("actions.feature")}
+                            </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link href={localizeHref(pathname, `/admin/content/events/${event.id}/message`)}>
                                 <Mail className="h-4 w-4 mr-2" />

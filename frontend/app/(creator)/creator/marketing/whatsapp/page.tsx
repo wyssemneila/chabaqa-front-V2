@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
 import { PageShell, PageState } from "@/components/creator-dashboard"
 

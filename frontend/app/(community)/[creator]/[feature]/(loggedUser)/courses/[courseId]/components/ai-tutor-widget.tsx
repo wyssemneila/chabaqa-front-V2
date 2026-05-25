@@ -17,6 +17,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { api, type AiTutorMode } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuthContext } from "@/app/providers/auth-provider"
@@ -31,6 +37,14 @@ import { BidiText } from "./bidi-text"
 interface AiTutorWidgetProps {
   courseId: string
   chapterId: string
+  variant?: "embedded" | "sheet"
+}
+
+interface FloatingAiTutorSheetProps {
+  courseId: string
+  chapterId: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const PROMPT_CHIPS: {
@@ -41,7 +55,9 @@ const PROMPT_CHIPS: {
 }[] = [
   { label: "Explain simply", text: "Explain this chapter in simple terms for a beginner.", icon: Lightbulb },
   { label: "Key takeaways", text: "What are the key takeaways from this chapter?", icon: ListOrdered },
+  { label: "Summary", text: "", mode: "summary", icon: BookOpen },
   { label: "Quick quiz", text: "Give me a 3-question quiz on this chapter.", mode: "quiz", icon: ListChecks },
+  { label: "Simplify", text: "", mode: "simplify", icon: Lightbulb },
   { label: "I'm stuck", text: "I'm stuck on the main concept — can you help me understand it?", icon: CircleHelp },
 ]
 
@@ -58,7 +74,7 @@ function TutorAvatar({ className }: { className?: string }) {
   )
 }
 
-export default function AiTutorWidget({ courseId, chapterId }: AiTutorWidgetProps) {
+export default function AiTutorWidget({ courseId, chapterId, variant = "embedded" }: AiTutorWidgetProps) {
   const [messages, setMessages] = useState<UiMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -186,9 +202,40 @@ export default function AiTutorWidget({ courseId, chapterId }: AiTutorWidgetProp
 
   if (isDisabled) return null
 
+  const isSheet = variant === "sheet"
+  const promptChips = (
+    <div className="flex w-full gap-2 overflow-x-auto pb-1 scrollbar-none">
+      {PROMPT_CHIPS.map((chip) => {
+        const Icon = chip.icon
+        const mode = chip.mode || "chat"
+        return (
+          <Button
+            key={chip.label}
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-8 shrink-0 gap-1.5 rounded-full px-3 text-xs font-medium"
+            disabled={isLoading || isHistoryLoading}
+            onClick={() => sendRequest(chip.text, mode)}
+          >
+            <Icon className="h-3.5 w-3.5 text-purple-500" />
+            {chip.label}
+          </Button>
+        )
+      })}
+    </div>
+  )
+
   return (
-    <Card className="flex h-[min(640px,70vh)] min-h-[420px] flex-col border shadow-sm">
-      <CardHeader className="shrink-0 pb-4">
+    <Card
+      className={cn(
+        "flex flex-col",
+        isSheet
+          ? "h-full min-h-0 rounded-none border-0 bg-transparent shadow-none"
+          : "h-[min(640px,70vh)] min-h-[420px] border shadow-sm",
+      )}
+    >
+      <CardHeader className={cn("shrink-0 pb-4", isSheet && "border-b bg-background/80 pr-12 backdrop-blur")}>
         <div className="flex items-center gap-3">
           <TutorAvatar className="h-10 w-10" />
           <div className="min-w-0 flex-1">
@@ -224,24 +271,6 @@ export default function AiTutorWidget({ courseId, chapterId }: AiTutorWidgetProp
                     <p className="mt-1 text-xs text-muted-foreground md:text-sm">
                       Pick a suggestion below or type your own question.
                     </p>
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-2">
-                    {PROMPT_CHIPS.map((chip) => {
-                      const Icon = chip.icon
-                      return (
-                        <Button
-                          key={chip.label}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 gap-1.5 text-xs font-normal"
-                          onClick={() => sendRequest(chip.text, chip.mode || "chat")}
-                        >
-                          <Icon className="h-3.5 w-3.5 text-purple-500" />
-                          {chip.label}
-                        </Button>
-                      )
-                    })}
                   </div>
                 </div>
               )
@@ -295,42 +324,13 @@ export default function AiTutorWidget({ courseId, chapterId }: AiTutorWidgetProp
         </div>
       </CardContent>
 
-      <CardFooter className="shrink-0 flex flex-col gap-3 border-t bg-muted/20 p-4 md:p-6">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="h-8 gap-1.5 text-xs"
-            disabled={isLoading || isHistoryLoading}
-            onClick={() => sendRequest("", "summary")}
-          >
-            <BookOpen className="h-3.5 w-3.5" />
-            Summary
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="h-8 gap-1.5 text-xs"
-            disabled={isLoading || isHistoryLoading}
-            onClick={() => sendRequest("", "quiz")}
-          >
-            <ListChecks className="h-3.5 w-3.5" />
-            Quiz
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="h-8 gap-1.5 text-xs"
-            disabled={isLoading || isHistoryLoading}
-            onClick={() => sendRequest("", "simplify")}
-          >
-            <Lightbulb className="h-3.5 w-3.5" />
-            Simplify
-          </Button>
-        </div>
+      <CardFooter
+        className={cn(
+          "shrink-0 flex flex-col gap-3 border-t bg-muted/20 p-4 md:p-6",
+          isSheet && "bg-background/85 backdrop-blur",
+        )}
+      >
+        {promptChips}
         <div className="flex w-full gap-2">
           <Input
             placeholder="Ask about this chapter…"
@@ -358,5 +358,28 @@ export default function AiTutorWidget({ courseId, chapterId }: AiTutorWidgetProp
         </div>
       </CardFooter>
     </Card>
+  )
+}
+
+export function FloatingAiTutorSheet({
+  courseId,
+  chapterId,
+  open,
+  onOpenChange,
+}: FloatingAiTutorSheetProps) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="left"
+        className="flex h-full w-full max-w-full flex-col overflow-hidden border-r border-slate-100 bg-slate-50/90 p-0 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 sm:max-w-md"
+        data-testid="floating-ai-tutor-sheet"
+      >
+        <SheetTitle className="sr-only">AI Course Tutor</SheetTitle>
+        <SheetDescription className="sr-only">
+          Ask questions, summarize this chapter, or generate a quiz with the AI tutor.
+        </SheetDescription>
+        <AiTutorWidget courseId={courseId} chapterId={chapterId} variant="sheet" />
+      </SheetContent>
+    </Sheet>
   )
 }

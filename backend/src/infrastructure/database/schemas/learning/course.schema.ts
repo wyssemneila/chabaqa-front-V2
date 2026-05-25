@@ -593,6 +593,39 @@ export class Cours {
   isPublished: boolean;
 
   /**
+   * Statut de validation utilisÃ© par le tableau de bord admin
+   */
+  @Prop({
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'suspended'],
+    default: 'approved',
+    index: true
+  })
+  approvalStatus?: string;
+
+  /**
+   * Mise en avant dans les surfaces admin et marketplace
+   */
+  @Prop({
+    type: Boolean,
+    default: false,
+    index: true
+  })
+  isFeatured?: boolean;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  rejectionReason?: string;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  rejectionNotes?: string;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  suspensionReason?: string;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  suspensionNotes?: string;
+
+  /**
    * Sections du cours
    */
   @Prop({

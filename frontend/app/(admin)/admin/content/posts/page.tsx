@@ -95,7 +95,8 @@ export default function PostsManagementPage() {
       const filters: any = { page, limit }
       if (searchTerm) filters.searchTerm = searchTerm
       if (statusFilter && statusFilter !== "all") {
-        if (statusFilter === "published") filters.status = "approved"
+        if (statusFilter === "featured") filters.isFeatured = true
+        else if (statusFilter === "published") filters.status = "approved"
         else if (statusFilter === "hidden") filters.status = "suspended"
         else filters.status = statusFilter
       }

@@ -127,9 +127,10 @@ describe("CampaignBuilderDialog", () => {
     await userEvent.click(screen.getByRole("combobox", { name: /when to send/i }))
     await userEvent.click(await screen.findByText("Schedule for Later"))
 
-    const future = new Date(Date.now() + 60_000)
-    const date = future.toISOString().slice(0, 10)
-    const time = future.toISOString().slice(11, 16)
+    const future = new Date(Date.now() + 5 * 60_000)
+    const localFuture = new Date(future.getTime() - future.getTimezoneOffset() * 60_000)
+    const date = localFuture.toISOString().slice(0, 10)
+    const time = localFuture.toISOString().slice(11, 16)
 
     fireEvent.change(screen.getByLabelText(/^date$/i), { target: { value: date } })
     fireEvent.change(screen.getByLabelText(/^time$/i), { target: { value: time } })

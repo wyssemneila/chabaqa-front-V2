@@ -11,6 +11,7 @@ import {
   Req,
   HttpStatus,
   HttpCode,
+  BadRequestException,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import {
@@ -53,6 +54,28 @@ import { AdminRequest } from '@/domains/admin/common/interfaces/admin-interfaces
 export class ContentManagementController {
   constructor(private readonly contentManagementService: ContentManagementService) {}
 
+  private normalizeFeaturedFilter<T extends { isFeatured?: boolean }>(
+    filters: T,
+    req: ExpressRequest,
+  ): T {
+    const rawIsFeatured = req.query?.isFeatured;
+    if (rawIsFeatured === undefined) return filters;
+    return {
+      ...filters,
+      isFeatured: String(rawIsFeatured).toLowerCase() === 'true',
+    };
+  }
+
+  private parseFeaturedBody(body: { featured?: boolean | string }): boolean {
+    if (body.featured === true || body.featured === 'true') {
+      return true;
+    }
+    if (body.featured === false || body.featured === 'false') {
+      return false;
+    }
+    throw new BadRequestException('featured must be a boolean');
+  }
+
   // ==================== SUMMARY ====================
 
   @Get('summary')
@@ -87,7 +110,8 @@ export class ContentManagementController {
     @Query() filters: CourseFiltersDto,
     @Req() req: ExpressRequest & AdminRequest,
   ) {
-    const result = await this.contentManagementService.getCourses(filters, req.user.id);
+    const normalizedFilters = this.normalizeFeaturedFilter(filters, req);
+    const result = await this.contentManagementService.getCourses(normalizedFilters, req.user.id);
     return {
       success: true,
       message: 'Courses retrieved successfully',
@@ -176,9 +200,10 @@ export class ContentManagementController {
   })
   async featureCourse(
     @Param('id') id: string,
-    @Body('featured') featured: boolean,
+    @Body() body: { featured?: boolean | string },
     @Req() req: ExpressRequest & AdminRequest,
   ) {
+    const featured = this.parseFeaturedBody(body);
     await this.contentManagementService.featureCourse(id, featured, req.user.id);
     return {
       success: true,
@@ -267,7 +292,7 @@ export class ContentManagementController {
     @Query() filters: ChallengeFiltersDto,
     @Req() req: ExpressRequest & AdminRequest,
   ) {
-    const result = await this.contentManagementService.getChallenges(filters, req.user.id);
+    const result = await this.contentManagementService.getChallenges(this.normalizeFeaturedFilter(filters, req), req.user.id);
     return {
       success: true,
       message: 'Challenges retrieved successfully',
@@ -349,6 +374,25 @@ export class ContentManagementController {
     };
   }
 
+  @Put('challenges/:id/feature')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Feature/Unfeature Challenge',
+    description: 'Toggle featured status for a challenge',
+  })
+  async featureChallenge(
+    @Param('id') id: string,
+    @Body() body: { featured?: boolean | string },
+    @Req() req: ExpressRequest & AdminRequest,
+  ) {
+    const featured = this.parseFeaturedBody(body);
+    await this.contentManagementService.featureChallenge(id, featured, req.user.id);
+    return {
+      success: true,
+      message: featured ? 'Challenge featured successfully' : 'Challenge unfeatured successfully',
+    };
+  }
+
   @Put('challenges/:id/end')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -417,7 +461,7 @@ export class ContentManagementController {
     @Query() filters: EventFiltersDto,
     @Req() req: ExpressRequest & AdminRequest,
   ) {
-    const result = await this.contentManagementService.getEvents(filters, req.user.id);
+    const result = await this.contentManagementService.getEvents(this.normalizeFeaturedFilter(filters, req), req.user.id);
     return {
       success: true,
       message: 'Events retrieved successfully',
@@ -490,6 +534,25 @@ export class ContentManagementController {
     };
   }
 
+  @Put('events/:id/feature')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Feature/Unfeature Event',
+    description: 'Toggle featured status for an event',
+  })
+  async featureEvent(
+    @Param('id') id: string,
+    @Body() body: { featured?: boolean | string },
+    @Req() req: ExpressRequest & AdminRequest,
+  ) {
+    const featured = this.parseFeaturedBody(body);
+    await this.contentManagementService.featureEvent(id, featured, req.user.id);
+    return {
+      success: true,
+      message: featured ? 'Event featured successfully' : 'Event unfeatured successfully',
+    };
+  }
+
   @Put('events/:id/cancel')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -541,7 +604,7 @@ export class ContentManagementController {
     @Query() filters: PostFiltersDto,
     @Req() req: ExpressRequest & AdminRequest,
   ) {
-    const result = await this.contentManagementService.getPosts(filters, req.user.id);
+    const result = await this.contentManagementService.getPosts(this.normalizeFeaturedFilter(filters, req), req.user.id);
     return {
       success: true,
       message: 'Posts retrieved successfully',
@@ -593,9 +656,10 @@ export class ContentManagementController {
   })
   async featurePost(
     @Param('id') id: string,
-    @Body('featured') featured: boolean,
+    @Body() body: { featured?: boolean | string },
     @Req() req: ExpressRequest & AdminRequest,
   ) {
+    const featured = this.parseFeaturedBody(body);
     await this.contentManagementService.featurePost(id, featured, req.user.id);
     return {
       success: true,
