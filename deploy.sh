@@ -30,20 +30,49 @@ docker compose build --pull
 
 free_host_port() {
   local port="$1"
+  local containers=""
   local pids=""
 
-  if command -v fuser >/dev/null 2>&1; then
-    pids="$(fuser "${port}/tcp" 2>/dev/null || true)"
-  elif command -v lsof >/dev/null 2>&1; then
-    pids="$(lsof -tiTCP:"${port}" -sTCP:LISTEN 2>/dev/null || true)"
-  elif command -v ss >/dev/null 2>&1; then
-    pids="$(ss -ltnp "sport = :${port}" 2>/dev/null | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' | sort -u)"
+  if command -v docker >/dev/null 2>&1; then
+    containers="$(
+      docker ps --format '{{.ID}} {{.Ports}}' 2>/dev/null \
+        | awk -v port="${port}" '$0 ~ ":" port "->" { print $1 }' \
+        || true
+    )"
+
+    if [ -n "${containers}" ]; then
+      echo "[deploy] removing containers publishing host port ${port}: ${containers}"
+      docker rm -f ${containers} >/dev/null 2>&1 || true
+      sleep 2
+    fi
   fi
 
+  if command -v fuser >/dev/null 2>&1; then
+    pids="${pids} $(fuser "${port}/tcp" 2>/dev/null || true)"
+  fi
+
+  if command -v lsof >/dev/null 2>&1; then
+    pids="${pids} $(lsof -tiTCP:"${port}" -sTCP:LISTEN 2>/dev/null || true)"
+  fi
+
+  if command -v ss >/dev/null 2>&1; then
+    pids="${pids} $(ss -ltnp "sport = :${port}" 2>/dev/null | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' | sort -u)"
+  fi
+
+  pids="$(printf '%s\n' ${pids} 2>/dev/null | sort -u | xargs 2>/dev/null || true)"
+
   if [ -n "${pids}" ]; then
-    echo "[deploy] freeing host port ${port}"
+    echo "[deploy] killing processes listening on host port ${port}: ${pids}"
     kill ${pids} >/dev/null 2>&1 || true
     sleep 2
+    kill -9 ${pids} >/dev/null 2>&1 || true
+    sleep 1
+  fi
+
+  if command -v ss >/dev/null 2>&1 && ss -ltn "sport = :${port}" | grep -q ":${port}"; then
+    echo "[deploy] port ${port} is still busy after cleanup"
+    ss -ltnp "sport = :${port}" || true
+    exit 1
   fi
 }
 

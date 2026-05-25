@@ -63,7 +63,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     env_file:
       - ./backend/.env
     environment:
@@ -123,7 +123,7 @@ services:
         NEXT_PUBLIC_APP_URL: https://chabaqa.io
         API_INTERNAL_URL: http://chabaqa-backend:3000/api
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     env_file:
       - ./frontend/.env
     depends_on:
