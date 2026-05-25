@@ -3,8 +3,13 @@ set -euo pipefail
 
 PROJECT_DIR="${PROJECT_DIR:-/home/ubuntu/chabaqa}"
 BRANCH="${BRANCH:-main}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-chabaqa}"
+MONGO_DATABASE="${MONGO_DATABASE:-chabaqa_local}"
+DEPLOY_BACKUP_DIR="${DEPLOY_BACKUP_DIR:-${PROJECT_DIR}/.deploy-backups}"
+DEPLOY_USER="${DEPLOY_USER:-ubuntu}"
+export COMPOSE_PROJECT_NAME
 
-echo "[deploy] project=${PROJECT_DIR} branch=${BRANCH}"
+echo "[deploy] project=${PROJECT_DIR} branch=${BRANCH} compose_project=${COMPOSE_PROJECT_NAME}"
 cd "$PROJECT_DIR"
 
 # When deployment runs as root over SSH on a repo owned by ubuntu,
@@ -25,8 +30,147 @@ git reset --hard "origin/$BRANCH"
 echo "[deploy] validating docker compose"
 docker compose config >/dev/null
 
+is_container_running() {
+  local name="$1"
+  [ "$(docker inspect --format '{{.State.Running}}' "${name}" 2>/dev/null || true)" = "true" ]
+}
+
+mongo_content_count_from_compose() {
+  docker exec chabaqa-mongo mongosh --quiet --eval "
+const d = db.getSiblingDB('${MONGO_DATABASE}');
+const collections = ['communities', 'cours', 'courses', 'challenges', 'events', 'products', 'sessions', 'orders', 'mediaassets'];
+let total = 0;
+for (const name of collections) {
+  try { total += d.getCollection(name).estimatedDocumentCount(); } catch (error) {}
+}
+print(total);
+" 2>/dev/null | tail -n 1
+}
+
+mongo_content_count_from_legacy_host() {
+  if ! command -v mongosh >/dev/null 2>&1; then
+    echo 0
+    return
+  fi
+
+  mongosh --quiet --host 127.0.0.1 --port 27017 --eval "
+const d = db.getSiblingDB('${MONGO_DATABASE}');
+const collections = ['communities', 'cours', 'courses', 'challenges', 'events', 'products', 'sessions', 'orders', 'mediaassets'];
+let total = 0;
+for (const name of collections) {
+  try { total += d.getCollection(name).estimatedDocumentCount(); } catch (error) {}
+}
+print(total);
+" 2>/dev/null | tail -n 1 || echo 0
+}
+
+backup_compose_mongo() {
+  if ! is_container_running chabaqa-mongo; then
+    echo "[deploy] mongo backup skipped; chabaqa-mongo is not running yet"
+    return
+  fi
+
+  mkdir -p "${DEPLOY_BACKUP_DIR}"
+
+  local archive
+  archive="${DEPLOY_BACKUP_DIR}/mongo-${MONGO_DATABASE}-predeploy-$(date -u +%Y%m%dT%H%M%SZ).archive.gz"
+
+  echo "[deploy] backing up compose mongo to ${archive}"
+  if docker exec chabaqa-mongo mongodump --quiet --db "${MONGO_DATABASE}" --archive --gzip > "${archive}.tmp"; then
+    mv "${archive}.tmp" "${archive}"
+  else
+    rm -f "${archive}.tmp"
+    echo "[deploy] mongo backup failed"
+    exit 1
+  fi
+}
+
+restore_legacy_host_mongo_if_needed() {
+  if ! is_container_running chabaqa-mongo; then
+    return
+  fi
+
+  if ! command -v mongodump >/dev/null 2>&1; then
+    echo "[deploy] legacy mongo migration skipped; mongodump is not installed on host"
+    return
+  fi
+
+  local compose_count
+  local legacy_count
+  compose_count="$(mongo_content_count_from_compose)"
+  legacy_count="$(mongo_content_count_from_legacy_host)"
+
+  if ! [[ "${compose_count}" =~ ^[0-9]+$ ]]; then
+    compose_count=0
+  fi
+  if ! [[ "${legacy_count}" =~ ^[0-9]+$ ]]; then
+    legacy_count=0
+  fi
+
+  echo "[deploy] mongo content counts: compose=${compose_count} legacy_host=${legacy_count}"
+
+  if [ "${compose_count}" -ne 0 ] || [ "${legacy_count}" -eq 0 ]; then
+    return
+  fi
+
+  mkdir -p "${DEPLOY_BACKUP_DIR}"
+
+  local archive
+  archive="${DEPLOY_BACKUP_DIR}/mongo-${MONGO_DATABASE}-legacy-host-$(date -u +%Y%m%dT%H%M%SZ).archive.gz"
+
+  echo "[deploy] compose mongo is empty; migrating legacy host mongo to ${archive}"
+  mongodump --quiet --host 127.0.0.1 --port 27017 --db "${MONGO_DATABASE}" --archive="${archive}.tmp" --gzip
+  mv "${archive}.tmp" "${archive}"
+
+  docker exec -i chabaqa-mongo mongorestore --drop --archive --gzip < "${archive}"
+
+  compose_count="$(mongo_content_count_from_compose)"
+  if ! [[ "${compose_count}" =~ ^[0-9]+$ ]] || [ "${compose_count}" -eq 0 ]; then
+    echo "[deploy] legacy mongo migration did not restore content"
+    exit 1
+  fi
+}
+
+backup_compose_mongo
+
 echo "[deploy] building images"
 docker compose build --pull
+
+cleanup_legacy_pm2_apps() {
+  local removed=0
+  local app
+
+  if command -v pm2 >/dev/null 2>&1; then
+    for app in chabaqa-backend chabaqa-frontend; do
+      if pm2 jlist 2>/dev/null | grep -q '"name":"'"${app}"'"'; then
+        echo "[deploy] deleting root/current-user PM2 app: ${app}"
+        pm2 delete "${app}" || true
+        removed=1
+      fi
+    done
+
+    if [ "${removed}" = "1" ]; then
+      pm2 save --force || true
+      pm2 kill || true
+    fi
+  fi
+
+  if [ "$(id -u)" -eq 0 ] && id -u "${DEPLOY_USER}" >/dev/null 2>&1; then
+    removed=0
+    for app in chabaqa-backend chabaqa-frontend; do
+      if sudo -u "${DEPLOY_USER}" pm2 jlist 2>/dev/null | grep -q '"name":"'"${app}"'"'; then
+        echo "[deploy] deleting ${DEPLOY_USER} PM2 app: ${app}"
+        sudo -u "${DEPLOY_USER}" pm2 delete "${app}" || true
+        removed=1
+      fi
+    done
+
+    if [ "${removed}" = "1" ]; then
+      sudo -u "${DEPLOY_USER}" pm2 save --force || true
+      sudo -u "${DEPLOY_USER}" pm2 kill || true
+    fi
+  fi
+}
 
 free_host_port() {
   local port="$1"
@@ -76,6 +220,7 @@ free_host_port() {
   fi
 }
 
+cleanup_legacy_pm2_apps
 free_host_port 3000
 free_host_port 8081
 
@@ -124,10 +269,11 @@ wait_for_container() {
   done
 }
 
-echo "[deploy] recreating database services"
-docker compose up -d --force-recreate --remove-orphans mongo redis
+echo "[deploy] ensuring database services"
+docker compose up -d --no-recreate mongo redis
 wait_for_container chabaqa-mongo 120
 wait_for_container chabaqa-redis 120
+restore_legacy_host_mongo_if_needed
 
 echo "[deploy] recreating backend"
 docker compose up -d --force-recreate --remove-orphans chabaqa-backend

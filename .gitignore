@@ -21,6 +21,7 @@ coverage/
 output/
 output-*.png
 frontend/output/
+.deploy-backups/
 
 # Local payment/download scratch files
 frontend/public/payement/
