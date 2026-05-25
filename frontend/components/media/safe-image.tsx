@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import Image, { type ImageProps } from "next/image"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
 

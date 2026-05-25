@@ -154,6 +154,49 @@ export class CoursService {
     return cours;
   }
 
+  private isCourseCreator(course: CoursDocument, userId?: string): boolean {
+    if (!userId) return false;
+    return String((course as any)?.creatorId?._id || (course as any)?.creatorId || '') === String(userId);
+  }
+
+  private async hasFullCourseAccess(course: CoursDocument, userId?: string): Promise<boolean> {
+    if (!userId || !Types.ObjectId.isValid(userId)) return false;
+    if (this.isCourseCreator(course, userId)) return true;
+    if (Number((course as any)?.prix || 0) <= 0 && !(course as any)?.isPaidCourse) return true;
+
+    const courseObjectId = String((course as any)?._id || '');
+    const coursePublicId = String((course as any)?.id || '');
+    const [enrollment, paidOrder] = await Promise.all([
+      this.courseEnrollmentModel.findOne({
+        userId: new Types.ObjectId(userId),
+        courseId: (course as any)._id,
+        isActive: true,
+      }).select('_id').lean(),
+      this.orderModel.exists({
+        buyerId: new Types.ObjectId(userId),
+        contentType: { $in: [TrackableContentType.COURSE, 'course'] },
+        contentId: { $in: [courseObjectId, coursePublicId].filter(Boolean) },
+        status: 'paid',
+      }),
+    ]);
+
+    return Boolean(enrollment || paidOrder);
+  }
+
+  private sanitizeLockedChapter<T extends Record<string, any>>(chapter: T, canViewChapter: boolean): T {
+    if (canViewChapter) return chapter;
+    return {
+      ...chapter,
+      description: '',
+      videoUrl: '',
+      videoStorageKey: undefined,
+      hasProtectedVideo: Boolean(chapter.hasProtectedVideo),
+      notes: '',
+      ressources: [],
+      locked: true,
+    };
+  }
+
   private resolvePaidChapterPrice(
     chapterInput: { isPaid?: boolean; prix?: number },
     coursePrice: number,
@@ -915,6 +958,11 @@ export class CoursService {
       throw new NotFoundException('Cours introuvable');
     }
 
+    const isCreator = this.isCourseCreator(cours, userId);
+    if (!cours.isPublished && !isCreator) {
+      throw new ForbiddenException('Cours non publié');
+    }
+
     console.log(`   ✅ Cours trouvé: ${cours.titre}`);
     console.log(`   🏢 Community ID: ${cours.communityId}`);
     console.log(`   📊 Sections: ${cours.sections?.length || 0}`);
@@ -933,7 +981,8 @@ export class CoursService {
     // Attach rating stats
     await this.attachRatingStatsToCourses([cours]);
 
-    return await this.transformerEnReponse(cours);
+    const fullAccess = await this.hasFullCourseAccess(cours, userId);
+    return await this.transformerEnReponse(cours, { fullAccess });
   }
 
   /**
@@ -1498,7 +1547,7 @@ export class CoursService {
     };
   }
 
-  private async transformerEnReponse(cours: CoursDocument): Promise<CoursResponseDto> {
+  private async transformerEnReponse(cours: CoursDocument, options: { fullAccess?: boolean } = {}): Promise<CoursResponseDto> {
     try {
       // Récupérer la communauté pour avoir accès au slug (ID ou slug)
       let community: any = null;
@@ -1512,12 +1561,15 @@ export class CoursService {
 
       // Safely extract sections and chapters
       const sections = Array.isArray(cours.sections) ? cours.sections : [];
+      let flatChapterIndex = 0;
       const tousLesChapitres = sections.flatMap(section => {
         const chapitres = Array.isArray(section.chapitres) ? section.chapitres : [];
         return chapitres.map(chapitre => {
           const videoFields = this.resolveChapterVideoFields(chapitre);
-          
-          return {
+          const canViewChapter = Boolean(options.fullAccess || chapitre.isPreview || flatChapterIndex === 0);
+          flatChapterIndex += 1;
+
+          return this.sanitizeLockedChapter({
             id: chapitre.id,
             titre: chapitre.titre,
             description: chapitre.contenu,
@@ -1534,7 +1586,7 @@ export class CoursService {
             notes: chapitre.notes,
             ressources: chapitre.ressources,
             createdAt: chapitre.createdAt
-          };
+          }, canViewChapter);
         });
       });
 
@@ -1546,7 +1598,7 @@ export class CoursService {
           creator = {
             id: creatorData._id?.toString() || '',
             name: creatorData.name,
-            email: creatorData.email,
+            email: options.fullAccess ? creatorData.email : '',
             avatar: this.uploadService.ensureAbsoluteUrl(creatorData.profile_picture || creatorData.photo_profil),
             bio: creatorData.bio || ''
           };
@@ -1572,7 +1624,9 @@ export class CoursService {
         averageRating: (cours as any).averageRating !== undefined ? Number((cours as any).averageRating) : Number(cours.averageRating || 0),
         ratingCount: (cours as any).ratingCount !== undefined ? Number((cours as any).ratingCount) : Number(cours.ratingCount || 0),
         // Nouveaux champs du schéma - mapping correct des sections
-        sections: sections.map(section => {
+        sections: (() => {
+          let sectionChapterIndex = 0;
+          return sections.map(section => {
           const chapitres = Array.isArray(section.chapitres) ? section.chapitres : [];
           return {
             id: section.id,
@@ -1583,8 +1637,10 @@ export class CoursService {
             createdAt: section.createdAt,
             chapitres: chapitres.map(chapitre => {
               const videoFields = this.resolveChapterVideoFields(chapitre);
-              
-              return {
+              const canViewChapter = Boolean(options.fullAccess || chapitre.isPreview || sectionChapterIndex === 0);
+              sectionChapterIndex += 1;
+
+              return this.sanitizeLockedChapter({
                 id: chapitre.id,
                 titre: chapitre.titre,
                 description: chapitre.contenu,
@@ -1610,17 +1666,18 @@ export class CoursService {
                   ordre: res.ordre
                 })) : [],
                 createdAt: chapitre.createdAt
-              };
+              }, canViewChapter);
             })
           };
-        }),
+        });
+        })(),
         category: cours.category,
         niveau: cours.niveau,
         duree: cours.duree,
         learningObjectives: Array.isArray(cours.learningObjectives) ? cours.learningObjectives : [],
         requirements: Array.isArray(cours.requirements) ? cours.requirements : [],
-        notes: cours.notes,
-        ressources: Array.isArray(cours.ressources) ? cours.ressources : [],
+        notes: options.fullAccess ? cours.notes : '',
+        ressources: options.fullAccess && Array.isArray(cours.ressources) ? cours.ressources : [],
         createdAt: cours.createdAt?.toISOString() || new Date().toISOString(),
         updatedAt: cours.updatedAt?.toISOString() || new Date().toISOString(),
         creator

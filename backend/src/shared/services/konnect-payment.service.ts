@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
+import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 
 export interface KonnectInitResult {
   success: boolean;
@@ -33,15 +34,29 @@ export class KonnectPaymentService {
   private readonly mockPayments = new Map<string, 'completed' | 'failed'>();
 
   constructor() {
+    const runtimeProduction = isStrictProductionRuntime();
     const isProduction = ['1', 'true', 'yes'].includes(
       String(process.env.KONNECT_IS_PRODUCTION || '').trim().toLowerCase(),
     );
+    const mockRequested = ['1', 'true', 'yes'].includes(
+      String(process.env.KONNECT_MOCK_MODE || '').trim().toLowerCase(),
+    );
+    const hasLiveCredentials = Boolean(
+      process.env.KONNECT_API_KEY &&
+      process.env.KONNECT_API_KEY !== 'your-konnect-api-key' &&
+      process.env.KONNECT_WALLET_ID,
+    );
+
+    if (runtimeProduction && mockRequested) {
+      throw new Error('[Konnect] KONNECT_MOCK_MODE cannot be enabled in production');
+    }
+    if (runtimeProduction && !hasLiveCredentials) {
+      throw new Error('[Konnect] Missing live KONNECT_API_KEY or KONNECT_WALLET_ID in production');
+    }
 
     // Mock mode is active when KONNECT_MOCK_MODE=true OR when no API key is configured
     this.mockMode =
-      ['1', 'true', 'yes'].includes(
-        String(process.env.KONNECT_MOCK_MODE || '').trim().toLowerCase(),
-      ) || !process.env.KONNECT_API_KEY || process.env.KONNECT_API_KEY === 'your-konnect-api-key';
+      mockRequested || !process.env.KONNECT_API_KEY || process.env.KONNECT_API_KEY === 'your-konnect-api-key';
 
     this.baseUrl =
       process.env.KONNECT_BASE_URL ||

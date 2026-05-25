@@ -64,6 +64,7 @@ export default function ContentModerationPage() {
   const [sortBy, setSortBy] = React.useState('createdAt')
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('desc')
   const [selectedRows, setSelectedRows] = React.useState<string[]>([])
+  const [queueStats, setQueueStats] = React.useState<any | null>(null)
 
   // Filter state
   const [filterValues, setFilterValues] = React.useState<Record<string, any>>({
@@ -100,7 +101,10 @@ export default function ContentModerationPage() {
       if (filterValues.dateRange?.from) filters.startDate = filterValues.dateRange.from
       if (filterValues.dateRange?.to) filters.endDate = filterValues.dateRange.to
 
-      const response = await adminApi.contentModeration.getQueue(filters)
+      const [response, statsResponse] = await Promise.all([
+        adminApi.contentModeration.getQueue(filters),
+        adminApi.contentModeration.getQueueStats().catch(() => null as any),
+      ])
       // adminApi normalizes list endpoints to `{ data: { items, total, ... }, pagination? }`.
       // Be defensive here to avoid `data.map is not a function` crashes if the shape changes.
       const payload: any = (response as any)?.data
@@ -121,6 +125,8 @@ export default function ContentModerationPage() {
             ? (response as any).pagination.total
             : 0
       )
+      const statsPayload = (statsResponse as any)?.data ?? statsResponse
+      if (statsPayload) setQueueStats(statsPayload)
     } catch (error) {
       console.error('[ContentModeration] Fetch error:', error)
       toast({
@@ -459,6 +465,28 @@ export default function ContentModerationPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: 'Pending', value: queueStats?.pending ?? queueStats?.totalPending ?? total, icon: AlertCircle, tone: 'text-yellow-600' },
+          { label: 'Urgent', value: queueStats?.urgent ?? queueStats?.urgentItems ?? 0, icon: Flag, tone: 'text-red-600' },
+          { label: 'Overdue', value: queueStats?.overdue ?? queueStats?.overdueItems ?? 0, icon: Clock, tone: 'text-amber-600' },
+          { label: 'Processed today', value: queueStats?.processedToday ?? queueStats?.todayProcessed ?? 0, icon: CheckCircle, tone: 'text-green-600' },
+        ].map((stat) => {
+          const Icon = stat.icon
+          return (
+            <Card key={stat.label} className="shadow-sm">
+              <CardContent className="flex items-center gap-3 p-4">
+                <Icon className={cn('h-5 w-5', stat.tone)} />
+                <div>
+                  <p className="text-xl font-semibold">{Number(stat.value || 0).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       {/* Filters */}

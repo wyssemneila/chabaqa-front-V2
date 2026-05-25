@@ -66,6 +66,7 @@ export default function PayoutsPage() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [stats, setStats] = useState<any | null>(null);
   const [availableBalance, setAvailableBalance] = useState<number | null>(null);
+  const [revenueTotal, setRevenueTotal] = useState<number | null>(null);
   const [bankCredentials, setBankCredentials] = useState({
     ownerName: "",
     bankName: "",
@@ -90,6 +91,7 @@ export default function PayoutsPage() {
         setPayouts([]);
         setStats(null);
         setAvailableBalance(null);
+        setRevenueTotal(null);
         setLoading(false);
         return;
       }
@@ -111,9 +113,15 @@ export default function PayoutsPage() {
       const statsRes = await api.creatorAnalytics.getPayoutStats({ communityId: selectedCommunityId }).catch(() => null as any);
       const balRes = await api.creatorAnalytics.getAvailableBalance({ communityId: selectedCommunityId }).catch(() => null as any);
       const bankRes = await api.creatorAnalytics.getBankCredentials().catch(() => null as any);
+      const revenueRes = await api.creatorAnalytics.getRevenue({
+        from: '1970-01-01T00:00:00.000Z',
+        to: new Date().toISOString(),
+        communityId: selectedCommunityId,
+      }).catch(() => null as any);
 
       setStats(statsRes?.data || statsRes || null);
       setAvailableBalance((balRes?.data?.availableBalance) ?? (balRes?.availableBalance) ?? null);
+      setRevenueTotal(Number(revenueRes?.data?.total ?? revenueRes?.total ?? revenueRes?.data?.revenue ?? 0));
       const bankData = bankRes?.data || bankRes || null;
       setBankConfigured(Boolean(bankData?.isConfigured));
       setBankCredentials({
@@ -153,6 +161,7 @@ export default function PayoutsPage() {
       setPayouts([]);
       setStats(null);
       setAvailableBalance(null);
+      setRevenueTotal(null);
       setLoading(false);
       return;
     }
@@ -166,9 +175,15 @@ export default function PayoutsPage() {
       if (!selectedCommunityId) return;
       const statsRes = await api.creatorAnalytics.getPayoutStats({ communityId: selectedCommunityId });
       const balRes = await api.creatorAnalytics.getAvailableBalance({ communityId: selectedCommunityId }).catch(() => null as any);
+      const revenueRes = await api.creatorAnalytics.getRevenue({
+        from: '1970-01-01T00:00:00.000Z',
+        to: new Date().toISOString(),
+        communityId: selectedCommunityId,
+      }).catch(() => null as any);
 
       setStats(statsRes?.data || statsRes || null);
       setAvailableBalance((balRes?.data?.availableBalance) ?? (balRes?.availableBalance) ?? null);
+      setRevenueTotal(Number(revenueRes?.data?.total ?? revenueRes?.total ?? revenueRes?.data?.revenue ?? 0));
       toast({ title: "Stats Updated", description: "Payout statistics have been refreshed." });
     } catch (error) {
       console.error('Failed to load stats:', error);
@@ -209,6 +224,8 @@ export default function PayoutsPage() {
   const pendingAmount = Number.isFinite(pendingAmountRaw) ? pendingAmountRaw : 0;
   const paidOutAmount = Number.isFinite(paidOutAmountRaw) ? paidOutAmountRaw : 0;
   const successRate = Math.round(Number.isFinite(successRateRaw) ? successRateRaw : 0);
+  const reconciliationRevenue = Number.isFinite(Number(revenueTotal)) ? Number(revenueTotal) : 0;
+  const reconciliationVariance = reconciliationRevenue - paidOutAmount - pendingAmount - Number(availableBalance ?? 0);
 
   const normalizeRib = (value: string) => value.replace(/\s+/g, "");
 
@@ -526,6 +543,33 @@ export default function PayoutsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-dashed">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Revenue reconciliation</CardTitle>
+          <CardDescription>Order revenue, payout movement, and available balance should stay aligned.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-xl border bg-slate-50 p-3">
+              <p className="text-xs font-medium text-slate-500">Tracked revenue</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{formatMoney(reconciliationRevenue)}</p>
+            </div>
+            <div className="rounded-xl border bg-slate-50 p-3">
+              <p className="text-xs font-medium text-slate-500">Paid + pending</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{formatMoney(paidOutAmount + pendingAmount)}</p>
+            </div>
+            <div className="rounded-xl border bg-slate-50 p-3">
+              <p className="text-xs font-medium text-slate-500">Available</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{formatMoney(availableBalance)}</p>
+            </div>
+            <div className={`rounded-xl border p-3 ${Math.abs(reconciliationVariance) < 1 ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+              <p className="text-xs font-medium text-slate-500">Variance</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{formatMoney(reconciliationVariance)}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Collapsible open={isBankPanelOpen} onOpenChange={setIsBankPanelOpen} className="hidden md:block">
         <Card>

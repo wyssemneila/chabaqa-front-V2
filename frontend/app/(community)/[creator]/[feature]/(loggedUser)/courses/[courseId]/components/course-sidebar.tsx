@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle, PlayCircle, Lock, MessageSquare, StickyNote, ArrowRight, ShoppingCart, Trash2 } from "lucide-react"
+import { CheckCircle, Lock, MessageSquare, StickyNote, ArrowRight, ShoppingCart, Trash2 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { api } from "@/lib/api"
@@ -16,6 +16,74 @@ import { format } from "date-fns"
 import Link from "next/link"
 import { getUserProfileHref } from "@/lib/profile-handle"
 import type { CourseSession } from "@/hooks/use-course-session"
+
+function ChapterProgressRing({
+  progress,
+  isCompleted,
+  isLocked,
+  isActive,
+}: {
+  progress: number
+  isCompleted: boolean
+  isLocked: boolean
+  isActive: boolean
+}) {
+  const radius = 14
+  const strokeWidth = 3
+  const circumference = 2 * Math.PI * radius
+  const safeProgress = Math.max(0, Math.min(100, Math.round(progress)))
+  const strokeDashoffset = circumference - (circumference * safeProgress) / 100
+
+  return (
+    <div className="relative flex h-9 w-9 items-center justify-center">
+      <svg className="h-9 w-9 -rotate-90" aria-hidden="true">
+        <circle
+          cx="18"
+          cy="18"
+          r={radius}
+          className="stroke-slate-100"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+        />
+        <circle
+          cx="18"
+          cy="18"
+          r={radius}
+          className={isLocked ? "stroke-slate-300" : isCompleted ? "stroke-green-500" : isActive ? "stroke-[#47c7ea]" : "stroke-[#8e78fb]"}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+        />
+      </svg>
+      <span className="absolute text-[10px] font-bold text-slate-500">
+        {isCompleted ? "✓" : isLocked ? "•" : safeProgress > 0 ? `${safeProgress}` : "0"}
+      </span>
+    </div>
+  )
+}
+
+function getChapterState({
+  isCompleted,
+  accessible,
+  isPaidChapter,
+  isPreview,
+  isActive,
+}: {
+  isCompleted: boolean
+  accessible: boolean
+  isPaidChapter: boolean
+  isPreview: boolean
+  isActive: boolean
+}) {
+  if (isCompleted) return { label: "Completed", className: "bg-green-100 text-green-700" }
+  if (isActive) return { label: "Current", className: "bg-[#8e78fb]/10 text-[#8e78fb]" }
+  if (isPreview && accessible) return { label: "Preview", className: "bg-blue-100 text-blue-700" }
+  if (isPaidChapter && !accessible) return { label: "Buy chapter", className: "bg-amber-100 text-amber-800" }
+  if (!accessible) return { label: "Locked", className: "bg-slate-100 text-slate-700" }
+  return { label: "Unlocked", className: "bg-cyan-100 text-cyan-700" }
+}
 
 interface CourseSidebarProps {
   course: any
@@ -432,6 +500,13 @@ export default function CourseSidebar({
                           const watchTime = Number(chapterProgress?.watchTime ?? 0)
                           const duration = Number(chapterProgress?.videoDuration ?? chapter.duration ?? 0)
                           const progressPct = isCompleted ? 100 : (duration > 0 ? Math.min((watchTime / duration) * 100, 100) : 0)
+                          const chapterState = getChapterState({
+                            isCompleted: Boolean(isCompleted),
+                            accessible,
+                            isPaidChapter: Boolean(chapter.isPaidChapter),
+                            isPreview: Boolean(chapter.isPreview || isFirstPreviewChapter),
+                            isActive,
+                          })
 
                           return (
                             <button
@@ -445,9 +520,11 @@ export default function CourseSidebar({
                                   isUserEnrolled,
                                 })
                                 if (!accessible) {
-                                  const reason = isUserEnrolled
-                                    ? "Finish this chapter to unlock the next one."
-                                    : "You need to enroll to open this chapter."
+                                  const reason = chapter.isPaidChapter
+                                    ? "Buy this chapter to continue learning."
+                                    : isUserEnrolled
+                                      ? "Finish the required previous chapter to unlock this lesson."
+                                      : "Enroll in the course to open this chapter."
                                   console.warn("[CourseNextFlow] Sidebar chapter click blocked", {
                                     chapterId,
                                     reason,
@@ -470,14 +547,13 @@ export default function CourseSidebar({
                               }`}
                             >
                               <div className="flex items-start gap-2.5 md:gap-3 w-full">
-                                <div className="flex-shrink-0 mt-0.5">
-                                  {isCompleted ? (
-                                    <CheckCircle className="h-3.5 w-3.5 md:h-4 md:w-4 text-green-600" />
-                                  ) : accessible ? (
-                                    <PlayCircle className={`h-3.5 w-3.5 md:h-4 md:w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                                  ) : (
-                                    <Lock className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-                                  )}
+                                <div className="flex-shrink-0">
+                                  <ChapterProgressRing
+                                    progress={progressPct}
+                                    isCompleted={Boolean(isCompleted)}
+                                    isLocked={!accessible}
+                                    isActive={isActive}
+                                  />
                                 </div>
 
                                 <div className="flex-1 min-w-0">
@@ -495,28 +571,13 @@ export default function CourseSidebar({
                                     )}
                                   </div>
 
-                                  {/* Progress bar for in-progress chapters */}
-                                  {!isCompleted && progressPct > 0 && (
-                                    <div className="mt-1.5 md:mt-2">
-                                      <Progress value={progressPct} className="h-0.5 md:h-1" />
-                                    </div>
-                                  )}
-
-                                  {/* Chapter badges */}
-                                  <div className="flex items-center gap-1.5 mt-1.5">
-                                    {isFirstPreviewChapter && accessible && (
-                                      <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">
-                                        Preview
-                                      </span>
-                                    )}
-                                    {!accessible && (
-                                      <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-medium">
-                                        Locked
-                                      </span>
-                                    )}
-                                    {chapter.isPaidChapter && !accessible && (
-                                      <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
-                                        Premium
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold md:px-2 md:text-xs ${chapterState.className}`}>
+                                      {chapterState.label}
+                                    </span>
+                                    {chapter.isPaidChapter && accessible && (
+                                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 md:px-2 md:text-xs">
+                                        Paid
                                       </span>
                                     )}
                                   </div>

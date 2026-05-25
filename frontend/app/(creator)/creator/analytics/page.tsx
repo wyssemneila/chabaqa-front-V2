@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -609,6 +610,7 @@ export default function CommunityAnalyticsPage() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
+  const [analyticsMeta, setAnalyticsMeta] = useState<any | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
 
@@ -638,6 +640,7 @@ export default function CommunityAnalyticsPage() {
     setAiTab("summary")
     setFunnelError(null)
     setLastUpdatedAt(null)
+    setAnalyticsMeta(null)
     setIsSupplementalLoading(false)
   }, [])
 
@@ -787,6 +790,7 @@ export default function CommunityAnalyticsPage() {
 
       const rawOverview = (payload.overviewRes as any)?.data || payload.overviewRes || null
       const normalizedOverview = rawOverview ? normalizeOverview(rawOverview, timeRange) : null
+      const nextAnalyticsMeta = rawOverview?.meta || null
 
       const normalizedTopItems = normalizeTopItems(resolveTopItems(payload.topRes))
       const nextFeatureSummary = summarizeFeature(normalizedTopItems, normalizedOverview)
@@ -812,7 +816,8 @@ export default function CommunityAnalyticsPage() {
         })),
       )
       setLoadError(null)
-      setLastUpdatedAt(new Date().toISOString())
+      setAnalyticsMeta(nextAnalyticsMeta)
+      setLastUpdatedAt(nextAnalyticsMeta?.generatedAt || new Date().toISOString())
       if (!hasLoadedOnceRef.current) {
         hasLoadedOnceRef.current = true
         setHasLoadedOnce(true)
@@ -1201,9 +1206,21 @@ export default function CommunityAnalyticsPage() {
 
   const freshnessLabel = useMemo(() => {
     if (isRefreshing) return "Refreshing now"
-    if (!lastUpdatedAt) return "Not refreshed yet"
-    return `Updated ${new Date(lastUpdatedAt).toLocaleTimeString()}`
-  }, [isRefreshing, lastUpdatedAt])
+    const dataAsOf = analyticsMeta?.dataAsOf || lastUpdatedAt
+    if (!dataAsOf) return "Not refreshed yet"
+    return `Data as of ${new Date(dataAsOf).toLocaleTimeString()}`
+  }, [analyticsMeta?.dataAsOf, isRefreshing, lastUpdatedAt])
+
+  const selectedItemEditorHref = useMemo(() => {
+    if (!selectedItemId) return null
+    if (selectedFeature === "courses") return `/creator/courses/${selectedItemId}/manage`
+    if (selectedFeature === "challenges") return `/creator/challenges/${selectedItemId}/manage`
+    if (selectedFeature === "sessions") return `/creator/sessions/${selectedItemId}/edit`
+    if (selectedFeature === "events") return `/creator/events/${selectedItemId}`
+    if (selectedFeature === "products") return `/creator/products/${selectedItemId}/manage`
+    if (selectedFeature === "posts") return `/creator/posts?edit=${encodeURIComponent(selectedItemId)}`
+    return null
+  }, [selectedFeature, selectedItemId])
 
   const simpleInsight = useMemo(() => {
     if (!hasAnalyticsData) {
@@ -1469,6 +1486,16 @@ export default function CommunityAnalyticsPage() {
               {freshnessLabel}
             </span>
             <span>{selectedFeatureLabel} · {timeRange}</span>
+            {analyticsMeta?.sample?.label && (
+              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium text-slate-600">
+                {analyticsMeta.sample.label} · {analyticsMeta.sample.events || 0} events
+              </span>
+            )}
+            {analyticsMeta?.source && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                Source: {String(analyticsMeta.source).replace(/_/g, " ")}
+              </span>
+            )}
             {loadError && (
               <span className="text-red-600">{loadError}</span>
             )}
@@ -2654,6 +2681,14 @@ export default function CommunityAnalyticsPage() {
                                             </p>
                                           </div>
                                         </div>
+                                        {selectedItemEditorHref ? (
+                                          <Button asChild size="sm" className="mt-3 gap-2">
+                                            <Link href={selectedItemEditorHref}>
+                                              Open editor
+                                              <ArrowUpRight className="h-3.5 w-3.5" />
+                                            </Link>
+                                          </Button>
+                                        ) : null}
                                       </div>
                                     ))}
                                   </div>

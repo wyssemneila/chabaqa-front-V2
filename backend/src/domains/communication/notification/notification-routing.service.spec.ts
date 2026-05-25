@@ -48,9 +48,9 @@ describe('NotificationRoutingService', () => {
     ).toBe('/creator/communities/c1/members');
   });
 
-  it('resolves payment_received to revenue page', () => {
+  it('resolves payment_received to payouts page', () => {
     expect(service.resolveUrl(NotificationType.PAYMENT_RECEIVED, {})).toBe(
-      '/creator/revenue',
+      '/creator/monetization/payouts',
     );
   });
 

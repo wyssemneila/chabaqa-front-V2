@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import confetti from "canvas-confetti"
 import BackButton from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/[challengeId]/components/BackButton"
 import ChallengeHeader from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/[challengeId]/components/ChallengeHeader"
 import ChallengeTabs from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/[challengeId]/components/ChallengeTabs"
@@ -32,6 +33,8 @@ export default function ChallengeDetailPageContent({
   const [submissionByTaskId, setSubmissionByTaskId] = useState<Record<string, any>>({})
   const [sequentialProgressionEnabled, setSequentialProgressionEnabled] = useState<boolean>(Boolean(challenge?.sequentialProgression))
   const [unlockMessage, setUnlockMessage] = useState<string | undefined>(challenge?.unlockMessage)
+  const approvedSubmissionIdsRef = useRef<Set<string>>(new Set())
+  const hasInitializedApprovedSubmissionsRef = useRef(false)
   const isUpcoming = useMemo(() => {
     const startAt = new Date(challenge?.startDate || "").getTime()
     return Number.isFinite(startAt) && startAt > Date.now()
@@ -115,6 +118,33 @@ export default function ChallengeDetailPageContent({
       [String(submission.taskId)]: submission,
     }))
   }
+
+  useEffect(() => {
+    const approvedIds = new Set(
+      Object.values(submissionByTaskId)
+        .filter((submission: any) => submission?.status === "approved")
+        .map((submission: any) => String(submission?.id || submission?._id || submission?.taskId || ""))
+        .filter(Boolean),
+    )
+
+    if (!hasInitializedApprovedSubmissionsRef.current) {
+      if (Object.keys(submissionByTaskId).length === 0) return
+      approvedSubmissionIdsRef.current = approvedIds
+      hasInitializedApprovedSubmissionsRef.current = true
+      return
+    }
+
+    const hasNewApproval = Array.from(approvedIds).some((id) => !approvedSubmissionIdsRef.current.has(id))
+    approvedSubmissionIdsRef.current = approvedIds
+
+    if (hasNewApproval) {
+      confetti({
+        particleCount: 140,
+        spread: 76,
+        origin: { y: 0.68 },
+      })
+    }
+  }, [submissionByTaskId])
 
   useEffect(() => {
     const tasks = [...(challengeTasks || [])].sort(

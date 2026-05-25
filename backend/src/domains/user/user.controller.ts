@@ -17,6 +17,12 @@ import { PublicThrottlerGuard } from '@/shared/guards/public-throttler.guard';
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
+
+  private assertAdminUser(req: any): void {
+    if (!req?.user?.isAdmin) {
+      throw new ForbiddenException('Admin privileges required');
+    }
+  }
   
   //signup
   @Post('signup')
@@ -258,18 +264,22 @@ export class UserController {
 
   //get all users
   @Get('all-users')
-    async getAllUsers(@Res() response) {
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+    async getAllUsers(@Res() response, @Request() req) {
       try {
+        this.assertAdminUser(req);
         const users = await this.userService.getAllUsers();
         return response.status(HttpStatus.OK).json({
           message: 'Users fetched successfully',
           users,
         });
       } catch (err) {
-        return response.status(HttpStatus.BAD_REQUEST).json({
-          status: 400,
-          message: 'Error fetching users',
-          error: 'bad request'
+        const status = err?.getStatus?.() || err?.status || HttpStatus.BAD_REQUEST;
+        return response.status(status).json({
+          status,
+          message: err?.message || 'Error fetching users',
+          error: status === HttpStatus.FORBIDDEN ? 'forbidden' : 'bad request'
         });
       }
     }
@@ -374,18 +384,22 @@ export class UserController {
     
     //delete user by id
     @Delete('user/:id')
-    async deleteUser(@Res() response, @Param('id') id: string) {
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth('JWT-auth')
+    async deleteUser(@Res() response, @Param('id') id: string, @Request() req) {
       try {
+        this.assertAdminUser(req);
         const user = await this.userService.deleteUser(id);
         return response.status(HttpStatus.OK).json({
           message: 'User deleted successfully',
           user,
         });
       } catch (err) {
-        return response.status(HttpStatus.BAD_REQUEST).json({
-          status: 400,
-          message: 'Error deleting user',
-          error: 'bad request'
+        const status = err?.getStatus?.() || err?.status || HttpStatus.BAD_REQUEST;
+        return response.status(status).json({
+          status,
+          message: err?.message || 'Error deleting user',
+          error: status === HttpStatus.FORBIDDEN ? 'forbidden' : 'bad request'
         });
       }
     }
