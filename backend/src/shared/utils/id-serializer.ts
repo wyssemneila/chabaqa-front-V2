@@ -21,6 +21,33 @@ export function serializeId(entity: any): string {
   return entity.id || entity._id?.toString() || '';
 }
 
+export function serializeMongoId(entity: any): string {
+  if (!entity) return '';
+  return entity._id?.toString?.() || '';
+}
+
+export function serializePublicId(entity: any): string {
+  if (!entity) return '';
+  return typeof entity.id === 'string' ? entity.id : '';
+}
+
+export function serializeTrackingIdentity(entity: any): {
+  canonicalTrackingId: string;
+  mongoId: string;
+  publicId: string;
+  slug?: string;
+} {
+  const mongoId = serializeMongoId(entity);
+  const publicId = serializePublicId(entity);
+  const slug = typeof entity?.slug === 'string' ? entity.slug : undefined;
+  return {
+    canonicalTrackingId: mongoId || publicId || slug || '',
+    mongoId,
+    publicId,
+    ...(slug ? { slug } : {}),
+  };
+}
+
 /**
  * Serialize entity with both id and mongoId for debugging/logging
  * 

@@ -451,4 +451,57 @@ export class LiveSupportService {
 
     return { available, mine, closed };
   }
+
+  async getOperationalMetrics() {
+    this.ensureEnabled();
+    const now = Date.now();
+    const oneHourAgo = new Date(now - 60 * 60 * 1000);
+    const fourHoursAgo = new Date(now - 4 * 60 * 60 * 1000);
+    const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
+
+    const [waiting, assigned, closed, botActive, olderThan1h, olderThan4h, olderThan24h, sampled] = await Promise.all([
+      this.conversationModel.countDocuments({ type: 'LIVE_SUPPORT', isOpen: true, supportStatus: 'WAITING_ADMIN' }),
+      this.conversationModel.countDocuments({ type: 'LIVE_SUPPORT', isOpen: true, supportStatus: 'ASSIGNED' }),
+      this.conversationModel.countDocuments({ type: 'LIVE_SUPPORT', supportStatus: 'CLOSED' }),
+      this.conversationModel.countDocuments({ type: 'LIVE_SUPPORT', isOpen: true, supportStatus: 'BOT_ACTIVE' }),
+      this.conversationModel.countDocuments({ type: 'LIVE_SUPPORT', isOpen: true, requestedAdminAt: { $lte: oneHourAgo } }),
+      this.conversationModel.countDocuments({ type: 'LIVE_SUPPORT', isOpen: true, requestedAdminAt: { $lte: fourHoursAgo } }),
+      this.conversationModel.countDocuments({ type: 'LIVE_SUPPORT', isOpen: true, requestedAdminAt: { $lte: oneDayAgo } }),
+      this.conversationModel
+        .find({ type: 'LIVE_SUPPORT', requestedAdminAt: { $exists: true } })
+        .select('requestedAdminAt claimedAt closedAt supportStatus')
+        .sort({ updatedAt: -1 })
+        .limit(500)
+        .lean(),
+    ]);
+
+    const claimDurations = sampled
+      .filter((ticket: any) => ticket.requestedAdminAt && ticket.claimedAt)
+      .map((ticket: any) => new Date(ticket.claimedAt).getTime() - new Date(ticket.requestedAdminAt).getTime())
+      .filter((value) => Number.isFinite(value) && value >= 0);
+    const resolutionDurations = sampled
+      .filter((ticket: any) => ticket.requestedAdminAt && ticket.closedAt)
+      .map((ticket: any) => new Date(ticket.closedAt).getTime() - new Date(ticket.requestedAdminAt).getTime())
+      .filter((value) => Number.isFinite(value) && value >= 0);
+    const average = (values: number[]) => values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length / 60000) : 0;
+    const handoffCount = sampled.length;
+    const totalOpen = waiting + assigned + botActive;
+
+    return {
+      waiting,
+      assigned,
+      closed,
+      botActive,
+      totalOpen,
+      averageWaitToClaimMinutes: average(claimDurations),
+      averageResolutionMinutes: average(resolutionDurations),
+      adminHandoffCount: handoffCount,
+      adminHandoffRate: totalOpen + closed > 0 ? Math.round((handoffCount / (totalOpen + closed)) * 100) : 0,
+      backlog: {
+        olderThan1h,
+        olderThan4h,
+        olderThan24h,
+      },
+    };
+  }
 }

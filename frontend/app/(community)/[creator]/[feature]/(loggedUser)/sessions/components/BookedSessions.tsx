@@ -18,7 +18,8 @@ import { ReviewForm } from "@/components/reviews/review-form"
 import { ReviewsList } from "@/components/reviews/reviews-list"
 import { StarRating } from "@/components/reviews/star-rating"
 import { getUserProfileHref } from "@/lib/profile-handle"
-import { useParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
+import * as nextNavigation from "next/navigation"
 
 interface BookedSessionsProps {
   setActiveTab: (tab: string) => void
@@ -28,7 +29,7 @@ interface BookedSessionsProps {
 export default function BookedSessions({ setActiveTab, userBookings }: BookedSessionsProps) {
   const { toast } = useToast()
   const router = useRouter()
-  const params = useParams()
+  const params = typeof nextNavigation.useParams === "function" ? nextNavigation.useParams() : {}
   const creator = typeof params?.creator === "string" ? params.creator : Array.isArray(params?.creator) ? params.creator[0] : ""
   const feature = typeof params?.feature === "string" ? params.feature : Array.isArray(params?.feature) ? params.feature[0] : ""
   const [openingChatBookingId, setOpeningChatBookingId] = useState<string | null>(null)

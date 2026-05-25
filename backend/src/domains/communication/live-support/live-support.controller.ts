@@ -142,4 +142,12 @@ export class LiveSupportController {
   async getQueueCounts(@Request() req: any) {
     return this.liveSupportService.getQueueCounts(this.getAdminActorId(req));
   }
+
+  @Get('admin/metrics')
+  @UseGuards(AdminAuthGuard, AdminRolesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get live support operational metrics' })
+  async getOperationalMetrics() {
+    return this.liveSupportService.getOperationalMetrics();
+  }
 }

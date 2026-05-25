@@ -255,9 +255,12 @@ export class UserService {
 
   // get all users
   async getAllUsers(): Promise<IUser[]> {
-    const users = await this.userModel.find();
+    const users = await this.userModel
+      .find()
+      .select('-password -googleTokens -bankDetails -adminNotes -suspensionReason')
+      .lean();
     return users.map(user => {
-      const u = user.toObject();
+      const u = { ...(user as any) };
       u.photo_profil = this.uploadService.ensureAbsoluteUrl(u.photo_profil);
       u.profile_picture = this.uploadService.ensureAbsoluteUrl(u.profile_picture);
       (u as any).socialLinks = this.normalizeSocialLinks((u as any).socialLinks);
@@ -269,19 +272,15 @@ export class UserService {
   }
 
   // get user by id
-  async getUserById(id: string): Promise<IUser> {
-    const user = await this.userModel.findById(id);
+  async getUserById(id: string): Promise<PublicUserProfile> {
+    const user = await this.userModel
+      .findById(id)
+      .select('name username role ville pays bio createdAt photo_profil profile_picture socialLinks lien_instagram')
+      .lean();
     if (!user) {
       throw new NotFoundException(`User #${id} not found`);
     }
-    const u = user.toObject();
-    u.photo_profil = this.uploadService.ensureAbsoluteUrl(u.photo_profil);
-    u.profile_picture = this.uploadService.ensureAbsoluteUrl(u.profile_picture);
-    (u as any).socialLinks = this.normalizeSocialLinks((u as any).socialLinks);
-    if ((u as any).lien_instagram && !(u as any).socialLinks?.instagram) {
-      (u as any).socialLinks = { ...((u as any).socialLinks || {}), instagram: this.normalizeSocialUrl((u as any).lien_instagram) };
-    }
-    return u as IUser;
+    return this.toPublicUserProfile(user);
   }
 
   // get user by username/handle

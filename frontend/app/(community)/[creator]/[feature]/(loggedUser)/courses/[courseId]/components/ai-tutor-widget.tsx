@@ -12,6 +12,8 @@ import {
   MessageCircle,
   ListOrdered,
   CircleHelp,
+  ShieldCheck,
+  PanelRightOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -65,7 +67,7 @@ function TutorAvatar({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-100",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#8e78fb]/15 to-[#47c7ea]/15 ring-1 ring-[#8e78fb]/20",
         className,
       )}
     >
@@ -200,11 +202,23 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
           ? "Simplifying…"
           : "Thinking…"
 
-  if (isDisabled) return null
+  if (isDisabled) {
+    return (
+      <Card className="flex h-full min-h-[360px] flex-col justify-center rounded-none border-0 bg-transparent p-6 text-center shadow-none">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-1 ring-amber-200">
+          <ShieldCheck className="h-7 w-7" aria-hidden="true" />
+        </div>
+        <CardTitle className="mt-4 text-base text-slate-950">Tutor locked for this chapter</CardTitle>
+        <CardDescription className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
+          Finish the required step or unlock the chapter before asking the AI tutor. This keeps paid course content protected.
+        </CardDescription>
+      </Card>
+    )
+  }
 
   const isSheet = variant === "sheet"
   const promptChips = (
-    <div className="flex w-full gap-2 overflow-x-auto pb-1 scrollbar-none">
+    <div className="flex w-full gap-2 overflow-x-auto pb-1 scrollbar-none" aria-label="AI tutor quick prompts">
       {PROMPT_CHIPS.map((chip) => {
         const Icon = chip.icon
         const mode = chip.mode || "chat"
@@ -214,11 +228,11 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
             type="button"
             variant="secondary"
             size="sm"
-            className="h-8 shrink-0 gap-1.5 rounded-full px-3 text-xs font-medium"
+            className="btn-press-active h-11 shrink-0 gap-2 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm hover:border-[#8e78fb]/40 hover:bg-[#8e78fb]/5 hover:text-[#8e78fb] disabled:opacity-50"
             disabled={isLoading || isHistoryLoading}
             onClick={() => sendRequest(chip.text, mode)}
           >
-            <Icon className="h-3.5 w-3.5 text-purple-500" />
+            <Icon className="h-4 w-4 text-[#8e78fb]" aria-hidden="true" />
             {chip.label}
           </Button>
         )
@@ -232,16 +246,21 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
         "flex flex-col",
         isSheet
           ? "h-full min-h-0 rounded-none border-0 bg-transparent shadow-none"
-          : "h-[min(640px,70vh)] min-h-[420px] border shadow-sm",
+          : "h-[min(680px,72vh)] min-h-[460px] overflow-hidden border-slate-200 bg-white shadow-[0_18px_50px_-28px_rgba(51,65,85,0.55)]",
       )}
     >
-      <CardHeader className={cn("shrink-0 pb-4", isSheet && "border-b bg-background/80 pr-12 backdrop-blur")}>
-        <div className="flex items-center gap-3">
-          <TutorAvatar className="h-10 w-10" />
+      <CardHeader className={cn("shrink-0 border-b border-slate-100 bg-gradient-to-br from-white via-white to-[#f6f4ff] pb-4", isSheet && "pr-12 backdrop-blur")}>
+        <div className="flex items-start gap-3">
+          <TutorAvatar className="h-11 w-11" />
           <div className="min-w-0 flex-1">
-            <CardTitle className="text-base md:text-lg">AI Course Tutor</CardTitle>
-            <CardDescription className="text-xs md:text-sm">
-              Answers grounded in this chapter, with sources, summaries, and quizzes.
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-base text-slate-950 md:text-lg">AI Course Tutor</CardTitle>
+              <span className="rounded-full bg-[#47c7ea]/10 px-2 py-0.5 text-[11px] font-bold text-[#0f7490] ring-1 ring-[#47c7ea]/20">
+                Chapter-aware
+              </span>
+            </div>
+            <CardDescription className="mt-1 text-xs leading-relaxed text-slate-500 md:text-sm">
+              Ask focused questions, generate summaries, and test yourself without leaving the lesson.
             </CardDescription>
           </div>
         </div>
@@ -252,7 +271,7 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
 
         <div
           ref={scrollViewportRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 md:px-6"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-[radial-gradient(circle_at_top_right,rgba(142,120,251,0.08),transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 md:px-6"
         >
           <div className="py-4">
             {messages.length === 0 ? (
@@ -263,13 +282,13 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
                 </div>
               ) : (
                 <div className="mx-auto max-w-md space-y-6 py-8 text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-purple-50">
-                    <MessageCircle className="h-7 w-7 text-purple-500" strokeWidth={1.75} />
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-white shadow-lg shadow-purple-100 ring-1 ring-purple-100">
+                    <MessageCircle className="h-8 w-8 text-[#8e78fb]" strokeWidth={1.75} aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium md:text-base">Ask about this chapter</p>
-                    <p className="mt-1 text-xs text-muted-foreground md:text-sm">
-                      Pick a suggestion below or type your own question.
+                    <p className="text-base font-bold text-slate-950 md:text-lg">Start with a chapter question</p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                      Choose a quick prompt or ask your own. The tutor uses the current chapter context.
                     </p>
                   </div>
                 </div>
@@ -284,10 +303,10 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
                     {msg.role === "ai" && <TutorAvatar className="mt-0.5" />}
                     <div
                       className={cn(
-                        "min-w-0 rounded-lg px-3 py-2.5 md:px-4",
+                        "min-w-0 rounded-2xl px-3 py-2.5 shadow-sm md:px-4",
                         msg.role === "user"
-                          ? "max-w-[88%] bg-primary text-primary-foreground md:max-w-[85%]"
-                          : "w-full max-w-full border bg-muted/40",
+                          ? "max-w-[88%] bg-slate-950 text-white md:max-w-[85%]"
+                          : "w-full max-w-full border border-slate-200 bg-white/90",
                         msg.role === "ai" &&
                           !msg.quiz?.length &&
                           "max-w-[88%] md:max-w-[85%]",
@@ -312,9 +331,9 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
                 {isLoading && (
                   <div className="flex gap-2.5 md:gap-3">
                     <TutorAvatar className="mt-0.5" />
-                    <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-4 py-3">
-                      <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
-                      <span className="text-xs text-muted-foreground md:text-sm">{loadingLabel}</span>
+                    <div className="flex min-h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm">
+                      <Loader2 className="h-4 w-4 animate-spin text-[#8e78fb]" aria-hidden="true" />
+                      <span className="text-xs text-slate-500 md:text-sm">{loadingLabel}</span>
                     </div>
                   </div>
                 )}
@@ -326,12 +345,12 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
 
       <CardFooter
         className={cn(
-          "shrink-0 flex flex-col gap-3 border-t bg-muted/20 p-4 md:p-6",
-          isSheet && "bg-background/85 backdrop-blur",
+          "shrink-0 flex flex-col gap-3 border-t border-slate-100 bg-white/92 p-4 backdrop-blur md:p-5",
+          isSheet && "pb-[calc(1rem+env(safe-area-inset-bottom))]",
         )}
       >
         {promptChips}
-        <div className="flex w-full gap-2">
+        <div className="flex w-full gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 focus-within:border-[#8e78fb]/60 focus-within:ring-2 focus-within:ring-[#8e78fb]/15">
           <Input
             placeholder="Ask about this chapter…"
             value={input}
@@ -343,7 +362,7 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
               }
             }}
             disabled={isLoading || isHistoryLoading}
-            className="text-sm md:text-base"
+            className="h-11 border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 md:text-base"
             aria-label="Question for AI tutor"
           />
           <Button
@@ -352,8 +371,9 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
             disabled={isLoading || isHistoryLoading || !input.trim()}
             onClick={() => void sendRequest(input, "chat")}
             aria-label="Send question"
+            className="btn-press-active h-11 w-11 shrink-0 rounded-xl bg-[#8e78fb] text-white shadow-sm hover:bg-[#7d67f5] disabled:bg-slate-300"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </CardFooter>
@@ -369,9 +389,19 @@ export function FloatingAiTutorSheet({
 }: FloatingAiTutorSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
+      <Button
+        type="button"
+        className="btn-press-active motion-safe:hover:scale-[1.03] fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-40 h-14 gap-2 rounded-2xl bg-slate-950 px-4 text-white shadow-xl shadow-slate-900/20 ring-1 ring-white/20 hover:bg-slate-800 sm:bottom-6 sm:right-6"
+        onClick={() => onOpenChange?.(true)}
+        aria-label="Ask AI Tutor"
+        data-testid="floating-ai-tutor-trigger"
+      >
+        <PanelRightOpen className="h-5 w-5 text-[#47c7ea]" aria-hidden="true" />
+        <span className="text-xs font-bold">Ask AI</span>
+      </Button>
       <SheetContent
-        side="left"
-        className="flex h-full w-full max-w-full flex-col overflow-hidden border-r border-slate-100 bg-slate-50/90 p-0 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 sm:max-w-md"
+        side="right"
+        className="flex h-full w-full max-w-full flex-col overflow-hidden border-l border-slate-200 bg-white/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-[480px]"
         data-testid="floating-ai-tutor-sheet"
       >
         <SheetTitle className="sr-only">AI Course Tutor</SheetTitle>

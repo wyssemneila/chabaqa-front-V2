@@ -14,6 +14,7 @@ interface PaymentProviderModalProps {
   onSelect: (provider: PaymentProvider) => Promise<void>
   title?: string
   description?: string
+  walletBalance?: string | number | null
 }
 
 type ProviderOption = {
@@ -89,8 +90,10 @@ export function PaymentProviderModal({
   onSelect,
   title = "Choose Payment Method",
   description = "Select your preferred payment provider to complete your purchase.",
+  walletBalance = null,
 }: PaymentProviderModalProps) {
   const [processingProvider, setProcessingProvider] = useState<PaymentProvider | null>(null)
+  const showTestCards = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_SHOW_TEST_CARDS === "true"
 
   const handleSelect = async (provider: PaymentProvider) => {
     if (processingProvider) return
@@ -107,7 +110,7 @@ export function PaymentProviderModal({
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!isLoading) onOpenChange(v) }}>
       <DialogContent className="bottom-0 top-auto max-h-[92vh] w-full translate-y-0 gap-0 overflow-hidden rounded-b-none rounded-t-3xl border-0 p-0 shadow-[0_-24px_80px_rgba(15,23,42,0.24)] sm:bottom-auto sm:top-1/2 sm:max-w-4xl sm:-translate-y-1/2 sm:rounded-3xl">
-        <div className="grid max-h-[92vh] overflow-y-auto bg-white md:grid-cols-[0.92fr_1.08fr]">
+        <div className="grid max-h-[92vh] overflow-y-auto bg-white pb-[env(safe-area-inset-bottom)] md:grid-cols-[0.92fr_1.08fr]">
           <section className="relative overflow-hidden border-b border-slate-100 bg-white p-5 text-slate-950 sm:border-b-0 sm:border-r sm:p-7">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(142,120,251,0.12),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(71,199,234,0.10),transparent_30%)]" />
             <div className="relative space-y-6">
@@ -121,29 +124,29 @@ export function PaymentProviderModal({
                 </div>
               </div>
 
-              <div className="relative aspect-[1.6/1] overflow-hidden rounded-2xl border border-slate-200 shadow-[0_20px_48px_rgba(15,23,42,0.12)]">
-                <Image
-                  src="/payement/wallet_card_background_light.png"
-                  alt=""
-                  fill
-                  sizes="(max-width: 768px) 100vw, 360px"
-                  className="object-cover"
-                  priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-br from-white/45 via-white/10 to-white/35" />
-                <div className="absolute inset-0 flex flex-col justify-between p-5">
+              <div className="relative aspect-[1.6/1] overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-950 via-purple-800 to-pink-700 p-5 text-white shadow-[0_20px_48px_rgba(88,28,135,0.28)] transition-all duration-300 hover:rotate-1 hover:scale-[1.01]">
+                <div className="absolute inset-0 shimmer-glow opacity-10 pointer-events-none" />
+                <div className="relative flex h-full flex-col justify-between">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Wallet Value</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-950">Chabaqa member card</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-purple-100/80">Chabaqa Card</p>
+                      <p className="mt-1 text-sm font-semibold tracking-widest text-white">Wallet Value</p>
                     </div>
-                    <div className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#8e78fb] shadow-sm ring-1 ring-[#8e78fb]/10">
-                      Ready
+                    <div className="flex h-7 w-9 items-center justify-center rounded-md bg-gradient-to-tr from-yellow-300 to-yellow-500 shadow-sm">
+                      <div className="h-4 w-6 rounded-sm border border-yellow-700/35" />
                     </div>
                   </div>
                   <div>
-                    <p className="text-3xl font-black tracking-tight text-slate-950">Secure</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-600">Pay for courses, challenges, sessions, products, and memberships.</p>
+                    <div className="flex items-baseline gap-1">
+                      <p className="text-3xl font-black tracking-tight">
+                        {walletBalance == null ? "Secure" : walletBalance}
+                      </p>
+                      {walletBalance != null && <span className="text-xs font-bold text-purple-100/80">DT / PTS</span>}
+                    </div>
+                    <div className="mt-4 flex items-center justify-between text-[10px] uppercase tracking-wide text-purple-100/70">
+                      <span>Verified Member</span>
+                      <span className="font-mono">EXP: --/--</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -162,7 +165,7 @@ export function PaymentProviderModal({
 
           <section className="p-5 sm:p-7">
             <DialogHeader className="space-y-2 text-left">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#8e78fb]/15 bg-[#8e78fb]/8 px-3 py-1 text-xs font-semibold text-[#8e78fb]">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#8e78fb]/15 bg-[#8e78fb]/10 px-3 py-1 text-xs font-semibold text-[#8e78fb]">
                 <LockKeyhole className="h-3.5 w-3.5" />
                 Protected checkout
               </div>
@@ -226,6 +229,7 @@ export function PaymentProviderModal({
               })}
             </div>
 
+            {showTestCards && (
             <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 p-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                 <ShieldCheck className="h-4 w-4 text-[#47c7ea]" />
@@ -243,6 +247,7 @@ export function PaymentProviderModal({
               </div>
               <p className="mt-2 text-center text-[10px] text-slate-400">Any future expiry, any CVC, any ZIP.</p>
             </div>
+            )}
           </section>
         </div>
       </DialogContent>

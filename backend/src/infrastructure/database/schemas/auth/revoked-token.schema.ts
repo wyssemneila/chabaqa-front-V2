@@ -8,7 +8,7 @@ export interface RevokedTokenDocument extends Document {
   _id: Types.ObjectId;
   userId: Types.ObjectId;
   tokenId: string;
-  tokenType: 'access' | 'refresh';
+  tokenType: 'access' | 'refresh' | 'all';
   revokedAt: Date;
   expiresAt: Date;
 }
@@ -80,4 +80,4 @@ RevokedTokenSchema.index({ userId: 1, tokenType: 1 });
 RevokedTokenSchema.index({ tokenId: 1, tokenType: 1 });
 
 // Index TTL pour supprimer automatiquement les tokens expirés
-RevokedTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); 
+RevokedTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });

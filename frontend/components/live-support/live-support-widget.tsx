@@ -223,12 +223,40 @@ export function LiveSupportWidget() {
       dragMomentum={false}
       dragListener={false}
       dragControls={dragControls}
-      dragConstraints={typeof window !== 'undefined' ? { left: -window.innerWidth + 100, right: 0, top: -window.innerHeight + 100, bottom: 0 } : undefined}
-      className={cn("fixed z-[120] flex flex-col items-end", isDesktop ? "" : "bottom-4 right-4 sm:bottom-6 sm:right-6")}
-      style={isDesktop ? { right: 24, bottom: 24, touchAction: "none" } : undefined}
+      dragConstraints={typeof window !== 'undefined' ? { left: 0, right: window.innerWidth - 100, top: -window.innerHeight + 100, bottom: 0 } : undefined}
+      className={cn(
+        "fixed z-[120] flex items-end gap-3",
+        isDesktop ? "flex-row" : "bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-4 flex-col-reverse sm:bottom-6 sm:left-6",
+      )}
+      style={isDesktop ? { left: 24, bottom: 24, touchAction: "none" } : undefined}
     >
+      <Button
+        onPointerDown={(e) => isDesktop ? dragControls.start(e) : undefined}
+        className={cn(
+          "group relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-white/20 bg-gradient-to-br from-[#4c1d95] via-[#6d28d9] to-[#a855f7] shadow-[0_14px_30px_rgba(124,58,237,0.55)] transition hover:scale-[1.03] hover:shadow-[0_18px_36px_rgba(124,58,237,0.65)]",
+          isDesktop && "cursor-move"
+        )}
+        style={{ touchAction: "none" }}
+        onClick={() => setOpen((v) => !v)}
+        aria-label={open ? "Close live support" : "Open live support"}
+      >
+        <span className="absolute inset-0 bg-transparent transition group-hover:bg-white/10" />
+        {open ? (
+          <X className="relative h-7 w-7 text-white" />
+        ) : (
+          <Image
+            src="/Logos/PNG/pop.png"
+            alt="Chabaqa"
+            width={30}
+            height={30}
+            sizes="30px"
+            className="relative h-8 w-8"
+          />
+        )}
+      </Button>
+
       {open && (
-        <div className="mb-3 w-[370px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-3xl border border-chabaqa-secondary2/30 bg-white shadow-2xl shadow-chabaqa-primary/20">
+        <div className="w-[370px] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-7rem-env(safe-area-inset-bottom))] overflow-hidden rounded-3xl border border-chabaqa-secondary2/30 bg-white shadow-2xl shadow-chabaqa-primary/20">
           <div 
              className={cn("bg-gradient-to-r from-[#4c1d95] via-[#6d28d9] to-[#8b5cf6] px-4 py-3 text-white transition-colors duration-200", isDesktop && "cursor-grab active:cursor-grabbing")}
              onPointerDown={(e) => isDesktop ? dragControls.start(e) : undefined}
@@ -269,7 +297,7 @@ export function LiveSupportWidget() {
             </div>
           </div>
 
-          <ScrollArea className="h-[370px] bg-gradient-to-b from-white to-slate-50 px-4 py-3">
+          <ScrollArea className="h-[min(370px,calc(100dvh-15rem-env(safe-area-inset-bottom)))] bg-gradient-to-b from-white to-slate-50 px-4 py-3">
             {loading ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading support conversation...
@@ -376,31 +404,6 @@ export function LiveSupportWidget() {
           </div>
         </div>
       )}
-
-      <Button
-        onPointerDown={(e) => isDesktop ? dragControls.start(e) : undefined}
-        className={cn(
-          "group relative h-16 w-16 overflow-hidden rounded-full border border-white/20 bg-gradient-to-br from-[#4c1d95] via-[#6d28d9] to-[#a855f7] shadow-[0_14px_30px_rgba(124,58,237,0.55)] transition hover:scale-[1.03] hover:shadow-[0_18px_36px_rgba(124,58,237,0.65)]",
-          isDesktop && "cursor-move"
-        )}
-        style={{ touchAction: "none" }}
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Open live support"
-      >
-        <span className="absolute inset-0 bg-transparent transition group-hover:bg-white/10" />
-        {open ? (
-          <X className="relative h-7 w-7 text-white" />
-        ) : (
-          <Image
-            src="/Logos/PNG/pop.png"
-            alt="Chabaqa"
-            width={30}
-            height={30}
-            sizes="30px"
-            className="relative h-8 w-8"
-          />
-        )}
-      </Button>
     </motion.div>
   )
 }

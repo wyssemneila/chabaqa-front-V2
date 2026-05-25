@@ -55,6 +55,9 @@ export function AiTutorInsightsTab({ courseId }: AiTutorInsightsTabProps) {
   }
 
   const hasActivity = chapters.some((c) => c.totalQuestions > 0)
+  const activeChapters = chapters.filter((c) => c.totalQuestions > 0)
+  const alertChapters = activeChapters.filter((c) => c.isConfusing)
+  const storyChapters = alertChapters.length > 0 ? alertChapters : activeChapters.slice(0, 4)
 
   return (
     <div className="space-y-6">
@@ -90,10 +93,50 @@ export function AiTutorInsightsTab({ courseId }: AiTutorInsightsTabProps) {
           </CardContent>
         </EnhancedCard>
       ) : (
-        <div className="grid gap-4">
-          {chapters
-            .filter((c) => c.totalQuestions > 0)
-            .map((chapter) => (
+        <div className="space-y-5">
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">AI Tutor Alerts</h3>
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none" aria-label="AI tutor chapter alerts">
+              {storyChapters.map((chapter) => {
+                const topQuestion = chapter.topQuestions[0]
+                return (
+                  <EnhancedCard
+                    key={chapter.chapterId}
+                    className="shrink-0 w-80 border-l-4 border-[#ff9b28] bg-white shadow-sm"
+                  >
+                    <CardContent className="flex h-full flex-col justify-between p-5">
+                      <div>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <span className="rounded-full bg-[#ff9b28]/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#ff9b28]">
+                            {chapter.isConfusing ? "Attention Required" : "Learner Signal"}
+                          </span>
+                          <span className="font-mono text-[10px] text-slate-400">
+                            {chapter.totalQuestions} asks
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-900">{chapter.chapterTitle}</h4>
+                        {chapter.sectionTitle && <p className="mt-0.5 text-xs text-slate-400">{chapter.sectionTitle}</p>}
+                        <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-slate-500">
+                          {topQuestion
+                            ? `${topQuestion.count} learner question${topQuestion.count !== 1 ? "s" : ""}: ${topQuestion.text}`
+                            : `${chapter.uniqueLearners} learner${chapter.uniqueLearners !== 1 ? "s" : ""} used the tutor on this chapter.`}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/creator/courses/${courseId}/manage`}
+                        className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#8e78fb]"
+                      >
+                        Optimize Chapter Syllabus
+                      </Link>
+                    </CardContent>
+                  </EnhancedCard>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            {activeChapters.map((chapter) => (
               <EnhancedCard key={chapter.chapterId}>
                 <CardHeader className="pb-2">
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -127,7 +170,7 @@ export function AiTutorInsightsTab({ courseId }: AiTutorInsightsTabProps) {
                         >
                           <span className="text-foreground">{q.text}</span>
                           <Badge variant="outline" className="shrink-0">
-                            ×{q.count}
+                            x{q.count}
                           </Badge>
                         </li>
                       ))}
@@ -138,6 +181,7 @@ export function AiTutorInsightsTab({ courseId }: AiTutorInsightsTabProps) {
                 </CardContent>
               </EnhancedCard>
             ))}
+          </div>
         </div>
       )}
     </div>
