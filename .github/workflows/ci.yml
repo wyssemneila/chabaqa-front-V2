@@ -43,6 +43,8 @@ jobs:
 
       - name: Build
         env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          NEXT_TELEMETRY_DISABLED: 1
           NEXT_PUBLIC_API_URL: https://chabaqa.io/api
           NEXT_PUBLIC_APP_URL: https://chabaqa.io
           API_INTERNAL_URL: http://127.0.0.1:3000/api
