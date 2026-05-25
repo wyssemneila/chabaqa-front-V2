@@ -531,7 +531,13 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                         asChild
                         onClick={() => setMobileMenuOpen(false)} // ✅ closes menu
                       >
-                        <Link href={`/${creatorSlug}/${currentCommunity}${item.href}`}>
+                        <Link
+                          href={`/${creatorSlug}/${currentCommunity}${item.href}`}
+                          className={cn(
+                            "relative pl-3 transition-all duration-300 before:absolute before:left-0 before:top-1/2 before:h-0 before:w-1 before:-translate-y-1/2 before:rounded-r-md before:bg-[#8e78fb] before:transition-all before:duration-300",
+                            isRouteActive(item.href) && "text-[#8e78fb] before:h-3/4",
+                          )}
+                        >
                           <item.icon className="mr-2 h-4 w-4" />
                           {item.label}
                         </Link>
@@ -674,10 +680,10 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                   key={item.label}
                   href={href}
                   className={cn(
-                    "flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
+                    "relative flex items-center space-x-2 rounded-full px-4 py-2 pl-5 text-sm font-medium whitespace-nowrap transition-all duration-300 before:absolute before:left-2 before:top-1/2 before:h-0 before:w-1 before:-translate-y-1/2 before:rounded-r-md before:bg-[#8e78fb] before:transition-all before:duration-300",
                     isActive
-                      ? "bg-primary-100 text-primary-700"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                      ? "bg-primary-100 text-primary-700 before:h-3/4"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                   )}
                 >
                   <item.icon className="h-4 w-4" />

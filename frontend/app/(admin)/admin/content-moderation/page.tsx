@@ -95,10 +95,10 @@ export default function ContentModerationPage() {
 
       // Add active filters
       if (filterValues.status && filterValues.status !== 'all') filters.status = filterValues.status
-      if (filterValues.contentType && filterValues.contentType !== 'all') filters.contentType = filterValues.contentType
-      if (filterValues.priority && filterValues.priority !== 'all') filters.priority = filterValues.priority
-      if (filterValues.dateRange?.from) filters.reportedFrom = filterValues.dateRange.from
-      if (filterValues.dateRange?.to) filters.reportedTo = filterValues.dateRange.to
+      if (filterValues.contentType && filterValues.contentType !== 'all') filters.contentTypes = filterValues.contentType
+      if (filterValues.priority && filterValues.priority !== 'all') filters.priorities = filterValues.priority
+      if (filterValues.dateRange?.from) filters.startDate = filterValues.dateRange.from
+      if (filterValues.dateRange?.to) filters.endDate = filterValues.dateRange.to
 
       const response = await adminApi.contentModeration.getQueue(filters)
       // adminApi normalizes list endpoints to `{ data: { items, total, ... }, pagination? }`.
@@ -252,9 +252,11 @@ export default function ContentModerationPage() {
       options: [
         { label: 'All', value: 'all' },
         { label: 'Pending', value: 'pending' },
+        { label: 'Under Review', value: 'under_review' },
         { label: 'Approved', value: 'approved' },
         { label: 'Rejected', value: 'rejected' },
-        { label: 'Flagged', value: 'flagged' }
+        { label: 'Flagged', value: 'flagged' },
+        { label: 'Escalated', value: 'escalated' }
       ]
     },
     {
@@ -267,7 +269,9 @@ export default function ContentModerationPage() {
         { label: 'Comment', value: 'comment' },
         { label: 'Course', value: 'course' },
         { label: 'Event', value: 'event' },
-        { label: 'Product', value: 'product' }
+        { label: 'Product', value: 'product' },
+        { label: 'Community', value: 'community' },
+        { label: 'User Profile', value: 'user_profile' }
       ]
     },
     {
@@ -277,7 +281,7 @@ export default function ContentModerationPage() {
       options: [
         { label: 'All', value: 'all' },
         { label: 'Low', value: 'low' },
-        { label: 'Medium', value: 'normal' },
+        { label: 'Normal', value: 'normal' },
         { label: 'High', value: 'high' },
         { label: 'Urgent', value: 'urgent' }
       ]

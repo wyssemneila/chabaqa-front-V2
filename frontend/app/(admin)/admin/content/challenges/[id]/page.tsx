@@ -122,6 +122,18 @@ export default function ChallengeDetailPage() {
     }
   }
 
+  const handleFeature = async () => {
+    try {
+      const nextFeatured = !challenge?.isFeatured
+      await adminApi.content.featureChallenge(challengeId, nextFeatured)
+      toast.success(nextFeatured ? t("featureSuccess") : t("unfeatureSuccess"))
+      const response = await adminApi.content.getChallengeById(challengeId)
+      if (response.success) setChallenge(response.data)
+    } catch (error) {
+      toast.error(t("featureError"))
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -186,6 +198,10 @@ export default function ChallengeDetailPage() {
               {t("actions.endEarly")}
             </Button>
           )}
+          <Button variant={challenge.isFeatured ? "default" : "outline"} onClick={handleFeature}>
+            <Award className="h-4 w-4 mr-2" />
+            {challenge.isFeatured ? t("actions.unfeature") : t("actions.feature")}
+          </Button>
           <Button asChild>
             <Link href={localizeHref(pathname, `/admin/content/challenges/${challengeId}/submissions`)}>
               <Trophy className="h-4 w-4 mr-2" />

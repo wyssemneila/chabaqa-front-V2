@@ -25,28 +25,29 @@ import { cn } from "@/lib/utils"
 
 interface ContentDetails {
   _id: string
-  contentType: 'post' | 'comment' | 'course' | 'event' | 'product'
+  contentType: 'post' | 'comment' | 'course' | 'event' | 'product' | 'community' | 'user_profile'
   contentId: string
-  content: any
-  status: 'pending' | 'approved' | 'rejected' | 'flagged'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  reportedBy?: {
-    _id: string
-    username: string
-    email: string
-  }
-  reportReason?: string
-  assignedTo?: {
+  contentData?: any
+  contentSnapshot?: any
+  status: 'pending' | 'approved' | 'rejected' | 'flagged' | 'under_review' | 'escalated'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  reports?: Array<{
+    reporterId: string
+    reporterName: string
+    reason: string
+    reportedAt: string
+    description?: string
+  }>
+  reviewer?: {
     _id: string
     name: string
+    email?: string
   }
+  reportCount?: number
+  submittedAt?: string
   createdAt: string
   reviewedAt?: string
-  reviewedBy?: {
-    _id: string
-    name: string
-  }
-  moderationNotes?: string
+  reviewNotes?: string
 }
 
 interface ModerationAction {
@@ -65,7 +66,6 @@ export default function ContentDetailsPage({ params }: { params: Promise<{ id: s
   const [loading, setLoading] = React.useState(true)
   const [details, setDetails] = React.useState<ContentDetails | null>(null)
   const [priority, setPriority] = React.useState<string>('')
-  const [assignedTo, setAssignedTo] = React.useState<string>('')
   const [notes, setNotes] = React.useState('')
   const [rejectReason, setRejectReason] = React.useState('')
   const [actionLoading, setActionLoading] = React.useState(false)
@@ -98,8 +98,7 @@ export default function ContentDetailsPage({ params }: { params: Promise<{ id: s
 
         setDetails(data)
         setPriority(data.priority)
-        setAssignedTo(data.assignedTo?._id || '')
-        setNotes(data.moderationNotes || '')
+        setNotes(data.reviewNotes || '')
       } catch (error) {
         console.error('[ContentDetails] Fetch error:', error)
         toast({
@@ -134,37 +133,19 @@ export default function ContentDetailsPage({ params }: { params: Promise<{ id: s
     }
   }
 
-  // Handle moderator assignment
-  const handleAssignment = async (moderatorId: string) => {
-    try {
-      await adminApi.contentModeration.assignContent(id, moderatorId)
-      setAssignedTo(moderatorId)
-      toast({
-        title: "Success",
-        description: "Moderator assigned successfully"
-      })
-    } catch (error) {
-      console.error('[ContentDetails] Assignment error:', error)
-      toast({
-        title: "Error",
-        description: "Failed to assign moderator",
-        variant: "destructive"
-      })
-    }
-  }
-
   // Handle moderation actions
   const handleAction = async (action: 'approve' | 'reject' | 'flag') => {
     setActionLoading(true)
     try {
       const payload: any = {
         action,
-        notes: notes || undefined,
+        reviewNotes: notes || undefined,
         notifyUser: true
       }
 
       if (action === 'reject' && rejectReason) {
-        payload.reason = rejectReason
+        payload.rejectionReasons = ['other']
+        payload.reviewNotes = [notes, rejectReason].filter(Boolean).join('\n\n')
       }
 
       await adminApi.contentModeration.moderateContent(id, payload)
@@ -204,9 +185,13 @@ export default function ContentDetailsPage({ params }: { params: Promise<{ id: s
 
   // Render content preview based on type
   const renderContentPreview = () => {
-    if (!details?.content) return null
+    const content = details?.contentData || details?.contentSnapshot
+    if (!content) return (
+      <div className="p-4 bg-muted rounded-lg">
+        <p className="text-sm text-muted-foreground">No content preview data is available for this queue item.</p>
+      </div>
+    )
 
-    const content = details.content
 
     switch (details.contentType) {
       case 'post':
@@ -372,7 +357,7 @@ export default function ContentDetailsPage({ params }: { params: Promise<{ id: s
           </Card>
 
           {/* Reporter Information */}
-          {details.reportedBy && (
+          {details.reports && details.reports.length > 0 && (
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -381,22 +366,20 @@ export default function ContentDetailsPage({ params }: { params: Promise<{ id: s
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Username</Label>
-                    <p className="text-sm font-medium">{details.reportedBy.username}</p>
+                {details.reports.map((report, index) => (
+                  <div key={`${report.reporterId}-${index}`} className="rounded-lg border p-3">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm font-medium">{report.reporterName || 'Unknown reporter'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {report.reportedAt ? new Date(report.reportedAt).toLocaleString() : 'N/A'}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-sm">{report.reason || 'No reason provided'}</p>
+                    {report.description && (
+                      <p className="mt-1 text-sm text-muted-foreground">{report.description}</p>
+                    )}
                   </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Email</Label>
-                    <p className="text-sm font-medium">{details.reportedBy.email}</p>
-                  </div>
-                </div>
-                {details.reportReason && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Report Reason</Label>
-                    <p className="text-sm mt-1">{details.reportReason}</p>
-                  </div>
-                )}
+                ))}
               </CardContent>
             </Card>
           )}
@@ -457,7 +440,7 @@ export default function ContentDetailsPage({ params }: { params: Promise<{ id: s
                 <Label className="text-xs text-muted-foreground">Reported</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm">{new Date(details.createdAt).toLocaleString()}</p>
+                  <p className="text-sm">{new Date(details.submittedAt || details.createdAt).toLocaleString()}</p>
                 </div>
               </div>
               {details.reviewedAt && (
@@ -466,9 +449,9 @@ export default function ContentDetailsPage({ params }: { params: Promise<{ id: s
                   <div>
                     <Label className="text-xs text-muted-foreground">Reviewed</Label>
                     <p className="text-sm">{new Date(details.reviewedAt).toLocaleString()}</p>
-                    {details.reviewedBy && (
+                    {details.reviewer && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        by {details.reviewedBy.name}
+                        by {details.reviewer.name}
                       </p>
                     )}
                   </div>
@@ -490,7 +473,7 @@ export default function ContentDetailsPage({ params }: { params: Promise<{ id: s
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
                   <SelectItem value="high">High</SelectItem>
                   <SelectItem value="urgent">Urgent</SelectItem>
                 </SelectContent>
@@ -502,20 +485,15 @@ export default function ContentDetailsPage({ params }: { params: Promise<{ id: s
           <Card className="border-0 shadow-lg">
             <CardHeader>
               <CardTitle>Assignment</CardTitle>
-              <CardDescription>Assign to a moderator</CardDescription>
+              <CardDescription>Current reviewer assigned by the moderation workflow</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Select value={assignedTo} onValueChange={handleAssignment}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select moderator..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
-                  <SelectItem value="mod1">Moderator 1</SelectItem>
-                  <SelectItem value="mod2">Moderator 2</SelectItem>
-                  <SelectItem value="mod3">Moderator 3</SelectItem>
-                </SelectContent>
-              </Select>
+            <CardContent className="space-y-2">
+              <p className="text-sm font-medium">
+                {details.reviewer?.name || 'Unassigned'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {details.reviewer?.email || 'No moderator is assigned yet.'}
+              </p>
             </CardContent>
           </Card>
 

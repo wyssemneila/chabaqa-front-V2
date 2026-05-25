@@ -818,6 +818,11 @@
       "communities": "Communities",
       "contentModeration": "Content Moderation",
       "contentManagement": "Content Management",
+      "allContent": "All Content",
+      "courses": "Courses",
+      "challenges": "Challenges",
+      "events": "Events",
+      "posts": "Posts",
       "financial": "Financial",
       "analytics": "Analytics",
       "security": "Security",
@@ -1006,7 +1011,9 @@
           "actions": {
             "approve": "Approve",
             "endEarly": "End early",
-            "viewSubmissions": "View submissions"
+            "viewSubmissions": "View submissions",
+            "feature": "Feature",
+            "unfeature": "Unfeature"
           },
           "difficulty": {
             "beginner": "Beginner",
@@ -1061,8 +1068,14 @@
             "title": "Community",
             "viewCommunity": "View community"
           },
-          "viewSubmissions": "View submissions"
-        }
+          "viewSubmissions": "View submissions",
+          "featureSuccess": "Challenge featured.",
+          "unfeatureSuccess": "Feature removed.",
+          "featureError": "Failed to update feature."
+        },
+        "featureSuccess": "Challenge featured.",
+        "unfeatureSuccess": "Feature removed.",
+        "featureError": "Failed to update feature."
       },
       "events": {
         "title": "Events",
@@ -1094,7 +1107,9 @@
           "viewAttendees": "View attendees",
           "approve": "Approve",
           "messageAttendees": "Message attendees",
-          "cancel": "Cancel"
+          "cancel": "Cancel",
+          "feature": "Feature",
+          "unfeature": "Unfeature"
         },
         "ticketTypes": "ticket types",
         "online": "Online",
@@ -1120,7 +1135,9 @@
           "notFoundDescription": "This event no longer exists.",
           "actions": {
             "approve": "Approve",
-            "cancel": "Cancel"
+            "cancel": "Cancel",
+            "feature": "Feature",
+            "unfeature": "Unfeature"
           },
           "status": {
             "upcoming": "Upcoming",
@@ -1171,8 +1188,14 @@
             "viewCommunity": "View community"
           },
           "viewAttendees": "View attendees",
-          "messageAttendees": "Message attendees"
-        }
+          "messageAttendees": "Message attendees",
+          "featureSuccess": "Event featured.",
+          "unfeatureSuccess": "Feature removed.",
+          "featureError": "Failed to update feature."
+        },
+        "featureSuccess": "Event featured.",
+        "unfeatureSuccess": "Feature removed.",
+        "featureError": "Failed to update feature."
       },
       "posts": {
         "title": "Posts",

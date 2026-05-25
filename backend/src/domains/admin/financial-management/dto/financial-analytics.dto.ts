@@ -102,6 +102,17 @@ export class RevenueGrowthDto {
   periodEnd: Date;
 }
 
+export class PayoutAnalyticsByMethodDto {
+  @ApiProperty({ description: 'Payouts sent by bank transfer' })
+  bank_transfer: number;
+
+  @ApiProperty({ description: 'Payouts sent by PayPal' })
+  paypal: number;
+
+  @ApiProperty({ description: 'Payouts sent by Stripe' })
+  stripe: number;
+}
+
 export class PayoutAnalyticsDto {
   @ApiProperty({ description: 'Total payouts in period' })
   totalPayouts: number;
@@ -124,12 +135,11 @@ export class PayoutAnalyticsDto {
   @ApiProperty({ description: 'Average processing time (days)' })
   averageProcessingTime: number;
 
-  @ApiProperty({ description: 'Payouts by method' })
-  payoutsByMethod: {
-    bank_transfer: number;
-    paypal: number;
-    stripe: number;
-  };
+  @ApiProperty({
+    description: 'Payouts by method',
+    type: () => PayoutAnalyticsByMethodDto,
+  })
+  payoutsByMethod: PayoutAnalyticsByMethodDto;
 }
 
 export class TransactionAnalyticsDto {
@@ -145,7 +155,11 @@ export class TransactionAnalyticsDto {
   @ApiProperty({ description: 'Largest transaction' })
   largestTransaction: number;
 
-  @ApiProperty({ description: 'Transactions by type' })
+  @ApiProperty({
+    description: 'Transactions by type',
+    type: 'object',
+    additionalProperties: { type: 'number' },
+  })
   transactionsByType: Record<string, number>;
 
   @ApiProperty({ description: 'Daily transaction average' })
@@ -162,7 +176,11 @@ export class PlatformFeesAnalyticsDto {
   @ApiProperty({ description: 'Average fee percentage' })
   averageFeePercentage: number;
 
-  @ApiProperty({ description: 'Fees by content type' })
+  @ApiProperty({
+    description: 'Fees by content type',
+    type: 'object',
+    additionalProperties: { type: 'number' },
+  })
   feesByContentType: Record<string, number>;
 
   @ApiProperty({ description: 'Fee growth rate (percentage)' })
@@ -170,6 +188,26 @@ export class PlatformFeesAnalyticsDto {
 
   @ApiProperty({ description: 'Total revenue before fees' })
   totalRevenueBeforeFees: number;
+}
+
+export class FinancialHealthIndicatorsDto {
+  @ApiProperty({
+    description: 'Revenue growth direction',
+    enum: ['positive', 'negative', 'stable'],
+  })
+  revenueGrowth: 'positive' | 'negative' | 'stable';
+
+  @ApiProperty({
+    description: 'Payout processing health',
+    enum: ['healthy', 'delayed', 'critical'],
+  })
+  payoutProcessing: 'healthy' | 'delayed' | 'critical';
+
+  @ApiProperty({
+    description: 'Transaction volume direction',
+    enum: ['increasing', 'decreasing', 'stable'],
+  })
+  transactionVolume: 'increasing' | 'decreasing' | 'stable';
 }
 
 export class FinancialHealthDto {
@@ -185,13 +223,12 @@ export class FinancialHealthDto {
   @ApiProperty({ description: 'Overall financial health score (0-100)' })
   overallHealthScore: number;
 
-  @ApiProperty({ description: 'Health indicators' })
-  indicators: {
-    revenueGrowth: 'positive' | 'negative' | 'stable';
-    payoutProcessing: 'healthy' | 'delayed' | 'critical';
-    transactionVolume: 'increasing' | 'decreasing' | 'stable';
-  };
+  @ApiProperty({
+    description: 'Health indicators',
+    type: () => FinancialHealthIndicatorsDto,
+  })
+  indicators: FinancialHealthIndicatorsDto;
 
-  @ApiProperty({ description: 'Recommendations' })
+  @ApiProperty({ description: 'Recommendations', type: [String] })
   recommendations: string[];
 }

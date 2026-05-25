@@ -6,10 +6,13 @@ import CourseHeader from "@/app/(community)/[creator]/[feature]/(loggedUser)/cou
 import EnhancedVideoPlayer from "@/app/(community)/[creator]/[feature]/(loggedUser)/courses/[courseId]/components/enhanced-video-player"
 import ChapterTabs from "@/app/(community)/[creator]/[feature]/(loggedUser)/courses/[courseId]/components/chapter-tabs"
 import CourseSidebar from "@/app/(community)/[creator]/[feature]/(loggedUser)/courses/[courseId]/components/course-sidebar"
+import { Button } from "@/components/ui/button"
 import { coursesApi } from "@/lib/api/courses.api"
+import { cn } from "@/lib/utils"
 import { tokenStorage } from "@/lib/token-storage"
 import { useToast } from "@/components/ui/use-toast"
 import type { CourseSession } from "@/hooks/use-course-session"
+import { Maximize2, Minimize2, X } from "lucide-react"
 
 interface CoursePlayerProps {
   creatorSlug: string
@@ -59,6 +62,7 @@ export default function CoursePlayer({
 }: CoursePlayerProps) {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("content")
+  const [theaterMode, setTheaterMode] = useState(false)
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null)
   const [accessibleChapters, setAccessibleChapters] = useState<Record<string, boolean>>({})
   const [chapterAccessReason, setChapterAccessReason] = useState<Record<string, string | undefined>>({})
@@ -592,6 +596,44 @@ export default function CoursePlayer({
     return Math.min((watchTimeSeconds / durationSeconds) * 100, 100)
   }, [currentChapter?.id, currentChapter?.duration, enrollment?.progress, videoDurationOverride, watchTimeOverride])
 
+  const chapterProgressById = useMemo(() => {
+    const progressById: Record<string, number> = {}
+    const progressItems = Array.isArray(enrollment?.progress) ? enrollment.progress : []
+    const currentId = currentChapter?.id ? String(currentChapter.id) : null
+
+    for (const chapter of allChapters) {
+      const chapterId = String(chapter.id)
+      const chapterProgress = progressItems.find((p: any) => String(p.chapterId) === chapterId)
+
+      if (chapterProgress?.isCompleted) {
+        progressById[chapterId] = 100
+        continue
+      }
+
+      const progressDuration = Number(chapterProgress?.videoDuration ?? 0)
+      const chapterDuration = Number(chapter.duration ?? 0)
+      const isCurrent = currentId === chapterId
+      const durationSeconds =
+        isCurrent && Number(videoDurationOverride ?? 0) > 0
+          ? Number(videoDurationOverride)
+          : progressDuration > 0
+            ? progressDuration
+            : chapterDuration
+
+      const watchTimeSeconds =
+        isCurrent && watchTimeOverride !== null
+          ? Number(watchTimeOverride)
+          : Number(chapterProgress?.watchTime ?? 0)
+
+      progressById[chapterId] =
+        Number.isFinite(durationSeconds) && durationSeconds > 0
+          ? Math.min(Math.max((watchTimeSeconds / durationSeconds) * 100, 0), 100)
+          : 0
+    }
+
+    return progressById
+  }, [allChapters, currentChapter?.id, enrollment?.progress, videoDurationOverride, watchTimeOverride])
+
   // Use overall course progress from enrollment for header/sidebar display
   const overallProgress = Number(enrollment?.progressPercentage ?? 0)
 
@@ -929,57 +971,103 @@ export default function CoursePlayer({
   }, [onRefreshProgress, onRefreshUnlockedChapters])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6">
-        <CourseHeader
-          creatorSlug={creatorSlug}
-          slug={slug}
-          course={course}
-          progress={displayChapterPercent}
-          allChapters={allChapters}
-          completedChaptersCount={completedChaptersCount}
-          remainingChaptersCount={remainingChaptersCount}
-          currentChapterProgress={displayChapterPercent}
-        />
+    <div
+      className={cn(
+        "min-h-screen transition-colors duration-500",
+        theaterMode ? "bg-gray-50 text-slate-950" : "bg-gray-50",
+      )}
+      data-testid={theaterMode ? "course-player-theater" : "course-player-standard"}
+    >
+      {theaterMode && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setTheaterMode(false)}
+          className="fixed right-4 top-4 z-[70] gap-2 rounded-full border border-slate-200 bg-white/95 px-3 text-slate-700 shadow-lg backdrop-blur hover:bg-white hover:text-slate-950 sm:right-6 sm:top-6"
+          data-testid="exit-theater-mode"
+        >
+          <X className="h-4 w-4" />
+          Exit theater
+        </Button>
+      )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-7 xl:grid-cols-3 gap-6">
-          <div className="lg:col-span-4 xl:col-span-2 space-y-4">
-	            {isCourseCompleted ? (
-	              <div className="rounded-lg border bg-white p-4">
-	                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-	                  <div>
-	                    <div className="text-sm font-medium">You completed all chapters</div>
-	                    <div className="text-xs text-muted-foreground">
-	                      Course completion is auto-recorded. Use this button only if you want to retry finalization now.
-	                    </div>
-	                  </div>
-	                </div>
-	              </div>
-	            ) : null}
-
-            <EnhancedVideoPlayer
+      <div className={cn(theaterMode ? "mx-auto max-w-6xl px-4 py-8 sm:py-10" : "container mx-auto px-4 py-6")}>
+        {!theaterMode && (
+          <>
+            <CourseHeader
               creatorSlug={creatorSlug}
-              currentChapter={currentChapter}
-              isChapterAccessible={isChapterAccessible}
-              enrollment={enrollment}
               slug={slug}
-              courseId={resolvedCourseId}
-              onWatchTimeUpdate={handleWatchTimeUpdate}
-              onEnrollNow={handleEnrollNow}
-              onProgressSaved={onRefreshProgress}
-              onChapterComplete={handleChapterComplete}
+              course={course}
+              progress={displayChapterPercent}
+              allChapters={allChapters}
+              completedChaptersCount={completedChaptersCount}
+              remainingChaptersCount={remainingChaptersCount}
+              currentChapterProgress={displayChapterPercent}
             />
+            <div className="mb-4 flex justify-end">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setTheaterMode(true)}
+                className="gap-2 rounded-full border border-slate-200 bg-white/95 px-3 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur hover:bg-white hover:text-slate-950"
+                data-testid="theater-mode-toggle"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+                Theater
+              </Button>
+            </div>
+          </>
+        )}
 
-	            <ChapterTabs
-	              activeTab={activeTab}
-	              setActiveTab={setActiveTab}
-	              currentChapter={currentChapter}
-	              currentChapterIndex={currentChapterIndex}
-	              allChapters={allChapters}
-	              isCurrentChapterCompleted={isCurrentChapterCompleted}
-	              nextChapterId={nextChapterId}
-	              courseId={resolvedCourseId}
-	              onRefreshCourse={onRefreshCourse}
+        <div className={cn(theaterMode ? "grid grid-cols-1 gap-5" : "grid grid-cols-1 gap-6 lg:grid-cols-7 xl:grid-cols-3")}>
+          <div className={cn(theaterMode ? "space-y-5" : "space-y-4 lg:col-span-4 xl:col-span-2")}>
+            {isCourseCompleted ? (
+              <div className={cn("rounded-lg border p-4", theaterMode ? "border-slate-200 bg-white shadow-sm" : "bg-white")}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-sm font-medium">You completed all chapters</div>
+                    <div className={cn("text-xs", theaterMode ? "text-slate-500" : "text-muted-foreground")}>
+                      Course completion is auto-recorded. Use this button only if you want to retry finalization now.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div
+              className={cn(
+                "relative",
+                  theaterMode && "overflow-hidden rounded-2xl border border-slate-200 shadow-2xl shadow-slate-200/70",
+              )}
+            >
+              <EnhancedVideoPlayer
+                creatorSlug={creatorSlug}
+                currentChapter={currentChapter}
+                isChapterAccessible={isChapterAccessible}
+                enrollment={enrollment}
+                slug={slug}
+                courseId={resolvedCourseId}
+                onWatchTimeUpdate={handleWatchTimeUpdate}
+                onEnrollNow={handleEnrollNow}
+                onProgressSaved={onRefreshProgress}
+                onChapterComplete={handleChapterComplete}
+              />
+
+            </div>
+
+            <ChapterTabs
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              currentChapter={currentChapter}
+              currentChapterIndex={currentChapterIndex}
+              allChapters={allChapters}
+              isTheaterMode={theaterMode}
+              isCurrentChapterCompleted={isCurrentChapterCompleted}
+              nextChapterId={nextChapterId}
+              courseId={resolvedCourseId}
+              onRefreshCourse={onRefreshCourse}
               onGoToNextChapter={async () => {
                 console.info("[CourseNextFlow] onGoToNextChapter invoked from ChapterTabs", {
                   currentChapterId: currentChapter?.id ? String(currentChapter.id) : null,
@@ -1031,31 +1119,33 @@ export default function CoursePlayer({
             />
           </div>
 
-          <CourseSidebar
-            course={course}
-            enrollment={enrollment}
-            allChapters={allChapters}
-            progress={displayChapterPercent}
-            completedChaptersCount={completedChaptersCount}
-            remainingChaptersCount={remainingChaptersCount}
-            selectedChapter={selectedChapter}
-            setSelectedChapter={handleSelectChapter}
-            isChapterAccessible={isChapterAccessible}
-            courseId={resolvedCourseId}
-            chapterUnlockState={chapterUnlockState}
-            pendingPaidChapterId={pendingPaidChapterId}
-            onRetryUnlock={onRetryUnlock}
-            onOpenEnrollment={onOpenEnrollment}
-            courseSession={courseSession}
-            currentChapterProgress={
-              currentChapter?.id
-                ? {
-                    watchTime: watchTimeOverride ?? Number(enrollment?.progress?.find((p: any) => String(p.chapterId) === String(currentChapter.id))?.watchTime ?? 0),
-                    duration: videoDurationOverride ?? (Number(enrollment?.progress?.find((p: any) => String(p.chapterId) === String(currentChapter.id))?.videoDuration ?? 0) || Number(currentChapter?.duration ?? 0)),
-                  }
-                : undefined
-            }
-          />
+          {!theaterMode && (
+            <CourseSidebar
+              course={course}
+              enrollment={enrollment}
+              allChapters={allChapters}
+              progress={displayChapterPercent}
+              completedChaptersCount={completedChaptersCount}
+              remainingChaptersCount={remainingChaptersCount}
+              selectedChapter={selectedChapter}
+              setSelectedChapter={handleSelectChapter}
+              isChapterAccessible={isChapterAccessible}
+              courseId={resolvedCourseId}
+              chapterUnlockState={chapterUnlockState}
+              pendingPaidChapterId={pendingPaidChapterId}
+              onRetryUnlock={onRetryUnlock}
+              onOpenEnrollment={onOpenEnrollment}
+              courseSession={courseSession}
+              currentChapterProgress={
+                currentChapter?.id
+                  ? {
+                      watchTime: watchTimeOverride ?? Number(enrollment?.progress?.find((p: any) => String(p.chapterId) === String(currentChapter.id))?.watchTime ?? 0),
+                      duration: videoDurationOverride ?? (Number(enrollment?.progress?.find((p: any) => String(p.chapterId) === String(currentChapter.id))?.videoDuration ?? 0) || Number(currentChapter?.duration ?? 0)),
+                    }
+                  : undefined
+              }
+            />
+          )}
         </div>
       </div>
     </div>

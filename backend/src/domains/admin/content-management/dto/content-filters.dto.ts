@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsDate, IsBoolean, IsNumber, Min, Max, IsArray } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ContentStatus, ContentType, SortOrder } from '@/domains/admin/content-management/enums/content-status.enum';
 
 export class ContentFiltersDto {
@@ -35,6 +35,7 @@ export class ContentFiltersDto {
 
   @IsOptional()
   @IsBoolean()
+  @Transform(({ value }) => value === true || value === 'true')
   isFeatured?: boolean;
 
   @IsOptional()

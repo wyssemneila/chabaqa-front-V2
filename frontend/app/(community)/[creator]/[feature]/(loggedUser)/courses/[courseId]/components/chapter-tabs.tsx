@@ -1,11 +1,13 @@
 "use client"
 
+import React from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { FileText as FileTextIcon, Download as DownloadIcon, Video, Code, Link as LinkIcon, FileType, Wrench, Star, Sparkles } from "lucide-react"
 import { CourseReviewsSection } from "@/components/reviews/course-reviews-section"
-import AiTutorWidget from "./ai-tutor-widget"
+import { FloatingAiTutorSheet } from "./ai-tutor-widget"
 
 interface ChapterTabsProps {
   activeTab: string
@@ -18,6 +20,7 @@ interface ChapterTabsProps {
   onGoToNextChapter?: () => void | Promise<void>
   courseId?: string
   onRefreshCourse?: () => Promise<void>
+  isTheaterMode?: boolean
 }
 
 const getResourceIcon = (type: string) => {
@@ -41,10 +44,10 @@ const getResourceIcon = (type: string) => {
   }
 }
 
-export default function ChapterTabs({ 
-  activeTab, 
-  setActiveTab, 
-  currentChapter, 
+export default function ChapterTabs({
+  activeTab,
+  setActiveTab,
+  currentChapter,
   currentChapterIndex, 
   allChapters,
   isCurrentChapterCompleted,
@@ -52,10 +55,23 @@ export default function ChapterTabs({
   onGoToNextChapter,
   courseId,
   onRefreshCourse,
+  isTheaterMode = false,
 }: ChapterTabsProps) {
   const chapterResources = currentChapter?.resources || []
   const chapterNotes = currentChapter?.notes || ''
   const chapterContent = currentChapter?.content || ''
+  const [isAiTutorOpen, setIsAiTutorOpen] = React.useState(false)
+  const canUseAiTutor = Boolean(courseId && currentChapter?.id)
+  const surfaceClassName = isTheaterMode
+    ? "border-slate-200 bg-white text-slate-950 shadow-sm"
+    : "border shadow-sm"
+  const mutedTextClassName = isTheaterMode ? "text-slate-500" : "text-muted-foreground"
+  const tabTriggerClassName = cn(
+    "py-2.5 md:py-3 text-xs md:text-sm font-medium data-[state=active]:shadow-sm",
+    isTheaterMode
+      ? "data-[state=active]:bg-white data-[state=active]:text-slate-950"
+      : "data-[state=active]:bg-background",
+  )
 
   const handleGoToNextChapterClick = async () => {
     const currentChapterId = currentChapter?.id ? String(currentChapter.id) : null
@@ -89,20 +105,29 @@ export default function ChapterTabs({
   }
 
   return (
+    <>
+    {canUseAiTutor ? (
+      <FloatingAiTutorSheet
+        courseId={courseId!}
+        chapterId={String(currentChapter.id)}
+        open={isAiTutorOpen}
+        onOpenChange={setIsAiTutorOpen}
+      />
+    ) : null}
     <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList className="grid w-full grid-cols-5 md:grid-cols-5 lg:grid-cols-5 h-auto p-1.5 bg-muted/50">
-        <TabsTrigger value="content" className="py-2.5 md:py-3 text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">Content</TabsTrigger>
-        <TabsTrigger value="ai-tutor" className="py-2.5 md:py-3 text-xs md:text-sm font-medium gap-1 data-[state=active]:bg-background data-[state=active]:shadow-sm"><Sparkles className="h-3 w-3 md:h-4 md:w-4 text-purple-500" /> AI</TabsTrigger>
-        <TabsTrigger value="notes" className="py-2.5 md:py-3 text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">Notes</TabsTrigger>
-        <TabsTrigger value="resources" className="py-2.5 md:py-3 text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">Resources</TabsTrigger>
-        <TabsTrigger value="reviews" className="py-2.5 md:py-3 text-xs md:text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">Reviews</TabsTrigger>
+      <TabsList className={cn("grid w-full grid-cols-5 md:grid-cols-5 lg:grid-cols-5 h-auto p-1.5", isTheaterMode ? "bg-white/80 text-slate-600 shadow-sm" : "bg-muted/50")}>
+        <TabsTrigger value="content" className={tabTriggerClassName}>Content</TabsTrigger>
+        <TabsTrigger value="ai-tutor" className={cn(tabTriggerClassName, "gap-1")}><Sparkles className="h-3 w-3 md:h-4 md:w-4 text-purple-500" /> AI</TabsTrigger>
+        <TabsTrigger value="notes" className={tabTriggerClassName}>Notes</TabsTrigger>
+        <TabsTrigger value="resources" className={tabTriggerClassName}>Resources</TabsTrigger>
+        <TabsTrigger value="reviews" className={tabTriggerClassName}>Reviews</TabsTrigger>
       </TabsList>
 
       <TabsContent value="content" className="mt-4 md:mt-6">
-        <Card className="border shadow-sm">
+        <Card className={surfaceClassName}>
           <CardHeader className="pb-4">
             <CardTitle className="text-base md:text-lg">{currentChapter?.title}</CardTitle>
-            <CardDescription className="text-xs md:text-sm">
+            <CardDescription className={cn("text-xs md:text-sm", mutedTextClassName)}>
               Chapter {currentChapterIndex + 1} of {allChapters.length}
             </CardDescription>
           </CardHeader>
@@ -112,7 +137,7 @@ export default function ChapterTabs({
                 <p className="whitespace-pre-wrap text-sm md:text-base leading-relaxed">{chapterContent}</p>
               </div>
             ) : (
-              <p className="text-muted-foreground italic text-sm md:text-base">No content description for this chapter.</p>
+              <p className={cn("italic text-sm md:text-base", mutedTextClassName)}>No content description for this chapter.</p>
             )}
 
             <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
@@ -127,11 +152,30 @@ export default function ChapterTabs({
       </TabsContent>
 
       <TabsContent value="ai-tutor" className="mt-4 md:mt-6">
-        {courseId && currentChapter?.id ? (
-          <AiTutorWidget courseId={courseId!} chapterId={String(currentChapter.id)} />
+        {canUseAiTutor ? (
+          <Card className={surfaceClassName}>
+            <CardContent className="py-10 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-purple-50 dark:bg-purple-500/10">
+                <Sparkles className="h-7 w-7 text-purple-500" strokeWidth={1.75} />
+              </div>
+              <CardTitle className="text-base md:text-lg">AI Course Tutor</CardTitle>
+              <CardDescription className={cn("mx-auto mt-2 max-w-md text-xs md:text-sm", mutedTextClassName)}>
+                Open the chapter-aware tutor in a focused slide-over without leaving your lesson.
+              </CardDescription>
+              <Button
+                type="button"
+                className="btn-press-active mt-5 gap-2 rounded-full bg-gradient-to-tr from-[#8e78fb] to-[#f65887] px-5 text-white shadow-lg shadow-purple-500/20 hover:scale-105"
+                onClick={() => setIsAiTutorOpen(true)}
+                data-testid="open-ai-tutor-cta"
+              >
+                <Sparkles className="h-4 w-4" />
+                Open AI Tutor
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
-          <Card className="border shadow-sm">
-            <CardContent className="py-12 text-center text-muted-foreground">
+          <Card className={surfaceClassName}>
+            <CardContent className={cn("py-12 text-center", mutedTextClassName)}>
               <Sparkles className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4 opacity-50" />
               <p className="text-sm md:text-base">Please select a chapter to use the AI Tutor.</p>
             </CardContent>
@@ -140,18 +184,18 @@ export default function ChapterTabs({
       </TabsContent>
 
       <TabsContent value="notes" className="mt-4 md:mt-6">
-        <Card className="border shadow-sm">
+        <Card className={surfaceClassName}>
           <CardHeader className="pb-4">
             <CardTitle className="text-base md:text-lg">Instructor Notes</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Additional notes and tips from the instructor</CardDescription>
+            <CardDescription className={cn("text-xs md:text-sm", mutedTextClassName)}>Additional notes and tips from the instructor</CardDescription>
           </CardHeader>
           <CardContent>
             {chapterNotes ? (
-              <div className="border-2 rounded-lg p-4 md:p-5 bg-yellow-50/80">
+              <div className={cn("border-2 rounded-lg p-4 md:p-5", isTheaterMode ? "border-yellow-200 bg-yellow-50/80 text-slate-900" : "bg-yellow-50/80")}>
                 <p className="text-sm md:text-base whitespace-pre-wrap leading-relaxed">{chapterNotes}</p>
               </div>
             ) : (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className={cn("text-center py-12", mutedTextClassName)}>
                 <FileTextIcon className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4 opacity-50" />
                 <p className="text-sm md:text-base">No instructor notes for this chapter</p>
               </div>
@@ -161,15 +205,21 @@ export default function ChapterTabs({
       </TabsContent>
 
       <TabsContent value="resources" className="mt-4 md:mt-6">
-        <Card className="border shadow-sm">
+        <Card className={surfaceClassName}>
           <CardHeader className="pb-4">
             <CardTitle className="text-base md:text-lg">Chapter Resources</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Downloadable materials and links</CardDescription>
+            <CardDescription className={cn("text-xs md:text-sm", mutedTextClassName)}>Downloadable materials and links</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {chapterResources.length > 0 ? (
               chapterResources.map((resource: any, index: number) => (
-                <div key={resource.id || index} className="flex items-center justify-between p-3 md:p-4 border-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
+                <div
+                  key={resource.id || index}
+                  className={cn(
+                    "flex items-center justify-between p-3 md:p-4 border-2 rounded-lg transition-all",
+                    isTheaterMode ? "border-slate-200 bg-white hover:border-slate-300 hover:bg-gray-50" : "hover:bg-gray-50 hover:border-gray-300",
+                  )}
+                >
                   <div className="flex items-center space-x-3 md:space-x-4 flex-1 min-w-0">
                     <div className="flex-shrink-0">
                       {getResourceIcon(resource.type)}
@@ -177,7 +227,7 @@ export default function ChapterTabs({
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm md:text-base truncate">{resource.titre || resource.title}</p>
                       {resource.description && (
-                        <p className="text-xs md:text-sm text-muted-foreground line-clamp-1">{resource.description}</p>
+                        <p className={cn("text-xs md:text-sm line-clamp-1", mutedTextClassName)}>{resource.description}</p>
                       )}
                     </div>
                   </div>
@@ -192,7 +242,7 @@ export default function ChapterTabs({
                 </div>
               ))
             ) : (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className={cn("text-center py-12", mutedTextClassName)}>
                 <FileTextIcon className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4 opacity-50" />
                 <p className="text-sm md:text-base">No resources for this chapter</p>
               </div>
@@ -205,8 +255,8 @@ export default function ChapterTabs({
         {courseId ? (
           <CourseReviewsSection courseId={courseId} showForm={true} onRefreshCourse={onRefreshCourse} />
         ) : (
-          <Card className="border shadow-sm">
-            <CardContent className="py-12 text-center text-muted-foreground">
+          <Card className={surfaceClassName}>
+            <CardContent className={cn("py-12 text-center", mutedTextClassName)}>
               <Star className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4 opacity-50" />
               <p className="text-sm md:text-base">Reviews unavailable</p>
             </CardContent>
@@ -214,5 +264,6 @@ export default function ChapterTabs({
         )}
       </TabsContent>
     </Tabs>
+    </>
   )
 }

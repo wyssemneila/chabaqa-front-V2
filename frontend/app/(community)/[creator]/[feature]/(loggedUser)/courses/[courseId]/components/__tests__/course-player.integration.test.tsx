@@ -50,10 +50,12 @@ jest.mock(
   "@/app/(community)/[creator]/[feature]/(loggedUser)/courses/[courseId]/components/chapter-tabs",
   () => ({
     __esModule: true,
-    default: ({ onGoToNextChapter }: any) => (
-      <button type="button" data-testid="chapter-tabs-next" onClick={() => void onGoToNextChapter?.()}>
-        ChapterTabs Next
-      </button>
+    default: ({ onGoToNextChapter, isTheaterMode }: any) => (
+      <div data-testid="chapter-tabs" data-theater-mode={String(Boolean(isTheaterMode))}>
+        <button type="button" data-testid="chapter-tabs-next" onClick={() => void onGoToNextChapter?.()}>
+          ChapterTabs Next
+        </button>
+      </div>
     ),
   }),
 )
@@ -199,5 +201,59 @@ describe("CoursePlayer unlock integration", () => {
     await waitFor(() => {
       expect(screen.getByTestId("enhanced-video-player")).toHaveTextContent("Next Lesson")
     })
+  })
+
+  it("toggles cinematic theater mode without changing the selected chapter", async () => {
+    const course = {
+      id: "course-1",
+      mongoId: "65f0f0f0f0f0f0f0f0f0f0f0",
+      creator: { name: "Creator", avatar: "" },
+      sections: [
+        {
+          id: "section-1",
+          title: "Section 1",
+          chapters: [
+            { id: "chapter-1", title: "Intro", sectionId: "section-1", duration: 60, isPaidChapter: false },
+            { id: "chapter-2", title: "Locked Next", sectionId: "section-1", duration: 60, isPaidChapter: false },
+          ],
+        },
+      ],
+    }
+
+    render(
+      <CoursePlayer
+        creatorSlug="creator"
+        slug="community"
+        courseId={String(course.mongoId)}
+        course={course}
+        enrollment={{ progress: [], progressPercentage: 0 }}
+        unlockedChapters={[]}
+        sequentialProgressionEnabled
+      />,
+    )
+
+    expect(screen.getByTestId("course-header")).toBeInTheDocument()
+    expect(screen.getByTestId("enhanced-video-player")).toHaveTextContent("Intro")
+    expect(screen.getByTestId("chapter-tabs")).toHaveAttribute("data-theater-mode", "false")
+
+    screen.getByTestId("theater-mode-toggle").click()
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("course-header")).not.toBeInTheDocument()
+      expect(screen.getByTestId("course-player-theater")).toBeInTheDocument()
+      expect(screen.getByTestId("chapter-tabs")).toHaveAttribute("data-theater-mode", "true")
+    })
+    expect(screen.getByTestId("enhanced-video-player")).toHaveTextContent("Intro")
+    expect(screen.queryByTestId("theater-mode-toggle")).not.toBeInTheDocument()
+    expect(screen.getByTestId("exit-theater-mode")).toBeInTheDocument()
+
+    screen.getByTestId("exit-theater-mode").click()
+
+    await waitFor(() => {
+      expect(screen.getByTestId("course-header")).toBeInTheDocument()
+      expect(screen.getByTestId("course-player-standard")).toBeInTheDocument()
+      expect(screen.getByTestId("chapter-tabs")).toHaveAttribute("data-theater-mode", "false")
+    })
+    expect(screen.getByTestId("enhanced-video-player")).toHaveTextContent("Intro")
   })
 })

@@ -12,19 +12,22 @@ jest.mock("@/app/(creator)/creator/context/creator-community-context", () => ({
 describe("creator marketing non-email channels", () => {
   beforeEach(() => {
     mockUseCreatorCommunity.mockReturnValue({
+      selectedCommunityId: "community-1",
       selectedCommunity: { _id: "community-1", name: "Community" },
+      communities: [{ _id: "community-1", name: "Community" }],
+      isLoading: false,
     })
   })
 
   it("renders coming soon state for messages page", () => {
     render(<MessageCampaignsPage />)
-    expect(screen.getByText("Coming Soon")).toBeInTheDocument()
+    expect(screen.getByText("SMS Campaigns")).toBeInTheDocument()
     expect(screen.getByText(/Email campaigns are fully available now/i)).toBeInTheDocument()
   })
 
   it("renders coming soon state for whatsapp page", () => {
     render(<WhatsAppCampaignsPage />)
-    expect(screen.getByText("Coming Soon")).toBeInTheDocument()
-    expect(screen.getByText(/WhatsApp channel support/i)).toBeInTheDocument()
+    expect(screen.getByText("WhatsApp Campaigns")).toBeInTheDocument()
+    expect(screen.getByText(/WhatsApp automation is being finalized/i)).toBeInTheDocument()
   })
 })

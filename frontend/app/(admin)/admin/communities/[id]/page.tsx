@@ -1,17 +1,27 @@
 "use client"
 
-import React from "react"
+import React, { useMemo } from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/app/(admin)/providers/admin-auth-provider"
 import { adminApi, CommunityModerationDto } from "@/lib/api/admin-api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/app/(admin)/_components/status-badge"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { 
   Building2, 
   Users, 
@@ -22,9 +32,28 @@ import {
   Calendar,
   Star,
   CheckCircle,
-  ExternalLink
+  ExternalLink,
+  Globe,
+  Hash,
+  Mail,
+  ShieldCheck,
+  UserCircle
 } from "lucide-react"
 import { toast } from "sonner"
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
 
 interface CommunityDetails {
   _id: string
@@ -164,6 +193,88 @@ export default function CommunityDetailsPage({ params }: { params: Promise<{ id:
     }
   }
 
+  const formatDate = (date?: string) => {
+    if (!date) return 'N/A'
+    const parsed = new Date(date)
+    return Number.isNaN(parsed.getTime()) ? 'N/A' : parsed.toLocaleDateString()
+  }
+
+  const getMemberName = (member: any) =>
+    member?.username || member?.name || member?.user?.username || member?.user?.name || 'Unknown member'
+
+  const getMemberEmail = (member: any) =>
+    member?.email || member?.user?.email || member?.profile?.email || ''
+
+  const getMemberAvatar = (member: any) =>
+    member?.avatar || member?.image || member?.user?.avatar || member?.user?.profilePicture || ''
+
+  const getInitials = (value: string) =>
+    value
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'M'
+
+  const members = Array.isArray(community?.members) ? community.members : []
+  const contentItems = Array.isArray(community?.content) ? community.content : []
+  const visibleMembersCount = Math.max(community?.membersCount || 0, members.length)
+  const visibleContentCount = Math.max(community?.contentCount || 0, contentItems.length)
+  const activeMembersCount = community?.analytics?.activeMembers || 0
+  const inactiveMembersCount = Math.max(visibleMembersCount - activeMembersCount, 0)
+  const engagementRate = community?.analytics?.engagementRate || 0
+  const totalRevenue = community?.analytics?.totalRevenue || 0
+  const contentPublished = community?.analytics?.contentPublished || visibleContentCount
+
+  const memberGrowthData = useMemo(() => {
+    const counts = new Map<string, number>()
+
+    members.forEach((member: any) => {
+      const dateValue = member?.joinedAt || member?.createdAt || member?.membership?.joinedAt
+      const parsed = dateValue ? new Date(dateValue) : null
+      const label = parsed && !Number.isNaN(parsed.getTime())
+        ? parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        : 'Unknown'
+      counts.set(label, (counts.get(label) || 0) + 1)
+    })
+
+    let runningTotal = 0
+    return Array.from(counts.entries()).map(([date, joined]) => {
+      runningTotal += joined
+      return { date, joined, total: runningTotal }
+    })
+  }, [members])
+
+  const contentMixData = useMemo(() => {
+    const counts = new Map<string, number>()
+
+    contentItems.forEach((item: any) => {
+      const type = item?.type || 'unknown'
+      counts.set(type, (counts.get(type) || 0) + 1)
+    })
+
+    return Array.from(counts.entries()).map(([type, count]) => ({
+      type: type.charAt(0).toUpperCase() + type.slice(1),
+      count,
+    }))
+  }, [contentItems])
+
+  const performanceData = [
+    { metric: 'Members', value: visibleMembersCount },
+    { metric: 'Active', value: activeMembersCount },
+    { metric: 'Content', value: contentPublished },
+    { metric: 'Engagement', value: Math.round(engagementRate) },
+  ]
+
+  const memberStatusData = [
+    { name: 'Active', value: activeMembersCount },
+    { name: 'Inactive', value: inactiveMembersCount },
+  ].filter((item) => item.value > 0)
+
+  const revenuePerMember = visibleMembersCount > 0 ? totalRevenue / visibleMembersCount : 0
+  const contentPerMember = visibleMembersCount > 0 ? contentPublished / visibleMembersCount : 0
+  const chartColors = ['#2563eb', '#16a34a', '#f59e0b', '#db2777', '#7c3aed', '#0891b2']
+
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -270,80 +381,205 @@ export default function CommunityDetailsPage({ params }: { params: Promise<{ id:
 
         {/* Information Tab */}
         <TabsContent value="information" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Community Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium">Name</Label>
-                <p className="text-sm text-muted-foreground mt-1">{community.name}</p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium">Description</Label>
-                <p className="text-sm text-muted-foreground mt-1">{community.description}</p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium">Creator</Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {community.creator?.username} ({community.creator?.email})
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium">Status</Label>
-                <div className="mt-1">
-                  <StatusBadge status={community.status} />
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <Card>
+              <CardHeader className="space-y-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <CardTitle>Community Information</CardTitle>
+                    <CardDescription>Core profile, creator ownership, and publishing state.</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <StatusBadge status={community.status} />
+                    {community.featured && <Badge variant="secondary">Featured</Badge>}
+                    {resolveVerified(community) && <Badge variant="secondary">Verified</Badge>}
+                  </div>
                 </div>
-              </div>
-
-              {community.approvalNotes && (
-                <div>
-                  <Label className="text-sm font-medium">Approval Notes</Label>
-                  <p className="text-sm text-muted-foreground mt-1">{community.approvalNotes}</p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Hash className="h-4 w-4" />
+                        <span className="truncate">{community.slug || community._id}</span>
+                      </div>
+                      <h2 className="text-2xl font-semibold tracking-normal">{community.name}</h2>
+                      <p className="max-w-4xl text-sm leading-6 text-muted-foreground">
+                        {community.description || 'No description provided.'}
+                      </p>
+                    </div>
+                    {community.slug && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(`/${community.slug}`, '_blank')}
+                      >
+                        <Globe className="mr-2 h-4 w-4" />
+                        View public page
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              )}
 
-              {community.rejectionReason && (
-                <div>
-                  <Label className="text-sm font-medium">Rejection Reason</Label>
-                  <p className="text-sm text-red-600 mt-1">{community.rejectionReason}</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-lg border p-4">
+                    <div className="mb-3 flex items-center gap-2 text-sm font-medium">
+                      <UserCircle className="h-4 w-4 text-primary" />
+                      Creator
+                    </div>
+                    <p className="font-medium">{community.creator?.username || 'Unknown creator'}</p>
+                    <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                      <Mail className="h-4 w-4" />
+                      <span className="truncate">{community.creator?.email || 'No email available'}</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border p-4">
+                    <div className="mb-3 flex items-center gap-2 text-sm font-medium">
+                      <ShieldCheck className="h-4 w-4 text-primary" />
+                      Governance
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Status</p>
+                        <p className="mt-1 font-medium capitalize">{community.status}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Featured</p>
+                        <p className="mt-1 font-medium">{community.featured ? 'Yes' : 'No'}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Verified</p>
+                        <p className="mt-1 font-medium">{resolveVerified(community) ? 'Yes' : 'No'}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                {(community.approvalNotes || community.rejectionReason) && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {community.approvalNotes && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-950">
+                        <Label className="text-sm font-medium text-emerald-950">Approval Notes</Label>
+                        <p className="mt-2 text-sm leading-6">{community.approvalNotes}</p>
+                      </div>
+                    )}
+
+                    {community.rejectionReason && (
+                      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-950">
+                        <Label className="text-sm font-medium text-red-950">Rejection Reason</Label>
+                        <p className="mt-2 text-sm leading-6">{community.rejectionReason}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Snapshot</CardTitle>
+                <CardDescription>Current community scale and activity.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border p-4">
+                    <p className="text-sm text-muted-foreground">Members</p>
+                    <p className="mt-2 text-2xl font-semibold">{visibleMembersCount}</p>
+                  </div>
+                  <div className="rounded-lg border p-4">
+                    <p className="text-sm text-muted-foreground">Content</p>
+                    <p className="mt-2 text-2xl font-semibold">{visibleContentCount}</p>
+                  </div>
+                  <div className="rounded-lg border p-4">
+                    <p className="text-sm text-muted-foreground">Active</p>
+                    <p className="mt-2 text-2xl font-semibold">{community.analytics?.activeMembers || 0}</p>
+                  </div>
+                  <div className="rounded-lg border p-4">
+                    <p className="text-sm text-muted-foreground">Revenue</p>
+                    <p className="mt-2 text-2xl font-semibold">
+                      {community.analytics?.totalRevenue?.toFixed(0) || '0'} DT
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-sm text-muted-foreground">Created</p>
+                  <p className="mt-2 font-medium">{formatDate(community.createdAt)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Members Section */}
           <Card>
-            <CardHeader>
-              <CardTitle>Members</CardTitle>
-              <CardDescription>
-                {community.membersCount || 0} total members
-              </CardDescription>
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle>Members</CardTitle>
+                <CardDescription>
+                  Showing all {visibleMembersCount} members returned by the admin API.
+                </CardDescription>
+              </div>
+              <Badge variant="outline">{members.length} loaded</Badge>
             </CardHeader>
             <CardContent>
-              {community.members && community.members.length > 0 ? (
-                <div className="space-y-2">
-                  {community.members.slice(0, 10).map((member: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
-                      <span className="text-sm">{member.username || member.name || 'Unknown'}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : 'N/A'}
-                      </span>
-                    </div>
-                  ))}
-                  {community.members.length > 10 && (
-                    <p className="text-sm text-muted-foreground text-center pt-2">
-                      And {community.members.length - 10} more...
-                    </p>
-                  )}
+              {members.length > 0 ? (
+                <div className="overflow-hidden rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Member</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead className="text-right">Joined</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {members.map((member: any, index: number) => {
+                        const name = getMemberName(member)
+                        const email = getMemberEmail(member)
+                        const avatar = getMemberAvatar(member)
+                        return (
+                          <TableRow key={member?._id || member?.id || member?.user?._id || index}>
+                            <TableCell>
+                              <div className="flex min-w-0 items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                  <AvatarImage src={avatar} alt={name} />
+                                  <AvatarFallback>{getInitials(name)}</AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium">{name}</p>
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {member?._id || member?.id || member?.user?._id || 'No id'}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {email || 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="capitalize">
+                                {member?.role || member?.membershipRole || 'member'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {formatDate(member?.joinedAt || member?.createdAt || member?.membership?.joinedAt)}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No member data available
-                </p>
+                <div className="rounded-lg border border-dashed py-10 text-center">
+                  <Users className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="mt-3 text-sm font-medium">No member records returned</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    The community count may exist, but the details response did not include member rows.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -353,47 +589,61 @@ export default function CommunityDetailsPage({ params }: { params: Promise<{ id:
             <CardHeader>
               <CardTitle>Content</CardTitle>
               <CardDescription>
-                {community.contentCount || 0} total content items
+                Showing all {visibleContentCount} content items returned by the admin API.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {community.content && community.content.length > 0 ? (
-                <div className="space-y-2">
-                  {community.content.slice(0, 10).map((item: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
-                      <div>
-                        <span className="text-sm font-medium">{item.title || item.name || 'Untitled'}</span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          ({item.type || 'Unknown type'})
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground">
-                          {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          onClick={() => window.open(getContentUrl(item.type, item._id), '_blank')}
-                          title="View Content"
-                          disabled={!community.slug}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  {community.content.length > 10 && (
-                    <p className="text-sm text-muted-foreground text-center pt-2">
-                      And {community.content.length - 10} more...
-                    </p>
-                  )}
+              {contentItems.length > 0 ? (
+                <div className="overflow-hidden rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Open</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {contentItems.map((item: any, index: number) => (
+                        <TableRow key={item?._id || item?.id || index}>
+                          <TableCell>
+                            <p className="font-medium">{item.title || item.name || 'Untitled'}</p>
+                            <p className="text-xs text-muted-foreground">{item._id || item.id || 'No id'}</p>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">
+                              {item.type || 'Unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {formatDate(item.createdAt)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              onClick={() => window.open(getContentUrl(item.type, item._id), '_blank')}
+                              title="View Content"
+                              disabled={!community.slug}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No content data available
-                </p>
+                <div className="rounded-lg border border-dashed py-10 text-center">
+                  <FileText className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="mt-3 text-sm font-medium">No content records returned</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Published content will appear here when the details endpoint includes it.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -485,71 +735,238 @@ export default function CommunityDetailsPage({ params }: { params: Promise<{ id:
 
         {/* Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Total Revenue
+              <CardHeader className="pb-3">
+                <CardDescription>Total Revenue</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-3xl">
+                  <TrendingUp className="h-6 w-6 text-primary" />
+                  {totalRevenue.toLocaleString()} DT
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">
-                  ${community.analytics?.totalRevenue?.toFixed(2) || '0.00'}
+                <p className="text-sm text-muted-foreground">
+                  {revenuePerMember.toFixed(1)} DT per member
                 </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Active Members
+              <CardHeader className="pb-3">
+                <CardDescription>Active Members</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-3xl">
+                  <Users className="h-6 w-6 text-primary" />
+                  {activeMembersCount}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">
-                  {community.analytics?.activeMembers || 0}
+                <p className="text-sm text-muted-foreground">
+                  {visibleMembersCount > 0 ? ((activeMembersCount / visibleMembersCount) * 100).toFixed(1) : '0.0'}% of {visibleMembersCount} members
                 </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  Content Published
+              <CardHeader className="pb-3">
+                <CardDescription>Content Published</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-3xl">
+                  <FileText className="h-6 w-6 text-primary" />
+                  {contentPublished}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">
-                  {community.analytics?.contentPublished || 0}
+                <p className="text-sm text-muted-foreground">
+                  {contentPerMember.toFixed(2)} items per member
                 </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Engagement Rate
+              <CardHeader className="pb-3">
+                <CardDescription>Engagement Rate</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-3xl">
+                  <TrendingUp className="h-6 w-6 text-primary" />
+                  {engagementRate.toFixed(1)}%
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">
-                  {community.analytics?.engagementRate?.toFixed(1) || '0.0'}%
-                </p>
+                <div className="h-2 rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-primary"
+                    style={{ width: `${Math.min(Math.max(engagementRate, 0), 100)}%` }}
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground text-center">
-                Detailed analytics charts coming soon
-              </p>
-            </CardContent>
-          </Card>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Member Growth</CardTitle>
+                <CardDescription>Cumulative member count based on returned join dates.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {memberGrowthData.length > 0 ? (
+                  <div className="h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={memberGrowthData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                        <YAxis allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="total"
+                          name="Total members"
+                          stroke="#2563eb"
+                          strokeWidth={3}
+                          dot={{ r: 4 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="joined"
+                          name="Joined"
+                          stroke="#16a34a"
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="flex h-[320px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                    No member join dates returned
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Member Status</CardTitle>
+                <CardDescription>Active versus inactive member split from analytics.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {memberStatusData.length > 0 ? (
+                  <div className="h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={memberStatusData}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={70}
+                          outerRadius={105}
+                          paddingAngle={4}
+                        >
+                          {memberStatusData.map((entry, index) => (
+                            <Cell key={entry.name} fill={chartColors[index % chartColors.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="flex h-[320px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                    No member status data returned
+                  </div>
+                )}
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-muted-foreground">Active</p>
+                    <p className="mt-1 text-lg font-semibold">{activeMembersCount}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-muted-foreground">Inactive</p>
+                    <p className="mt-1 text-lg font-semibold">{inactiveMembersCount}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Content Mix</CardTitle>
+                <CardDescription>Distribution of content items returned for this community.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {contentMixData.length > 0 ? (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={contentMixData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="type" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                        <YAxis allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                          }}
+                        />
+                        <Bar dataKey="count" name="Items" radius={[6, 6, 0, 0]}>
+                          {contentMixData.map((entry, index) => (
+                            <Cell key={entry.type} fill={chartColors[index % chartColors.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="flex h-[300px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                    No content rows returned
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Operating Profile</CardTitle>
+                <CardDescription>Comparable scale metrics from the community response.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={performanceData} layout="vertical" margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis type="number" allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <YAxis
+                        type="category"
+                        dataKey="metric"
+                        width={90}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Bar dataKey="value" name="Value" radius={[0, 6, 6, 0]} fill="#2563eb" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

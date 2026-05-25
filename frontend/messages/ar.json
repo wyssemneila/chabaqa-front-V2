@@ -819,6 +819,11 @@
       "communities": "المجتمعات",
       "contentModeration": "مراجعة المحتوى",
       "contentManagement": "إدارة المحتوى",
+      "allContent": "كل المحتوى",
+      "courses": "الدورات",
+      "challenges": "التحديات",
+      "events": "الفعاليات",
+      "posts": "المنشورات",
       "financial": "المالية",
       "analytics": "التحليلات",
       "security": "الأمان",
@@ -1007,7 +1012,9 @@
           "actions": {
             "approve": "اعتماد",
             "endEarly": "إنهاء مبكر",
-            "viewSubmissions": "عرض المشاركات"
+            "viewSubmissions": "عرض المشاركات",
+            "feature": "تمييز",
+            "unfeature": "إلغاء التمييز"
           },
           "difficulty": {
             "beginner": "مبتدئ",
@@ -1062,8 +1069,14 @@
             "title": "المجتمع",
             "viewCommunity": "عرض المجتمع"
           },
-          "viewSubmissions": "عرض المشاركات"
-        }
+          "viewSubmissions": "عرض المشاركات",
+          "featureSuccess": "تم تمييز التحدي.",
+          "unfeatureSuccess": "تم إلغاء التمييز.",
+          "featureError": "فشل تحديث التمييز."
+        },
+        "featureSuccess": "تم تمييز التحدي.",
+        "unfeatureSuccess": "تم إلغاء التمييز.",
+        "featureError": "فشل تحديث التمييز."
       },
       "events": {
         "title": "الفعاليات",
@@ -1095,7 +1108,9 @@
           "viewAttendees": "عرض الحضور",
           "approve": "اعتماد",
           "messageAttendees": "مراسلة الحضور",
-          "cancel": "إلغاء"
+          "cancel": "إلغاء",
+          "feature": "تمييز",
+          "unfeature": "إلغاء التمييز"
         },
         "ticketTypes": "أنواع التذاكر",
         "online": "أونلاين",
@@ -1121,7 +1136,9 @@
           "notFoundDescription": "لم نتمكن من العثور على هذه الفعالية.",
           "actions": {
             "approve": "اعتماد",
-            "cancel": "إلغاء"
+            "cancel": "إلغاء",
+            "feature": "تمييز",
+            "unfeature": "إلغاء التمييز"
           },
           "status": {
             "upcoming": "قادم",
@@ -1172,8 +1189,14 @@
             "viewCommunity": "عرض المجتمع"
           },
           "viewAttendees": "عرض الحضور",
-          "messageAttendees": "مراسلة الحضور"
-        }
+          "messageAttendees": "مراسلة الحضور",
+          "featureSuccess": "تم تمييز الفعالية.",
+          "unfeatureSuccess": "تم إلغاء التمييز.",
+          "featureError": "فشل تحديث التمييز."
+        },
+        "featureSuccess": "تم تمييز الفعالية.",
+        "unfeatureSuccess": "تم إلغاء التمييز.",
+        "featureError": "فشل تحديث التمييز."
       },
       "posts": {
         "title": "المنشورات",
