@@ -160,6 +160,7 @@ describe('AnalyticsDashboardService', () => {
         monthlyRecurringRevenue: 35000,
         churnRate: 0.05,
         lifetimeValue: 1000,
+        revenueChange: 0,
         period
       };
 
@@ -227,6 +228,7 @@ describe('AnalyticsDashboardService', () => {
         monthlyRecurringRevenue: 35000,
         churnRate: 0.05,
         lifetimeValue: 1000,
+        revenueChange: 0,
         period
       };
 
@@ -329,6 +331,7 @@ describe('AnalyticsDashboardService', () => {
         monthlyRecurringRevenue: 35000,
         churnRate: 0.05,
         lifetimeValue: 1000,
+        revenueChange: 0,
         period
       };
 
