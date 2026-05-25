@@ -445,10 +445,11 @@ export class CoursController {
 
 	// Obtenir un cours par ID
 	@Get(':id')
+	@UseGuards(OptionalJwtAuthGuard)
 	@ApiOperation({ summary: 'Obtenir un cours par ID' })
 	async getCoursById(@Param('id') id: string, @Req() req) {
 		console.log('🔍 [CONTROLLER] getCoursById called with ID:', id);
-		const userId = req.user?._id;
+		const userId = this.getRequestUserId(req);
 		console.log('🔍 [CONTROLLER] User ID:', userId);
 		try {
 			const result = await this.coursContentService.obtenirCours(id, userId);

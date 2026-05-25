@@ -144,6 +144,37 @@ export class AnalyticsService {
     } as any;
   }
 
+  private buildAnalyticsQualityMeta(params: {
+    from: Date;
+    to: Date;
+    source: 'ga4' | 'mongo_rollup' | 'tracking_fallback';
+    events: number;
+    uniqueUsers?: number;
+    trend?: any[];
+  }) {
+    const events = Math.max(0, Math.floor(Number(params.events || 0)));
+    const uniqueUsers = Math.max(0, Math.floor(Number(params.uniqueUsers || 0)));
+    const sampleLabel = events < 30 ? 'Low sample' : events < 250 ? 'Directional' : 'Reliable';
+    const maxTrendDate = (params.trend || [])
+      .map((row) => row?.date)
+      .filter(Boolean)
+      .sort()
+      .at(-1);
+
+    return {
+      generatedAt: new Date().toISOString(),
+      dataAsOf: maxTrendDate || params.to.toISOString(),
+      range: { from: params.from.toISOString(), to: params.to.toISOString() },
+      source: params.source,
+      rollupMaxDate: maxTrendDate || null,
+      sample: {
+        events,
+        uniqueUsers,
+        label: sampleLabel,
+      },
+    };
+  }
+
   private async aggregateCreatorRevenue(
     creatorId: string,
     from: Date,
@@ -587,6 +618,17 @@ export class AnalyticsService {
       { $project: { _id: 0, contentType: '$_id.contentType', contentId: '$_id.contentId', views: 1, completes: 1 } },
     ]);
 
+    const sampleEvents =
+      Number(totals.views || 0) +
+      Number(totals.starts || 0) +
+      Number(totals.completes || 0) +
+      Number(totals.chapterCompletes || 0) +
+      Number(totals.likes || 0) +
+      Number(totals.shares || 0) +
+      Number(totals.downloads || 0) +
+      Number(totals.bookmarks || 0) +
+      Number(totals.ratingsCount || 0);
+
     const full = {
       totals,
       revenue: {
@@ -595,7 +637,14 @@ export class AnalyticsService {
       },
       engagementRate: Math.round(engagementRate * 100) / 100, // Round to 2 decimal places
       trend,
-      topContents
+      topContents,
+      meta: this.buildAnalyticsQualityMeta({
+        from,
+        to,
+        source: ga4Totals ? 'ga4' : trackingTotals ? 'tracking_fallback' : 'mongo_rollup',
+        events: sampleEvents,
+        trend,
+      }),
     };
     this.setCache(key, full);
     return this.shapeOverview(full, plan);
@@ -2575,6 +2624,7 @@ export class AnalyticsService {
       trend28d: full.trend.slice(-28),
       trendAll: full.trend,
       topContents: full.topContents,
+      meta: full.meta,
     };
   }
 

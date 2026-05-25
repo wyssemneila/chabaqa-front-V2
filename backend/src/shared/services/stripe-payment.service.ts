@@ -298,6 +298,12 @@ export class StripePaymentService {
   ): Promise<{ success: boolean; event?: Stripe.Event; error?: string }> {
     try {
       const webhookSecret = this.configService.get('STRIPE_WEBHOOK_SECRET');
+      if (!webhookSecret) {
+        return {
+          success: false,
+          error: 'Stripe webhook secret is not configured',
+        };
+      }
       const event = this.stripe.webhooks.constructEvent(
         body,
         signature,

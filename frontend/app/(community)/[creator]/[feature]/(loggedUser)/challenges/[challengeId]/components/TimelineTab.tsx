@@ -58,23 +58,34 @@ export default function TimelineTab({
             const isPendingSubmission = hasSubmission && !task.isCompleted
             const isLast = index === challengeTasks.length - 1
             const connectorClass = task.isCompleted
-              ? "bg-green-500"
+              ? "stroke-green-500"
               : isLocked
-                ? "border-l-2 border-dashed border-amber-300 bg-transparent"
+                ? "stroke-amber-300"
                 : isPendingSubmission
-                  ? "bg-blue-300"
+                  ? "stroke-blue-300"
                   : task.isActive
-                    ? "bg-challenges-300"
-                    : "bg-gray-200"
+                    ? "stroke-challenges-300"
+                    : "stroke-gray-200"
 
             return (
               <div key={task.id} className="relative flex items-start gap-4 pb-4 last:pb-0">
                 <div className="relative flex w-10 shrink-0 justify-center">
                   {!isLast && (
-                    <div
-                      className={`absolute left-1/2 top-10 h-[calc(100%-1rem)] w-0.5 -translate-x-1/2 ${connectorClass}`}
+                    <svg
+                      className="absolute left-1/2 top-10 h-[calc(100%-1rem)] w-6 -translate-x-1/2 overflow-visible"
+                      viewBox="0 0 24 120"
+                      preserveAspectRatio="none"
                       aria-hidden="true"
-                    />
+                    >
+                      <path
+                        d="M12 0 C12 30 12 90 12 120"
+                        className={connectorClass}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeDasharray={isLocked ? "6 7" : undefined}
+                        fill="none"
+                      />
+                    </svg>
                   )}
                   <div
                     className={`z-10 flex h-10 w-10 items-center justify-center rounded-full font-semibold shadow-sm ring-4 ring-white ${

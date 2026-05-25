@@ -197,7 +197,7 @@ export class OverviewSectionDto {
   @ValidateNested({ each: true })
   @Type(() => OverviewCardDto)
   @IsOptional()
-  cards?: OverviewCardDto[];
+  cards?: any[];
 
   @ApiPropertyOptional({ description: 'Section visibility', default: true })
   @IsBoolean()
@@ -229,7 +229,7 @@ export class BenefitsSectionDto {
   @ValidateNested({ each: true })
   @Type(() => BenefitItemDto)
   @IsOptional()
-  benefits?: BenefitItemDto[];
+  benefits?: any[];
 
   @ApiPropertyOptional({ description: 'CTA title' })
   @IsString()
@@ -266,7 +266,7 @@ export class TestimonialsSectionDto {
   @ValidateNested({ each: true })
   @Type(() => TestimonialDto)
   @IsOptional()
-  testimonials?: TestimonialDto[];
+  testimonials?: any[];
 
   @ApiPropertyOptional({ description: 'Section visibility', default: true })
   @IsBoolean()
@@ -317,31 +317,31 @@ export class UpdateCommunityPageContentDto {
   @ValidateNested()
   @Type(() => HeroSectionDto)
   @IsOptional()
-  hero?: HeroSectionDto;
+  hero?: any;
 
   @ApiPropertyOptional({ description: 'Overview section configuration' })
   @ValidateNested()
   @Type(() => OverviewSectionDto)
   @IsOptional()
-  overview?: OverviewSectionDto;
+  overview?: any;
 
   @ApiPropertyOptional({ description: 'Benefits section configuration' })
   @ValidateNested()
   @Type(() => BenefitsSectionDto)
   @IsOptional()
-  benefits?: BenefitsSectionDto;
+  benefits?: any;
 
   @ApiPropertyOptional({ description: 'Testimonials section configuration' })
   @ValidateNested()
   @Type(() => TestimonialsSectionDto)
   @IsOptional()
-  testimonials?: TestimonialsSectionDto;
+  testimonials?: any;
 
   @ApiPropertyOptional({ description: 'CTA section configuration' })
   @ValidateNested()
   @Type(() => CTASectionDto)
   @IsOptional()
-  cta?: CTASectionDto;
+  cta?: any;
 }
 
 /**
@@ -400,19 +400,19 @@ export class CommunityPageContentResponseDto {
   communityId: string;
 
   @ApiProperty()
-  hero: HeroSectionDto;
+  hero: any;
 
   @ApiProperty()
-  overview: OverviewSectionDto;
+  overview: any;
 
   @ApiProperty()
-  benefits: BenefitsSectionDto;
+  benefits: any;
 
   @ApiProperty()
-  testimonials: TestimonialsSectionDto;
+  testimonials: any;
 
   @ApiProperty()
-  cta: CTASectionDto;
+  cta: any;
 
   @ApiProperty()
   isPublished: boolean;

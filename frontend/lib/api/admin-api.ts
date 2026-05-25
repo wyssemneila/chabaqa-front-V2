@@ -2561,6 +2561,9 @@ export const adminApi = {
 
     getQueueCounts: () =>
       apiClient.get('/live-support/admin/queue-counts'),
+
+    getMetrics: () =>
+      apiClient.get('/live-support/admin/metrics'),
   },
 };
 

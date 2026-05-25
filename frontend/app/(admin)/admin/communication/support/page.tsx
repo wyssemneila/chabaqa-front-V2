@@ -98,6 +98,7 @@ export default function AdminLiveSupportPage() {
   const [sending, setSending] = useState(false)
   const [acting, setActing] = useState(false)
   const [counts, setCounts] = useState({ available: 0, mine: 0, closed: 0 })
+  const [metrics, setMetrics] = useState<any | null>(null)
   const [socketConnected, setSocketConnected] = useState(false)
   const socketRef = useRef<Socket | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
@@ -108,13 +109,18 @@ export default function AdminLiveSupportPage() {
 
   const loadCounts = async () => {
     try {
-      const res = await adminApi.support.getQueueCounts()
+      const [res, metricsRes] = await Promise.all([
+        adminApi.support.getQueueCounts(),
+        adminApi.support.getMetrics().catch(() => null as any),
+      ])
       const root = (res as any)?.data ?? res
       setCounts({
         available: Number(root?.available || 0),
         mine: Number(root?.mine || 0),
         closed: Number(root?.closed || 0),
       })
+      const metricsRoot = (metricsRes as any)?.data ?? metricsRes
+      if (metricsRoot) setMetrics(metricsRoot)
     } catch {
       // no-op
     }
@@ -330,6 +336,34 @@ export default function AdminLiveSupportPage() {
             </CardContent>
           </Card>
         </div>
+        {metrics && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="shadow-none">
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground">Avg wait to claim</p>
+                <p className="text-lg font-semibold">{metrics.averageWaitToClaimMinutes || 0}m</p>
+              </CardContent>
+            </Card>
+            <Card className="shadow-none">
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground">Avg resolution</p>
+                <p className="text-lg font-semibold">{metrics.averageResolutionMinutes || 0}m</p>
+              </CardContent>
+            </Card>
+            <Card className="shadow-none">
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground">AI-only open</p>
+                <p className="text-lg font-semibold">{metrics.botActive || 0}</p>
+              </CardContent>
+            </Card>
+            <Card className="shadow-none">
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground">Backlog &gt; 4h</p>
+                <p className="text-lg font-semibold">{metrics.backlog?.olderThan4h || 0}</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2">

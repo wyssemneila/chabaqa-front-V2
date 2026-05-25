@@ -47,6 +47,7 @@ import type {
   TutorQuizQuestion,
   TutorSource,
 } from '@/domains/shared/ai/ai-tutor.types';
+import { ChapterAccessService } from '@/shared/services/chapter-access.service';
 
 @Injectable()
 export class AiTutorService {
@@ -70,6 +71,7 @@ export class AiTutorService {
     private readonly communityModel: Model<CommunityDocument>,
     @InjectModel(Cours.name)
     private readonly coursModel: Model<CoursDocument>,
+    private readonly chapterAccessService: ChapterAccessService,
   ) {
     const aiProvider = (
       this.configService.get<string>('AI_PROVIDER') || 'OPENROUTER'
@@ -189,6 +191,7 @@ export class AiTutorService {
     const normalizedCourseId = this.normalizeRequiredString(courseId, 'courseId');
     const normalizedChapterId = this.normalizeRequiredString(chapterId, 'chapterId');
     const userObjectId = this.toUserObjectId(userId);
+    await this.assertChapterAccess(normalizedCourseId, normalizedChapterId, userObjectId.toString());
 
     const conversation = await this.conversationModel
       .findOne({
@@ -218,6 +221,7 @@ export class AiTutorService {
     const normalizedChapterId = this.normalizeRequiredString(chapterId, 'chapterId');
     const userObjectId = this.toUserObjectId(userId);
     const normalizedMode = mode || 'chat';
+    await this.assertChapterAccess(normalizedCourseId, normalizedChapterId, userObjectId.toString());
 
     const userPrompt = this.resolveUserPrompt(normalizedMode, question);
     const ctx = await this.contextService.buildChapterContext(
@@ -661,6 +665,20 @@ export class AiTutorService {
           return;
         }
       }
+    }
+  }
+
+  private async assertChapterAccess(courseId: string, chapterId: string, userId: string) {
+    const course = await this.chapterAccessService.resolveCourse(courseId);
+    if (String((course as any).creatorId) === String(userId)) return;
+
+    const context = await this.chapterAccessService.buildAccessContext(userId, course);
+    const decision = this.chapterAccessService.evaluateChapterAccess(context, chapterId);
+    if (decision.lockCode === 'chapter_not_found') {
+      throw new NotFoundException('Chapter not found');
+    }
+    if (!decision.canAccess) {
+      throw new ForbiddenException(decision.reason || 'AI tutor access denied for this chapter.');
     }
   }
 

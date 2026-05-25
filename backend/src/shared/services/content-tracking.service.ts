@@ -21,6 +21,7 @@ import { Product, ProductDocument } from '@/infrastructure/database/schemas/comm
 import { Post, PostDocument } from '@/infrastructure/database/schemas/content/post.schema';
 import { Ga4Service } from '@/domains/analytics/ga4/ga4.service';
 import { applyWatchTimePolicy } from '@/shared/utils/watch-time-policy.util';
+import { serializeTrackingIdentity } from '@/shared/utils/id-serializer';
 
 @Injectable()
 export class ContentTrackingService {
@@ -123,29 +124,29 @@ export class ContentTrackingService {
     return normalized;
   }
 
-  private async getContentContext(contentId: string, contentType: TrackableContentType): Promise<{ creatorId?: string, communityId?: string }> {
+  private async getContentContext(contentId: string, contentType: TrackableContentType): Promise<{ creatorId?: string, communityId?: string; trackingIdentity?: ReturnType<typeof serializeTrackingIdentity> }> {
     try {
       let doc: any = null;
       switch (contentType) {
         case TrackableContentType.COURSE:
-          doc = await this.findContentDocumentById(this.courseModel, contentId, 'creatorId communityId');
+          doc = await this.findContentDocumentById(this.courseModel, contentId, 'id _id slug creatorId communityId');
           break;
         case TrackableContentType.CHALLENGE:
-          doc = await this.findContentDocumentById(this.challengeModel, contentId, 'creatorId communityId');
+          doc = await this.findContentDocumentById(this.challengeModel, contentId, 'id _id slug creatorId communityId');
           break;
         case TrackableContentType.SESSION:
-          doc = await this.findContentDocumentById(this.sessionModel, contentId, 'creatorId communityId');
+          doc = await this.findContentDocumentById(this.sessionModel, contentId, 'id _id slug creatorId communityId');
           break;
         case TrackableContentType.EVENT:
-          doc = await this.findContentDocumentById(this.eventModel, contentId, 'creatorId communityId');
+          doc = await this.findContentDocumentById(this.eventModel, contentId, 'id _id slug creatorId communityId');
           break;
         case TrackableContentType.PRODUCT:
-          doc = await this.findContentDocumentById(this.productModel, contentId, 'creatorId communityId');
+          doc = await this.findContentDocumentById(this.productModel, contentId, 'id _id slug creatorId communityId');
           break;
         case TrackableContentType.POST:
-          doc = await this.findContentDocumentById(this.postModel, contentId, 'authorId communityId');
+          doc = await this.findContentDocumentById(this.postModel, contentId, 'id _id slug authorId communityId');
           if (doc) {
-             return { creatorId: doc.authorId?.toString(), communityId: doc.communityId?.toString() };
+             return { creatorId: doc.authorId?.toString(), communityId: doc.communityId?.toString(), trackingIdentity: serializeTrackingIdentity(doc) };
           }
           break;
       }
@@ -153,7 +154,8 @@ export class ContentTrackingService {
       if (doc) {
         return { 
           creatorId: doc.creatorId?.toString(), 
-          communityId: doc.communityId?.toString() 
+          communityId: doc.communityId?.toString(),
+          trackingIdentity: serializeTrackingIdentity(doc),
         };
       }
     } catch (err) {
@@ -294,7 +296,16 @@ export class ContentTrackingService {
     actionType: TrackingActionType,
     metadata: Record<string, any> = {},
   ): Promise<TrackingActionDocument> {
-    const normalizedMetadata = this.normalizeMetadata(metadata);
+    const context = await this.getContentContext(contentId, contentType);
+    const identity = context.trackingIdentity;
+    const normalizedMetadata = this.normalizeMetadata({
+      ...metadata,
+      sourceContentId: contentId,
+      ...(identity?.canonicalTrackingId ? { canonicalTrackingId: identity.canonicalTrackingId } : {}),
+      ...(identity?.mongoId ? { mongoId: identity.mongoId } : {}),
+      ...(identity?.publicId ? { publicId: identity.publicId } : {}),
+      ...(identity?.slug ? { slug: identity.slug } : {}),
+    });
     const action = new this.trackingActionModel({
       id: new Types.ObjectId().toString(),
       userId: new Types.ObjectId(userId),
@@ -308,11 +319,12 @@ export class ContentTrackingService {
     const saved = await action.save();
 
     // Mirror to GA4 according to the unified event schema
-    const context = await this.getContentContext(contentId, contentType);
-    
     const baseParams = {
       content_type: contentType,
       content_id: contentId,
+      canonical_tracking_id: identity?.canonicalTrackingId,
+      public_id: identity?.publicId,
+      mongo_id: identity?.mongoId,
       action_type: actionType,
       creator_id: context.creatorId,
       community_id: context.communityId,

@@ -41,6 +41,7 @@ import {
 } from '@/infrastructure/database/schemas/commerce/processed-webhook-event.schema';
 import { AffiliateAttributionService } from '@/domains/community/affiliate/affiliate-attribution.service';
 import { AffiliateCommissionService } from '@/domains/community/affiliate/affiliate-commission.service';
+import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 
 const manualProofStorage = diskStorage({
   destination: (req, file, cb) => {
@@ -63,6 +64,29 @@ const manualProofStorage = diskStorage({
     cb(null, uniqueName);
   },
 });
+
+const MANUAL_PROOF_MAX_BYTES = 8 * 1024 * 1024;
+const MANUAL_PROOF_ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf']);
+const MANUAL_PROOF_ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+]);
+
+const manualProofUploadOptions = {
+  storage: manualProofStorage,
+  limits: { fileSize: MANUAL_PROOF_MAX_BYTES },
+  fileFilter: (_req: any, file: Express.Multer.File, cb: Function) => {
+    const extension = extname(file.originalname || '').toLowerCase();
+    const mimetype = String(file.mimetype || '').toLowerCase();
+    if (!MANUAL_PROOF_ALLOWED_EXTENSIONS.has(extension) || !MANUAL_PROOF_ALLOWED_MIME_TYPES.has(mimetype)) {
+      cb(new BadRequestException('Payment proof must be a JPG, PNG, WebP, or PDF file'), false);
+      return;
+    }
+    cb(null, true);
+  },
+};
 
 @ApiTags('Payments')
 @Controller('payment')
@@ -748,13 +772,19 @@ export class PaymentController {
     const configuredSecret = process.env.FLOUCI_WEBHOOK_SECRET;
     const incomingSig = req.headers['x-flouci-signature'] as string | undefined;
 
+    if (isStrictProductionRuntime() && !configuredSecret) {
+      throw new InternalServerErrorException('Flouci webhook secret is not configured');
+    }
+
     if (configuredSecret) {
       if (!incomingSig) throw new UnauthorizedException('Signature manquante');
       const computed = crypto
         .createHmac('sha256', configuredSecret)
         .update(JSON.stringify(body))
         .digest('hex');
-      const equal = crypto.timingSafeEqual(Buffer.from(incomingSig), Buffer.from(computed));
+      const incoming = Buffer.from(incomingSig);
+      const expected = Buffer.from(computed);
+      const equal = incoming.length === expected.length && crypto.timingSafeEqual(incoming, expected);
       if (!equal) throw new UnauthorizedException('Signature invalide');
     }
 
@@ -2680,7 +2710,7 @@ export class PaymentController {
   @ApiQuery({ name: 'promoCode', required: false })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', { storage: manualProofStorage }))
+  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
   async initManualCommunityPayment(
     @Body('communityId') communityId: string,
     @Body('inviteCode') inviteCode: string | undefined,
@@ -2754,7 +2784,7 @@ export class PaymentController {
   @ApiQuery({ name: 'promoCode', required: false })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', { storage: manualProofStorage }))
+  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
   async initManualCoursePayment(
     @Body('courseId') courseId: string,
     @Req() req: any,
@@ -2828,7 +2858,7 @@ export class PaymentController {
   @ApiQuery({ name: 'promoCode', required: false })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', { storage: manualProofStorage }))
+  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
   async initManualChallengePayment(
     @Body('challengeId') challengeId: string,
     @Req() req: any,
@@ -2942,7 +2972,7 @@ export class PaymentController {
   @ApiQuery({ name: 'promoCode', required: false })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', { storage: manualProofStorage }))
+  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
   async initManualEventPayment(
     @Body('eventId') eventId: string,
     @Req() req: any,
@@ -3017,7 +3047,7 @@ export class PaymentController {
   @ApiQuery({ name: 'promoCode', required: false })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', { storage: manualProofStorage }))
+  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
   async initManualProductPayment(
     @Body('productId') productId: string,
     @Req() req: any,
@@ -3100,7 +3130,7 @@ export class PaymentController {
   @ApiQuery({ name: 'promoCode', required: false })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', { storage: manualProofStorage }))
+  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
   async initManualSessionPayment(
     @Body('sessionId') sessionId: string,
     @Body('slotId') slotId: string,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
+import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 
 @Injectable()
 export class FlouciPaymentService {
@@ -14,6 +15,9 @@ export class FlouciPaymentService {
     this.appToken = process.env.FLOUCI_APP_TOKEN || '';
     this.appSecret = process.env.FLOUCI_APP_SECRET || '';
     this.developerTrackingId = process.env.FLOUCI_DEVELOPER_TRACKING_ID;
+    if (isStrictProductionRuntime() && (!this.appToken || !this.appSecret)) {
+      throw new Error('[Flouci] Missing FLOUCI_APP_TOKEN or FLOUCI_APP_SECRET in production');
+    }
     this.http = axios.create({ baseURL: this.baseUrl, timeout: 15000 });
   }
 

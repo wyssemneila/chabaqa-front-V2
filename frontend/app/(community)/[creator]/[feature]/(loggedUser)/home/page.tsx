@@ -1484,7 +1484,7 @@ export default function CommunityDashboard({ params }: { params: Promise<{ creat
             </div>
 
             {/* Sidebar */}
-            <div className="hidden lg:block lg:col-span-1 space-y-6 lg:sticky lg:top-0 lg:self-start">
+            <div className="hidden lg:block lg:col-span-1 space-y-6 lg:sticky lg:top-24 lg:self-start">
               {/* Active Challenge */}
               {activeChallenges.length > 0 && (
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-challenges-50 to-orange-50">

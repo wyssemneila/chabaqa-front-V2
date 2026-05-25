@@ -18,6 +18,7 @@ import { AiLaunchPlanService } from './cofounder/ai-launch-plan.service';
 import { AiPublishService } from './ai-publish.service';
 import { ConfigModule } from '@nestjs/config';
 import { CoursModule } from '@/domains/learning/course/cours.module';
+import { ChapterAccessModule } from '@/shared/modules/chapter-access.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   AiChapterConversation,
@@ -51,11 +52,16 @@ import {
   AiActionLog,
   AiActionLogSchema,
 } from '@/infrastructure/database/schemas/ai/ai-action-log.schema';
+import { Post, PostSchema } from '@/infrastructure/database/schemas/content/post.schema';
+import { Resource, ResourceSchema } from '@/infrastructure/database/schemas/content/resource.schema';
+import { Product, ProductSchema } from '@/infrastructure/database/schemas/commerce/product.schema';
+import { Event, EventSchema } from '@/infrastructure/database/schemas/commerce/event.schema';
 
 @Module({
   imports: [
     ConfigModule,
     CoursModule,
+    ChapterAccessModule,
     MongooseModule.forFeature([
       { name: AiChapterConversation.name, schema: AiChapterConversationSchema },
       { name: Community.name, schema: CommunitySchema },
@@ -65,6 +71,10 @@ import {
       { name: AiConversation.name, schema: AiConversationSchema },
       { name: AiLaunchPlan.name, schema: AiLaunchPlanSchema },
       { name: AiActionLog.name, schema: AiActionLogSchema },
+      { name: Post.name, schema: PostSchema },
+      { name: Resource.name, schema: ResourceSchema },
+      { name: Product.name, schema: ProductSchema },
+      { name: Event.name, schema: EventSchema },
     ]),
   ],
   controllers: [
