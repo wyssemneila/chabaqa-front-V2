@@ -2,6 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
 import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 
+const ENABLED_VALUES = new Set(['1', 'true', 'yes', 'on']);
+
+function isKonnectExplicitlyEnabled(): boolean {
+  return ['KONNECT_ENABLED', 'PAYMENTS_KONNECT_ENABLED'].some((name) =>
+    ENABLED_VALUES.has(String(process.env[name] || '').trim().toLowerCase()),
+  );
+}
+
 export interface KonnectInitResult {
   success: boolean;
   paymentRef?: string;
@@ -46,11 +54,12 @@ export class KonnectPaymentService {
       process.env.KONNECT_API_KEY !== 'your-konnect-api-key' &&
       process.env.KONNECT_WALLET_ID,
     );
+    const enabled = isKonnectExplicitlyEnabled();
 
     if (runtimeProduction && mockRequested) {
       throw new Error('[Konnect] KONNECT_MOCK_MODE cannot be enabled in production');
     }
-    if (runtimeProduction && !hasLiveCredentials) {
+    if (runtimeProduction && enabled && !hasLiveCredentials) {
       throw new Error('[Konnect] Missing live KONNECT_API_KEY or KONNECT_WALLET_ID in production');
     }
 
