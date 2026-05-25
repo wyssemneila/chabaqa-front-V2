@@ -79,16 +79,63 @@ free_host_port() {
 free_host_port 3000
 free_host_port 8081
 
-echo "[deploy] recreating services"
-if ! docker compose up -d --force-recreate --remove-orphans; then
-  echo "[deploy] docker compose up failed"
-  docker compose ps || true
-  docker logs chabaqa-backend --tail 200 || true
-  docker inspect --format '{{json .State.Health}}' chabaqa-backend || true
-  docker logs chabaqa-frontend --tail 120 || true
-  docker inspect --format '{{json .State.Health}}' chabaqa-frontend || true
-  exit 1
-fi
+dump_container_diagnostics() {
+  local name="$1"
+  echo "[deploy] diagnostics for ${name}"
+  docker compose ps "${name}" || true
+  docker logs "${name}" --tail 200 || true
+  docker inspect --format '{{json .State.Health}}' "${name}" || true
+}
+
+container_status() {
+  local name="$1"
+  docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${name}" 2>/dev/null || true
+}
+
+wait_for_container() {
+  local name="$1"
+  local timeout="$2"
+  local started_at
+  local status
+  started_at="$(date +%s)"
+
+  echo "[deploy] waiting for ${name}"
+  while true; do
+    status="$(container_status "${name}")"
+
+    if [ "${status}" = "healthy" ] || [ "${status}" = "running" ]; then
+      echo "[deploy] ${name} is ${status}"
+      return 0
+    fi
+
+    if [ "${status}" = "unhealthy" ] || [ "${status}" = "exited" ] || [ "${status}" = "dead" ]; then
+      echo "[deploy] ${name} failed with status=${status}"
+      dump_container_diagnostics "${name}"
+      return 1
+    fi
+
+    if [ $(( $(date +%s) - started_at )) -ge "${timeout}" ]; then
+      echo "[deploy] ${name} did not become healthy within ${timeout}s (last status=${status:-missing})"
+      dump_container_diagnostics "${name}"
+      return 1
+    fi
+
+    sleep 5
+  done
+}
+
+echo "[deploy] recreating database services"
+docker compose up -d --force-recreate --remove-orphans mongo redis
+wait_for_container chabaqa-mongo 120
+wait_for_container chabaqa-redis 120
+
+echo "[deploy] recreating backend"
+docker compose up -d --force-recreate --remove-orphans chabaqa-backend
+wait_for_container chabaqa-backend 180
+
+echo "[deploy] recreating frontend"
+docker compose up -d --force-recreate --remove-orphans chabaqa-frontend
+wait_for_container chabaqa-frontend 120
 
 echo "[deploy] waiting for services"
 sleep 15

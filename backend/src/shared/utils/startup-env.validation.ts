@@ -1,9 +1,30 @@
 import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 
 const ENABLED_VALUES = new Set(['1', 'true', 'yes', 'on']);
+const PLACEHOLDER_VALUES = new Set([
+  'your-flouci-token',
+  'your-flouci-secret',
+  'your-konnect-api-key',
+  'your-konnect-wallet-id',
+  'your-stripe-secret',
+  'your-stripe-webhook-secret',
+  'your-flouci-webhook-secret',
+]);
+
+function getConfiguredEnv(name: string): string {
+  const value = String(process.env[name] || '').trim();
+  if (!value || PLACEHOLDER_VALUES.has(value.toLowerCase())) {
+    return '';
+  }
+  return value;
+}
+
+function isEnabled(...names: string[]): boolean {
+  return names.some((name) => ENABLED_VALUES.has(String(process.env[name] || '').trim().toLowerCase()));
+}
 
 function hasAnyEnv(names: string[]): boolean {
-  return names.some((name) => Boolean(String(process.env[name] || '').trim()));
+  return names.some((name) => Boolean(getConfiguredEnv(name)));
 }
 
 function requireAny(names: string[], missing: string[]): void {
@@ -25,9 +46,7 @@ export function validateStartupEnv(): void {
   requireAny(['SERVER_URL', 'NEXT_PUBLIC_API_URL', 'API_INTERNAL_URL'], missing);
 
   const stripeConfigured = hasAnyEnv(['STRIPE_SECRET_KEY', 'STRIPE_API_KEY']);
-  const stripeExplicitlyEnabled = ENABLED_VALUES.has(
-    String(process.env.STRIPE_ENABLED || process.env.PAYMENTS_STRIPE_ENABLED || '').trim().toLowerCase(),
-  );
+  const stripeExplicitlyEnabled = isEnabled('STRIPE_ENABLED', 'PAYMENTS_STRIPE_ENABLED');
 
   if (stripeConfigured || stripeExplicitlyEnabled) {
     requireAny(['STRIPE_SECRET_KEY', 'STRIPE_API_KEY'], missing);
@@ -35,12 +54,8 @@ export function validateStartupEnv(): void {
   }
 
   const konnectConfigured = hasAnyEnv(['KONNECT_API_KEY', 'KONNECT_WALLET_ID']);
-  const konnectExplicitlyEnabled = ENABLED_VALUES.has(
-    String(process.env.KONNECT_ENABLED || process.env.PAYMENTS_KONNECT_ENABLED || '').trim().toLowerCase(),
-  );
-  const konnectMockEnabled = ENABLED_VALUES.has(
-    String(process.env.KONNECT_MOCK_MODE || '').trim().toLowerCase(),
-  );
+  const konnectExplicitlyEnabled = isEnabled('KONNECT_ENABLED', 'PAYMENTS_KONNECT_ENABLED');
+  const konnectMockEnabled = isEnabled('KONNECT_MOCK_MODE');
   if (konnectMockEnabled) {
     missing.push('KONNECT_MOCK_MODE must be disabled in production');
   }
@@ -50,9 +65,7 @@ export function validateStartupEnv(): void {
   }
 
   const flouciConfigured = hasAnyEnv(['FLOUCI_APP_TOKEN', 'FLOUCI_APP_SECRET']);
-  const flouciExplicitlyEnabled = ENABLED_VALUES.has(
-    String(process.env.FLOUCI_ENABLED || process.env.PAYMENTS_FLOUCI_ENABLED || '').trim().toLowerCase(),
-  );
+  const flouciExplicitlyEnabled = isEnabled('FLOUCI_ENABLED', 'PAYMENTS_FLOUCI_ENABLED');
   if (flouciConfigured || flouciExplicitlyEnabled) {
     requireAny(['FLOUCI_APP_TOKEN'], missing);
     requireAny(['FLOUCI_APP_SECRET'], missing);

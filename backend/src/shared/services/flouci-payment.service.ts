@@ -2,6 +2,23 @@ import { Injectable } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
 import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 
+const ENABLED_VALUES = new Set(['1', 'true', 'yes', 'on']);
+const PLACEHOLDER_VALUES = new Set(['your-flouci-token', 'your-flouci-secret']);
+
+function getConfiguredEnv(name: string): string {
+  const value = String(process.env[name] || '').trim();
+  if (!value || PLACEHOLDER_VALUES.has(value.toLowerCase())) {
+    return '';
+  }
+  return value;
+}
+
+function isFlouciExplicitlyEnabled(): boolean {
+  return ['FLOUCI_ENABLED', 'PAYMENTS_FLOUCI_ENABLED'].some((name) =>
+    ENABLED_VALUES.has(String(process.env[name] || '').trim().toLowerCase()),
+  );
+}
+
 @Injectable()
 export class FlouciPaymentService {
   private readonly http: AxiosInstance;
@@ -9,13 +26,16 @@ export class FlouciPaymentService {
   private readonly appToken: string;
   private readonly appSecret: string;
   private readonly developerTrackingId?: string;
+  private readonly enabled: boolean;
 
   constructor() {
     this.baseUrl = process.env.FLOUCI_BASE_URL || 'https://developers.flouci.com/api/';
-    this.appToken = process.env.FLOUCI_APP_TOKEN || '';
-    this.appSecret = process.env.FLOUCI_APP_SECRET || '';
+    this.appToken = getConfiguredEnv('FLOUCI_APP_TOKEN');
+    this.appSecret = getConfiguredEnv('FLOUCI_APP_SECRET');
     this.developerTrackingId = process.env.FLOUCI_DEVELOPER_TRACKING_ID;
-    if (isStrictProductionRuntime() && (!this.appToken || !this.appSecret)) {
+    this.enabled = Boolean(this.appToken && this.appSecret);
+
+    if (isStrictProductionRuntime() && isFlouciExplicitlyEnabled() && !this.enabled) {
       throw new Error('[Flouci] Missing FLOUCI_APP_TOKEN or FLOUCI_APP_SECRET in production');
     }
     this.http = axios.create({ baseURL: this.baseUrl, timeout: 15000 });
@@ -28,6 +48,10 @@ export class FlouciPaymentService {
     metadata?: Record<string, any>;
   }): Promise<{ success: boolean; paymentId?: string; link?: string; qrCode?: string; error?: string }>
   {
+    if (!this.enabled) {
+      return { success: false, error: 'Flouci payments are not configured' };
+    }
+
     try {
       const payload = {
         app_token: this.appToken,
@@ -63,6 +87,10 @@ export class FlouciPaymentService {
 
   async verifyPayment(paymentId: string): Promise<{ success: boolean; status?: string; amountTND?: number; paymentMethod?: string; transactionDate?: string; error?: string }>
   {
+    if (!this.enabled) {
+      return { success: false, error: 'Flouci payments are not configured' };
+    }
+
     try {
       const payload = {
         app_token: this.appToken,
