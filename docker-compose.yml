@@ -150,6 +150,10 @@ services:
       - "127.0.0.1:8081:8081"
     env_file:
       - ./frontend/.env
+    environment:
+      API_INTERNAL_URL: http://chabaqa-backend:3000/api
+      NEXT_PUBLIC_API_URL: https://chabaqa.io/api
+      NEXT_PUBLIC_APP_URL: https://chabaqa.io
     depends_on:
       chabaqa-backend:
         condition: service_healthy
@@ -188,9 +192,13 @@ services:
 
 volumes:
   backend-hls:
+    name: chabaqa_backend-hls
   mongo-data:
+    name: chabaqa_mongo-data
   redis-data:
+    name: chabaqa_redis-data
   demo-backend-hls:
+    name: chabaqa_demo-backend-hls
 
 networks:
   default:
