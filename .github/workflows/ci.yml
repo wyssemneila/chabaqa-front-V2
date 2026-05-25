@@ -84,5 +84,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Create CI env placeholders
+        run: |
+          touch frontend/.env
+          touch backend/.env
+
       - name: Validate compose file
         run: docker compose config
