@@ -29,55 +29,16 @@ import { AdminAction } from '@/domains/admin/schemas/audit-log.schema';
  * User details interface for admin view
  */
 export interface UserDetails {
-  _id: Types.ObjectId;
-  name: string;
-  email: string;
-  role: UserRole;
-  createdAt: Date;
-  createdCommunities: Types.ObjectId[];
-  joinedCommunities: Types.ObjectId[];
-  adminCommunities: Types.ObjectId[];
-  moderatorCommunities: Types.ObjectId[];
-  purchasedProducts: Types.ObjectId[];
-  numtel?: string;
-  date_naissance?: Date;
-  sexe?: string;
-  pays?: string;
-  ville?: string;
-  code_postal?: string;
-  adresse?: string;
-  photo_profil?: string;
-  bio?: string;
-  lien_instagram?: string;
-  profile_picture?: string;
-  twoFactorEnabled: boolean;
-  walletBalance: number;
-  // Admin-specific fields
-  isSuspended: boolean;
-  suspensionReason?: string;
-  suspensionEndDate?: Date;
-  suspendedBy?: Types.ObjectId;
-  adminNotes?: string;
-  accountStatus: string;
-  // Additional admin view fields
-  activityHistory?: {
-    lastLogin?: Date;
-    loginCount?: number;
-    postsCount?: number;
-    communitiesCount?: number;
+  user: Record<string, any>;
+  activityHistory: Array<Record<string, any>>;
+  subscriptions: Array<Record<string, any>>;
+  communities: Array<Record<string, any>>;
+  statistics: {
+    totalSpent: number;
+    totalCommunities: number;
+    totalCourses: number;
+    accountAge: number;
   };
-  subscriptionStatus?: {
-    type: SubscriptionType;
-    startDate?: Date;
-    endDate?: Date;
-    isActive: boolean;
-  };
-  communityMemberships?: {
-    communityId: Types.ObjectId;
-    communityName: string;
-    joinedAt: Date;
-    role: string;
-  }[];
 }
 
 /**
@@ -225,20 +186,31 @@ export class UserManagementService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    // Get activity history
-    const activityHistory = await this.getUserActivityHistory(userId);
-    
-    // Get subscription status (placeholder - would integrate with actual subscription system)
-    const subscriptionStatus = await this.getUserSubscriptionStatus(userId);
-    
-    // Get community memberships with details
-    const communityMemberships = await this.getUserCommunityMemberships(userId);
+    const userObject = user.toObject() as Record<string, any>;
+    const [activityHistory, subscriptions, communities, statistics] = await Promise.all([
+      this.getUserActivityHistory(userId, userObject),
+      this.getUserSubscriptions(userId),
+      this.getUserCommunityMemberships(userObject),
+      this.getUserStatistics(userId, userObject),
+    ]);
+
+    const latestLogin = activityHistory
+      .map((activity) => activity.timestamp ? new Date(activity.timestamp) : null)
+      .filter((date): date is Date => date instanceof Date && !Number.isNaN(date.getTime()))
+      .sort((a, b) => b.getTime() - a.getTime())[0];
 
     return {
-      ...user.toObject(),
+      user: {
+        ...userObject,
+        status: userObject.isSuspended ? 'suspended' : (userObject.accountStatus || 'active'),
+        username: userObject.username || userObject.name || userObject.email,
+        notes: userObject.adminNotes || '',
+        lastLogin: latestLogin || userObject.lastActive || null,
+      },
       activityHistory,
-      subscriptionStatus,
-      communityMemberships
+      subscriptions,
+      communities,
+      statistics,
     };
   }
 
@@ -674,27 +646,178 @@ export class UserManagementService {
   /**
    * Private helper methods
    */
-  private async getUserActivityHistory(userId: string) {
-    // Placeholder - would integrate with actual activity tracking
+  private async getUserActivityHistory(userId: string, user: Record<string, any>) {
+    const activity: Array<Record<string, any>> = [];
+    const userObjectId = new Types.ObjectId(userId);
+    const loginActivityModel = this.getRegisteredModel('UserLoginActivity');
+
+    if (loginActivityModel) {
+      const loginRows = await loginActivityModel
+        .find({ userId: userObjectId })
+        .populate('communityId', 'name slug')
+        .sort({ lastLoginAt: -1 })
+        .limit(20)
+        .lean()
+        .exec();
+
+      activity.push(...loginRows.map((row: any) => ({
+        action: row.communityId?.name
+          ? `Logged in to ${row.communityId.name}`
+          : 'Logged in',
+        timestamp: row.lastLoginAt,
+        type: 'login',
+        community: row.communityId
+          ? {
+              _id: this.stringifyId(row.communityId._id),
+              name: row.communityId.name,
+              slug: row.communityId.slug,
+            }
+          : undefined,
+        metadata: {
+          inactivityStatus: row.inactivityStatus,
+          daysSinceLastLogin: row.daysSinceLastLogin,
+        },
+      })));
+    }
+
+    if (user.createdAt) {
+      activity.push({
+        action: 'Account created',
+        timestamp: user.createdAt,
+        type: 'account',
+      });
+    }
+
+    return activity
+      .filter((entry) => entry.timestamp)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  private async getUserSubscriptions(userId: string) {
+    const subscriptionModel = this.getRegisteredModel('Subscription');
+    if (!subscriptionModel) return [];
+
+    const userObjectId = new Types.ObjectId(userId);
+    const subscriptions = await subscriptionModel
+      .find({
+        $or: [
+          { subscriberId: userObjectId },
+          { userId: userObjectId },
+          { creatorId: userObjectId },
+        ],
+      })
+      .populate('communityId', 'name slug')
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean()
+      .exec();
+
+    return subscriptions.map((subscription: any) => ({
+      _id: this.stringifyId(subscription._id),
+      planName: subscription.plan || subscription.planTier || 'Subscription',
+      plan: subscription.plan || subscription.planTier,
+      status: subscription.status,
+      amount: subscription.amount || 0,
+      currency: subscription.currency || 'TND',
+      community: subscription.communityId
+        ? {
+            _id: this.stringifyId(subscription.communityId._id),
+            name: subscription.communityId.name,
+            slug: subscription.communityId.slug,
+          }
+        : null,
+      startDate: subscription.startDate || subscription.currentPeriodStart || subscription.createdAt,
+      endDate: subscription.endDate || subscription.currentPeriodEnd || null,
+      nextBillingDate: subscription.nextBillingAt || null,
+      cancelAtPeriodEnd: Boolean(subscription.cancelAtPeriodEnd),
+    }));
+  }
+
+  private async getUserCommunityMemberships(user: Record<string, any>) {
+    const rows: Array<Record<string, any>> = [];
+    const seen = new Set<string>();
+    const addCommunities = (items: any[] = [], role: string) => {
+      for (const item of items || []) {
+        const id = this.stringifyId(item?._id || item);
+        if (!id || seen.has(`${id}:${role}`)) continue;
+        seen.add(`${id}:${role}`);
+        rows.push({
+          _id: id,
+          name: item?.name || 'Unknown Community',
+          slug: item?.slug,
+          role,
+          joinedAt: item?.joinedAt || item?.createdAt || user.createdAt,
+        });
+      }
+    };
+
+    addCommunities(user.createdCommunities, 'creator');
+    addCommunities(user.joinedCommunities, 'member');
+    addCommunities(user.adminCommunities, 'admin');
+    addCommunities(user.moderatorCommunities, 'moderator');
+
+    return rows;
+  }
+
+  private async getUserStatistics(userId: string, user: Record<string, any>) {
+    const orderModel = this.getRegisteredModel('Order');
+    const courseModel = this.getRegisteredModel('Cours');
+    const userObjectId = new Types.ObjectId(userId);
+
+    const [spentRows, enrolledCourses] = await Promise.all([
+      orderModel
+        ? orderModel.aggregate([
+            { $match: { buyerId: userObjectId, status: 'paid' } },
+            { $group: { _id: null, totalSpent: { $sum: '$amountDT' } } },
+          ])
+        : Promise.resolve([]),
+      courseModel
+        ? courseModel.countDocuments({
+            $or: [
+              { 'enrolledUsers.userId': userObjectId },
+              { 'enrollments.userId': userObjectId },
+              { enrolledUsers: userObjectId },
+            ],
+          })
+        : Promise.resolve(0),
+    ]);
+
+    const communityIds = new Set<string>();
+    [
+      ...(user.createdCommunities || []),
+      ...(user.joinedCommunities || []),
+      ...(user.adminCommunities || []),
+      ...(user.moderatorCommunities || []),
+    ].forEach((entry: any) => {
+      const id = this.stringifyId(entry?._id || entry);
+      if (id) communityIds.add(id);
+    });
+
+    const createdAt = user.createdAt ? new Date(user.createdAt) : new Date();
+    const accountAge = Math.max(0, Math.floor((Date.now() - createdAt.getTime()) / (24 * 60 * 60 * 1000)));
+
     return {
-      lastLogin: new Date(),
-      loginCount: 0,
-      postsCount: 0,
-      communitiesCount: 0
+      totalSpent: spentRows[0]?.totalSpent || 0,
+      totalCommunities: communityIds.size,
+      totalCourses: enrolledCourses || 0,
+      accountAge,
     };
   }
 
-  private async getUserSubscriptionStatus(userId: string) {
-    // Placeholder - would integrate with actual subscription system
-    return {
-      type: SubscriptionType.FREE,
-      isActive: true
-    };
+  private getRegisteredModel(name: string): Model<any> | null {
+    try {
+      return this.userModel.db.model(name) as Model<any>;
+    } catch {
+      return null;
+    }
   }
 
-  private async getUserCommunityMemberships(userId: string) {
-    // Placeholder - would get actual community memberships
-    return [];
+  private stringifyId(value: any): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value.toHexString === 'function') return value.toString();
+    if (value._id) return this.stringifyId(value._id);
+    return String(value);
   }
 
   private generateTemporaryPassword(): string {
