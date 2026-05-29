@@ -74,6 +74,10 @@ function formatFileSize(value?: number) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function getDownloadExtension(format: AdminExportFormat) {
+  return format === "excel" ? "xls" : format
+}
+
 function getStatusTone(status: AdminExportJob["status"]) {
   switch (status) {
     case "completed":
@@ -230,7 +234,7 @@ export default function AdminExportCenterPage() {
       const url = window.URL.createObjectURL(blob)
       const anchor = document.createElement("a")
       anchor.href = url
-      anchor.download = `admin-export-${job.type}-${job.id}.${job.format}`
+      anchor.download = `admin-export-${job.type}-${job.id}.${getDownloadExtension(job.format)}`
       document.body.appendChild(anchor)
       anchor.click()
       anchor.remove()

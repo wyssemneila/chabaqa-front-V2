@@ -9,6 +9,8 @@ import { Admin, AdminSchema } from '@/infrastructure/database/schemas/auth/admin
 import { Community, CommunitySchema } from '@/infrastructure/database/schemas/community/community.schema';
 import { Order, OrderSchema } from '@/infrastructure/database/schemas/commerce/order.schema';
 import { Subscription, SubscriptionSchema } from '@/infrastructure/database/schemas/commerce/subscription.schema';
+import { WalletTransaction, WalletTransactionSchema } from '@/infrastructure/database/schemas/commerce/wallet-transaction.schema';
+import { Payout, PayoutSchema } from '@/infrastructure/database/schemas/commerce/payout.schema';
 import { Cours, CoursSchema } from '@/infrastructure/database/schemas/learning/course.schema';
 import { Post, PostSchema } from '@/infrastructure/database/schemas/content/post.schema';
 import { Event, EventSchema } from '@/infrastructure/database/schemas/commerce/event.schema';
@@ -46,6 +48,8 @@ import { AdminRolesGuard } from '@/domains/admin/common/guards/admin-roles.guard
       { name: Community.name, schema: CommunitySchema },
       { name: Order.name, schema: OrderSchema },
       { name: Subscription.name, schema: SubscriptionSchema },
+      { name: WalletTransaction.name, schema: WalletTransactionSchema },
+      { name: Payout.name, schema: PayoutSchema },
       { name: Cours.name, schema: CoursSchema },
       { name: Post.name, schema: PostSchema },
       { name: Event.name, schema: EventSchema },

@@ -301,7 +301,7 @@ export class ExportController {
       const fileBuffer = await this.exportService.downloadExport(jobId);
       
       // Set appropriate headers
-      const fileName = `export_${job.type}_${jobId}.${job.format}`;
+      const fileName = `export_${job.type}_${jobId}.${this.getFileExtension(job.format)}`;
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.setHeader('Content-Type', this.getContentType(job.format));
       res.setHeader('Content-Length', fileBuffer.length);
@@ -426,11 +426,11 @@ export class ExportController {
     }
   })
   async cleanupExpiredJobs(): Promise<{ message: string; cleanedJobs: number }> {
-    await this.exportService.cleanupExpiredJobs();
+    const cleanedJobs = await this.exportService.cleanupExpiredJobs();
     
     return {
       message: 'Expired export jobs cleaned up successfully',
-      cleanedJobs: 0 // This would be returned by the service in a real implementation
+      cleanedJobs
     };
   }
 
@@ -439,13 +439,22 @@ export class ExportController {
       case ExportFormat.CSV:
         return 'text/csv';
       case ExportFormat.EXCEL:
-        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        return 'application/vnd.ms-excel';
       case ExportFormat.PDF:
         return 'application/pdf';
       case ExportFormat.JSON:
         return 'application/json';
       default:
         return 'application/octet-stream';
+    }
+  }
+
+  private getFileExtension(format: ExportFormat): string {
+    switch (format) {
+      case ExportFormat.EXCEL:
+        return 'xls';
+      default:
+        return format;
     }
   }
 }
