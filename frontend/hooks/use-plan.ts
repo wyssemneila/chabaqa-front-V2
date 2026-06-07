@@ -54,7 +54,7 @@ export function usePlan() {
     isLoading,
     subscription,
     enforcementEnabled: true,
-    canUseFeature: (feature: keyof PlanFeatures): boolean => plan.features[feature] ?? false,
+    canUseFeature: (feature: keyof PlanFeatures): boolean => Boolean(plan.features[feature]),
     isAtLimit: (limit: keyof PlanLimits, currentValue: number): boolean => currentValue >= (plan.limits[limit] as number),
     limitValue: (limit: keyof PlanLimits): number => plan.limits[limit] as number,
     refetch,

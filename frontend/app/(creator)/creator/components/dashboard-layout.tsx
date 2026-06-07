@@ -20,6 +20,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const isAiDashboard =
     normalizedPathname === "/creator/ai" ||
     normalizedPathname.startsWith("/creator/ai/")
+  const isWideDashboard =
+    isAiDashboard ||
+    normalizedPathname === "/creator/analytics" ||
+    normalizedPathname === "/creator/marketing/emails"
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -40,7 +44,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className={cn("flex h-screen", isWideDashboard ? "bg-white" : "bg-gray-50")}>
       {/* Sidebar */}
       <div className="w-64 flex-shrink-0">
         <DashboardSidebar user={user} onLogout={logout} />
@@ -51,7 +55,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <main
           className={cn(
             "mx-auto w-full px-6 py-6 lg:px-10 lg:py-8",
-            isAiDashboard ? "max-w-none" : "max-w-7xl",
+            isWideDashboard ? "max-w-none" : "max-w-7xl",
           )}
         >
           {children}

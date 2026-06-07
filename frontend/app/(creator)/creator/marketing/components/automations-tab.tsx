@@ -43,6 +43,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { emailCampaignsApi, EmailCampaign } from "@/lib/api"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { cn } from "@/lib/utils"
+import { SafeHtml } from "@/components/security/safe-html"
 
 // ─── Welcome Email ────────────────────────────────────────────────────────────
 
@@ -217,10 +218,7 @@ function WelcomeEmailSection() {
               {expandContent && (
                 <div className="mt-2 border-t pt-2">
                   {template.isHtml ? (
-                    <div
-                      className="prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: template.content }}
-                    />
+                    <SafeHtml className="prose prose-sm max-w-none" html={template.content} />
                   ) : (
                     <p className="whitespace-pre-wrap text-gray-600">{template.content}</p>
                   )}

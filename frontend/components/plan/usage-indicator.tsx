@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { usePlan } from '@/hooks/use-plan';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 import type { PlanLimits } from '@/lib/plans/plan-config';
-import { formatLimit } from '@/lib/plans/plan-config';
+import { LIMIT_LABELS, PLANS, formatLimit, minimumPlanForLimit } from '@/lib/plans/plan-config';
+import { UpgradeModal } from './upgrade-modal';
 
 interface UsageIndicatorProps {
   label: string;
@@ -13,7 +16,8 @@ interface UsageIndicatorProps {
 }
 
 export function UsageIndicator({ label, current, limitKey, suffix = '' }: UsageIndicatorProps) {
-  const { limitValue, enforcementEnabled } = usePlan();
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const { limitValue, enforcementEnabled, plan } = usePlan();
 
   if (!enforcementEnabled) return null;
 
@@ -22,6 +26,9 @@ export function UsageIndicator({ label, current, limitKey, suffix = '' }: UsageI
   const percent = isUnlimited ? 0 : Math.min(100, (current / max) * 100);
   const isNearLimit = percent >= 80;
   const isAtLimit = percent >= 100;
+  const recommendedPlan = !isUnlimited && (isNearLimit || isAtLimit)
+    ? minimumPlanForLimit(limitKey, max)
+    : null;
 
   return (
     <div className="space-y-1.5">
@@ -37,6 +44,25 @@ export function UsageIndicator({ label, current, limitKey, suffix = '' }: UsageI
         <Progress
           value={percent}
           className={isAtLimit ? '[&>div]:bg-destructive' : isNearLimit ? '[&>div]:bg-amber-500' : ''}
+        />
+      )}
+      {recommendedPlan && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <span>
+            {isAtLimit ? 'Limit reached' : 'Almost at your limit'} for {LIMIT_LABELS[limitKey] ?? label}.{' '}
+            Upgrade from {plan.name} to {PLANS[recommendedPlan].name} for a higher allowance.
+          </span>
+          <Button size="sm" variant="outline" className="h-7 shrink-0 bg-white" onClick={() => setShowUpgrade(true)}>
+            Upgrade
+          </Button>
+        </div>
+      )}
+      {recommendedPlan && (
+        <UpgradeModal
+          open={showUpgrade}
+          onClose={() => setShowUpgrade(false)}
+          requiredPlan={recommendedPlan}
+          blockedFeature={`${label} limit`}
         />
       )}
     </div>

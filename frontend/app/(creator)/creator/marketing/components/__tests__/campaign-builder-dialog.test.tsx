@@ -10,6 +10,8 @@ const mockCreateCampaign = jest.fn()
 const mockCreateInactiveUserCampaign = jest.fn()
 const mockCreateContentReminder = jest.fn()
 const mockSendCampaign = jest.fn()
+const mockGetMarketingMergeFields = jest.fn()
+const mockRenderMarketingPreview = jest.fn()
 
 const mockEventsGetAll = jest.fn()
 
@@ -31,6 +33,8 @@ jest.mock("@/lib/api", () => ({
     createInactiveUserCampaign: (...args: any[]) => mockCreateInactiveUserCampaign(...args),
     createContentReminder: (...args: any[]) => mockCreateContentReminder(...args),
     sendCampaign: (...args: any[]) => mockSendCampaign(...args),
+    getMarketingMergeFields: (...args: any[]) => mockGetMarketingMergeFields(...args),
+    renderMarketingPreview: (...args: any[]) => mockRenderMarketingPreview(...args),
   },
   eventsApi: {
     getAll: (...args: any[]) => mockEventsGetAll(...args),
@@ -54,6 +58,54 @@ describe("CampaignBuilderDialog", () => {
       totalInactiveUsers: 14,
       breakdown: [],
     })
+    mockGetMarketingMergeFields.mockResolvedValue({
+      communityId: "community-1",
+      syntax: { tokenExample: "{{userFirstName}}", description: "Use double curly braces." },
+      groups: [
+        {
+          key: "recipient",
+          label: "Recipient",
+          fields: [
+            {
+              key: "userName",
+              token: "{{userName}}",
+              label: "User name",
+              group: "recipient",
+              type: "string",
+              description: "Recipient name",
+              source: "user",
+              availability: ["announcement"],
+              example: "Test User",
+            },
+            {
+              key: "communityName",
+              token: "{{communityName}}",
+              label: "Community",
+              group: "community",
+              type: "string",
+              description: "Community name",
+              source: "community",
+              availability: ["announcement"],
+              example: "Community One",
+            },
+          ],
+        },
+      ],
+      fields: [],
+      sampleData: { userName: "Test User", communityName: "Community One" },
+      dataSummary: { members: 100 },
+    })
+    mockRenderMarketingPreview.mockImplementation((payload) =>
+      Promise.resolve({
+        subject: payload.subject || "",
+        content: payload.content || "",
+        isHtml: Boolean(payload.isHtml),
+        variables: { userName: "Test User", communityName: "Community One" },
+        usedVariables: [],
+        missingVariables: [],
+        contentData: {},
+      }),
+    )
   })
 
   it("announcement + Send Now creates then sends", async () => {

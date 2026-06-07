@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation"
 import type { BlogPost as BlogPostType } from "@/lib/blog-content"
 import { getRelatedBlogPosts } from "@/lib/blog-content"
 import { localizeHref } from "@/lib/i18n/client"
+import { SafeHtml } from "@/components/security/safe-html"
 import "../blogs/blog-styles.css"
 
 interface TocItem {
@@ -259,11 +260,11 @@ export function BlogPost({ post }: BlogPostProps) {
         {/* Main content */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Article */}
-          <div
+          <SafeHtml
             ref={contentRef}
             className="blog-content"
             style={{ maxWidth: "680px" }}
-            dangerouslySetInnerHTML={{ __html: content }}
+            html={content}
           />
 
           {/* Divider */}

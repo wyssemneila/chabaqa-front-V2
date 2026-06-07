@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
+import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import {
   Users,
   MessageSquare,
@@ -34,11 +34,13 @@ import { useToast } from "@/hooks/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
 import { PageShell } from "@/components/creator-dashboard"
+import { ContentChartWorkspace } from "@/components/analytics"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { useRouter } from "next/navigation"
 import type {
   CreatorAnalyticsParams,
   CreatorAnalyticsExportScope,
+  CreatorContentChartPack,
   CreatorFunnelContentType,
   CreatorFunnelResponse,
   CreatorCourseChaptersFunnelResponse,
@@ -321,7 +323,7 @@ const getTopLoader = (feature: AnalyticsFeature) => {
   return api.creatorAnalytics.getProducts
 }
 
-const featureToContentType = (feature: AnalyticsFeature): CreatorFunnelContentType => {
+const featureToContentType = (feature: AnalyticsFeature): CreatorContentChartPack["contentType"] => {
   if (feature === "courses") return "course"
   if (feature === "challenges") return "challenge"
   if (feature === "sessions") return "session"
@@ -589,6 +591,7 @@ export default function CommunityAnalyticsPage() {
   const [referrersData, setReferrersData] = useState<ReferrerRow[]>([])
   const [referrersSummary, setReferrersSummary] = useState<ReferrersSummary | null>(null)
   const [topItems, setTopItems] = useState<TopItemRow[]>([])
+  const [contentCharts, setContentCharts] = useState<CreatorContentChartPack | null>(null)
   const [detailsTab, setDetailsTab] = useState<"overview" | "details">("overview")
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
@@ -606,12 +609,14 @@ export default function CommunityAnalyticsPage() {
   const [funnelError, setFunnelError] = useState<string | null>(null)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isChartsLoading, setIsChartsLoading] = useState(false)
   const [isSupplementalLoading, setIsSupplementalLoading] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
   const [analyticsMeta, setAnalyticsMeta] = useState<any | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [chartsError, setChartsError] = useState<string | null>(null)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
 
   const requestIdRef = useRef(0)
@@ -629,6 +634,7 @@ export default function CommunityAnalyticsPage() {
     setReferrersData([])
     setReferrersSummary(null)
     setTopItems([])
+    setContentCharts(null)
     setDetailsTab("overview")
     setSelectedItemId(null)
     setSelectedItemTitle(null)
@@ -641,6 +647,8 @@ export default function CommunityAnalyticsPage() {
     setFunnelError(null)
     setLastUpdatedAt(null)
     setAnalyticsMeta(null)
+    setChartsError(null)
+    setIsChartsLoading(false)
     setIsSupplementalLoading(false)
   }, [])
 
@@ -782,9 +790,20 @@ export default function CommunityAnalyticsPage() {
       return { devicesRes, referrersRes }
     }
 
+    const fetchContentCharts = async () => {
+      const response = await api.creatorAnalytics.getContentCharts({
+        ...analyticsParams,
+        contentType: featureToContentType(selectedFeature),
+      })
+      return (response as any)?.data || response || null
+    }
+
     try {
       setIsSupplementalLoading(true)
+      setIsChartsLoading(true)
+      setChartsError(null)
       const supplementalPromise = fetchSupplemental()
+      const chartsPromise = fetchContentCharts().catch((error) => ({ __chartError: error }))
       const payload = await fetchCore()
       if (requestId !== requestIdRef.current) return
 
@@ -822,6 +841,30 @@ export default function CommunityAnalyticsPage() {
         hasLoadedOnceRef.current = true
         setHasLoadedOnce(true)
       }
+
+      void chartsPromise
+        .then((chartPayload: any) => {
+          if (requestId !== requestIdRef.current) return
+          if (chartPayload?.__chartError) {
+            const message = typeof chartPayload.__chartError?.message === "string"
+              ? chartPayload.__chartError.message
+              : "Failed to load detailed chart data."
+            setChartsError(message)
+            setContentCharts(null)
+            return
+          }
+
+          const pack = chartPayload?.byContentType
+            ? chartPayload.byContentType[featureToContentType(selectedFeature)]
+            : chartPayload
+          setContentCharts(pack || null)
+          setChartsError(pack ? null : "No detailed chart data is available for this filter yet.")
+        })
+        .finally(() => {
+          if (requestId === requestIdRef.current) {
+            setIsChartsLoading(false)
+          }
+        })
 
       void supplementalPromise
         .then((supplementalPayload) => {
@@ -929,6 +972,7 @@ export default function CommunityAnalyticsPage() {
       const message = typeof error?.message === "string" ? error.message : "Failed to load analytics data."
       setLoadError(message)
       setIsSupplementalLoading(false)
+      setIsChartsLoading(false)
       if (!hasLoadedOnceRef.current) {
         resetAnalyticsState()
       }
@@ -1201,8 +1245,11 @@ export default function CommunityAnalyticsPage() {
   }, [selectedFeature])
 
   const hasAnalyticsData = useMemo(() => {
-    return !isOverviewEffectivelyEmpty(baseOverview) || topItems.length > 0 || membershipData.length > 0
-  }, [baseOverview, membershipData.length, topItems.length])
+    return !isOverviewEffectivelyEmpty(baseOverview)
+      || topItems.length > 0
+      || membershipData.length > 0
+      || Boolean(contentCharts?.charts?.some((chart) => Array.isArray(chart.data) && chart.data.length > 0))
+  }, [baseOverview, contentCharts?.charts, membershipData.length, topItems.length])
 
   const freshnessLabel = useMemo(() => {
     if (isRefreshing) return "Refreshing now"
@@ -1370,7 +1417,7 @@ export default function CommunityAnalyticsPage() {
 
   if (communityLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
         <p className="text-gray-600">Loading communities...</p>
       </div>
     )
@@ -1378,7 +1425,7 @@ export default function CommunityAnalyticsPage() {
 
   if (!selectedCommunityId) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
         <div className="text-center space-y-3">
           <h2 className="text-xl font-semibold text-gray-900">Select a community</h2>
           <p className="text-gray-600">Choose a community to view its analytics.</p>
@@ -1389,8 +1436,8 @@ export default function CommunityAnalyticsPage() {
 
   if (isInitialLoading && !hasLoadedOnce) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="min-h-screen bg-white">
+        <div className="w-full max-w-none space-y-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Community Analytics</h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Loading analytics...</p>
@@ -1415,8 +1462,8 @@ export default function CommunityAnalyticsPage() {
   if (guard) return guard
 
   return (
-    <PageShell className="min-h-screen bg-gray-50">
-      <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+    <PageShell className="min-h-screen bg-white">
+      <div className="w-full max-w-none">
         <div className="mb-6 lg:mb-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -1550,96 +1597,17 @@ export default function CommunityAnalyticsPage() {
           })}
         </div>
 
-        <div className="mb-6 lg:mb-8">
-          <Card className="shadow-sm">
-            <CardHeader className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold text-gray-900">Performance Trend</CardTitle>
-                  <CardDescription className="text-sm text-gray-500 mt-1">Views and completions over time</CardDescription>
-                </div>
-                {membershipData.length > 0 && (
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
-                      <span className="text-gray-600">Views</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                      <span className="text-gray-600">Completions</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 pt-0">
-              {membershipData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={320}>
-                  <AreaChart data={membershipData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorCompletions" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis
-                      dataKey="month"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: '#6b7280' }}
-                      dy={10}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: '#6b7280' }}
-                    />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                      itemStyle={{ fontSize: '13px' }}
-                      cursor={{ stroke: '#9ca3af', strokeDasharray: '4 4' }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="views"
-                      name="Views"
-                      stroke="#6366f1"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorViews)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="completes"
-                      name="Completions"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorCompletions)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[320px] flex flex-col items-center justify-center text-gray-500 space-y-3 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                  <div className="p-3 bg-white rounded-full shadow-sm">
-                    <TrendingUp className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <p className="text-sm font-medium">No trend data available</p>
-                  <Button variant="outline" size="sm" onClick={() => setShowAdvanced(true)} className="text-xs">
-                    Open advanced refresh
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <div className="mb-6">
+          <ContentChartWorkspace
+            pack={contentCharts}
+            contentTypeLabel={selectedFeatureLabel}
+            isLoading={isChartsLoading}
+            error={chartsError}
+            onRefresh={() => void runAnalyticsLoad({ reason: "sync", allowAutoBackfill: false })}
+          />
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
+        <div className="hidden">
           <Card className="shadow-sm xl:col-span-2">
             <CardHeader className="p-6">
               <CardTitle className="text-lg font-semibold text-gray-900">Top {selectedFeatureLabel}</CardTitle>

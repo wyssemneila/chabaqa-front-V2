@@ -11,11 +11,11 @@ interface CampaignStatsProps {
 export function CampaignStats({ stats, loading, error }: CampaignStatsProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="p-4">
+          <Card key={i} className="rounded-lg border-[var(--bd)] bg-white p-4 shadow-sm">
             <div className="flex items-center justify-center h-24">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin text-chabaqa-primary" />
             </div>
           </Card>
         ))}
@@ -25,9 +25,9 @@ export function CampaignStats({ stats, loading, error }: CampaignStatsProps) {
 
   if (error || !stats) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="p-4">
+          <Card key={i} className="rounded-lg border-[var(--bd)] bg-white p-4 shadow-sm">
             <div className="flex items-center justify-center h-24 text-muted-foreground">
               <p className="text-sm">No data</p>
             </div>
@@ -42,48 +42,48 @@ export function CampaignStats({ stats, loading, error }: CampaignStatsProps) {
       name: "Total Campaigns",
       value: stats.totalCampaigns.toLocaleString(),
       icon: Mail,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
+      color: "text-chabaqa-primary",
+      bgColor: "bg-chabaqa-primary/10",
     },
     {
       name: "Emails Sent",
       value: stats.totalEmailsSent.toLocaleString(),
       icon: Send,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
+      color: "text-courses-700",
+      bgColor: "bg-courses/10",
     },
     {
       name: "Average Open Rate",
       value: `${stats.averageOpenRate.toFixed(1)}%`,
       icon: Users,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
+      color: "text-sessions-700",
+      bgColor: "bg-sessions/10",
     },
     {
       name: "Average Click Rate",
       value: `${stats.averageClickRate.toFixed(1)}%`,
       icon: MousePointerClick,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
+      color: "text-challenges-700",
+      bgColor: "bg-challenges/10",
     },
   ]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
       {statItems.map((stat) => (
-        <Card key={stat.name} className="p-4 hover:shadow-md transition-shadow">
+        <Card key={stat.name} className="rounded-lg border-[var(--bd)] bg-white p-4 shadow-sm transition hover:border-chabaqa-primary/30 hover:shadow-md">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-gray-500 font-medium">{stat.name}</p>
-              <h3 className="text-2xl font-bold mt-1">{stat.value}</h3>
+              <p className="text-sm font-medium text-[var(--t2)]">{stat.name}</p>
+              <h3 className="mt-1 text-2xl font-bold text-[var(--t1)]">{stat.value}</h3>
               {stat.name.includes("Rate") && stats.totalEmailsSent > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-[var(--t3)]">
                   of {stats.totalEmailsSent.toLocaleString()} sent
                 </p>
               )}
             </div>
-            <div className={`${stat.bgColor} p-3 rounded-full`}>
-              <stat.icon className={`w-5 h-5 ${stat.color}`} />
+            <div className={`${stat.bgColor} rounded-md p-3`}>
+              <stat.icon className={`h-5 w-5 ${stat.color}`} />
             </div>
           </div>
         </Card>

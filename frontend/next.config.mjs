@@ -1,9 +1,13 @@
 import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
+const isDevelopment = process.env.NODE_ENV === 'development'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep next dev artifacts separate from production builds so a local
+  // `next build` cannot invalidate the running dev server's chunk manifest.
+  distDir: isDevelopment ? '.next-dev' : '.next',
   output: 'standalone',
   experimental: {
     cpus: 1,

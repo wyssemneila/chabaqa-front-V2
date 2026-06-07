@@ -22,6 +22,8 @@ const QUICK_QUESTIONS = [
   "Where can I contact support for billing?",
 ]
 
+const SUPPORT_MASCOT_SRC = "/Logos/PNG/support_mascot_v2.png"
+
 function normalizeIncomingMessage(message: any): LiveSupportMessage {
   return {
     ...message,
@@ -245,12 +247,12 @@ export function LiveSupportWidget() {
           <X className="relative h-7 w-7 text-white" />
         ) : (
           <Image
-            src="/Logos/PNG/pop.png"
-            alt="Chabaqa"
-            width={30}
-            height={30}
-            sizes="30px"
-            className="relative h-8 w-8"
+            src={SUPPORT_MASCOT_SRC}
+            alt="Chabaqa support mascot"
+            width={48}
+            height={48}
+            sizes="48px"
+            className="relative h-12 w-12 object-contain"
           />
         )}
       </Button>
@@ -266,12 +268,12 @@ export function LiveSupportWidget() {
               <div className="flex items-center gap-3">
                 <div className="rounded-xl border border-white/30 bg-white/15 p-1.5">
                   <Image
-                    src="/Logos/PNG/pop.png"
-                    alt="Chabaqa"
-                    width={24}
-                    height={24}
-                    sizes="24px"
-                    className="h-6 w-6"
+                    src={SUPPORT_MASCOT_SRC}
+                    alt="Chabaqa support mascot"
+                    width={32}
+                    height={32}
+                    sizes="32px"
+                    className="h-8 w-8 object-contain"
                   />
                 </div>
                 <div>

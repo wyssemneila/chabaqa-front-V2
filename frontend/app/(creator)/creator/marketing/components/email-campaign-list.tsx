@@ -51,17 +51,17 @@ export function EmailCampaignList({
   const getStatusColor = (status: EmailCampaignStatus) => {
     switch (status) {
       case "sent":
-        return "bg-green-100 text-green-800 hover:bg-green-100"
+        return "bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
       case "sending":
-        return "bg-blue-100 text-blue-800 hover:bg-blue-100"
+        return "bg-courses/10 text-courses-700 hover:bg-courses/10"
       case "scheduled":
-        return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+        return "bg-challenges/10 text-challenges-700 hover:bg-challenges/10"
       case "failed":
-        return "bg-red-100 text-red-800 hover:bg-red-100"
+        return "bg-red-50 text-red-700 hover:bg-red-50"
       case "cancelled":
-        return "bg-gray-100 text-gray-800 hover:bg-gray-100"
+        return "bg-gray-100 text-gray-700 hover:bg-gray-100"
       default:
-        return "bg-gray-100 text-gray-800 hover:bg-gray-100"
+        return "bg-[var(--p2)] text-chabaqa-primary hover:bg-[var(--p2)]"
     }
   }
 
@@ -79,7 +79,7 @@ export function EmailCampaignList({
 
   if (loading) {
     return (
-      <Card>
+      <Card className="rounded-lg border-[var(--bd)] bg-white shadow-sm">
         <div className="p-6 flex items-center justify-center min-h-[320px]">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -92,7 +92,7 @@ export function EmailCampaignList({
 
   if (!campaigns?.length) {
     return (
-      <Card>
+      <Card className="rounded-lg border-[var(--bd)] bg-white shadow-sm">
         <div className="p-10 text-center">
           <p className="text-lg font-semibold mb-1">No campaigns yet</p>
           <p className="text-sm text-muted-foreground">Create your first campaign to start engaging your members.</p>
@@ -102,12 +102,12 @@ export function EmailCampaignList({
   }
 
   return (
-    <Card>
-      <div className="p-6">
+    <Card className="overflow-hidden rounded-lg border-[var(--bd)] bg-white shadow-sm">
+      <div className="overflow-x-auto p-0">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-[var(--bg)]">
             <TableRow>
-              <TableHead>Campaign</TableHead>
+              <TableHead className="min-w-[260px] px-5">Campaign</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Sent</TableHead>
@@ -135,22 +135,27 @@ export function EmailCampaignList({
               })()
 
               return (
-                <TableRow key={campaign._id}>
-                  <TableCell className="font-medium">{campaign.title}</TableCell>
+                <TableRow key={campaign._id} className="hover:bg-[var(--bg)]/60">
+                  <TableCell className="px-5">
+                    <div className="max-w-[360px]">
+                      <p className="truncate font-semibold text-[var(--t1)]">{campaign.title}</p>
+                      <p className="mt-0.5 truncate text-xs text-[var(--t3)]">{campaign.subject}</p>
+                    </div>
+                  </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="capitalize">
+                    <Badge variant="secondary" className="rounded-full bg-white capitalize text-[var(--t2)]">
                       {formatType(campaign.type)}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(campaign.status)}>{campaign.status}</Badge>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm">{campaign.sentCount}</TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right font-mono text-sm text-[var(--t1)]">{campaign.sentCount}</TableCell>
+                  <TableCell className="text-right text-sm text-[var(--t2)]">
                     {campaign.openCount}
                     {campaign.sentCount > 0 ? ` (${Math.round((campaign.openCount / campaign.sentCount) * 100)}%)` : ""}
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right text-sm text-[var(--t2)]">
                     {campaign.clickCount}
                     {campaign.sentCount > 0 ? ` (${Math.round((campaign.clickCount / campaign.sentCount) * 100)}%)` : ""}
                   </TableCell>
@@ -253,7 +258,7 @@ export function EmailCampaignList({
         </Table>
 
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 pt-4 border-t">
+          <div className="flex items-center justify-between border-t px-5 py-4">
             <div className="text-sm text-muted-foreground">
               Showing {((pagination.page - 1) * pagination.limit) + 1} to{" "}
               {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} campaigns

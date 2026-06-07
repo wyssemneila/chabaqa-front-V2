@@ -19,7 +19,15 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { challengesApi, coursesApi, emailCampaignsApi, eventsApi, productsApi, sessionsApi } from "@/lib/api"
-import type { InactivityPeriod, InactiveUserStats, ContentType } from "@/lib/api/email-campaigns.api"
+import type {
+  ContentType,
+  EmailCampaignType,
+  InactivityPeriod,
+  InactiveUserStats,
+  MarketingMergeField,
+  MarketingMergeFieldGroup,
+  MarketingPreviewResponse,
+} from "@/lib/api/email-campaigns.api"
 import { resolveScheduledAt } from "./campaign-form-utils"
 import { SingleInviteDialog } from "../contacts/components/single-invite-dialog"
 import { ImportContactsDialog } from "../contacts/components/import-contacts-dialog"
@@ -39,11 +47,15 @@ type BuilderSeed = Partial<{
   contentType: ContentType
   contentId: string
   contentLabel: string
+  templateId: string
+  templateCategory: string
+  campaignType: EmailCampaignType
 }>
 
 type ContentPick = { id: string; title: string }
 
 type VariableBucket = "base" | "inactive" | "content" | "course"
+type ComposerVariable = Pick<MarketingMergeField, "key" | "label" | "description" | "token" | "example" | "group">
 
 const VARIABLE_DEFS: Array<{
   key: string
@@ -111,6 +123,23 @@ const extractList = (raw: any): any[] => {
   return []
 }
 
+const campaignTypeForKind = (kind: CampaignKind, contentType?: ContentType | ""): EmailCampaignType => {
+  if (kind === "inactive-users") return "inactive_user_reactivation"
+  if (kind === "course-progress") return "course_progress_reminder"
+  if (kind === "content-reminder" && contentType === "event") return "event_reminder"
+  if (kind === "content-reminder" && contentType === "cours") return "course_update"
+  if (kind === "content-reminder") return "custom"
+  return "announcement"
+}
+
+const previewMetadataFromSeed = (initialValues?: BuilderSeed): Record<string, any> | undefined => {
+  const metadata: Record<string, any> = {}
+  if (initialValues?.templateId) metadata.templateId = initialValues.templateId
+  if (initialValues?.templateCategory) metadata.templateCategory = initialValues.templateCategory
+  if (initialValues?.contentLabel) metadata.contentLabel = initialValues.contentLabel
+  return Object.keys(metadata).length ? metadata : undefined
+}
+
 export function CampaignBuilderDialog(props: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -157,6 +186,13 @@ export function CampaignBuilderDialog(props: {
   const [inactiveStats, setInactiveStats] = useState<InactiveUserStats | null>(null)
   const [inactiveStatsLoading, setInactiveStatsLoading] = useState(false)
   const [inactiveStatsError, setInactiveStatsError] = useState<string | null>(null)
+
+  const [mergeFieldGroups, setMergeFieldGroups] = useState<MarketingMergeFieldGroup[]>([])
+  const [mergeFieldsLoading, setMergeFieldsLoading] = useState(false)
+  const [mergeFieldsError, setMergeFieldsError] = useState<string | null>(null)
+  const [previewResponse, setPreviewResponse] = useState<MarketingPreviewResponse | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
 
   const [contentItems, setContentItems] = useState<ContentPick[]>([])
   const [contentItemsLoading, setContentItemsLoading] = useState(false)
@@ -213,6 +249,10 @@ export function CampaignBuilderDialog(props: {
     setContentItemsError(null)
     setContentItemsLoading(false)
     setContentPickerOpen(false)
+    setMergeFieldGroups([])
+    setMergeFieldsError(null)
+    setPreviewResponse(null)
+    setPreviewError(null)
   }, [initialValues])
 
   useEffect(() => {
@@ -287,6 +327,52 @@ export function CampaignBuilderDialog(props: {
     }
   }, [selectedCommunityId, targetCourseId, targetMaxProgressPct, targetMinEnrolledDays, toast])
 
+  const resolvedCampaignType = useMemo(
+    () => initialValues?.campaignType || campaignTypeForKind(kind, contentType || undefined),
+    [contentType, initialValues?.campaignType, kind],
+  )
+
+  useEffect(() => {
+    if (!open || !selectedCommunityId || kind === "custom-invitation") return
+    let cancelled = false
+    setMergeFieldsLoading(true)
+    setMergeFieldsError(null)
+    emailCampaignsApi
+      .getMarketingMergeFields(selectedCommunityId, {
+        campaignType: resolvedCampaignType,
+        contentType: contentType || undefined,
+        contentId: contentId || undefined,
+        targetCourseId: targetCourseId || undefined,
+        inactivityPeriod: inactivityPeriod || undefined,
+      })
+      .then((response) => {
+        if (cancelled) return
+        setMergeFieldGroups(response.groups || [])
+      })
+      .catch((error: any) => {
+        if (cancelled) return
+        setMergeFieldGroups([])
+        setMergeFieldsError(error?.message || "Could not load merge fields.")
+      })
+      .finally(() => {
+        if (cancelled) return
+        setMergeFieldsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    contentId,
+    contentType,
+    inactivityPeriod,
+    kind,
+    open,
+    resolvedCampaignType,
+    selectedCommunityId,
+    targetCourseId,
+  ])
+
   const recipientsEstimate = useMemo(() => {
     if (!inactiveStats) return null
     if (kind === "inactive-users") {
@@ -307,13 +393,22 @@ export function CampaignBuilderDialog(props: {
     return ""
   }, [inactivityPeriod, kind])
 
-  const availableVariables = useMemo(() => {
+  const fallbackVariables = useMemo(() => {
     const buckets: Array<VariableBucket> = ["base"]
     if (kind === "inactive-users") buckets.push("inactive")
     if (kind === "content-reminder") buckets.push("content")
     if (kind === "course-progress") buckets.push("course")
-    return VARIABLE_DEFS.filter((v) => v.showFor.some((b) => buckets.includes(b)))
+    return VARIABLE_DEFS
+      .filter((v) => v.showFor.some((b) => buckets.includes(b)))
+      .map((v) => ({ ...v, token: `{{${v.key}}}`, group: "fallback", example: "" }))
   }, [kind])
+
+  const availableVariables: ComposerVariable[] = useMemo(() => {
+    const backendVariables = mergeFieldGroups.flatMap((group) =>
+      group.fields.map((field) => ({ ...field, group: group.label })),
+    )
+    return backendVariables.length ? backendVariables : fallbackVariables
+  }, [fallbackVariables, mergeFieldGroups])
 
   const previewVariables = useMemo(() => {
     const now = new Date()
@@ -333,6 +428,72 @@ export function CampaignBuilderDialog(props: {
 
   const previewSubject = useMemo(() => renderTemplate(subject, previewVariables), [previewVariables, subject])
   const previewContent = useMemo(() => renderTemplate(content, previewVariables), [previewVariables, content])
+
+  useEffect(() => {
+    if (!open || !selectedCommunityId || kind === "custom-invitation") return
+    if (!subject.trim() && !content.trim()) {
+      setPreviewResponse(null)
+      setPreviewError(null)
+      return
+    }
+
+    let cancelled = false
+    const timeout = window.setTimeout(() => {
+      setPreviewLoading(true)
+      setPreviewError(null)
+      emailCampaignsApi
+        .renderMarketingPreview({
+          communityId: selectedCommunityId,
+          subject,
+          content: content || " ",
+          isHtml,
+          campaignType: resolvedCampaignType,
+          contentType: contentType || undefined,
+          contentId: contentId || undefined,
+          targetCourseId: targetCourseId || undefined,
+          targetMaxProgressPct: targetMaxProgressPct ? parseInt(targetMaxProgressPct, 10) : undefined,
+          targetMinEnrolledDays: targetMinEnrolledDays ? parseInt(targetMinEnrolledDays, 10) : undefined,
+          inactivityPeriod: inactivityPeriod || undefined,
+          metadata: previewMetadataFromSeed(initialValues),
+        })
+        .then((response) => {
+          if (cancelled) return
+          setPreviewResponse(response)
+        })
+        .catch((error: any) => {
+          if (cancelled) return
+          setPreviewResponse(null)
+          setPreviewError(error?.message || "Live preview is unavailable.")
+        })
+        .finally(() => {
+          if (cancelled) return
+          setPreviewLoading(false)
+        })
+    }, 350)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeout)
+    }
+  }, [
+    content,
+    contentId,
+    contentType,
+    inactivityPeriod,
+    initialValues,
+    isHtml,
+    kind,
+    open,
+    resolvedCampaignType,
+    selectedCommunityId,
+    subject,
+    targetCourseId,
+    targetMaxProgressPct,
+    targetMinEnrolledDays,
+  ])
+
+  const renderedPreviewSubject = previewResponse?.subject ?? previewSubject
+  const renderedPreviewContent = previewResponse?.content ?? previewContent
 
   useEffect(() => {
     if (!open) return
@@ -552,6 +713,14 @@ export function CampaignBuilderDialog(props: {
           trackClicks,
         } as any)
       })()
+      const baseMetadata = {
+        ...(previewMetadataFromSeed(initialValues) || {}),
+        ...(contentLabelValue ? { contentLabel: contentLabelValue } : {}),
+      }
+      const campaignMetadata = Object.keys(baseMetadata).length ? baseMetadata : undefined
+      const resolvedTemplateData = previewResponse?.contentData && Object.keys(previewResponse.contentData).length
+        ? previewResponse.contentData
+        : undefined
 
       if (kind === "content-reminder") {
         const response = await emailCampaignsApi.createContentReminder({
@@ -565,7 +734,7 @@ export function CampaignBuilderDialog(props: {
           isHtml,
           trackOpens,
           trackClicks,
-          metadata: contentLabelValue ? { contentLabel: contentLabelValue } : undefined,
+          metadata: campaignMetadata,
         } as any)
 
         toast({
@@ -590,7 +759,9 @@ export function CampaignBuilderDialog(props: {
           isHtml,
           trackOpens,
           trackClicks,
-        })
+          metadata: campaignMetadata,
+          templateData: resolvedTemplateData,
+        } as any)
 
         if (!scheduledAt && sendingTime === "now") {
           try {
@@ -618,6 +789,8 @@ export function CampaignBuilderDialog(props: {
           isHtml,
           trackOpens,
           trackClicks,
+          metadata: campaignMetadata,
+          templateData: resolvedTemplateData,
         } as any)
 
         if (!scheduledAt && sendingTime === "now") {
@@ -652,11 +825,13 @@ export function CampaignBuilderDialog(props: {
         subject: subject.trim(),
         content,
         communityId: selectedCommunityId,
-        type: "announcement" as any,
+        type: resolvedCampaignType as any,
         scheduledAt,
         isHtml,
         trackOpens,
         trackClicks,
+        metadata: campaignMetadata,
+        templateData: resolvedTemplateData,
       } as any)
 
       if (!scheduledAt && sendingTime === "now") {
@@ -697,6 +872,7 @@ export function CampaignBuilderDialog(props: {
     contentId,
     contentLabelValue,
     contentType,
+    initialValues,
     inactivityPeriod,
     isHtml,
     kind,
@@ -707,6 +883,8 @@ export function CampaignBuilderDialog(props: {
     selectedCommunityId,
     sendingTime,
     subject,
+    previewResponse,
+    resolvedCampaignType,
     title,
     toast,
     trackClicks,
@@ -723,7 +901,7 @@ export function CampaignBuilderDialog(props: {
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[980px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[1180px]">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>{dialogDescription}</DialogDescription>
@@ -1101,7 +1279,20 @@ export function CampaignBuilderDialog(props: {
                     <AccordionContent>
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label>Variables</Label>
+                          <div className="flex items-center justify-between gap-3">
+                            <Label>Backend merge fields</Label>
+                            {mergeFieldsLoading ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Syncing
+                              </span>
+                            ) : null}
+                          </div>
+                          {mergeFieldsError ? (
+                            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                              {mergeFieldsError}
+                            </p>
+                          ) : null}
                           <TooltipProvider delayDuration={150}>
                             <div className="flex flex-wrap gap-2">
                               {availableVariables.map((v) => (
@@ -1113,19 +1304,22 @@ export function CampaignBuilderDialog(props: {
                                       onClick={() => insertVariableAtCursor(v.key)}
                                     >
                                       <Badge variant="secondary" className="rounded-full">
-                                        {`{{${v.key}}}`}
+                                        {v.token || `{{${v.key}}}`}
                                       </Badge>
                                       <span className="hidden sm:inline">{v.label}</span>
                                     </button>
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     <p className="text-xs">{v.description}</p>
+                                    {v.example !== undefined && v.example !== "" ? (
+                                      <p className="mt-1 text-[11px] text-muted-foreground">Example: {String(v.example)}</p>
+                                    ) : null}
                                   </TooltipContent>
                                 </Tooltip>
                               ))}
                             </div>
                           </TooltipProvider>
-                          <p className="text-xs text-gray-500">Click to insert into the focused field (subject or content).</p>
+                          <p className="text-xs text-gray-500">Click any token to insert it into the focused subject or content field.</p>
                         </div>
                         <div className="flex items-center justify-between rounded-md border p-3">
                           <div className="space-y-0.5">
@@ -1242,13 +1436,30 @@ export function CampaignBuilderDialog(props: {
 
           <div className="lg:col-span-2 space-y-3">
             <div className="rounded-lg border bg-white p-4">
-              <p className="text-sm font-semibold text-gray-900">Live preview</p>
-              <p className="text-xs text-gray-500 mt-1">Preview uses sample values (Test User, your community, today).</p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Live preview</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Rendered by backend with real sample member, community, activity, and content data.
+                  </p>
+                </div>
+                {previewLoading ? <Loader2 className="h-4 w-4 animate-spin text-chabaqa-primary" /> : null}
+              </div>
+              {previewError ? (
+                <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {previewError}
+                </p>
+              ) : null}
+              {previewResponse?.missingVariables?.length ? (
+                <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  Missing: {previewResponse.missingVariables.map((key) => `{{${key}}}`).join(", ")}
+                </div>
+              ) : null}
               <div className="mt-3 space-y-2">
                 <div className="rounded-md border bg-gray-50 p-3">
                   <p className="text-xs font-medium text-gray-600">Subject</p>
                   <p className="text-sm text-gray-900 mt-1 whitespace-pre-wrap" dir="auto">
-                    {previewSubject || "—"}
+                    {renderedPreviewSubject || "—"}
                   </p>
                 </div>
 
@@ -1260,12 +1471,12 @@ export function CampaignBuilderDialog(props: {
                       sandbox=""
                       className="mt-2 w-full rounded-md border bg-white"
                       style={{ height: 360 }}
-                      srcDoc={previewContent || "<div style='padding:12px;color:#6b7280;'>No content yet.</div>"}
+                      srcDoc={renderedPreviewContent || "<div style='padding:12px;color:#6b7280;'>No content yet.</div>"}
                     />
                   ) : (
                     <div className="mt-2 max-h-[360px] overflow-auto rounded-md border bg-white p-3">
                       <p className="text-sm text-gray-900 whitespace-pre-wrap" dir="auto">
-                        {previewContent || "—"}
+                        {renderedPreviewContent || "—"}
                       </p>
                     </div>
                   )}

@@ -303,6 +303,80 @@ export interface WeeklyReportResponse {
   deliveredAt?: string;
 }
 
+export type CreatorContentChartType = 'course' | 'challenge' | 'session' | 'event' | 'product' | 'post';
+
+export type CreatorAnalyticsChartVisualization =
+  | 'line'
+  | 'area'
+  | 'bar'
+  | 'stacked_bar'
+  | 'donut'
+  | 'funnel'
+  | 'heatmap'
+  | 'table';
+
+export interface CreatorAnalyticsChart {
+  id: string;
+  title: string;
+  description: string;
+  visualization: CreatorAnalyticsChartVisualization;
+  metrics: string[];
+  data: Array<Record<string, any>>;
+  xKey?: string;
+  yKeys?: string[];
+  valueKey?: string;
+  source: string;
+  precision: 'exact' | 'rollup' | 'hybrid' | 'derived';
+  unit?: string;
+}
+
+export interface CreatorContentChartPack {
+  contentType: CreatorContentChartType;
+  contentId?: string | null;
+  contentMeta?: {
+    title?: string;
+    communityId?: string;
+    currency?: string;
+    price?: number;
+    trackingIds?: string[];
+    orderIds?: string[];
+  } | null;
+  generatedAt: string;
+  range: {
+    from: string;
+    to: string;
+    timezone?: string;
+    lookbackDays?: number;
+  };
+  totals: Record<string, number>;
+  charts: CreatorAnalyticsChart[];
+  precision: {
+    label: string;
+    sources: string[];
+    notes: string[];
+  };
+}
+
+export interface CreatorContentChartsResponse {
+  generatedAt: string;
+  range: {
+    from: string;
+    to: string;
+    timezone?: string;
+    lookbackDays?: number;
+  };
+  community?: {
+    scoped: boolean;
+    id: string | null;
+  };
+  byContentType: Partial<Record<CreatorContentChartType, CreatorContentChartPack>>;
+}
+
+export interface CreatorContentChartsParams extends CreatorAnalyticsParams {
+  contentType?: CreatorContentChartType | 'all';
+  contentId?: string;
+}
+
 export const creatorAnalyticsApi = {
   getOverview: async (params?: CreatorAnalyticsParams): Promise<ApiSuccessResponse<any>> => {
     return apiClient.get<ApiSuccessResponse<any>>('/analytics/creator/overview', params);
@@ -330,6 +404,11 @@ export const creatorAnalyticsApi = {
   },
   getReferrers: async (params?: CreatorAnalyticsParams): Promise<ApiSuccessResponse<any>> => {
     return apiClient.get<ApiSuccessResponse<any>>('/analytics/creator/referrers', params);
+  },
+  getContentCharts: async (
+    params?: CreatorContentChartsParams,
+  ): Promise<ApiSuccessResponse<CreatorContentChartsResponse | CreatorContentChartPack>> => {
+    return apiClient.get<ApiSuccessResponse<CreatorContentChartsResponse | CreatorContentChartPack>>('/analytics/creator/content-charts', params);
   },
   backfill: async (days: number = 90): Promise<ApiSuccessResponse<any>> => {
     return apiClient.post<ApiSuccessResponse<any>>(`/analytics/creator/backfill?days=${days}`, {});

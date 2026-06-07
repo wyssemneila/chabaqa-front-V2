@@ -18,6 +18,8 @@ export enum SubscriptionStatus {
   INCOMPLETE = 'incomplete',
 }
 
+export type BillingInterval = 'month' | 'year';
+
 export enum InvoiceStatus {
   DRAFT = 'draft',
   OPEN = 'open',
@@ -68,6 +70,8 @@ export interface SubscriptionPlan {
   tier: PlanTier;
   name: string;
   priceDTPerMonth: number;
+  yearlyPriceDTPerMonth?: number;
+  yearlyTotalDT?: number;
   trialDays: number;
   limits: PlanLimits;
   features: PlanFeatures;
@@ -82,15 +86,21 @@ export interface CreatorSubscription {
   plan: PlanTier;
   status: SubscriptionStatus;
   cancelAtPeriodEnd: boolean;
+  billingInterval?: BillingInterval;
   currentPeriodStart: string;
   currentPeriodEnd: string;
+  nextBillingAt?: string;
   trialEndsAt?: string;
+  amount?: number;
+  currency?: string;
   hasPaymentMethod: boolean;
   paymentBrand?: string;
   paymentLast4?: string;
   provider?: string;
   providerCustomerId?: string;
   providerSubscriptionId?: string;
+  providerCheckoutSessionId?: string;
+  providerPriceId?: string;
   createdAt: string;
   updatedAt: string;
 }
