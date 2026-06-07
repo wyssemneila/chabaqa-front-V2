@@ -123,8 +123,11 @@ export class CookieUtil {
   static setAdminAccessTokenCookie(res: Response, token: string, rememberMe: boolean = false): void {
     const config = rememberMe ? {
       ...this.ACCESS_TOKEN_CONFIG,
-      maxAge: 4 * 60 * 60 * 1000,
-    } : this.ACCESS_TOKEN_CONFIG;
+      maxAge: 60 * 60 * 1000,
+    } : {
+      ...this.ACCESS_TOKEN_CONFIG,
+      maxAge: 30 * 60 * 1000,
+    };
 
     res.cookie(this.ADMIN_COOKIE_NAMES.ACCESS_TOKEN, token, config);
   }
@@ -132,8 +135,11 @@ export class CookieUtil {
   static setAdminRefreshTokenCookie(res: Response, token: string, rememberMe: boolean = false): void {
     const config = rememberMe ? {
       ...this.REFRESH_TOKEN_CONFIG,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    } : this.REFRESH_TOKEN_CONFIG;
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    } : {
+      ...this.REFRESH_TOKEN_CONFIG,
+      maxAge: 12 * 60 * 60 * 1000,
+    };
 
     res.cookie(this.ADMIN_COOKIE_NAMES.REFRESH_TOKEN, token, config);
   }

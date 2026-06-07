@@ -6,6 +6,7 @@ import { SecurityAuditService } from '@/domains/admin/security-audit/security-au
 // Import schemas
 import { AuditLog, AuditLogSchema } from '@/domains/admin/schemas/audit-log.schema';
 import { AdminUser, AdminUserSchema } from '@/domains/admin/schemas/admin-user.schema';
+import { SecurityAlert, SecurityAlertSchema } from '@/domains/admin/schemas/security-alert.schema';
 
 /**
  * Security audit module for security monitoring and audit trail management
@@ -15,6 +16,7 @@ import { AdminUser, AdminUserSchema } from '@/domains/admin/schemas/admin-user.s
     MongooseModule.forFeature([
       { name: AuditLog.name, schema: AuditLogSchema },
       { name: AdminUser.name, schema: AdminUserSchema },
+      { name: SecurityAlert.name, schema: SecurityAlertSchema },
     ]),
   ],
   controllers: [SecurityAuditController],

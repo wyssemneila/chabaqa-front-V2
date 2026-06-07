@@ -2,6 +2,62 @@ import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 const isDevelopment = process.env.NODE_ENV === 'development'
+const apiOrigin = String(process.env.NEXT_PUBLIC_API_URL || process.env.API_INTERNAL_URL || 'http://localhost:3000/api')
+  .replace(/\/api\/?$/, '')
+const scriptSrcDirective = [
+  "script-src 'self' 'unsafe-inline'",
+  isDevelopment ? "'unsafe-eval'" : '',
+  'blob:',
+].filter(Boolean).join(' ')
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+  [
+    "img-src 'self' data: blob:",
+    'https://api.chabaqa.io',
+    'http://51.254.132.77:3000',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'https://picsum.photos',
+    'https://ui-avatars.com',
+    'https://placehold.co',
+    'https://images.unsplash.com',
+  ].join(' '),
+  "font-src 'self' data:",
+  scriptSrcDirective,
+  "style-src 'self' 'unsafe-inline'",
+  [
+    "connect-src 'self'",
+    apiOrigin,
+    'https://api.chabaqa.io',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3100',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3100',
+    'ws://localhost:8080',
+    'ws://localhost:8082',
+    'ws://127.0.0.1:8080',
+    'ws://127.0.0.1:8082',
+    'ws://192.168.56.1:8082',
+  ].join(' '),
+  [
+    "media-src 'self' data: blob:",
+    'https://api.chabaqa.io',
+    'http://51.254.132.77:3000',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+  ].join(' '),
+  "worker-src 'self' blob:",
+].join('; ')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -9,6 +65,7 @@ const nextConfig = {
   // `next build` cannot invalidate the running dev server's chunk manifest.
   distDir: isDevelopment ? '.next-dev' : '.next',
   output: 'standalone',
+  poweredByHeader: false,
   experimental: {
     cpus: 1,
     optimizePackageImports: ['lucide-react'],
@@ -82,6 +139,9 @@ const nextConfig = {
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
       { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
+      { key: 'Content-Security-Policy', value: contentSecurityPolicy },
+      { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+      { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
     ];
 
     if (process.env.NODE_ENV === 'production') {

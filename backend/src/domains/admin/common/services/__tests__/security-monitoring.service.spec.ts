@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { SecurityMonitoringService, SecurityAlertType, AlertSeverity } from '@/domains/admin/common/services/security-monitoring.service';
 import { AdminNotificationService } from '@/domains/admin/common/services/admin-notification.service';
 import { AuditLog, AdminAction } from '@/domains/admin/schemas/audit-log.schema';
+import { SecurityAlert } from '@/domains/admin/schemas/security-alert.schema';
 
 describe('SecurityMonitoringService', () => {
   let service: SecurityMonitoringService;
@@ -23,6 +24,33 @@ describe('SecurityMonitoringService', () => {
     sendSecurityAlert: jest.fn(),
   };
 
+  const mockSecurityAlertModel = {
+    create: jest.fn(async (alert) => ({
+      ...alert,
+      _id: new Types.ObjectId(),
+      toObject() {
+        return {
+          ...alert,
+          _id: this._id,
+        };
+      },
+    })),
+    find: jest.fn().mockReturnValue({
+      sort: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([]),
+    }),
+    findById: jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    }),
+    findByIdAndUpdate: jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue({}),
+    }),
+    deleteMany: jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ deletedCount: 0 }),
+    }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -30,6 +58,10 @@ describe('SecurityMonitoringService', () => {
         {
           provide: getModelToken(AuditLog.name),
           useValue: mockAuditLogModel,
+        },
+        {
+          provide: getModelToken(SecurityAlert.name),
+          useValue: mockSecurityAlertModel,
         },
         {
           provide: AdminNotificationService,
@@ -99,6 +131,14 @@ describe('SecurityMonitoringService', () => {
       expect(alerts).toHaveLength(1);
       expect(alerts[0].type).toBe(SecurityAlertType.MULTIPLE_FAILED_ATTEMPTS);
       expect(alerts[0].severity).toBe(AlertSeverity.HIGH);
+      expect(mockSecurityAlertModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: SecurityAlertType.MULTIPLE_FAILED_ATTEMPTS,
+          severity: AlertSeverity.HIGH,
+          adminUserId: auditLog.adminUserId,
+          resolved: false,
+        }),
+      );
     });
 
     it('should monitor bulk operation abuse', async () => {
@@ -217,6 +257,20 @@ describe('SecurityMonitoringService', () => {
       const alerts = service.getAlerts();
       expect(alerts).toHaveLength(0);
     });
+
+    it('should monitor audit entries that do not include a top-level timestamp', async () => {
+      const auditLog = {
+        adminUserId: new Types.ObjectId(),
+        action: AdminAction.SYSTEM_CONFIGURATION,
+        entityType: 'SecurityConfig',
+        entityId: new Types.ObjectId(),
+        status: 'success',
+        ipAddress: '127.0.0.1',
+        userAgent: 'security-smoke',
+      } as AuditLog;
+
+      await expect(service.monitorAction(auditLog)).resolves.toBeUndefined();
+    });
   });
 
   describe('getAlerts', () => {
@@ -272,6 +326,40 @@ describe('SecurityMonitoringService', () => {
       const failedLoginAlert = highAlerts.find(alert => alert.type === SecurityAlertType.MULTIPLE_FAILED_ATTEMPTS);
       expect(failedLoginAlert).toBeDefined();
     });
+
+    it('should read alerts from the durable alert store', async () => {
+      const adminUserId = new Types.ObjectId();
+      const storedAlert = {
+        _id: new Types.ObjectId(),
+        type: SecurityAlertType.DATA_EXPORT_ABUSE,
+        severity: AlertSeverity.CRITICAL,
+        adminUserId,
+        title: 'Excessive Data Exports',
+        description: 'Admin exceeded export threshold',
+        metadata: { exportsToday: 8 },
+        timestamp: new Date(),
+        resolved: false,
+      };
+
+      mockSecurityAlertModel.find.mockReturnValueOnce({
+        sort: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue([storedAlert]),
+      });
+
+      const alerts = await service.listAlerts({
+        severity: AlertSeverity.CRITICAL,
+        resolved: false,
+      });
+
+      expect(mockSecurityAlertModel.find).toHaveBeenCalledWith({
+        severity: AlertSeverity.CRITICAL,
+        resolved: false,
+      });
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0].id).toBe(storedAlert._id.toString());
+      expect(alerts[0].adminUserId.toString()).toBe(adminUserId.toString());
+    });
   });
 
   describe('resolveAlert', () => {
@@ -307,6 +395,18 @@ describe('SecurityMonitoringService', () => {
       expect(resolvedAlerts[0].resolvedBy?.toString()).toBe(resolvedBy);
       expect(resolvedAlerts[0].resolutionNotes).toBe(notes);
       expect(resolvedAlerts[0].resolvedAt).toBeInstanceOf(Date);
+      expect(mockSecurityAlertModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        alerts[0].id,
+        {
+          $set: {
+            resolved: true,
+            resolvedBy: new Types.ObjectId(resolvedBy),
+            resolvedAt: expect.any(Date),
+            resolutionNotes: notes,
+          },
+        },
+        { new: true },
+      );
     });
 
     it('should throw error for non-existent alert', async () => {

@@ -1,34 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AuditLog, AuditLogDocument, AdminAction } from '@/domains/admin/schemas/audit-log.schema';
+import {
+  AlertSeverity,
+  SecurityAlert as SecurityAlertModel,
+  SecurityAlertDocument,
+  SecurityAlertType,
+} from '@/domains/admin/schemas/security-alert.schema';
 import { AdminNotificationService } from '@/domains/admin/common/services/admin-notification.service';
 
-/**
- * Security alert types
- */
-export enum SecurityAlertType {
-  SUSPICIOUS_LOGIN = 'suspicious_login',
-  MULTIPLE_FAILED_ATTEMPTS = 'multiple_failed_attempts',
-  UNUSUAL_ACTIVITY_PATTERN = 'unusual_activity_pattern',
-  BULK_OPERATION_ABUSE = 'bulk_operation_abuse',
-  PRIVILEGE_ESCALATION = 'privilege_escalation',
-  DATA_EXPORT_ABUSE = 'data_export_abuse',
-  AFTER_HOURS_ACCESS = 'after_hours_access',
-  GEOGRAPHIC_ANOMALY = 'geographic_anomaly',
-  HIGH_VOLUME_ACTIONS = 'high_volume_actions',
-  SENSITIVE_DATA_ACCESS = 'sensitive_data_access',
-}
-
-/**
- * Security alert severity levels
- */
-export enum AlertSeverity {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  CRITICAL = 'critical',
-}
+export { AlertSeverity, SecurityAlertType };
 
 /**
  * Security alert interface
@@ -93,11 +75,17 @@ const DEFAULT_CONFIG: SecurityMonitoringConfig = {
   allowedCountries: [],
   sensitiveActions: [
     AdminAction.USER_SUSPEND,
+    AdminAction.USER_PASSWORD_RESET,
     AdminAction.ADMIN_USER_CREATE,
+    AdminAction.ADMIN_USER_UPDATE,
     AdminAction.ADMIN_USER_DELETE,
     AdminAction.DATA_EXPORT,
     AdminAction.AUDIT_LOG_EXPORT,
     AdminAction.PAYOUT_PROCESS,
+    AdminAction.EMAIL_CAMPAIGN_SEND,
+    AdminAction.BULK_MESSAGE_SEND,
+    AdminAction.CONTENT_DELETE,
+    AdminAction.SYSTEM_CONFIGURATION,
   ],
   notifyOnCritical: true,
   notifyOnHigh: true,
@@ -109,19 +97,24 @@ const DEFAULT_CONFIG: SecurityMonitoringConfig = {
  * Monitors admin activities for suspicious behavior and security threats
  */
 @Injectable()
-export class SecurityMonitoringService {
+export class SecurityMonitoringService implements OnApplicationBootstrap {
   private readonly logger = new Logger(SecurityMonitoringService.name);
   private config: SecurityMonitoringConfig = DEFAULT_CONFIG;
   private alerts: Map<string, SecurityAlert> = new Map();
 
   constructor(
     @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
+    @InjectModel(SecurityAlertModel.name) private securityAlertModel: Model<SecurityAlertDocument>,
     private adminNotificationService: AdminNotificationService,
   ) {
     // Only start monitoring processes in non-test environments
     if (process.env.NODE_ENV !== 'test') {
       this.startPeriodicMonitoring();
     }
+  }
+
+  async onApplicationBootstrap(): Promise<void> {
+    await this.hydrateOpenAlertsFromStore();
   }
 
   /**
@@ -313,7 +306,10 @@ export class SecurityMonitoringService {
    * Check for after-hours access
    */
   private async checkAfterHoursAccess(auditLog: AuditLog): Promise<void> {
-    const hour = auditLog.timestamp.getHours();
+    const timestamp = auditLog.timestamp instanceof Date
+      ? auditLog.timestamp
+      : new Date((auditLog as any).timestamp || Date.now());
+    const hour = timestamp.getHours();
     
     if (hour >= this.config.businessHoursStart && hour <= this.config.businessHoursEnd) {
       return; // Within business hours
@@ -408,28 +404,34 @@ export class SecurityMonitoringService {
    * Create a security alert
    */
   private async createAlert(alert: SecurityAlert): Promise<void> {
-    const alertId = new Types.ObjectId().toString();
-    alert.id = alertId;
-    
-    this.alerts.set(alertId, alert);
-    
-    this.logger.warn(`Security alert created: ${alert.type} - ${alert.title}`);
+    let storedAlert = alert;
 
-    // Send notification if configured
-    if (this.shouldNotifyForSeverity(alert.severity)) {
-      await this.adminNotificationService.sendSecurityAlert(alert);
+    try {
+      const createdAlert = await this.securityAlertModel.create({
+        type: alert.type,
+        severity: alert.severity,
+        adminUserId: alert.adminUserId,
+        title: alert.title,
+        description: alert.description,
+        metadata: alert.metadata || {},
+        timestamp: alert.timestamp,
+        resolved: alert.resolved,
+      });
+      storedAlert = this.mapStoredAlert(createdAlert);
+    } catch (error) {
+      const fallbackId = new Types.ObjectId().toString();
+      storedAlert = { ...alert, id: fallbackId };
+      this.logger.error('Failed to persist security alert; keeping in-memory alert for current process:', error);
     }
 
-    // Store alert in database (you might want to create a SecurityAlert schema)
-    // For now, we'll log it as an audit entry
-    // await this.auditLogService.logAction({
-    //   adminUserId: alert.adminUserId,
-    //   action: AdminAction.SYSTEM_CONFIGURATION,
-    //   entityType: 'SecurityAlert',
-    //   entityId: new Types.ObjectId(alertId),
-    //   description: `Security alert: ${alert.title}`,
-    //   metadata: alert.metadata,
-    // });
+    this.alerts.set(storedAlert.id!, storedAlert);
+
+    this.logger.warn(`Security alert created: ${storedAlert.type} - ${storedAlert.title}`);
+
+    // Send notification if configured
+    if (this.shouldNotifyForSeverity(storedAlert.severity)) {
+      await this.adminNotificationService.sendSecurityAlert(storedAlert);
+    }
   }
 
   /**
@@ -462,18 +464,112 @@ export class SecurityMonitoringService {
   }
 
   /**
+   * Get security alerts from the durable store.
+   */
+  async listAlerts(filters?: {
+    severity?: AlertSeverity;
+    type?: SecurityAlertType;
+    resolved?: boolean;
+    adminUserId?: string;
+  }): Promise<SecurityAlert[]> {
+    const query: Record<string, any> = {};
+
+    if (filters?.severity) {
+      query.severity = filters.severity;
+    }
+    if (filters?.type) {
+      query.type = filters.type;
+    }
+    if (filters?.resolved !== undefined) {
+      query.resolved = filters.resolved;
+    }
+    if (filters?.adminUserId && Types.ObjectId.isValid(filters.adminUserId)) {
+      query.adminUserId = new Types.ObjectId(filters.adminUserId);
+    }
+
+    try {
+      const storedAlerts = await this.securityAlertModel
+        .find(query)
+        .sort({ timestamp: -1 })
+        .limit(500)
+        .exec();
+
+      const alerts = storedAlerts.map((alert) => this.mapStoredAlert(alert));
+      for (const alert of alerts) {
+        this.alerts.set(alert.id!, alert);
+      }
+
+      return alerts;
+    } catch (error) {
+      this.logger.error('Failed to list persisted security alerts; returning in-memory alerts:', error);
+      return this.getAlerts(filters);
+    }
+  }
+
+  /**
+   * Get one security alert by id from memory or durable store.
+   */
+  async getAlertById(alertId: string): Promise<SecurityAlert | null> {
+    const inMemoryAlert = this.alerts.get(alertId);
+    if (inMemoryAlert) {
+      return inMemoryAlert;
+    }
+
+    if (!Types.ObjectId.isValid(alertId)) {
+      return null;
+    }
+
+    try {
+      const storedAlert = await this.securityAlertModel.findById(alertId).exec();
+      if (!storedAlert) {
+        return null;
+      }
+
+      const alert = this.mapStoredAlert(storedAlert);
+      this.alerts.set(alert.id!, alert);
+      return alert;
+    } catch (error) {
+      this.logger.error(`Failed to load security alert ${alertId}:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Resolve a security alert
    */
   async resolveAlert(alertId: string, resolvedBy: string, notes?: string): Promise<void> {
-    const alert = this.alerts.get(alertId);
+    const alert = await this.getAlertById(alertId);
     if (!alert) {
       throw new Error('Alert not found');
     }
 
+    if (!Types.ObjectId.isValid(resolvedBy)) {
+      throw new Error('Invalid resolving admin user id');
+    }
+
+    const resolvedAt = new Date();
+    const resolvedByObjectId = new Types.ObjectId(resolvedBy);
+
     alert.resolved = true;
-    alert.resolvedBy = new Types.ObjectId(resolvedBy);
-    alert.resolvedAt = new Date();
+    alert.resolvedBy = resolvedByObjectId;
+    alert.resolvedAt = resolvedAt;
     alert.resolutionNotes = notes;
+    this.alerts.set(alertId, alert);
+
+    await this.securityAlertModel
+      .findByIdAndUpdate(
+        alertId,
+        {
+          $set: {
+            resolved: true,
+            resolvedBy: resolvedByObjectId,
+            resolvedAt,
+            resolutionNotes: notes,
+          },
+        },
+        { new: true },
+      )
+      .exec();
 
     this.logger.log(`Security alert resolved: ${alertId} by ${resolvedBy}`);
   }
@@ -507,6 +603,43 @@ export class SecurityMonitoringService {
       alertsByType,
       unresolvedAlerts: alerts.filter(alert => !alert.resolved).length,
       alertsLast24Hours: alerts.filter(alert => alert.timestamp >= last24Hours).length,
+    };
+  }
+
+  private async hydrateOpenAlertsFromStore(): Promise<void> {
+    try {
+      const storedAlerts = await this.securityAlertModel
+        .find({ resolved: false })
+        .sort({ timestamp: -1 })
+        .limit(500)
+        .exec();
+
+      for (const storedAlert of storedAlerts) {
+        const alert = this.mapStoredAlert(storedAlert);
+        this.alerts.set(alert.id!, alert);
+      }
+    } catch (error) {
+      this.logger.error('Failed to hydrate security alerts from store:', error);
+    }
+  }
+
+  private mapStoredAlert(alert: SecurityAlertDocument | any): SecurityAlert {
+    const raw = typeof alert.toObject === 'function' ? alert.toObject() : alert;
+    const id = String(raw._id || raw.id);
+
+    return {
+      id,
+      type: raw.type,
+      severity: raw.severity,
+      adminUserId: new Types.ObjectId(String(raw.adminUserId)),
+      title: raw.title,
+      description: raw.description,
+      metadata: raw.metadata || {},
+      timestamp: raw.timestamp instanceof Date ? raw.timestamp : new Date(raw.timestamp),
+      resolved: Boolean(raw.resolved),
+      resolvedBy: raw.resolvedBy ? new Types.ObjectId(String(raw.resolvedBy)) : undefined,
+      resolvedAt: raw.resolvedAt ? new Date(raw.resolvedAt) : undefined,
+      resolutionNotes: raw.resolutionNotes,
     };
   }
 
@@ -608,6 +741,14 @@ export class SecurityMonitoringService {
         this.alerts.delete(alertId);
       }
     }
+
+    this.securityAlertModel
+      .deleteMany({
+        resolved: true,
+        resolvedAt: { $lt: sevenDaysAgo },
+      })
+      .exec()
+      .catch((error) => this.logger.error('Failed to clean up old persisted security alerts:', error));
   }
 
   /**

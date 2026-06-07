@@ -23,6 +23,10 @@ export interface AdminDocument extends Document {
   photo_profil: string;
   poste: string;
   departement: string;
+  failedLoginAttempts?: number;
+  lockoutUntil?: Date | null;
+  lastLoginAt?: Date | null;
+  passwordChangedAt?: Date | null;
   adminPreferences?: {
     theme?: 'light' | 'dark' | 'system';
     locale?: string;
@@ -131,6 +135,34 @@ export class Admin {
   departement: string;
 
   @Prop({
+    required: false,
+    type: Number,
+    default: 0,
+  })
+  failedLoginAttempts?: number;
+
+  @Prop({
+    required: false,
+    type: Date,
+    default: null,
+  })
+  lockoutUntil?: Date | null;
+
+  @Prop({
+    required: false,
+    type: Date,
+    default: null,
+  })
+  lastLoginAt?: Date | null;
+
+  @Prop({
+    required: false,
+    type: Date,
+    default: null,
+  })
+  passwordChangedAt?: Date | null;
+
+  @Prop({
     type: Object,
     required: false,
     default: {},
@@ -150,6 +182,7 @@ export const AdminSchema = SchemaFactory.createForClass(Admin);
 AdminSchema.index({ email: 1 }, { unique: true });
 AdminSchema.index({ role: 1 });
 AdminSchema.index({ createdAt: -1 });
+AdminSchema.index({ lockoutUntil: 1 });
 
 AdminSchema.methods.toJSON = function(): any {
   const adminObject = this.toObject();

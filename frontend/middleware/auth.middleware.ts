@@ -63,11 +63,104 @@ const DEFAULT_LOCALE = 'en'
 const SUPPORTED_LOCALES = ['en', 'ar'] as const
 const AUTH_FAILURE_LOG_LIMIT_PER_REASON = 25
 const authFailureLogCounts: Record<string, number> = {}
+const apiOrigin = String(process.env.NEXT_PUBLIC_API_URL || process.env.API_INTERNAL_URL || 'http://localhost:3000/api')
+  .replace(/\/api\/?$/, '')
+const scriptSrcDirective = [
+  "script-src 'self' 'unsafe-inline'",
+  process.env.NODE_ENV !== 'production' ? "'unsafe-eval'" : '',
+  'blob:',
+].filter(Boolean).join(' ')
+const SECURITY_HEADERS: Array<[string, string]> = [
+  ['X-Content-Type-Options', 'nosniff'],
+  ['X-Frame-Options', 'SAMEORIGIN'],
+  ['Referrer-Policy', 'strict-origin-when-cross-origin'],
+  ['Permissions-Policy', 'camera=(), microphone=(), geolocation=()'],
+  ['X-Permitted-Cross-Domain-Policies', 'none'],
+  ['Cross-Origin-Opener-Policy', 'same-origin-allow-popups'],
+  ['Cross-Origin-Embedder-Policy', 'credentialless'],
+  [
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'self'",
+      "form-action 'self'",
+      [
+        "img-src 'self' data: blob:",
+        'https://api.chabaqa.io',
+        'http://51.254.132.77:3000',
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+        'https://picsum.photos',
+        'https://ui-avatars.com',
+        'https://placehold.co',
+        'https://images.unsplash.com',
+      ].join(' '),
+      "font-src 'self' data:",
+      scriptSrcDirective,
+      "style-src 'self' 'unsafe-inline'",
+      [
+        "connect-src 'self'",
+        apiOrigin,
+        'https://api.chabaqa.io',
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3100',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+        'http://127.0.0.1:3100',
+        'ws://localhost:8080',
+        'ws://localhost:8082',
+        'ws://127.0.0.1:8080',
+        'ws://127.0.0.1:8082',
+        'ws://192.168.56.1:8082',
+      ].join(' '),
+      [
+        "media-src 'self' data: blob:",
+        'https://api.chabaqa.io',
+        'http://51.254.132.77:3000',
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+      ].join(' '),
+      "worker-src 'self' blob:",
+    ].join('; '),
+  ],
+]
 
 // Creator routes
 const CREATOR_ROUTES = [
   '/creator',
 ]
+
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  for (const [key, value] of SECURITY_HEADERS) {
+    response.headers.set(key, value)
+  }
+  response.headers.delete('X-Powered-By')
+
+  if (response.status >= 300 && response.status < 400 && !response.headers.has('Content-Type')) {
+    response.headers.set('Content-Type', 'text/plain; charset=utf-8')
+  }
+
+  return response
+}
+
+function redirect(url: URL): NextResponse {
+  return applySecurityHeaders(NextResponse.redirect(url))
+}
+
+const localeCookieOptions = {
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+  sameSite: 'lax' as const,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+}
 
 function extractLocale(pathname: string): {
   locale: string
@@ -209,23 +302,19 @@ export async function authMiddleware(request: NextRequest) {
     pathname.startsWith('/favicon.ico') ||
     pathname.includes('.')
   ) {
-    return NextResponse.next()
+    return applySecurityHeaders(NextResponse.next())
   }
 
   if (!hasLocalePrefix && !isInternalLocaleRewrite) {
     const localizedUrl = getExternalUrl(request)
     localizedUrl.pathname = withLocale(locale, pathname)
-    return NextResponse.redirect(localizedUrl)
+    return redirect(localizedUrl)
   }
 
   if (!hasLocalePrefix && isInternalLocaleRewrite) {
-    const response = NextResponse.next()
+    const response = applySecurityHeaders(NextResponse.next())
     const rewrittenLocale = request.headers.get('x-app-locale') || DEFAULT_LOCALE
-    response.cookies.set(LOCALE_COOKIE, rewrittenLocale, {
-      path: '/',
-      maxAge: 60 * 60 * 24 * 365,
-      sameSite: 'lax',
-    })
+    response.cookies.set(LOCALE_COOKIE, rewrittenLocale, localeCookieOptions)
     return response
   }
 
@@ -237,12 +326,8 @@ export async function authMiddleware(request: NextRequest) {
     requestHeaders.set('x-app-locale', locale)
     requestHeaders.set(LOCALE_REWRITE_HEADER, '1')
 
-    const response = NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } })
-    response.cookies.set(LOCALE_COOKIE, locale, {
-      path: '/',
-      maxAge: 60 * 60 * 24 * 365,
-      sameSite: 'lax',
-    })
+    const response = applySecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }))
+    response.cookies.set(LOCALE_COOKIE, locale, localeCookieOptions)
     return response
   }
 
@@ -296,7 +381,7 @@ export async function authMiddleware(request: NextRequest) {
   // Handle admin auth pages first to avoid cross-routing with regular auth flows.
   if (isAdminAuthPage) {
     if (hasValidAdminSession) {
-      return NextResponse.redirect(new URL(withLocale(locale, '/admin/dashboard'), getExternalUrl(request)))
+      return redirect(new URL(withLocale(locale, '/admin/dashboard'), getExternalUrl(request)))
     }
     return continueWithHeaders()
   }
@@ -320,7 +405,7 @@ export async function authMiddleware(request: NextRequest) {
     if (isValidToken) {
       // User appears authenticated - redirect away from auth pages
       const normalizedRedirect = normalizeAuthRedirect(request.nextUrl.searchParams.get('redirect'), locale)
-      return NextResponse.redirect(new URL(normalizedRedirect, getExternalUrl(request)))
+      return redirect(new URL(normalizedRedirect, getExternalUrl(request)))
     }
     
     // Not authenticated - let them access the auth page
@@ -336,7 +421,7 @@ export async function authMiddleware(request: NextRequest) {
   if (isAdminRoute && !hasValidAdminSession) {
     const loginUrl = new URL(withLocale(locale, '/admin/login'), getExternalUrl(request))
     loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
+    return redirect(loginUrl)
   }
 
   if (isAdminRoute && hasValidAdminSession && adminUser) {
@@ -356,7 +441,7 @@ export async function authMiddleware(request: NextRequest) {
     })
     const loginUrl = new URL(withLocale(locale, '/signin'), getExternalUrl(request))
     loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
+    return redirect(loginUrl)
   }
 
   // Handle creator routes
@@ -369,7 +454,7 @@ export async function authMiddleware(request: NextRequest) {
       const loginUrl = new URL('/signin', getExternalUrl(request))
       loginUrl.pathname = withLocale(locale, '/signin')
       loginUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(loginUrl)
+      return redirect(loginUrl)
     } else {
       // User is authenticated but not creator/admin
       logAuthFailure('role_mismatch', {
@@ -377,7 +462,7 @@ export async function authMiddleware(request: NextRequest) {
         requiredRole: 'creator|admin',
         actualRole: userRole || 'unknown',
       })
-      return NextResponse.redirect(new URL(withLocale(locale, '/dashboard'), getExternalUrl(request)))
+      return redirect(new URL(withLocale(locale, '/dashboard'), getExternalUrl(request)))
     }
   }
 

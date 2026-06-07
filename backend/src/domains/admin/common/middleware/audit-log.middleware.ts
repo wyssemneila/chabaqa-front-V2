@@ -12,7 +12,13 @@ interface AdminRequest extends Request {
   user?: {
     id: string;
     adminUserId?: string;
+    _id?: string;
+    sub?: string;
     roles?: string[];
+  };
+  adminUser?: {
+    _id?: string | Types.ObjectId;
+    userId?: string | Types.ObjectId;
   };
   adminAction?: AdminAction;
   entityType?: string;
@@ -76,8 +82,8 @@ export class AuditLogMiddleware implements NestMiddleware {
     responseData: any,
     startTime: number,
   ): Promise<void> {
-    // Skip if no user information available
-    if (!req.user?.adminUserId) {
+    const adminUserId = this.resolveAdminUserId(req, responseData);
+    if (!adminUserId) {
       return;
     }
 
@@ -86,10 +92,10 @@ export class AuditLogMiddleware implements NestMiddleware {
     const duration = Date.now() - startTime;
 
     const auditEntry: AuditLogEntry = {
-      adminUserId: new Types.ObjectId(req.user.adminUserId),
+      adminUserId: new Types.ObjectId(adminUserId),
       action,
       entityType,
-      entityId: entityId ? new Types.ObjectId(entityId) : new Types.ObjectId(),
+      entityId: entityId && Types.ObjectId.isValid(entityId) ? new Types.ObjectId(entityId) : new Types.ObjectId(),
       ipAddress: this.getClientIp(req),
       userAgent: req.get('User-Agent') || 'Unknown',
       requestData: this.sanitizeRequestData(req),
@@ -133,6 +139,18 @@ export class AuditLogMiddleware implements NestMiddleware {
 
     const { method, path } = req;
     const pathSegments = path.split('/').filter(Boolean);
+
+    if (pathSegments.includes('login') || pathSegments.includes('verify-2fa')) {
+      return AdminAction.LOGIN;
+    }
+
+    if (pathSegments.includes('logout')) {
+      return AdminAction.LOGOUT;
+    }
+
+    if (pathSegments.includes('cleanup-database')) {
+      return AdminAction.SYSTEM_CONFIGURATION;
+    }
 
     // Extract action from path and method
     if (pathSegments.includes('users')) {
@@ -213,7 +231,7 @@ export class AuditLogMiddleware implements NestMiddleware {
       return AdminAction.AUDIT_LOG_VIEW;
     }
 
-    if (pathSegments.includes('communications')) {
+    if (pathSegments.includes('communications') || pathSegments.includes('communication')) {
       if (method === 'POST' && pathSegments.includes('campaign')) {
         return AdminAction.EMAIL_CAMPAIGN_CREATE;
       }
@@ -294,6 +312,44 @@ export class AuditLogMiddleware implements NestMiddleware {
       req.socket.remoteAddress ||
       'unknown'
     );
+  }
+
+  private resolveAdminUserId(req: AdminRequest, responseData: any): string | undefined {
+    const candidates = [
+      req.user?.adminUserId,
+      req.adminUser?._id,
+      req.adminUser?.userId,
+      req.user?.id,
+      req.user?.sub,
+      req.user?._id,
+    ];
+
+    for (const candidate of candidates) {
+      const value = String(candidate || '');
+      if (Types.ObjectId.isValid(value)) {
+        return value;
+      }
+    }
+
+    try {
+      const parsed = typeof responseData === 'string' ? JSON.parse(responseData) : responseData;
+      const responseCandidates = [
+        parsed?.admin?._id,
+        parsed?.data?.admin?._id,
+        parsed?.user?._id,
+        parsed?.data?.user?._id,
+      ];
+      for (const candidate of responseCandidates) {
+        const value = String(candidate || '');
+        if (Types.ObjectId.isValid(value)) {
+          return value;
+        }
+      }
+    } catch {
+      // Ignore malformed response bodies.
+    }
+
+    return undefined;
   }
 
   /**

@@ -8,6 +8,7 @@ import { AdminUser, AdminRole, AdminPermission } from '@/domains/admin/schemas/a
 import { EmailService } from '@/shared/services/email.service';
 import { TokenBlacklistService } from '@/shared/services/token-blacklist.service';
 import { Types } from 'mongoose';
+import * as bcrypt from 'bcryptjs';
 
 describe('AdminService', () => {
   let service: AdminService;
@@ -21,7 +22,7 @@ describe('AdminService', () => {
     mockAdminModel = {
       findOne: jest.fn(),
       findById: jest.fn(),
-      findByIdAndUpdate: jest.fn(),
+      findByIdAndUpdate: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue({}) }),
       countDocuments: jest.fn(),
       create: jest.fn(),
     };
@@ -99,6 +100,7 @@ describe('AdminService', () => {
           useValue: {
             isTokenRevoked: jest.fn().mockResolvedValue(false),
             revokeTokenFromJWT: jest.fn(),
+            revokeAllUserTokens: jest.fn(),
           },
         },
       ],
@@ -248,6 +250,116 @@ describe('AdminService', () => {
       mockAdminUserModel.findByIdAndUpdate.mockRejectedValue(new Error('Database error'));
 
       await expect(service.updateLastActivity(adminUserId)).resolves.not.toThrow();
+    });
+  });
+
+  describe('admin security controls', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+      delete process.env.ADMIN_ALLOW_PASSWORD_ONLY_LOGIN;
+      delete process.env.ADMIN_LOGIN_LOCKOUT_THRESHOLD;
+    });
+
+    it('rejects weak admin passwords during admin creation', async () => {
+      mockAdminModel.findOne.mockResolvedValue(null);
+
+      await expect(service.createAdmin({
+        name: 'Root',
+        email: 'root@example.com',
+        password: 'adminpassword123',
+        role: 'admin' as any,
+      })).rejects.toThrow('Admin password must be at least 12 characters');
+    });
+
+    it('locks admin accounts after repeated failed passwords', async () => {
+      process.env.ADMIN_LOGIN_LOCKOUT_THRESHOLD = '3';
+      const adminId = new Types.ObjectId();
+      const hashedPassword = await bcrypt.hash('Correct#Password1', 12);
+      const admin = {
+        _id: adminId,
+        email: 'root@example.com',
+        password: hashedPassword,
+        failedLoginAttempts: 2,
+        lockoutUntil: null,
+      };
+      mockAdminModel.findOne.mockReturnValue({
+        select: jest.fn().mockResolvedValue(admin),
+      });
+      await expect(service.validateAdmin('root@example.com', 'wrong')).rejects.toThrow('Email ou mot de passe incorrect');
+
+      expect(mockAdminModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        adminId,
+        {
+          $set: expect.objectContaining({
+            failedLoginAttempts: 3,
+            lockoutUntil: expect.any(Date),
+          }),
+        },
+      );
+    });
+
+    it('requires admin 2FA unless explicitly disabled', async () => {
+      const adminId = new Types.ObjectId();
+      jest.spyOn(service, 'validateAdmin').mockResolvedValue({
+        _id: adminId,
+        email: 'root@example.com',
+        name: 'Root',
+        role: 'admin',
+      } as any);
+      mockVerificationCodeModel.deleteMany.mockResolvedValue({});
+      mockVerificationCodeModel.create.mockResolvedValue({});
+
+      const result = await service.loginAdmin({
+        email: 'root@example.com',
+        password: 'Correct#Password1',
+        remember_me: false,
+      });
+
+      expect(result.requires2FA).toBe(true);
+      expect(mockVerificationCodeModel.create).toHaveBeenCalledWith(expect.objectContaining({
+        adminId,
+        type: '2fa',
+        rememberMe: false,
+      }));
+    });
+
+    it('rotates refresh tokens on admin refresh', async () => {
+      const adminId = new Types.ObjectId();
+      const jwtService = (service as any).jwtService as JwtService;
+      const tokenBlacklistService = (service as any).tokenBlacklistService as TokenBlacklistService;
+      const admin = {
+        _id: adminId,
+        email: 'root@example.com',
+        name: 'Root',
+        role: 'admin',
+        createdAt: new Date(),
+      };
+      mockAdminModel.findById.mockResolvedValue(admin);
+      (jwtService.verify as jest.Mock).mockReturnValue({
+        sub: adminId,
+        email: admin.email,
+        role: admin.role,
+        jti: 'old-refresh-token',
+        iat: 1,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        rememberMe: false,
+      });
+      (jwtService.sign as jest.Mock)
+        .mockReturnValueOnce('new-access-token')
+        .mockReturnValueOnce('new-refresh-token');
+
+      const result = await service.refreshToken('old-refresh-token');
+
+      expect(tokenBlacklistService.revokeTokenFromJWT).toHaveBeenCalledWith(
+        adminId,
+        expect.objectContaining({ jti: 'old-refresh-token' }),
+        'refresh',
+      );
+      expect(result).toMatchObject({
+        access_token: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        expires_in: 1800,
+      });
     });
   });
 });

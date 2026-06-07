@@ -6,13 +6,16 @@ import {
   Param,
   Query,
   Body,
+  Req,
   UseGuards,
   HttpStatus,
   HttpException,
   Res,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsEnum, IsMongoId, IsOptional, IsString, MaxLength } from 'class-validator';
 import { AdminAuthGuard } from '@/domains/admin/common/guards/admin-auth.guard';
 import { AdminRolesGuard } from '@/domains/admin/common/guards/admin-roles.guard';
 import { RequireAdminRoles } from '@/domains/admin/common/decorators/admin-roles.decorator';
@@ -47,16 +50,37 @@ export class SecurityConfigDto {
  * DTO for resolving security alerts
  */
 export class ResolveAlertDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
   notes?: string;
+}
+
+function parseBooleanQueryValue(value: unknown): unknown {
+  if (value === true || value === 'true' || value === '1') return true;
+  if (value === false || value === 'false' || value === '0') return false;
+  return value;
 }
 
 /**
  * DTO for security alert filters
  */
 export class SecurityAlertFiltersDto {
+  @IsOptional()
+  @IsEnum(AlertSeverity)
   severity?: AlertSeverity;
+
+  @IsOptional()
+  @IsEnum(SecurityAlertType)
   type?: SecurityAlertType;
+
+  @IsOptional()
+  @Transform(({ obj, key, value }) => parseBooleanQueryValue(obj?.[key] ?? value))
+  @IsBoolean()
   resolved?: boolean;
+
+  @IsOptional()
+  @IsMongoId()
   adminUserId?: string;
 }
 
@@ -153,9 +177,9 @@ export class SecurityAuditController {
   })
   @ApiOperation({ summary: 'Get security alerts' })
   @ApiResponse({ status: 200, description: 'Security alerts retrieved successfully' })
-  getSecurityAlerts(@Query() filters: SecurityAlertFiltersDto) {
+  async getSecurityAlerts(@Query() filters: SecurityAlertFiltersDto) {
     try {
-      const alerts = this.securityMonitoringService.getAlerts(filters);
+      const alerts = await this.securityMonitoringService.listAlerts(filters);
       
       return {
         success: true,
@@ -190,10 +214,21 @@ export class SecurityAuditController {
   async resolveSecurityAlert(
     @Param('alertId') alertId: string,
     @Body() resolveDto: ResolveAlertDto,
+    @Req() req: Request & { adminUser?: any; user?: any },
   ) {
     try {
-      // In a real implementation, you would get the admin user ID from the JWT token
-      const adminUserId = 'current-admin-user-id'; // This should come from the authenticated user
+      const adminUserId = String(
+        req.adminUser?._id ||
+        req.user?.adminUserId ||
+        req.user?.id ||
+        req.user?.sub ||
+        req.user?._id ||
+        '',
+      );
+
+      if (!adminUserId) {
+        throw new Error('Authenticated admin user id is missing');
+      }
       
       await this.securityMonitoringService.resolveAlert(
         alertId,

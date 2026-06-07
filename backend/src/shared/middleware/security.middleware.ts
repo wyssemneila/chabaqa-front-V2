@@ -6,12 +6,23 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import * as mongoSanitize from 'express-mongo-sanitize';
 import { SecurityService } from '@/shared/services/security.service';
 
 @Injectable()
 export class SecurityMiddleware implements NestMiddleware {
   private readonly logger = new Logger(SecurityMiddleware.name);
+  private readonly maxObjectDepth = 20;
+  private readonly maxObjectKeys = 500;
+  private readonly maxArrayLength = 100;
+  private readonly allowedMultiValueQueryKeys = new Set([
+    'ids',
+    'tags',
+    'categories',
+    'roles',
+    'permissions',
+    'status',
+    'types',
+  ]);
 
   constructor(private securityService: SecurityService) {}
 
@@ -20,7 +31,7 @@ export class SecurityMiddleware implements NestMiddleware {
       // Apply security headers with Helmet
       this.applySecurityHeaders(req, res);
 
-      // Sanitize input to prevent NoSQL injection
+      // Sanitize input to prevent NoSQL injection and request pollution.
       this.sanitizeInput(req);
 
       // Log suspicious activities
@@ -81,27 +92,87 @@ export class SecurityMiddleware implements NestMiddleware {
   }
 
   private sanitizeInput(req: Request) {
-    // Sanitize query parameters, body, and params
-    ['query', 'body', 'params'].forEach((prop) => {
+    this.normalizeQueryParameters(req);
+
+    // Sanitize query parameters, body, and params.
+    (['query', 'body', 'params'] as const).forEach((prop) => {
       if (req[prop] && typeof req[prop] === 'object') {
-        this.sanitizeObject(req[prop]);
+        this.sanitizeObject(req[prop], prop);
       }
     });
 
     // Sanitize headers
     if (req.headers) {
-      this.sanitizeObject(req.headers);
+      this.sanitizeObject(req.headers, 'headers');
     }
   }
 
-  private sanitizeObject(obj: any) {
-    for (const key in obj) {
-      if (typeof obj[key] === 'string') {
-        obj[key] = this.securityService.sanitizeInput(obj[key]);
-      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-        this.sanitizeObject(obj[key]);
+  private normalizeQueryParameters(req: Request) {
+    for (const [key, value] of Object.entries(req.query || {})) {
+      if (Array.isArray(value) && !this.allowedMultiValueQueryKeys.has(key)) {
+        this.securityService.logSecurityEvent(
+          'HTTP_PARAMETER_POLLUTION_BLOCKED',
+          { key, url: req.url, method: req.method },
+          'warn',
+        );
+        throw new Error(`Duplicate query parameter is not allowed: ${key}`);
       }
     }
+  }
+
+  private sanitizeObject(obj: any, path: string, depth = 0) {
+    if (depth > this.maxObjectDepth) {
+      throw new Error(`Request object is too deeply nested at ${path}`);
+    }
+
+    if (Array.isArray(obj)) {
+      if (obj.length > this.maxArrayLength) {
+        throw new Error(`Request array is too large at ${path}`);
+      }
+
+      obj.forEach((value, index) => {
+        if (value && typeof value === 'object') {
+          this.sanitizeObject(value, `${path}[${index}]`, depth + 1);
+        } else if (typeof value === 'string') {
+          obj[index] = this.securityService.sanitizeInput(value);
+        }
+      });
+      return;
+    }
+
+    const keys = Object.keys(obj);
+    if (keys.length > this.maxObjectKeys) {
+      throw new Error(`Request object contains too many keys at ${path}`);
+    }
+
+    for (const key of keys) {
+      if (this.isDangerousKey(key)) {
+        this.securityService.logSecurityEvent(
+          'NOSQL_OPERATOR_INJECTION_BLOCKED',
+          { key, path },
+          'warn',
+        );
+        throw new Error(`Dangerous request key is not allowed: ${path}.${key}`);
+      }
+
+      const value = obj[key];
+      if (typeof value === 'string') {
+        obj[key] = this.securityService.sanitizeInput(value);
+      } else if (typeof value === 'object' && value !== null) {
+        this.sanitizeObject(value, `${path}.${key}`, depth + 1);
+      }
+    }
+  }
+
+  private isDangerousKey(key: string): boolean {
+    return (
+      key.startsWith('$') ||
+      key.includes('\0') ||
+      key.includes('.') ||
+      key === '__proto__' ||
+      key === 'prototype' ||
+      key === 'constructor'
+    );
   }
 
   private logSuspiciousActivity(req: Request) {
@@ -114,7 +185,7 @@ export class SecurityMiddleware implements NestMiddleware {
       /on\w+\s*=/i, // Event handlers
       /eval\(/i, // Code injection
       /union\s+select/i, // SQL injection
-      /\$\w+\$/i, // MongoDB operators
+      /\$[a-zA-Z]/i, // MongoDB operators
     ];
 
     const url = req.url;

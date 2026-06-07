@@ -39,7 +39,7 @@ export class SecurityAuditService {
     const auditStats = await this.getAuditStatistics(startDate, endDate);
     
     // Get security alerts
-    const alerts = this.securityMonitoringService.getAlerts({
+    const alerts = await this.securityMonitoringService.listAlerts({
       resolved: false,
     });
 
@@ -355,8 +355,7 @@ export class SecurityAuditService {
     recommendations: string[];
   }> {
     // Get the security alert
-    const alerts = this.securityMonitoringService.getAlerts();
-    const incident = alerts.find(alert => alert.id === incidentId);
+    const incident = await this.securityMonitoringService.getAlertById(incidentId);
     
     if (!incident) {
       throw new Error('Security incident not found');

@@ -3,8 +3,8 @@
 import { syncAccessTokenCookie } from '@/lib/cookie-sync'
 
 /**
- * Secure token storage using localStorage
- * Handles access and refresh tokens for cookie-less auth
+ * Legacy token storage compatibility.
+ * Refresh tokens are intentionally not persisted in JavaScript-readable storage.
  */
 
 export interface TokenPair {
@@ -17,12 +17,12 @@ class TokenStorage {
   private readonly REFRESH_KEY = 'refreshToken';
 
   /**
-   * Store both tokens and sync the access token cookie
+   * Store the access token for legacy callers and rely on HttpOnly cookies for refresh.
    */
   setTokens(tokens: TokenPair): void {
     try {
       localStorage.setItem(this.ACCESS_KEY, tokens.accessToken);
-      localStorage.setItem(this.REFRESH_KEY, tokens.refreshToken);
+      localStorage.removeItem(this.REFRESH_KEY);
       syncAccessTokenCookie(tokens.accessToken)
 
       if (typeof window !== 'undefined') {
@@ -32,7 +32,7 @@ class TokenStorage {
         }));
         window.dispatchEvent(new StorageEvent('storage', {
           key: this.REFRESH_KEY,
-          newValue: tokens.refreshToken,
+          newValue: null,
         }));
       }
     } catch (error) {
@@ -56,12 +56,7 @@ class TokenStorage {
    * Get refresh token
    */
   getRefreshToken(): string | null {
-    try {
-      return localStorage.getItem(this.REFRESH_KEY);
-    } catch (error) {
-      console.error('Failed to get refresh token:', error);
-      return null;
-    }
+    return null;
   }
 
   /**
@@ -98,7 +93,7 @@ class TokenStorage {
    * Check if tokens exist
    */
   hasTokens(): boolean {
-    return !!(this.getAccessToken() && this.getRefreshToken());
+    return !!this.getAccessToken();
   }
 
   /**
@@ -139,14 +134,7 @@ class TokenStorage {
    * Check if refresh token is expired
    */
   isRefreshTokenExpired(): boolean {
-    const token = this.getRefreshToken();
-    if (!token) return true;
-
-    const payload = this.parseJwt(token);
-    if (!payload || !payload.exp) return true;
-
-    // Expired if now >= exp (with 10s buffer)
-    return Date.now() >= (payload.exp * 1000 - 10000);
+    return false;
   }
 
   /**
