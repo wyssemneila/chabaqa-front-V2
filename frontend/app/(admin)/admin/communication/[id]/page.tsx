@@ -11,6 +11,7 @@ import { StatusBadge } from "@/app/(admin)/_components/status-badge"
 import { ConfirmDialog } from "@/app/(admin)/_components/confirm-dialog"
 import { ArrowLeft, Send, Edit, Trash2, Mail, MousePointerClick, Eye } from "lucide-react"
 import { toast } from "sonner"
+import { SafeHtml } from "@/components/security/safe-html"
 
 interface EmailCampaign {
   _id: string
@@ -209,7 +210,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ id: 
             <div>
               <div className="text-sm font-medium text-muted-foreground">Content</div>
               <div className="mt-1 p-4 bg-muted rounded-md">
-                <div dangerouslySetInnerHTML={{ __html: campaign.content }} />
+                <SafeHtml html={campaign.content} />
               </div>
             </div>
 

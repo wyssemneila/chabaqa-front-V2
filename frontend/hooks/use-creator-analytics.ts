@@ -1,7 +1,11 @@
 'use client';
 
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { creatorAnalyticsApi, type CreatorAnalyticsParams } from '@/lib/api/creator-analytics.api';
+import {
+  creatorAnalyticsApi,
+  type CreatorAnalyticsParams,
+  type CreatorContentChartType,
+} from '@/lib/api/creator-analytics.api';
 
 function buildDateParams(timeRange: string): { from: string; to: string } {
   const to = new Date().toISOString().slice(0, 10);
@@ -88,6 +92,28 @@ export function useAnalyticsReferrers(timeRange: string, communityId?: string) {
     queryKey: ['analytics', 'referrers', timeRange, communityId],
     queryFn: () => creatorAnalyticsApi.getReferrers(params),
     staleTime: 15 * 60 * 1000,
+  });
+}
+
+export function useAnalyticsContentCharts(
+  timeRange: string,
+  contentType: CreatorContentChartType | 'all' = 'all',
+  communityId?: string,
+  contentId?: string,
+  enabled = true,
+) {
+  const params = {
+    ...buildDateParams(timeRange),
+    communityId,
+    contentType,
+    contentId,
+  };
+
+  return useQuery({
+    queryKey: ['analytics', 'content-charts', timeRange, contentType, communityId, contentId],
+    queryFn: () => creatorAnalyticsApi.getContentCharts(params),
+    staleTime: 2 * 60 * 1000,
+    enabled,
   });
 }
 

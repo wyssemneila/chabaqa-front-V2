@@ -27,6 +27,14 @@ type ProviderOption = {
   available: boolean
 }
 
+const isProviderEnabled = (provider: PaymentProvider) => {
+  if (provider === "stripe") return true
+  if (provider === "konnect") {
+    return process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_PAYMENT_ENABLE_KONNECT === "true"
+  }
+  return false
+}
+
 const providerOptions: ProviderOption[] = [
   {
     id: "stripe",
@@ -40,11 +48,11 @@ const providerOptions: ProviderOption[] = [
   {
     id: "konnect",
     label: "Konnect",
-    sublabel: "Tunisian card checkout",
+    sublabel: isProviderEnabled("konnect") ? "Tunisian card checkout" : "Disabled in production",
     icon: "/payement/konnect_payment_icon.png",
     accent: "#47c7ea",
     bg: "from-[#47c7ea]/14 to-[#8e78fb]/10",
-    available: true,
+    available: isProviderEnabled("konnect"),
   },
   {
     id: "flouci",

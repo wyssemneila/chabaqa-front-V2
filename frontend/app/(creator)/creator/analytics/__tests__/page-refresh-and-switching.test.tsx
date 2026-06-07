@@ -8,6 +8,7 @@ const mockToast = jest.fn()
 const mockGetOverview = jest.fn()
 const mockGetDevices = jest.fn()
 const mockGetReferrers = jest.fn()
+const mockGetContentCharts = jest.fn()
 const mockGetCourses = jest.fn()
 const mockGetChallenges = jest.fn()
 const mockGetSessions = jest.fn()
@@ -54,6 +55,73 @@ const makeOverview = (values?: { views?: number; starts?: number; completes?: nu
   }
 }
 
+const makeContentCharts = (values?: { views?: number; starts?: number; completes?: number }) => {
+  const views = values?.views ?? 191
+  const starts = values?.starts ?? 12
+  const completes = values?.completes ?? 11
+
+  return {
+    data: {
+      contentType: "course",
+      contentId: null,
+      contentMeta: null,
+      generatedAt: "2026-02-16T00:00:00.000Z",
+      range: { from: "2026-02-10T00:00:00.000Z", to: "2026-02-16T00:00:00.000Z", timezone: "UTC" },
+      totals: {
+        views,
+        starts,
+        completes,
+        completionRate: starts > 0 ? (completes / starts) * 100 : 0,
+        preciseUniqueUsers: starts,
+        revenueAttributed: 0,
+      },
+      precision: {
+        label: "Directional",
+        sources: ["analytics_daily", "trackingactions"],
+        notes: ["analytics_daily powers fast time-series and leaderboards."],
+      },
+      charts: [
+        {
+          id: "daily-performance",
+          title: "Daily Performance",
+          description: "Daily rollup metrics for this content type.",
+          visualization: "line",
+          metrics: ["views", "starts", "completes", "uniqueUsers"],
+          xKey: "date",
+          yKeys: ["views", "starts", "completes"],
+          source: "analytics_daily",
+          precision: "rollup",
+          data: [{ date: "2026-02-16", views, starts, completes, uniqueUsers: starts }],
+        },
+        {
+          id: "conversion-funnel",
+          title: "Conversion Funnel",
+          description: "Unique users moving through the natural funnel.",
+          visualization: "funnel",
+          metrics: ["events", "uniqueUsers", "rateFromPrevious"],
+          valueKey: "uniqueUsers",
+          source: "trackingactions",
+          precision: "exact",
+          data: [
+            { stepKey: "view", stepLabel: "Views", events: views, uniqueUsers: views },
+            { stepKey: "start", stepLabel: "Starts", events: starts, uniqueUsers: starts, rateFromPrevious: 6 },
+          ],
+        },
+        {
+          id: "content-leaderboard",
+          title: "Top Content Items",
+          description: "Best-performing items inside this content type.",
+          visualization: "table",
+          metrics: ["views", "starts", "completes"],
+          source: "analytics_daily",
+          precision: "rollup",
+          data: [{ contentId: "course-1", title: "Course 1", views, starts, completes }],
+        },
+      ],
+    },
+  }
+}
+
 const makeDeferred = <T,>() => {
   let resolve: (value: T) => void = () => {}
   const promise = new Promise<T>((res) => {
@@ -94,6 +162,7 @@ jest.mock("@/lib/api", () => ({
       getOverview: (...args: any[]) => mockGetOverview(...args),
       getDevices: (...args: any[]) => mockGetDevices(...args),
       getReferrers: (...args: any[]) => mockGetReferrers(...args),
+      getContentCharts: (...args: any[]) => mockGetContentCharts(...args),
       getCourses: (...args: any[]) => mockGetCourses(...args),
       getChallenges: (...args: any[]) => mockGetChallenges(...args),
       getSessions: (...args: any[]) => mockGetSessions(...args),
@@ -136,6 +205,7 @@ describe("Creator analytics refresh and switching", () => {
     mockGetOverview.mockResolvedValue(makeOverview())
     mockGetDevices.mockResolvedValue({ data: { rows: [] } })
     mockGetReferrers.mockResolvedValue({ data: { rows: [] } })
+    mockGetContentCharts.mockResolvedValue(makeContentCharts())
     mockGetCourses.mockResolvedValue({ data: { items: [{ id: "course-1", title: "Course 1", views: 191, starts: 12, completes: 11 }] } })
     mockGetChallenges.mockResolvedValue({ data: { items: [] } })
     mockGetSessions.mockResolvedValue({ data: { items: [] } })

@@ -1,59 +1,31 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { CheckCircle2, Clock3, Loader2, ShieldCheck, XCircle, AlertTriangle } from 'lucide-react';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
-import Link from 'next/link';
 import { communitiesApi } from '@/lib/api/communities.api';
 import { useToast } from '@/components/ui/use-toast';
-import { toPaymentViewModel } from '@/lib/view-models/payment-view-model';
-import { CheckCircle2, Clock3, Loader2, ShieldCheck, XCircle } from 'lucide-react';
-
+import { toPaymentViewModel, type PaymentStatus } from '@/lib/view-models/payment-view-model';
 
 interface VerificationResponse {
   success?: boolean;
-  data?: {
-    status: string;
-    orderId?: string;
-    contentTitle?: string;
-    communitySlug?: string;
-    creatorSlug?: string;
-    targetId?: string;
-    courseId?: string;
-    chapterId?: string;
-    paymentMethod?: {
-      type: string;
-      card?: {
-        brand: string;
-        last4: string;
-        exp_month: number;
-        exp_year: number;
-      };
-      bank_account?: {
-        bank_name: string;
-        last4: string;
-      };
-    };
-    customerId?: string;
-    action?: string;
-    message?: string;
-    sessionContentId?: string;
-  };
-  // Fallback for flat structure
+  data?: Record<string, any>;
   status?: string;
   action?: string;
   message?: string;
-  sessionContentId?: string;
   error?: string;
-  paymentMethod?: any;
-  contentTitle?: string;
-  communitySlug?: string;
-  creatorSlug?: string;
-  targetId?: string;
-  courseId?: string;
-  chapterId?: string;
+  [key: string]: any;
 }
+
+type JourneyStage = 'verifying' | 'pending' | 'syncing' | 'ready' | 'failed' | 'cancelled';
+
+const TERMINAL_SUCCESS = new Set<PaymentStatus>(['paid', 'requires_action']);
+const TERMINAL_FAILURE = new Set<PaymentStatus>(['failed', 'cancelled']);
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function PaymentSuccessContent() {
   const searchParams = useSearchParams();
@@ -61,143 +33,177 @@ export default function PaymentSuccessContent() {
   const { toast } = useToast();
   const redirectDone = useRef(false);
   const duplicateEventToastShown = useRef(false);
+
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [verificationData, setVerificationData] = useState<VerificationResponse | null>(null);
-  const [journeyStage, setJourneyStage] = useState<'verifying' | 'syncing' | 'ready' | 'failed'>('verifying');
+  const [journeyStage, setJourneyStage] = useState<JourneyStage>('verifying');
 
   const sessionId = searchParams.get('sessionId');
+  const paymentRef = searchParams.get('paymentRef');
+  const paymentId = searchParams.get('paymentId');
+  const orderIdParam = searchParams.get('orderId');
   const scope = searchParams.get('scope');
   const id = searchParams.get('id');
   const chapterId = searchParams.get('chapterId') || id;
   const provider = searchParams.get('provider');
-  const paymentRef = searchParams.get('paymentRef');
-
-  console.log('Payment Success Params:', searchParams.toString());
-  console.log('Session ID:', sessionId);
 
   const isAlreadyRegisteredEventMessage = (value: unknown): boolean => {
     const message = String(value || '').toLowerCase();
-    return message.includes('déjà inscrit') || message.includes('already registered');
+    return message.includes('already registered') || message.includes('already purchased') || message.includes('already enrolled');
   };
 
+  const buildVerifyUrl = useCallback(() => {
+    if (orderIdParam && (!sessionId && !paymentRef && !paymentId)) {
+      return `/api/payments/order/${encodeURIComponent(orderIdParam)}`;
+    }
+    if (provider === 'konnect' && paymentRef) {
+      return `/api/payments/verify?paymentRef=${encodeURIComponent(paymentRef)}`;
+    }
+    if ((provider === 'stripe' || provider === 'stripe-link') && sessionId) {
+      return `/api/payments/verify?sessionId=${encodeURIComponent(sessionId)}`;
+    }
+    if (sessionId) {
+      return `/api/payments/verify?sessionId=${encodeURIComponent(sessionId)}`;
+    }
+    if (paymentRef) {
+      return `/api/payments/verify?paymentRef=${encodeURIComponent(paymentRef)}`;
+    }
+    if (paymentId) {
+      return `/api/payments/verify?paymentId=${encodeURIComponent(paymentId)}`;
+    }
+    return null;
+  }, [orderIdParam, paymentId, paymentRef, provider, sessionId]);
+
   useEffect(() => {
+    let cancelled = false;
+
     const verifyPayment = async () => {
-      if (!sessionId && !paymentRef) {
-        setError('No payment identifier provided');
+      const verifyUrl = buildVerifyUrl();
+      if (!verifyUrl) {
+        setError('No payment identifier provided. If you completed payment, contact support with your checkout email.');
         setJourneyStage('failed');
         setLoading(false);
         return;
       }
 
+      const retryDelays = [0, 1000, 2000, 3000, 5000, 8000];
+      let lastData: any = null;
+      let lastResponseOk = false;
+
       try {
-        // Determine correct endpoint based on provider
-        let verifyUrl = `/api/payments/verify?paymentId=${sessionId}`; // Default to Flouci
-        if (provider === 'konnect' && paymentRef) {
-          verifyUrl = `/api/payments/verify?paymentRef=${paymentRef}`;
-        } else if (provider === 'stripe' || provider === 'stripe-link') {
-          verifyUrl = `/api/payments/verify?sessionId=${sessionId}`;
-        }
-
-        const shouldRetry = scope === 'chapter';
-        const retryDelays = shouldRetry ? [0, 1000, 2000, 3000, 4000, 5000] : [0];
-        let response: Response | null = null;
-        let data: any = null;
-
         for (const delay of retryDelays) {
-          if (delay > 0) {
-            await new Promise((resolve) => setTimeout(resolve, delay));
-          }
+          if (delay > 0) await sleep(delay);
+          if (cancelled) return;
 
           const accessToken =
-            (typeof window !== 'undefined' && (localStorage.getItem('accessToken') || localStorage.getItem('token'))) ||
-            '';
+            typeof window !== 'undefined'
+              ? localStorage.getItem('accessToken') || localStorage.getItem('token') || ''
+              : '';
 
-          response = await fetch(verifyUrl, {
+          const response = await fetch(verifyUrl, {
             method: 'GET',
             credentials: 'include',
             headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
           });
-          data = await response.json().catch(() => null);
 
-          const payload = data?.data || data;
-          const status = payload?.status;
-          const isSuccess = data?.success === true || response.ok;
-          if (!shouldRetry || (isSuccess && (status === 'paid' || status === 'complete' || status === 'succeeded'))) {
+          lastResponseOk = response.ok;
+          lastData = await response.json().catch(() => null);
+          const normalized = toPaymentViewModel(lastData);
+
+          setVerificationData(lastData);
+
+          if (TERMINAL_SUCCESS.has(normalized.status) || TERMINAL_FAILURE.has(normalized.status)) {
             break;
           }
+
+          setJourneyStage('pending');
         }
 
-        setVerificationData(data);
-        const normalizedPayment = toPaymentViewModel(data);
+        if (cancelled) return;
 
-        // Check both potential structures (active wrapper or direct response)
-        const isSuccess = normalizedPayment.success || Boolean(response?.ok);
-        const payload = normalizedPayment;
-        const status = payload?.status;
-        const action = payload?.action;
-        const errorMessage = payload?.message || data?.message || data?.error;
+        const normalizedPayment = toPaymentViewModel(lastData);
+        const status = normalizedPayment.status;
+        const action = normalizedPayment.actionRequired || normalizedPayment.action;
+        const errorMessage = normalizedPayment.message || lastData?.message || lastData?.error;
         const isEventAlreadyRegistered =
-          scope === 'event' &&
-          !isSuccess &&
-          isAlreadyRegisteredEventMessage(errorMessage);
+          scope === 'event' && !normalizedPayment.success && isAlreadyRegisteredEventMessage(errorMessage);
 
-        if (isSuccess && status === 'paid') {
+        if (normalizedPayment.success && status === 'paid') {
           setJourneyStage('ready');
           setVerified(true);
-        } else if (isEventAlreadyRegistered) {
+          return;
+        }
+
+        if (isEventAlreadyRegistered) {
           setJourneyStage('ready');
           setVerified(true);
           if (!duplicateEventToastShown.current) {
             duplicateEventToastShown.current = true;
             toast({
-              title: 'Already Registered',
-              description: 'You can only register once per event (1 ticket per user).',
+              title: 'Already registered',
+              description: 'You already have access to this item. Opening it now.',
             });
           }
-        } else if (isSuccess && status === 'requires_action' && (action === 'choose_session_slot' || payload.actionRequired === 'choose_session_slot')) {
-          const orderId = payload?.orderId;
-          const sessionTargetId = payload?.sessionContentId || payload?.targetId || id;
+          return;
+        }
+
+        if (normalizedPayment.success && status === 'requires_action' && action === 'choose_session_slot') {
+          const orderId = normalizedPayment.orderId;
+          const sessionContentId = normalizedPayment.sessionContentId || normalizedPayment.targetId || id;
           const redirectUrl =
-            payload?.creatorSlug && payload?.communitySlug && orderId
-              ? `/${payload.creatorSlug}/${payload.communitySlug}/sessions?paymentAction=choose-slot&orderId=${encodeURIComponent(String(orderId))}&sessionId=${encodeURIComponent(String(sessionTargetId || ''))}`
-              : `/dashboard?paymentAction=choose-slot&orderId=${encodeURIComponent(String(orderId || ''))}&sessionId=${encodeURIComponent(String(sessionTargetId || ''))}`;
+            normalizedPayment.creatorSlug && normalizedPayment.communitySlug && orderId
+              ? `/${normalizedPayment.creatorSlug}/${normalizedPayment.communitySlug}/sessions?paymentAction=choose-slot&orderId=${encodeURIComponent(String(orderId))}&sessionId=${encodeURIComponent(String(sessionContentId || ''))}`
+              : `/dashboard?paymentAction=choose-slot&orderId=${encodeURIComponent(String(orderId || ''))}&sessionId=${encodeURIComponent(String(sessionContentId || ''))}`;
 
           toast({
             title: 'Payment received',
-            description: payload?.message || 'Please choose a date and time to finalize your booking.',
+            description: normalizedPayment.message || 'Please choose a date and time to finalize your booking.',
           });
 
           router.replace(redirectUrl);
           return;
-        } else {
-          setJourneyStage('failed');
-          if (scope === 'chapter') {
-            setError(
-              data?.error ||
-                'Payment may be successful but unlock verification is still syncing. Please wait and retry.',
-            );
-          } else {
-            setError(data?.error || 'Payment verification failed');
-          }
         }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Verification failed';
-        setError(errorMessage);
+
+        if (status === 'pending') {
+          setJourneyStage('pending');
+          setError(
+            normalizedPayment.message ||
+              (normalizedPayment.provider === 'manual'
+                ? 'Your manual payment proof is pending creator review.'
+                : 'Payment is still pending. This can happen while the payment provider sends the webhook.'),
+          );
+          return;
+        }
+
+        if (status === 'cancelled') {
+          setJourneyStage('cancelled');
+          setError('Checkout was canceled. No charge was confirmed.');
+          return;
+        }
+
         setJourneyStage('failed');
-        // Ensure verificationData is reset or null if verification fails significantly
+        setError(errorMessage || (lastResponseOk ? 'Payment could not be verified.' : 'Payment verification failed.'));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Verification failed';
+        setError(message);
+        setJourneyStage('failed');
         setVerificationData(null);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     verifyPayment();
-  }, [sessionId, paymentRef, provider, id, scope, router, toast]);
 
-  // Helper to access data safely
-  const paymentData = verificationData?.data || verificationData;
+    return () => {
+      cancelled = true;
+    };
+  }, [buildVerifyUrl, id, router, scope, toast]);
+
+  const paymentData = useMemo(() => verificationData?.data || verificationData || {}, [verificationData]);
+  const normalizedPayment = useMemo(() => toPaymentViewModel(verificationData), [verificationData]);
   const paymentMethod = paymentData?.paymentMethod;
   const contentTitle = paymentData?.contentTitle;
   const creatorSlug = paymentData?.creatorSlug;
@@ -208,28 +214,21 @@ export default function PaymentSuccessContent() {
       ? `/${creatorSlug}/${communitySlug}/events/qr?eventId=${encodeURIComponent(String(targetId))}`
       : null;
 
-  // After successful payment, briefly show a stable success state before moving users onward.
   useEffect(() => {
     if (!verified || redirectDone.current) return;
 
     const redirectTimer = window.setTimeout(() => {
       setJourneyStage('syncing');
 
-      // Course Redirect
       if (scope === 'course' && creatorSlug && communitySlug && targetId) {
         redirectDone.current = true;
         router.replace(`/${creatorSlug}/${communitySlug}/courses/${targetId}`);
         return;
       }
 
-      // Chapter Redirect (back to parent course page)
       if (scope === 'chapter' && creatorSlug && communitySlug) {
         redirectDone.current = true;
-        const courseTargetId =
-          searchParams.get('courseId') ||
-          paymentData?.courseId ||
-          paymentData?.sessionContentId ||
-          paymentData?.targetId;
+        const courseTargetId = searchParams.get('courseId') || paymentData?.courseId || paymentData?.sessionContentId || paymentData?.targetId;
         if (courseTargetId) {
           const nextParams = new URLSearchParams();
           if (chapterId) nextParams.set('paidChapterId', String(chapterId));
@@ -241,7 +240,6 @@ export default function PaymentSuccessContent() {
         }
       }
 
-      // Community Redirect: poll joined list until membership appears (to avoid race with webhook)
       if (scope === 'community' && creatorSlug && communitySlug) {
         redirectDone.current = true;
         (async () => {
@@ -258,149 +256,103 @@ export default function PaymentSuccessContent() {
                   joined = true;
                   break;
                 }
-              } catch (e) {
-                // ignore and retry
+              } catch {
+                // retry until timeout
               }
-              await new Promise((r) => setTimeout(r, intervalMs));
+              await sleep(intervalMs);
             }
           } finally {
-            if (joined) {
-              router.replace(`/${creatorSlug}/${communitySlug}/home`);
-            } else {
-              router.replace(`/${creatorSlug}/${communitySlug}/home?joined=1`);
-            }
+            router.replace(`/${creatorSlug}/${communitySlug}/home${joined ? '' : '?joined=1'}`);
           }
         })();
         return;
       }
 
-      // Session Redirect
       if (scope === 'session' && creatorSlug && communitySlug) {
         redirectDone.current = true;
         router.replace(`/${creatorSlug}/${communitySlug}/sessions`);
         return;
       }
 
-      // Event Redirect (QR)
       if (scope === 'event' && eventQrHref) {
         redirectDone.current = true;
         router.replace(eventQrHref);
+        return;
+      }
+
+      if (scope === 'subscription') {
+        redirectDone.current = true;
+        router.replace('/creator/billing?checkout=success');
       }
     }, 1800);
 
     return () => window.clearTimeout(redirectTimer);
-  }, [verified, scope, creatorSlug, communitySlug, targetId, router, searchParams, paymentData, chapterId, sessionId]);
+  }, [chapterId, communitySlug, creatorSlug, eventQrHref, paymentData, router, scope, searchParams, sessionId, targetId, verified]);
 
   const isRedirecting = verified && (
     (scope === 'course' && creatorSlug && communitySlug && targetId) ||
     (scope === 'chapter' && creatorSlug && communitySlug) ||
     (scope === 'community' && creatorSlug && communitySlug) ||
     (scope === 'session' && creatorSlug && communitySlug) ||
-    (scope === 'event' && eventQrHref)
+    (scope === 'event' && eventQrHref) ||
+    scope === 'subscription'
   );
 
   const renderContentButton = () => {
-    const baseClass = "block w-full rounded-xl bg-blue-600 px-4 py-3 text-center font-semibold text-white transition hover:bg-blue-700";
+    const baseClass = 'block w-full rounded-xl bg-blue-600 px-4 py-3 text-center font-semibold text-white transition hover:bg-blue-700';
 
-    // 1. Course
     if (scope === 'course' && creatorSlug && communitySlug && targetId) {
-      return (
-        <Link href={`/${creatorSlug}/${communitySlug}/courses/${targetId}`} className={baseClass}>
-          Go to Course
-        </Link>
-      );
+      return <Link href={`/${creatorSlug}/${communitySlug}/courses/${targetId}`} className={baseClass}>Go to Course</Link>;
     }
 
     if (scope === 'chapter' && creatorSlug && communitySlug) {
-      const courseTargetId =
-        searchParams.get('courseId') ||
-        paymentData?.sessionContentId ||
-        paymentData?.targetId;
+      const courseTargetId = searchParams.get('courseId') || paymentData?.courseId || paymentData?.sessionContentId || paymentData?.targetId;
       if (courseTargetId) {
         const nextParams = new URLSearchParams();
         if (chapterId) nextParams.set('paidChapterId', String(chapterId));
         nextParams.set('checkout', 'success');
         if (sessionId) nextParams.set('sessionId', String(sessionId));
         const query = nextParams.toString();
-        return (
-          <Link href={`/${creatorSlug}/${communitySlug}/courses/${courseTargetId}${query ? `?${query}` : ''}`} className={baseClass}>
-            Go to Course
-          </Link>
-        );
+        return <Link href={`/${creatorSlug}/${communitySlug}/courses/${courseTargetId}${query ? `?${query}` : ''}`} className={baseClass}>Go to Course</Link>;
       }
     }
 
-    // 2. Community
     if (scope === 'community' && creatorSlug && communitySlug) {
-      return (
-        <Link href={`/${creatorSlug}/${communitySlug}/home`} className={baseClass}>
-          Go to Community
-        </Link>
-      );
+      return <Link href={`/${creatorSlug}/${communitySlug}/home`} className={baseClass}>Go to Community</Link>;
     }
 
-    // 3. Product
     if (scope === 'product' && creatorSlug && communitySlug && targetId) {
-      return (
-        <Link href={`/${creatorSlug}/${communitySlug}/products/${targetId}`} className={baseClass}>
-          Go to Product
-        </Link>
-      );
+      return <Link href={`/${creatorSlug}/${communitySlug}/products/${targetId}`} className={baseClass}>Go to Product</Link>;
     }
 
-    // 4. Challenge
     if (scope === 'challenge' && creatorSlug && communitySlug && targetId) {
-      return (
-        <Link href={`/${creatorSlug}/${communitySlug}/challenges/${targetId}`} className={baseClass}>
-          Go to Challenge
-        </Link>
-      );
+      return <Link href={`/${creatorSlug}/${communitySlug}/challenges/${targetId}`} className={baseClass}>Go to Challenge</Link>;
     }
 
-    // 5. Event
     if (scope === 'event' && eventQrHref) {
-      return (
-        <Link href={eventQrHref} className={baseClass}>
-          View Ticket QR
-        </Link>
-      );
+      return <Link href={eventQrHref} className={baseClass}>View Ticket QR</Link>;
     }
 
-    // 6. Session
     if (scope === 'session') {
-      if (creatorSlug && communitySlug) {
-        return (
-          <Link href={`/${creatorSlug}/${communitySlug}/sessions`} className={baseClass}>
-            View My Bookings
-          </Link>
-        );
-      }
-
-      return (
-        <Link href="/dashboard" className={baseClass}>
-          View My Bookings
-        </Link>
-      );
+      return <Link href={creatorSlug && communitySlug ? `/${creatorSlug}/${communitySlug}/sessions` : '/dashboard'} className={baseClass}>View My Bookings</Link>;
     }
 
-    // 7. Subscription
     if (scope === 'subscription') {
-      return (
-        <Link href="/dashboard" className={baseClass}>
-          Go to Dashboard
-        </Link>
-      );
+      return <Link href="/creator/billing" className={baseClass}>View Account Billing</Link>;
     }
 
-    // Fallback if metadata missing but we have ID for course (assuming legacy path if any) or just dashboard
     return null;
   };
 
+  const supportReference = sessionId || paymentRef || paymentId || orderIdParam || normalizedPayment.orderId;
+  const pending = journeyStage === 'pending';
+  const failed = journeyStage === 'failed' || journeyStage === 'cancelled';
+
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="flex min-h-screen flex-col bg-white">
       <Header />
 
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
+      <main className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-lg rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_20px_70px_-42px_rgba(15,23,42,0.45)]">
           {loading ? (
             <div className="text-center">
@@ -408,7 +360,7 @@ export default function PaymentSuccessContent() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
               <p className="font-semibold text-gray-900">Verifying payment</p>
-              <p className="mt-2 text-sm text-gray-500">Confirming the payment before enabling access.</p>
+              <p className="mt-2 text-sm text-gray-500">Confirming checkout and waiting for provider reconciliation.</p>
             </div>
           ) : isRedirecting ? (
             <div className="text-center">
@@ -423,122 +375,78 @@ export default function PaymentSuccessContent() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-green-100 text-green-600">
                 <ShieldCheck className="h-8 w-8" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Granted!</h1>
-              <p className="text-gray-600 mb-6">
+              <h1 className="mb-2 text-2xl font-bold text-gray-900">Access Granted!</h1>
+              <p className="mb-6 text-gray-600">
                 Your payment was successful and your access has been enabled.
-                {contentTitle && <span className="block mt-1 font-semibold text-blue-900">{contentTitle}</span>}
+                {contentTitle && <span className="mt-1 block font-semibold text-blue-900">{contentTitle}</span>}
               </p>
 
-
               {paymentMethod && (
-                <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-                  <h3 className="font-semibold text-gray-900 mb-3">Payment Method</h3>
+                <div className="mb-6 rounded-lg bg-gray-50 p-4 text-left">
+                  <h3 className="mb-3 font-semibold text-gray-900">Payment Method</h3>
                   <div className="space-y-2 text-sm">
-                    <p>
-                      <span className="text-gray-600">Type:</span>{' '}
-                      <span className="font-medium">
-                        {paymentMethod.type}
-                      </span>
-                    </p>
+                    <p><span className="text-gray-600">Type:</span> <span className="font-medium">{paymentMethod.type}</span></p>
                     {paymentMethod.card && (
                       <>
-                        <p>
-                          <span className="text-gray-600">Card:</span>{' '}
-                          <span className="font-medium">
-                            {paymentMethod.card.brand.toUpperCase()} •••• •••• •••• {paymentMethod.card.last4}
-                          </span>
-                        </p>
-                        <p>
-                          <span className="text-gray-600">Expires:</span>{' '}
-                          <span className="font-medium">
-                            {paymentMethod.card.exp_month}/
-                            {paymentMethod.card.exp_year}
-                          </span>
-                        </p>
+                        <p><span className="text-gray-600">Card:</span> <span className="font-medium">{paymentMethod.card.brand?.toUpperCase()} •••• {paymentMethod.card.last4}</span></p>
+                        <p><span className="text-gray-600">Expires:</span> <span className="font-medium">{paymentMethod.card.exp_month}/{paymentMethod.card.exp_year}</span></p>
                       </>
                     )}
                     {paymentMethod.bank_account && (
                       <>
-                        <p>
-                          <span className="text-gray-600">Bank:</span>{' '}
-                          <span className="font-medium">
-                            {paymentMethod.bank_account.bank_name}
-                          </span>
-                        </p>
-                        <p>
-                          <span className="text-gray-600">Account:</span>{' '}
-                          <span className="font-medium">
-                            •••• {paymentMethod.bank_account.last4}
-                          </span>
-                        </p>
+                        <p><span className="text-gray-600">Bank:</span> <span className="font-medium">{paymentMethod.bank_account.bank_name}</span></p>
+                        <p><span className="text-gray-600">Account:</span> <span className="font-medium">•••• {paymentMethod.bank_account.last4}</span></p>
                       </>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* {verificationData && (
-                <details className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-left text-xs">
-                  <summary className="cursor-pointer font-semibold text-blue-900 mb-3">
-                    API Response
-                  </summary>
-                  <pre className="bg-gray-800 text-green-400 p-2 rounded overflow-auto">
-                    {JSON.stringify(verificationData, null, 2)}
-                  </pre>
-                </details>
-              )} */}
-
               <div className="space-y-3">
                 {renderContentButton()}
-                <Link
-                  href="/dashboard"
-                  className="block w-full rounded-xl bg-gray-100 px-4 py-3 font-semibold text-gray-900 transition hover:bg-gray-200"
-                >
-                  Back to Dashboard
+                <Link href={scope === 'subscription' ? '/creator/billing' : '/dashboard'} className="block w-full rounded-xl bg-gray-100 px-4 py-3 font-semibold text-gray-900 transition hover:bg-gray-200">
+                  {scope === 'subscription' ? 'Back to Billing' : 'Back to Dashboard'}
                 </Link>
               </div>
             </div>
-          ) : (
+          ) : pending ? (
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                <Clock3 className="h-8 w-8" />
+              </div>
+              <h1 className="mb-2 text-2xl font-bold text-gray-900">Payment Pending</h1>
+              <p className="mb-4 text-gray-600">{error || 'We are still waiting for final confirmation.'}</p>
+              <p className="mb-6 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                Keep this page reference. Access will unlock automatically after the provider webhook or manual review is completed.
+              </p>
+              <div className="space-y-3">
+                <button onClick={() => window.location.reload()} className="block w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700">Check Again</button>
+                <Link href="/dashboard" className="block w-full rounded-xl bg-gray-100 px-4 py-3 font-semibold text-gray-900 transition hover:bg-gray-200">Back to Dashboard</Link>
+              </div>
+            </div>
+          ) : failed ? (
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 text-red-600">
-                <XCircle className="h-8 w-8" />
+                {journeyStage === 'cancelled' ? <AlertTriangle className="h-8 w-8" /> : <XCircle className="h-8 w-8" />}
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Failed</h1>
-              <p className="text-gray-600 mb-2">
-                {typeof error === 'string' ? error : 'Payment could not be verified'}
-              </p>
-              {(sessionId || paymentRef) && (
+              <h1 className="mb-2 text-2xl font-bold text-gray-900">{journeyStage === 'cancelled' ? 'Checkout Canceled' : 'Payment Not Confirmed'}</h1>
+              <p className="mb-2 text-gray-600">{error || 'Payment could not be verified.'}</p>
+              {supportReference && (
                 <details className="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-3 text-left text-xs text-gray-500">
                   <summary className="cursor-pointer font-semibold text-gray-700">Support reference</summary>
-                  <p className="mt-2 font-mono break-all">{sessionId || paymentRef}</p>
+                  <p className="mt-2 break-all font-mono">{supportReference}</p>
                 </details>
               )}
-
-              {/* {verificationData && (
-                <details className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-left text-xs">
-                  <summary className="cursor-pointer font-semibold text-red-900 mb-3">
-                    Error Details
-                  </summary>
-                  <pre className="bg-gray-800 text-red-400 p-2 rounded overflow-auto">
-                    {JSON.stringify(verificationData, null, 2)}
-                  </pre>
-                </details>
-              )} */}
-
               <div className="space-y-3">
-                <Link
-                  href="/dashboard"
-                  className="block w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700"
-                >
-                  Back to Dashboard
-                </Link>
+                <button onClick={() => window.location.reload()} className="block w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700">Retry Verification</button>
+                <Link href="/dashboard" className="block w-full rounded-xl bg-gray-100 px-4 py-3 font-semibold text-gray-900 transition hover:bg-gray-200">Back to Dashboard</Link>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
-      </main >
+      </main>
 
       <Footer />
-    </div >
+    </div>
   );
 }

@@ -2,10 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Plus } from "lucide-react"
+import {
+  AlertCircle,
+  Database,
+  FileText,
+  Plus,
+  RefreshCw,
+  SlidersHorizontal,
+  Sparkles,
+  Users,
+  Wand2,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -25,7 +34,6 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
-import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { useCommunityGuard } from "@/hooks/use-community-guard"
 import { PageShell } from "@/components/creator-dashboard"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -33,12 +41,14 @@ import { AutomationsTab } from "../components/automations-tab"
 import { CampaignStats } from "../components/campaign-stats"
 import { CampaignBuilderDialog } from "../components/campaign-builder-dialog"
 import { EmailCampaignList } from "../components/email-campaign-list"
+import { EmailTemplateCards } from "../components/email-template-cards"
 import {
   emailCampaignsApi,
   EmailCampaign,
   CampaignStats as CampaignStatsType,
   EmailCampaignStatus,
   EmailCampaignType,
+  MarketingMergeFieldsResponse,
 } from "@/lib/api"
 import { getCreatorCreateTemplate } from "@/lib/creator-content"
 import { toLocalDateTimeFields, toUtcIsoFromLocalDateTime } from "../components/campaign-form-utils"
@@ -83,6 +93,8 @@ export default function EmailCampaignsPage() {
   const [stats, setStats] = useState<CampaignStatsType | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsError, setStatsError] = useState<string | null>(null)
+  const [composerData, setComposerData] = useState<MarketingMergeFieldsResponse | null>(null)
+  const [composerLoading, setComposerLoading] = useState(true)
 
   const [pendingFilters, setPendingFilters] = useState<FilterState>(DEFAULT_FILTERS)
   const [activeFilters, setActiveFilters] = useState<FilterState>(DEFAULT_FILTERS)
@@ -167,13 +179,35 @@ export default function EmailCampaignsPage() {
     [selectedCommunityId],
   )
 
+  const fetchComposerData = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!selectedCommunityId) return
+      const isSilent = options?.silent === true
+      try {
+        if (!isSilent) {
+          setComposerLoading(true)
+        }
+        const response = await emailCampaignsApi.getMarketingMergeFields(selectedCommunityId)
+        setComposerData(response)
+      } catch {
+        setComposerData(null)
+      } finally {
+        if (!isSilent) {
+          setComposerLoading(false)
+        }
+      }
+    },
+    [selectedCommunityId],
+  )
+
   useEffect(() => {
     if (!selectedCommunityId) return
     setActiveFilters(DEFAULT_FILTERS)
     setPendingFilters(DEFAULT_FILTERS)
     fetchCampaigns(1, DEFAULT_FILTERS)
     fetchStats()
-  }, [fetchCampaigns, fetchStats, selectedCommunityId])
+    fetchComposerData()
+  }, [fetchCampaigns, fetchComposerData, fetchStats, selectedCommunityId])
 
   useEffect(() => {
     if (!selectedCommunityId) return
@@ -206,7 +240,11 @@ export default function EmailCampaignsPage() {
   )
 
   const refreshCurrentPage = async () => {
-    await Promise.all([fetchCampaigns(currentPage, activeFilters), fetchStats()])
+    await Promise.all([
+      fetchCampaigns(currentPage, activeFilters),
+      fetchStats(),
+      fetchComposerData({ silent: true }),
+    ])
     if (shouldOpenCreate) {
       router.replace("/creator/marketing/emails")
     }
@@ -342,7 +380,7 @@ export default function EmailCampaignsPage() {
 
   if (!selectedCommunity) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="w-full max-w-none p-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>Please select a community to manage email campaigns.</AlertDescription>
@@ -353,93 +391,192 @@ export default function EmailCampaignsPage() {
 
   if (guard) return guard
 
-  return (
-    <PageShell className="container mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Email Marketing</h1>
-          <p className="text-gray-500">Campaigns &amp; automations for {selectedCommunity.name}</p>
-        </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-chabaqa-primary hover:bg-chabaqa-primary/90">
-          <Plus className="w-4 h-4 mr-2" />
-          Create Campaign
-        </Button>
-      </div>
+  const dataSummary = composerData?.dataSummary || {}
+  const totalTemplatesReady = composerData ? "Backend synced" : composerLoading ? "Syncing..." : "Needs refresh"
+  const summaryItems = [
+    {
+      label: "Members",
+      value: Number(dataSummary.members || 0).toLocaleString(),
+      icon: Users,
+      tint: "bg-chabaqa-primary/10 text-chabaqa-primary",
+    },
+    {
+      label: "Merge fields",
+      value: composerLoading ? "..." : (composerData?.fields.length || 0).toLocaleString(),
+      icon: Database,
+      tint: "bg-courses/10 text-courses-700",
+    },
+    {
+      label: "Content sources",
+      value: Number(
+        (dataSummary.courses || 0) +
+        (dataSummary.challenges || 0) +
+        (dataSummary.events || 0) +
+        (dataSummary.products || 0) +
+        (dataSummary.sessions || 0),
+      ).toLocaleString(),
+      icon: FileText,
+      tint: "bg-challenges/10 text-challenges-700",
+    },
+    {
+      label: "Composer data",
+      value: totalTemplatesReady,
+      icon: Wand2,
+      tint: "bg-sessions/10 text-sessions-700",
+    },
+  ]
 
-      <Tabs defaultValue="campaigns">
-        <TabsList>
+  return (
+    <PageShell className="w-full max-w-none space-y-6">
+      <section className="rounded-lg border border-[var(--bd)] bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="max-w-4xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-chabaqa-primary/20 bg-chabaqa-primary/5 px-3 py-1 text-xs font-semibold text-chabaqa-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Rich data composer
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-[var(--t1)]">Email Marketing</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--t2)]">
+              Build campaigns and automations for {selectedCommunity.name} with member, content, activity,
+              course progress, and community data pulled directly from the backend.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full border border-[var(--bd)] bg-[var(--p2)] px-3 py-1 font-medium text-[var(--p-dark)]">
+                {stats?.totalCampaigns ?? 0} campaigns
+              </span>
+              <span className="rounded-full border border-[var(--bd)] bg-white px-3 py-1 font-medium text-[var(--t2)]">
+                {composerData?.syntax.tokenExample || "{{userFirstName}}"} syntax
+              </span>
+              <span className="rounded-full border border-[var(--bd)] bg-white px-3 py-1 font-medium text-[var(--t2)]">
+                Open rate {stats ? `${stats.averageOpenRate.toFixed(1)}%` : "-"}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                fetchCampaigns(currentPage, activeFilters)
+                fetchStats()
+                fetchComposerData()
+              }}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-chabaqa-primary hover:bg-chabaqa-primary/90">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Campaign
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {summaryItems.map((item) => (
+            <div key={item.label} className="rounded-lg border border-[var(--bd)] bg-white px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium text-[var(--t3)]">{item.label}</p>
+                  <p className="mt-1 text-lg font-semibold text-[var(--t1)]">{item.value}</p>
+                </div>
+                <span className={`flex h-9 w-9 items-center justify-center rounded-md ${item.tint}`}>
+                  <item.icon className="h-4 w-4" />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <Tabs defaultValue="campaigns" className="w-full">
+        <TabsList className="h-11 rounded-lg border border-[var(--bd)] bg-white p-1">
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="automations">Automations</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="campaigns" className="space-y-6 mt-4">
+        <TabsContent value="campaigns" className="mt-5 space-y-6">
 
       <CampaignStats stats={stats} loading={statsLoading} error={statsError} />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <Select
-          value={pendingFilters.status}
-          onValueChange={(value) => setPendingFilters((prev) => ({ ...prev, status: value as any }))}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="sending">Sending</SelectItem>
-            <SelectItem value="sent">Sent</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={pendingFilters.type}
-          onValueChange={(value) => setPendingFilters((prev) => ({ ...prev, type: value as any }))}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            <SelectItem value="announcement">Announcement</SelectItem>
-            <SelectItem value="newsletter">Newsletter</SelectItem>
-            <SelectItem value="promotion">Promotion</SelectItem>
-            <SelectItem value="event_reminder">Event reminder</SelectItem>
-            <SelectItem value="course_update">Course update</SelectItem>
-            <SelectItem value="inactive_user_reactivation">Inactive user reactivation</SelectItem>
-            <SelectItem value="custom">Custom</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          value={pendingFilters.search}
-          onChange={(event) => setPendingFilters((prev) => ({ ...prev, search: event.target.value }))}
-          placeholder="Search title or subject"
-        />
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => {
-              setPendingFilters(DEFAULT_FILTERS)
-              setActiveFilters(DEFAULT_FILTERS)
-              fetchCampaigns(1, DEFAULT_FILTERS)
-            }}
-          >
-            Reset
-          </Button>
-          <Button
-            className="w-full"
-            onClick={() => {
-              setActiveFilters(pendingFilters)
-              fetchCampaigns(1, pendingFilters)
-            }}
-          >
-            Apply
-          </Button>
+      <EmailTemplateCards onCampaignCreated={refreshCurrentPage} />
+
+      <section className="rounded-lg border border-[var(--bd)] bg-white p-4 shadow-sm">
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-semibold text-[var(--t1)]">
+              <SlidersHorizontal className="h-4 w-4 text-chabaqa-primary" />
+              Campaign workspace
+            </h2>
+            <p className="text-sm text-[var(--t2)]">Filter, inspect, send, duplicate, or test every campaign from one full-width table.</p>
+          </div>
         </div>
-      </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[180px_220px_1fr_220px]">
+          <Select
+            value={pendingFilters.status}
+            onValueChange={(value) => setPendingFilters((prev) => ({ ...prev, status: value as any }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+              <SelectItem value="sending">Sending</SelectItem>
+              <SelectItem value="sent">Sent</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={pendingFilters.type}
+            onValueChange={(value) => setPendingFilters((prev) => ({ ...prev, type: value as any }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="announcement">Announcement</SelectItem>
+              <SelectItem value="newsletter">Newsletter</SelectItem>
+              <SelectItem value="promotion">Promotion</SelectItem>
+              <SelectItem value="event_reminder">Event reminder</SelectItem>
+              <SelectItem value="course_update">Course update</SelectItem>
+              <SelectItem value="course_progress_reminder">Course progress</SelectItem>
+              <SelectItem value="inactive_user_reactivation">Inactive user reactivation</SelectItem>
+              <SelectItem value="welcome">Welcome</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            value={pendingFilters.search}
+            onChange={(event) => setPendingFilters((prev) => ({ ...prev, search: event.target.value }))}
+            placeholder="Search campaign title or subject"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setPendingFilters(DEFAULT_FILTERS)
+                setActiveFilters(DEFAULT_FILTERS)
+                fetchCampaigns(1, DEFAULT_FILTERS)
+              }}
+            >
+              Reset
+            </Button>
+            <Button
+              className="w-full bg-chabaqa-primary hover:bg-chabaqa-primary/90"
+              onClick={() => {
+                setActiveFilters(pendingFilters)
+                fetchCampaigns(1, pendingFilters)
+              }}
+            >
+              Apply
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {campaignsError && (
         <Alert variant="destructive">
@@ -486,7 +623,7 @@ export default function EmailCampaignsPage() {
 
         </TabsContent>
 
-        <TabsContent value="automations" className="mt-4">
+        <TabsContent value="automations" className="mt-5">
           <AutomationsTab />
         </TabsContent>
       </Tabs>

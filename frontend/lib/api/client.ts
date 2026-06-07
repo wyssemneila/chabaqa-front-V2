@@ -151,11 +151,29 @@ class ApiClient {
     return url.toString();
   }
 
-  private getHeaders(isFormData: boolean = false): HeadersInit {
+  private getCookie(name: string): string {
+    if (typeof document === 'undefined') return '';
+    const encodedName = `${encodeURIComponent(name)}=`;
+    const cookie = document.cookie
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(encodedName));
+    return cookie ? decodeURIComponent(cookie.slice(encodedName.length)) : '';
+  }
+
+  private getHeaders(isFormData: boolean = false, includeCsrf: boolean = false): HeadersInit {
     const headers: HeadersInit = {};
     if (!isFormData) {
       headers['Content-Type'] = 'application/json';
     }
+
+    if (includeCsrf && typeof window !== 'undefined') {
+      const csrfToken = this.getCookie('chabaqa_csrf');
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+    }
+
     // Add Authorization header if we have an access token
     // Only add on client side to avoid SSR issues
     if (typeof window !== 'undefined') {
@@ -202,7 +220,7 @@ class ApiClient {
   async post<T>(endpoint: string, data?: any): Promise<T> {
     const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(false, true),
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
@@ -219,7 +237,7 @@ class ApiClient {
   async patch<T>(endpoint: string, data?: any): Promise<T> {
     const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
       method: 'PATCH',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(false, true),
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
@@ -236,7 +254,7 @@ class ApiClient {
   async put<T>(endpoint: string, data?: any): Promise<T> {
     const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
       method: 'PUT',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(false, true),
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
@@ -253,7 +271,7 @@ class ApiClient {
   async delete<T>(endpoint: string): Promise<T> {
     const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
       method: 'DELETE',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(false, true),
       credentials: 'include',
     });
     let response = await doRequest();
@@ -284,7 +302,7 @@ class ApiClient {
 
     const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
-      headers: this.getHeaders(true),
+      headers: this.getHeaders(true, true),
       credentials: 'include',
       body: formData,
     });
@@ -307,7 +325,7 @@ class ApiClient {
 
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
-      headers: this.getHeaders(true),
+      headers: this.getHeaders(true, true),
       credentials: 'include',
       body: formData,
     });
@@ -327,7 +345,7 @@ class ApiClient {
 
         const res = await fetch(`${this.baseURL}/auth/refresh`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getHeaders(false, true),
           credentials: 'include', // sends httpOnly refreshToken cookie
           body: '{}',
         })

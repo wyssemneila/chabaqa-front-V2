@@ -1,7 +1,12 @@
 'use client';
 
 import { usePlan } from '@/hooks/use-plan';
-import type { PlanFeatures } from '@/lib/plans/plan-config';
+import {
+  FEATURE_LABELS,
+  minimumPlanForFeature,
+  type PlanFeatures,
+} from '@/lib/plans/plan-config';
+import { LockedFeatureCard } from './upgrade-modal';
 
 interface FeatureGateProps {
   feature: keyof PlanFeatures;
@@ -16,5 +21,16 @@ export function FeatureGate({ feature, fallback, children }: FeatureGateProps) {
   if (isLoading) return null;
   if (canUseFeature(feature)) return <>{children}</>;
 
-  return fallback ? <>{fallback}</> : null;
+  if (fallback) return <>{fallback}</>;
+
+  const requiredPlan = minimumPlanForFeature(feature);
+  const label = FEATURE_LABELS[feature] ?? String(feature);
+
+  return (
+    <LockedFeatureCard
+      feature={label}
+      requiredPlan={requiredPlan}
+      description={`${label} is not included in your current plan. Upgrade to ${requiredPlan === 'growth' ? 'Growth' : 'Pro'} to unlock it.`}
+    />
+  );
 }

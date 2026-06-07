@@ -8,6 +8,7 @@
 export type PlanTier = 'starter' | 'growth' | 'pro';
 
 export interface PlanLimits {
+  communitiesMax: number;
   membersMax: number;
   adminsMax: number;
   coursesActivationMax: number;
@@ -28,6 +29,7 @@ export interface PlanFeatures {
   gamification: boolean;
   verifiedBadge: boolean;
   featuredBadge: boolean;
+  automationQuota: number;
 }
 
 export interface Plan {
@@ -37,6 +39,7 @@ export interface Plan {
   yearlyMonthlyPrice: number;
   yearlyTotal: number;
   transactionFee: number;
+  transactionFixedFee: number;
   currency: string;
   trialDays: number;
   highlight?: boolean;
@@ -61,17 +64,18 @@ export const PLANS: PlanMap = {
     yearlyMonthlyPrice: 31,
     yearlyTotal: 372,
     transactionFee: 7.9,
+    transactionFixedFee: 0.5,
     currency: 'TND',
     trialDays: 7,
     limits: {
-      membersMax: 100, adminsMax: 1, coursesActivationMax: 3, storageGB: 5,
+      communitiesMax: 1, membersMax: 100, adminsMax: 1, coursesActivationMax: 3, storageGB: 5,
       emailCampaignRecipientsPerMonth: 0, whatsappMessagesPerMonth: 0,
       sessionBookingsPerMonth: 0, analyticsLookbackDays: 30,
     },
     features: {
       courses: true, products: true, challenges: false, sessions: false,
       events: false, branding: false, gamification: false,
-      verifiedBadge: false, featuredBadge: false,
+      verifiedBadge: false, featuredBadge: false, automationQuota: 0,
     },
   },
   growth: {
@@ -81,18 +85,19 @@ export const PLANS: PlanMap = {
     yearlyMonthlyPrice: 79,
     yearlyTotal: 948,
     transactionFee: 4.9,
+    transactionFixedFee: 0.5,
     currency: 'TND',
     trialDays: 7,
     highlight: true,
     limits: {
-      membersMax: 500, adminsMax: 2, coursesActivationMax: 999, storageGB: 50,
+      communitiesMax: 1, membersMax: 500, adminsMax: 2, coursesActivationMax: 999999, storageGB: 50,
       emailCampaignRecipientsPerMonth: 1000, whatsappMessagesPerMonth: 250,
       sessionBookingsPerMonth: 300, analyticsLookbackDays: 180,
     },
     features: {
       courses: true, products: true, challenges: true, sessions: true,
       events: true, branding: false, gamification: true,
-      verifiedBadge: true, featuredBadge: false,
+      verifiedBadge: true, featuredBadge: false, automationQuota: 1000,
     },
   },
   pro: {
@@ -102,17 +107,18 @@ export const PLANS: PlanMap = {
     yearlyMonthlyPrice: 127,
     yearlyTotal: 1524,
     transactionFee: 2.9,
+    transactionFixedFee: 0.5,
     currency: 'TND',
     trialDays: 7,
     limits: {
-      membersMax: 999999, adminsMax: 3, coursesActivationMax: 999999, storageGB: 300,
+      communitiesMax: 1, membersMax: 999999, adminsMax: 3, coursesActivationMax: 999999, storageGB: 300,
       emailCampaignRecipientsPerMonth: 15000, whatsappMessagesPerMonth: 1000,
       sessionBookingsPerMonth: 1000, analyticsLookbackDays: 365,
     },
     features: {
       courses: true, products: true, challenges: true, sessions: true,
       events: true, branding: true, gamification: true,
-      verifiedBadge: true, featuredBadge: true,
+      verifiedBadge: true, featuredBadge: true, automationQuota: 15000,
     },
   },
 };
@@ -123,10 +129,42 @@ export const PLAN_TIERS: PlanTier[] = ['starter', 'growth', 'pro'];
 
 export function minimumPlanForFeature(feature: keyof PlanFeatures): PlanTier {
   for (const tier of PLAN_TIERS) {
-    if (PLANS[tier].features[feature]) return tier;
+    if (Boolean(PLANS[tier].features[feature])) return tier;
   }
   return 'pro';
 }
+
+export function minimumPlanForLimit(limit: keyof PlanLimits, currentLimit: number): PlanTier | null {
+  for (const tier of PLAN_TIERS) {
+    if ((PLANS[tier].limits[limit] as number) > currentLimit) return tier;
+  }
+  return null;
+}
+
+export const FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
+  courses: 'Courses',
+  products: 'Products',
+  challenges: 'Challenges',
+  sessions: '1:1 sessions',
+  events: 'Events',
+  branding: 'Remove Chabaqa branding',
+  gamification: 'Gamification',
+  verifiedBadge: 'Verified creator badge',
+  featuredBadge: 'Featured creator badge',
+  automationQuota: 'Automation',
+};
+
+export const LIMIT_LABELS: Record<keyof PlanLimits, string> = {
+  communitiesMax: 'communities',
+  membersMax: 'members',
+  adminsMax: 'admin seats',
+  coursesActivationMax: 'active courses',
+  storageGB: 'GB storage',
+  emailCampaignRecipientsPerMonth: 'email recipients/month',
+  whatsappMessagesPerMonth: 'WhatsApp messages/month',
+  sessionBookingsPerMonth: 'session bookings/month',
+  analyticsLookbackDays: 'analytics history days',
+};
 
 export function formatLimit(value: number, suffix = ''): string {
   if (value >= 999999) return 'Unlimited';

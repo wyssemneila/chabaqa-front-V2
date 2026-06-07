@@ -810,6 +810,38 @@ export interface MessageAttachment {
   url: string;
   type: 'image' | 'file' | 'video';
   size: number;
+  name?: string;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+}
+
+export interface MessageParticipant {
+  id: string;
+  _id?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  email?: string;
+  avatar?: string;
+  profile_picture?: string;
+  photo_profil?: string;
+  photo?: string;
+  role?: string;
+}
+
+export interface MessageReaction {
+  emoji: string;
+  userIds: string[];
+  count: number;
+  usersIncludeMe?: boolean;
+}
+
+export interface MessageEditHistory {
+  text?: string;
+  editedBy: string | MessageParticipant;
+  editedAt: string;
 }
 
 export interface Message {
@@ -818,16 +850,23 @@ export interface Message {
   senderId: string;
   recipientId: string;
   text?: string;
+  clientRequestId?: string;
+  replyToMessageId?: string | Message;
   attachments: MessageAttachment[];
+  reactions?: MessageReaction[];
   readAt?: string;
+  editedAt?: string;
+  editedBy?: string | MessageParticipant;
+  editHistory?: MessageEditHistory[];
+  deletedAt?: string;
+  deletedBy?: string | MessageParticipant;
+  pinnedAt?: string;
+  pinnedBy?: string | MessageParticipant;
+  deletedFor?: string[];
   createdAt: string;
   updatedAt: string;
-  sender?: {
-    id: string;
-    name: string;
-    avatar?: string;
-    role?: string;
-  };
+  sender?: MessageParticipant;
+  recipient?: MessageParticipant;
 }
 
 export interface Conversation {
@@ -897,6 +936,15 @@ export interface InboxResponse {
 export interface MessagesResponse {
   messages: Message[];
   conversation: Conversation;
+  page: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+  limit: number;
+}
+
+export interface MessageSearchResponse {
+  messages: Message[];
   page: number;
   total: number;
   totalPages: number;

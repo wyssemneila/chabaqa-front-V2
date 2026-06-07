@@ -7,6 +7,7 @@ pnpm-lock.yaml
 dist/
 build/
 .next/
+.next-dev/
 .next.bak.*/
 out/
 .nuxt/
@@ -50,6 +51,7 @@ coverage/
 
 # Next.js specific
 .next/
+.next-dev/
 out/
 *.pem
 

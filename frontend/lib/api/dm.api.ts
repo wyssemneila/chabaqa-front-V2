@@ -1,7 +1,6 @@
 import { apiClient } from './client';
-import type { Conversation, InboxResponse, MessagesResponse, Message } from './types';
+import type { Conversation, InboxResponse, Message, MessageSearchResponse, MessagesResponse } from './types';
 
-// Import image URL resolver
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 const API_ORIGIN = API_BASE.replace(/\/api$/, '');
 
@@ -9,12 +8,9 @@ function resolveImageUrl(value?: string): string | undefined {
   if (!value) return undefined;
   const v = value.trim();
   if (!v) return undefined;
-  
-  // If it's already a full URL
+
   if (/^https?:\/\//i.test(v)) {
-    // Force HTTPS for production
     if (v.startsWith('http://')) {
-      // If it's an IP address, use the API domain instead
       if (/^http:\/\/\d+\.\d+\.\d+\.\d+/.test(v)) {
         const path = v.replace(/^http:\/\/[^/]+/, '');
         return `https://api.chabaqa.io${path}`;
@@ -23,25 +19,31 @@ function resolveImageUrl(value?: string): string | undefined {
     }
     return v;
   }
-  
+
   if (v.startsWith('/')) {
     if (v.startsWith('/uploads') || v.startsWith('/storage') || v.startsWith('/images')) {
-      const secureOrigin = API_ORIGIN.replace('http://', 'https://').replace(/^https?:\/\/\d+\.\d+\.\d+\.\d+:\d+/, 'https://api.chabaqa.io');
+      const secureOrigin = API_ORIGIN
+        .replace('http://', 'https://')
+        .replace(/^https?:\/\/\d+\.\d+\.\d+\.\d+:\d+/, 'https://api.chabaqa.io');
       return `${secureOrigin}${v}`;
     }
     return v;
   }
-  
+
   if (v.startsWith('uploads') || v.startsWith('storage') || v.startsWith('images')) {
-    const secureOrigin = API_ORIGIN.replace('http://', 'https://').replace(/^https?:\/\/\d+\.\d+\.\d+\.\d+:\d+/, 'https://api.chabaqa.io');
+    const secureOrigin = API_ORIGIN
+      .replace('http://', 'https://')
+      .replace(/^https?:\/\/\d+\.\d+\.\d+\.\d+:\d+/, 'https://api.chabaqa.io');
     return `${secureOrigin}/${v.replace(/^\/+/, '')}`;
   }
-  
+
   if (v && !v.includes('://')) {
-    const secureOrigin = API_ORIGIN.replace('http://', 'https://').replace(/^https?:\/\/\d+\.\d+\.\d+\.\d+:\d+/, 'https://api.chabaqa.io');
+    const secureOrigin = API_ORIGIN
+      .replace('http://', 'https://')
+      .replace(/^https?:\/\/\d+\.\d+\.\d+\.\d+:\d+/, 'https://api.chabaqa.io');
     return `${secureOrigin}/uploads/image/${v}`;
   }
-  
+
   return undefined;
 }
 
@@ -51,6 +53,7 @@ function normalizeUserPhoto(user: any): any {
   const resolved = resolveImageUrl(rawAvatar);
   return {
     ...user,
+    id: user._id?.toString?.() || user.id || '',
     avatar: resolved || undefined,
     photo_profil: resolveImageUrl(user.photo_profil) || undefined,
     profile_picture: resolveImageUrl(user.profile_picture) || undefined,
@@ -76,39 +79,95 @@ const extractMessagePayload = (res: any) => {
   return root?.message ?? root;
 };
 
+const normalizeUserId = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value._id?.toString?.() || value.id || value.toString?.() || '';
+};
+
 const normalizeParticipant = (p: any): any => {
   if (!p) return null;
   if (typeof p === 'string') return p;
-  // Populated user object — keep all fields, ensure `id` exists, resolve photos
-  return normalizeUserPhoto({ ...p, id: p._id || p.id || '' });
+  return normalizeUserPhoto({ ...p, id: p._id?.toString?.() || p.id || '' });
 };
 
-const normalizeMessage = (m: any): Message => {
-  if (!m) return { id: '', attachments: [] } as any;
-  // Handle Mongoose document wrapper
-  const raw = m._doc || m;
+const normalizeReaction = (reaction: any, myId?: string) => {
+  const userIds = (reaction?.userIds || []).map(normalizeUserId).filter(Boolean);
+  return {
+    ...reaction,
+    userIds,
+    count: userIds.length,
+    usersIncludeMe: myId ? userIds.includes(myId) : reaction?.usersIncludeMe,
+  };
+};
+
+const normalizeReplyMessage = (value: any): Message | string | undefined => {
+  if (!value) return undefined;
+  if (typeof value === 'string') return value;
+  const raw = value._doc || value;
   const msg = withId(raw);
-  // Keep populated sender/recipient objects, extract string id separately
-  const senderObj = typeof raw.senderId === 'object' && raw.senderId ? { ...raw.senderId, id: raw.senderId._id?.toString?.() || raw.senderId.id || '' } : undefined;
-  const senderId = senderObj ? senderObj.id : (raw.senderId?.toString?.() || raw.senderId || '');
-  const recipientId = typeof raw.recipientId === 'object' && raw.recipientId
-    ? (raw.recipientId._id?.toString?.() || raw.recipientId.id || '')
-    : (raw.recipientId?.toString?.() || raw.recipientId || '');
+  const senderObj = typeof raw.senderId === 'object' && raw.senderId
+    ? normalizeParticipant(raw.senderId)
+    : undefined;
+  const senderId = senderObj ? senderObj.id : normalizeUserId(raw.senderId);
   const normalizedAttachments = (raw.attachments || []).map((att: any) => ({
     ...att,
-    url: resolveImageUrl(att.url) || att.url
+    url: resolveImageUrl(att.url) || att.url,
   }));
 
   return {
     ...msg,
-    conversationId: raw.conversationId?.toString?.() || raw.conversationId,
+    conversationId: normalizeUserId(raw.conversationId),
+    senderId,
+    recipientId: normalizeUserId(raw.recipientId),
+    text: raw.deletedAt ? '' : (raw.text || ''),
+    sender: senderObj || normalizeParticipant(raw.sender),
+    attachments: raw.deletedAt ? [] : normalizedAttachments,
+    reactions: (raw.reactions || []).map((reaction: any) => normalizeReaction(reaction)),
+    createdAt: raw.createdAt || new Date().toISOString(),
+    updatedAt: raw.updatedAt || raw.createdAt || new Date().toISOString(),
+  } as Message;
+};
+
+const normalizeMessage = (m: any): Message => {
+  if (!m) return { id: '', attachments: [] } as any;
+  const raw = m._doc || m;
+  const msg = withId(raw);
+  const senderObj = typeof raw.senderId === 'object' && raw.senderId
+    ? normalizeParticipant(raw.senderId)
+    : undefined;
+  const recipientObj = typeof raw.recipientId === 'object' && raw.recipientId
+    ? normalizeParticipant(raw.recipientId)
+    : undefined;
+  const senderId = senderObj ? senderObj.id : normalizeUserId(raw.senderId);
+  const recipientId = recipientObj ? recipientObj.id : normalizeUserId(raw.recipientId);
+  const normalizedAttachments = (raw.attachments || []).map((att: any) => ({
+    ...att,
+    url: resolveImageUrl(att.url) || att.url,
+  }));
+
+  return {
+    ...msg,
+    conversationId: normalizeUserId(raw.conversationId),
     senderId,
     recipientId,
     text: raw.text || '',
-    sender: senderObj || raw.sender,
+    sender: senderObj || normalizeParticipant(raw.sender),
+    recipient: recipientObj || normalizeParticipant(raw.recipient),
+    replyToMessageId: normalizeReplyMessage(raw.replyToMessageId),
     attachments: normalizedAttachments,
+    reactions: (raw.reactions || []).map((reaction: any) => normalizeReaction(reaction)),
+    editHistory: (raw.editHistory || []).map((entry: any) => ({
+      ...entry,
+      editedBy: typeof entry.editedBy === 'object' ? normalizeParticipant(entry.editedBy) : normalizeUserId(entry.editedBy),
+      editedAt: entry.editedAt || raw.editedAt || new Date().toISOString(),
+    })),
+    editedBy: typeof raw.editedBy === 'object' ? normalizeParticipant(raw.editedBy) : normalizeUserId(raw.editedBy),
+    deletedBy: typeof raw.deletedBy === 'object' ? normalizeParticipant(raw.deletedBy) : normalizeUserId(raw.deletedBy),
+    pinnedBy: typeof raw.pinnedBy === 'object' ? normalizeParticipant(raw.pinnedBy) : normalizeUserId(raw.pinnedBy),
+    deletedFor: (raw.deletedFor || []).map(normalizeUserId).filter(Boolean),
     createdAt: raw.createdAt || new Date().toISOString(),
-    updatedAt: raw.updatedAt || new Date().toISOString(),
+    updatedAt: raw.updatedAt || raw.createdAt || new Date().toISOString(),
   } as Message;
 };
 
@@ -137,7 +196,6 @@ export const dmApi = {
   startPeerConversation: async (communityId: string, targetUserId: string): Promise<{ conversation: Conversation }> => {
     const res = await apiClient.post<any>('/dm/peer/start', { communityId, targetUserId });
     const conv = extractConversationPayload(res);
-    console.log('[DM API] startPeerConversation response:', { res, conv });
     return { conversation: normalizeConversation(conv) };
   },
 
@@ -155,7 +213,6 @@ export const dmApi = {
 
   listInbox: async (params?: { type?: 'community' | 'help' | 'peer' | 'session'; page?: number; limit?: number }): Promise<InboxResponse> => {
     const res = await apiClient.get<any>('/dm/inbox', params);
-    // Handle response wrapped in { success, data } structure
     const data = res?.data ?? res;
     return {
       ...data,
@@ -175,7 +232,20 @@ export const dmApi = {
 
   sendMessage: async (
     conversationId: ConversationId,
-    payload: { text?: string; attachments?: { url: string; type: 'image' | 'file' | 'video'; size: number }[] }
+    payload: {
+      text?: string;
+      attachments?: {
+        url: string;
+        type: 'image' | 'file' | 'video';
+        size: number;
+        name?: string;
+        mimeType?: string;
+        width?: number;
+        height?: number;
+      }[];
+      replyToMessageId?: string;
+      clientRequestId?: string;
+    }
   ): Promise<{ message: Message }> => {
     const res = await apiClient.post<any>(`/dm/${conversationId}/messages`, payload);
     const msg = extractMessagePayload(res);
@@ -190,6 +260,63 @@ export const dmApi = {
 
   markRead: async (conversationId: ConversationId): Promise<{ ok: boolean; readAt: string }> => {
     return apiClient.patch<{ ok: boolean; readAt: string }>(`/dm/${conversationId}/read`);
+  },
+
+  searchMessages: async (
+    conversationId: ConversationId,
+    params: { q: string; page?: number; limit?: number }
+  ): Promise<MessageSearchResponse> => {
+    const res = await apiClient.get<any>(`/dm/${conversationId}/messages/search`, params);
+    const root = (res as any)?.data ?? res;
+    return {
+      ...root,
+      messages: (root.messages || []).map(normalizeMessage),
+    } as MessageSearchResponse;
+  },
+
+  listPinnedMessages: async (conversationId: ConversationId): Promise<{ messages: Message[] }> => {
+    const res = await apiClient.get<any>(`/dm/${conversationId}/messages/pinned`);
+    const root = (res as any)?.data ?? res;
+    return { messages: (root.messages || []).map(normalizeMessage) };
+  },
+
+  editMessage: async (conversationId: ConversationId, messageId: string, text: string): Promise<{ message: Message }> => {
+    const res = await apiClient.patch<any>(`/dm/${conversationId}/messages/${messageId}`, { text });
+    const msg = extractMessagePayload(res);
+    return { message: normalizeMessage(msg) };
+  },
+
+  deleteMessage: async (
+    conversationId: ConversationId,
+    messageId: string,
+    scope: 'me' | 'everyone' = 'me',
+  ): Promise<{ ok: boolean; messageId: string; scope: 'me' | 'everyone' }> => {
+    return apiClient.delete<{ ok: boolean; messageId: string; scope: 'me' | 'everyone' }>(
+      `/dm/${conversationId}/messages/${messageId}?scope=${encodeURIComponent(scope)}`,
+    );
+  },
+
+  reactToMessage: async (
+    conversationId: ConversationId,
+    messageId: string,
+    emoji: string,
+  ): Promise<{ messageId: string; reactions: Message['reactions'] }> => {
+    const res = await apiClient.post<any>(`/dm/${conversationId}/messages/${messageId}/reactions`, { emoji });
+    const root = (res as any)?.data ?? res;
+    return {
+      messageId: root.messageId,
+      reactions: (root.reactions || []).map((reaction: any) => normalizeReaction(reaction)),
+    };
+  },
+
+  pinMessage: async (conversationId: ConversationId, messageId: string, pinned: boolean): Promise<{ message: Message }> => {
+    const res = await apiClient.patch<any>(`/dm/${conversationId}/messages/${messageId}/pin`, { pinned });
+    const msg = extractMessagePayload(res);
+    return { message: normalizeMessage(msg) };
+  },
+
+  typing: async (conversationId: ConversationId, isTyping: boolean): Promise<{ ok: boolean }> => {
+    return apiClient.post<{ ok: boolean }>(`/dm/${conversationId}/typing`, { isTyping });
   },
 
   helpQueue: async (): Promise<{ items: Conversation[] }> => {
