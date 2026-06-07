@@ -377,7 +377,69 @@ export interface CreatorContentChartsParams extends CreatorAnalyticsParams {
   contentId?: string;
 }
 
+export type CreatorDashboardContentType =
+  | 'all'
+  | CreatorContentChartType
+  | 'courses'
+  | 'challenges'
+  | 'sessions'
+  | 'events'
+  | 'products'
+  | 'posts';
+
+export interface CreatorDashboardAnalyticsParams extends CreatorAnalyticsParams {
+  contentType?: CreatorDashboardContentType;
+}
+
+export interface CreatorDashboardKpi {
+  id: string;
+  label: string;
+  value: number;
+  formattedValue: string;
+  change: number;
+  sub: string;
+  color: string;
+  iconKey: string;
+}
+
+export interface CreatorDashboardAnalyticsResponse {
+  generatedAt: string;
+  range: { from: string; to: string; timezone?: string };
+  filters: { communityId: string | null; communitySlug: string | null; contentType: string };
+  currency: string;
+  kpis: CreatorDashboardKpi[];
+  timeSeries: {
+    labels: string[];
+    revenue: number[];
+    members: number[];
+    enrollments: number[];
+    interactions: number[];
+    views: number[];
+    completions: number[];
+  };
+  revenueByType: Array<{ label: string; type: string; value: number; color: string }>;
+  memberSources: Array<{ label: string; channel: string; value: number; count: number; color: string }>;
+  communityHealth: Array<{ id: string; label: string; value: string; rawValue: number; sub: string; color: string; iconKey: string }>;
+  contentPerformance: Array<{
+    id: string;
+    title: string;
+    type: CreatorContentChartType;
+    enrollments: number;
+    interactions?: number;
+    revenue: number;
+    rating: number;
+    views: number;
+    completionRate: number;
+    engagementRate: number;
+  }>;
+  devices: { rows: any[]; details: any[] };
+  meta: { precisionLabel: string; sources: string[]; notes: string[] };
+}
+
 export const creatorAnalyticsApi = {
+  getDashboard: async (params?: CreatorDashboardAnalyticsParams): Promise<ApiSuccessResponse<CreatorDashboardAnalyticsResponse>> => {
+    return apiClient.get<ApiSuccessResponse<CreatorDashboardAnalyticsResponse>>('/analytics/creator/dashboard', params);
+  },
   getOverview: async (params?: CreatorAnalyticsParams): Promise<ApiSuccessResponse<any>> => {
     return apiClient.get<ApiSuccessResponse<any>>('/analytics/creator/overview', params);
   },

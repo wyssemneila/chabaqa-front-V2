@@ -4,12 +4,18 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   creatorAnalyticsApi,
   type CreatorAnalyticsParams,
+  type CreatorDashboardContentType,
   type CreatorContentChartType,
 } from '@/lib/api/creator-analytics.api';
 
 function buildDateParams(timeRange: string): { from: string; to: string } {
   const to = new Date().toISOString().slice(0, 10);
-  const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : timeRange === '90d' ? 90 : 365;
+  const days =
+    timeRange === '7d' ? 7 :
+    timeRange === '30d' ? 30 :
+    timeRange === '3m' || timeRange === '90d' ? 90 :
+    timeRange === '6m' ? 180 :
+    365;
   const from = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
   return { from, to };
 }
@@ -20,6 +26,21 @@ export function useAnalyticsOverview(timeRange: string, communityId?: string) {
     queryKey: ['analytics', 'overview', timeRange, communityId],
     queryFn: () => creatorAnalyticsApi.getOverview(params),
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useAnalyticsDashboard(
+  timeRange: string,
+  contentType: CreatorDashboardContentType = 'all',
+  communityId?: string,
+  enabled = true,
+) {
+  const params = { ...buildDateParams(timeRange), communityId, contentType };
+  return useQuery({
+    queryKey: ['analytics', 'dashboard-v2', timeRange, contentType, communityId],
+    queryFn: () => creatorAnalyticsApi.getDashboard(params),
+    staleTime: 2 * 60 * 1000,
+    enabled,
   });
 }
 
@@ -154,7 +175,12 @@ export function useAnalyticsCompare(
   enabled = true
 ) {
   const { from, to } = buildDateParams(timeRange);
-  const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : timeRange === '90d' ? 90 : 365;
+  const days =
+    timeRange === '7d' ? 7 :
+    timeRange === '30d' ? 30 :
+    timeRange === '3m' || timeRange === '90d' ? 90 :
+    timeRange === '6m' ? 180 :
+    365;
   const compareFrom = new Date(new Date(from).getTime() - days * 86400000).toISOString().slice(0, 10);
   const compareTo = new Date(new Date(from).getTime() - 86400000).toISOString().slice(0, 10);
   return useQuery({

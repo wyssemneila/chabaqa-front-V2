@@ -1,90 +1,82 @@
-import ManageEventClient from "./components/ManageEventClient"
-import { api } from "@/lib/api"
-import { notFound } from "next/navigation"
-import { Event } from "@/lib/models"
-import { Event as ApiEvent } from "@/lib/api/types"
+'use client'
 
-interface PageProps {
-  params: Promise<{ eventId: string }>
+import { useEffect, useMemo, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import DashSidebar from '@/components/creator-dashboard/DashSidebar'
+import DashTopbar from '@/components/creator-dashboard/DashTopbar'
+import { Loader2, AlertCircle } from 'lucide-react'
+import { eventsApi } from '@/lib/api/events.api'
+import ManageEventClient from './components/ManageEventClient'
+
+function unwrapEvent(response: any) {
+  const payload = response?.data?.event ?? response?.data?.data ?? response?.data ?? response
+  return payload?.event ?? payload
 }
 
-const toDate = (value?: string): Date => {
-  if (!value) return new Date()
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? new Date() : parsed
-}
+export default function ManageEventPage() {
+  const params = useParams<{ eventId?: string; id?: string }>()
+  const router = useRouter()
+  const eventId = String(params?.eventId || params?.id || '')
+  const [event, setEvent] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const serverVersion = useMemo(() => String(event?.updatedAt || event?._id || event?.id || Date.now()), [event])
 
-const toOptionalDate = (value?: string): Date | undefined => {
-  if (!value) return undefined
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed
-}
+  useEffect(() => {
+    let cancelled = false
 
-export default async function ManageEventPage({ params }: PageProps) {
-  const { eventId } = await params
-  try {
-    const eventResponse = await api.events.getById(eventId)
-    const apiEvent = eventResponse.data as ApiEvent | undefined
+    const loadEvent = async () => {
+      if (!eventId) {
+        setError('Event ID is missing.')
+        setLoading(false)
+        return
+      }
 
-    if (!apiEvent) {
-      notFound()
+      setLoading(true)
+      setError('')
+      try {
+        const response = await eventsApi.getById(eventId)
+        const nextEvent = unwrapEvent(response)
+        if (!nextEvent?.id && !nextEvent?._id) {
+          throw new Error('Event was not found.')
+        }
+        if (!cancelled) setEvent({ ...nextEvent, id: nextEvent.id || nextEvent._id })
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message || 'Failed to load event.')
+          if (err?.statusCode === 404 || err?.status === 404) router.replace('/creator/events')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
 
-    const eventData = apiEvent as any
-    const serverVersion = String(eventData.updatedAt || eventData.startDate || eventData.id)
+    void loadEvent()
+    return () => {
+      cancelled = true
+    }
+  }, [eventId, router])
 
-    const event = {
-      id: eventData.id,
-      title: eventData.title || "",
-      description: eventData.description || "",
-      image: eventData.image || eventData.thumbnail || "",
-      startDate: toDate(eventData.startDate),
-      endDate: toOptionalDate(eventData.endDate),
-      startTime: eventData.startTime || "",
-      endTime: eventData.endTime || "",
-      location: eventData.location || "",
-      onlineUrl: eventData.onlineUrl || "",
-      timezone: eventData.timezone || "UTC",
-      category: eventData.category || "",
-      type: eventData.type || "Online",
-      isActive: Boolean(eventData.isActive),
-      isPublished: Boolean(eventData.isPublished),
-      notes: eventData.notes || "",
-      tags: Array.isArray(eventData.tags) ? eventData.tags : [],
-      attendees: Array.isArray(eventData.attendees) ? eventData.attendees : [],
-      tickets: (Array.isArray(eventData.tickets) ? eventData.tickets : []).map((t: any) => ({
-        id: t.id,
-        type: t.type || "regular",
-        name: t.name || "",
-        price: Number(t.price ?? 0),
-        description: t.description || "",
-        quantity: typeof t.quantity === "number" ? t.quantity : undefined,
-        sold: Number(t.sold ?? 0),
-      })),
-      sessions: (Array.isArray(eventData.sessions) ? eventData.sessions : []).map((s: any) => ({
-        id: s.id,
-        title: s.title || "",
-        description: s.description || "",
-        startTime: s.startTime || "",
-        endTime: s.endTime || "",
-        speaker: s.speaker || "",
-        notes: s.notes || "",
-        isActive: s.isActive !== false,
-        attendance: Number(s.attendance ?? 0),
-      })),
-      speakers: (Array.isArray(eventData.speakers) ? eventData.speakers : []).map((s: any) => ({
-        id: s.id,
-        name: s.name || "",
-        title: s.title || "",
-        bio: s.bio || "",
-        photo: s.photo || "",
-      })),
-      price: Number(eventData.price ?? 0),
-    } as any as Event
-
-    return <ManageEventClient initialEvent={event} serverVersion={serverVersion} />
-  } catch (error) {
-    console.error("Failed to fetch event:", error)
-    notFound()
-  }
+  return (
+    <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
+      <DashSidebar />
+      <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
+        <DashTopbar title="Manage Event" subtitle="Edit event details, sessions, speakers, tickets and settings" />
+        <main id="main-content" className="flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--p)' }} />
+            </div>
+          ) : error ? (
+            <div className="m-7 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              {error}
+            </div>
+          ) : (
+            <ManageEventClient initialEvent={event} serverVersion={serverVersion} />
+          )}
+        </main>
+      </div>
+    </div>
+  )
 }

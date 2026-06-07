@@ -181,3 +181,7 @@ export function useCreatorCommunity() {
   }
   return ctx
 }
+
+export function useOptionalCreatorCommunity() {
+  return useContext(CreatorCommunityContext)
+}

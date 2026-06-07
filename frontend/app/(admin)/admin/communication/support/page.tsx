@@ -183,12 +183,9 @@ export default function AdminLiveSupportPage() {
   useEffect(() => {
     if (!isAuthenticated) return
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("admin_access_token") : null
-    if (!token) return
-
     const socketUrl = resolveSocketBaseUrl(process.env.NEXT_PUBLIC_API_URL)
     const socket = io(`${socketUrl}/live-support`, {
-      auth: { token: `Bearer ${token}` },
+      withCredentials: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     })

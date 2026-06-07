@@ -51,6 +51,16 @@ interface AnalyticsChartContentMeta {
   enrollmentCourseObjectId?: Types.ObjectId;
 }
 
+interface AnalyticsDashboardSeriesPoint {
+  date: string;
+  revenue: number;
+  members: number;
+  enrollments: number;
+  interactions: number;
+  views: number;
+  completions: number;
+}
+
 
 @Injectable()
 export class AnalyticsService {
@@ -3825,6 +3835,442 @@ export class AnalyticsService {
 
     this.setCache(key, result, 2 * 60 * 1000);
     return result;
+  }
+
+  async getDashboardAnalytics(
+    creatorId: string,
+    from: Date,
+    to: Date,
+    plan?: PlanTier,
+    communityId?: string,
+    communitySlug?: string,
+    contentType?: string,
+  ) {
+    const normalizedType = contentType ? this.normalizeChartContentType(contentType) : null;
+    const cacheScope = normalizedType || 'all';
+    const key = this.cacheKey(
+      creatorId,
+      from.toISOString(),
+      to.toISOString(),
+      `dashboard-v2:${cacheScope}:${communityId || communitySlug || 'all'}`,
+    );
+    const cached = await this.getCache<any>(key);
+    if (cached) return cached;
+
+    const durationMs = Math.max(24 * 3600 * 1000, to.getTime() - from.getTime());
+    const compareTo = new Date(from.getTime() - 1);
+    const compareFrom = new Date(compareTo.getTime() - durationMs);
+
+    const [overview, contentCharts, revenue, referrers, devices, revenueCompare, usersCompare, startsCompare, engagementCompare, viewsCompare] =
+      await Promise.all([
+        this.getOverview(creatorId, from, to, plan, communityId, communitySlug),
+        this.getContentCharts(creatorId, from, to, communityId, communitySlug, normalizedType || undefined),
+        this.getRevenue(creatorId, from, to, communityId, communitySlug, normalizedType || undefined),
+        this.getReferrers(creatorId, from, to, communityId, communitySlug),
+        this.getDevices(creatorId, from, to, communityId, communitySlug),
+        this.getCompare(creatorId, from, to, compareFrom, compareTo, 'revenueAttributed', communityId, communitySlug).catch(() => null),
+        this.getCompare(creatorId, from, to, compareFrom, compareTo, 'uniqueUsers', communityId, communitySlug).catch(() => null),
+        this.getCompare(creatorId, from, to, compareFrom, compareTo, 'starts', communityId, communitySlug).catch(() => null),
+        this.getCompare(creatorId, from, to, compareFrom, compareTo, 'completes', communityId, communitySlug).catch(() => null),
+        this.getCompare(creatorId, from, to, compareFrom, compareTo, 'views', communityId, communitySlug).catch(() => null),
+      ]);
+
+    const packs = this.extractDashboardPacks(contentCharts, normalizedType || undefined);
+    const series = this.buildDashboardSeries(packs, revenue?.trend || []);
+    const isFilteredContentView = Boolean(normalizedType);
+    const totals = this.buildDashboardTotals(packs, overview, revenue, isFilteredContentView);
+    const currency = String(revenue?.currency || 'TND');
+    const revenueByType = this.buildDashboardRevenueByType(packs, revenue);
+    const memberSources = this.buildDashboardMemberSources(referrers?.rows || []);
+    const contentPerformance = this.buildDashboardContentPerformance(packs);
+    const avgDuration = isFilteredContentView ? totals.avgDuration : Number(overview?.averageDuration ?? overview?.avgDuration ?? totals.avgDuration ?? 0) || 0;
+    const engagementRate = isFilteredContentView ? totals.engagementRate : Number(overview?.engagementRate ?? overview?.avgEngagement ?? totals.engagementRate ?? 0) || 0;
+    const completionRate = isFilteredContentView ? totals.completionRate : Number(overview?.completionRate ?? totals.completionRate ?? 0) || 0;
+    const isPostView = normalizedType === 'post';
+    const kpis = isPostView
+      ? [
+          {
+            id: 'views',
+            label: 'Post Views',
+            value: totals.views,
+            formattedValue: totals.views.toLocaleString(),
+            change: this.round2(Number(viewsCompare?.change || 0)),
+            sub: 'views across posts',
+            color: 'var(--p)',
+            iconKey: 'views',
+          },
+          {
+            id: 'members',
+            label: 'Active Readers',
+            value: totals.members,
+            formattedValue: totals.members.toLocaleString(),
+            change: this.round2(Number(usersCompare?.change || 0)),
+            sub: 'unique tracked readers',
+            color: 'var(--cyan)',
+            iconKey: 'members',
+          },
+          {
+            id: 'interactions',
+            label: 'Interactions',
+            value: totals.interactions,
+            formattedValue: totals.interactions.toLocaleString(),
+            change: this.round2(Number(startsCompare?.change || 0)),
+            sub: 'likes, comments, shares, bookmarks',
+            color: 'var(--orange)',
+            iconKey: 'interactions',
+          },
+          {
+            id: 'engagement',
+            label: 'Post Engagement',
+            value: this.round2(engagementRate),
+            formattedValue: `${this.round2(engagementRate)}%`,
+            change: this.round2(Number(engagementCompare?.change || 0)),
+            sub: 'interactions per view',
+            color: 'var(--pink)',
+            iconKey: 'engagement',
+          },
+        ]
+      : [
+          {
+            id: 'revenue',
+            label: 'Total Revenue',
+            value: this.round2(totals.revenue),
+            formattedValue: `${this.round2(totals.revenue).toLocaleString()} ${currency}`,
+            change: this.round2(Number(revenueCompare?.change || 0)),
+            sub: 'vs previous period',
+            color: 'var(--p)',
+            iconKey: 'revenue',
+          },
+          {
+            id: 'members',
+            label: 'Active Members',
+            value: totals.members,
+            formattedValue: totals.members.toLocaleString(),
+            change: this.round2(Number(usersCompare?.change || 0)),
+            sub: 'unique tracked users',
+            color: 'var(--cyan)',
+            iconKey: 'members',
+          },
+          {
+            id: 'enrollments',
+            label: 'Enrollments',
+            value: totals.enrollments,
+            formattedValue: totals.enrollments.toLocaleString(),
+            change: this.round2(Number(startsCompare?.change || 0)),
+            sub: 'starts, bookings and registrations',
+            color: 'var(--orange)',
+            iconKey: 'enrollments',
+          },
+          {
+            id: 'engagement',
+            label: 'Engagement Rate',
+            value: this.round2(engagementRate),
+            formattedValue: `${this.round2(engagementRate)}%`,
+            change: this.round2(Number(engagementCompare?.change || 0)),
+            sub: 'avg across community',
+            color: 'var(--pink)',
+            iconKey: 'engagement',
+          },
+        ];
+
+    const result = {
+      generatedAt: new Date().toISOString(),
+      range: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        timezone: 'UTC',
+      },
+      filters: {
+        communityId: communityId || null,
+        communitySlug: communitySlug || null,
+        contentType: normalizedType || 'all',
+      },
+      currency,
+      kpis,
+      timeSeries: {
+        labels: series.map((point) => point.date),
+        revenue: series.map((point) => point.revenue),
+        members: series.map((point) => point.members),
+        enrollments: series.map((point) => point.enrollments),
+        interactions: series.map((point) => point.interactions),
+        views: series.map((point) => point.views),
+        completions: series.map((point) => point.completions),
+      },
+      revenueByType,
+      memberSources,
+      communityHealth: [
+        {
+          id: 'active-members',
+          label: 'Active Members',
+          value: totals.members.toLocaleString(),
+          rawValue: totals.members,
+          sub: 'unique tracked users',
+          color: '#16a34a',
+          iconKey: 'users',
+        },
+        isPostView
+          ? {
+              id: 'post-interactions',
+              label: 'Interactions',
+              value: totals.interactions.toLocaleString(),
+              rawValue: totals.interactions,
+              sub: 'social actions on posts',
+              color: 'var(--p)',
+              iconKey: 'interactions',
+            }
+          : {
+              id: 'avg-session-time',
+              label: 'Avg. Session Time',
+              value: `${avgDuration} min`,
+              rawValue: avgDuration,
+              sub: 'per content start',
+              color: 'var(--p)',
+              iconKey: 'duration',
+            },
+        {
+          id: 'completion-rate',
+          label: 'Completion Rate',
+          value: `${this.round2(completionRate)}%`,
+          rawValue: this.round2(completionRate),
+          sub: 'starts to completions',
+          color: 'var(--orange)',
+          iconKey: 'completion',
+        },
+        {
+          id: 'traffic-sources',
+          label: 'Traffic Sources',
+          value: String(memberSources.length),
+          rawValue: memberSources.length,
+          sub: 'tracked source channels',
+          color: 'var(--pink)',
+          iconKey: 'sources',
+        },
+      ],
+      contentPerformance,
+      devices: {
+        rows: devices?.rows || [],
+        details: devices?.details || [],
+      },
+      meta: {
+        precisionLabel: this.resolveDashboardPrecisionLabel(packs),
+        sources: Array.from(new Set(packs.flatMap((pack: any) => pack?.precision?.sources || []))),
+        notes: Array.from(new Set(packs.flatMap((pack: any) => pack?.precision?.notes || []))),
+      },
+    };
+
+    this.setCache(key, result, 2 * 60 * 1000);
+    return result;
+  }
+
+  private extractDashboardPacks(contentCharts: any, contentType?: AnalyticsChartContentType): any[] {
+    if (!contentCharts) return [];
+    if (contentType) return [contentCharts].filter(Boolean);
+    const byContentType = contentCharts?.byContentType || {};
+    return this.getChartContentTypes()
+      .map((type) => byContentType[type])
+      .filter(Boolean);
+  }
+
+  private getDashboardChart(pack: any, chartId: string): any | null {
+    return (pack?.charts || []).find((chart: any) => chart?.id === chartId) || null;
+  }
+
+  private titleCase(value: string): string {
+    return String(value || '')
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  private getDashboardTypeColor(type: string): string {
+    const colors: Record<string, string> = {
+      course: 'var(--p)',
+      challenge: 'var(--orange)',
+      session: 'var(--cyan)',
+      event: 'var(--pink)',
+      product: '#16a34a',
+      post: '#64748b',
+    };
+    return colors[type] || 'var(--p)';
+  }
+
+  private buildDashboardSeries(packs: any[], revenueTrend: any[]): AnalyticsDashboardSeriesPoint[] {
+    const byDate = new Map<string, AnalyticsDashboardSeriesPoint>();
+    const ensure = (date: string) => {
+      if (!byDate.has(date)) {
+        byDate.set(date, { date, revenue: 0, members: 0, enrollments: 0, interactions: 0, views: 0, completions: 0 });
+      }
+      return byDate.get(date)!;
+    };
+
+    for (const pack of packs) {
+      const daily = this.getDashboardChart(pack, 'daily-performance')?.data || [];
+      for (const row of daily) {
+        const date = String(row?.date || '');
+        if (!date) continue;
+        const target = ensure(date);
+        target.members += this.toFiniteNumber(row?.uniqueUsers);
+        target.enrollments += this.toFiniteNumber(row?.starts);
+        target.interactions += this.getDashboardInteractionCount(row);
+        target.views += this.toFiniteNumber(row?.views);
+        target.completions += this.toFiniteNumber(row?.completes);
+      }
+
+      const packRevenue = this.getDashboardChart(pack, 'revenue-trend')?.data || [];
+      for (const row of packRevenue) {
+        const date = String(row?.date || '');
+        if (!date) continue;
+        ensure(date).revenue += this.toFiniteNumber(row?.revenue);
+      }
+    }
+
+    if ([...byDate.values()].every((point) => point.revenue === 0)) {
+      for (const row of revenueTrend || []) {
+        const date = String(row?.date || '');
+        if (!date) continue;
+        ensure(date).revenue += this.toFiniteNumber(row?.revenue);
+      }
+    }
+
+    return Array.from(byDate.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((point) => ({
+        ...point,
+        revenue: this.round2(point.revenue),
+        members: Math.round(point.members),
+        enrollments: Math.round(point.enrollments),
+        interactions: Math.round(point.interactions),
+        views: Math.round(point.views),
+        completions: Math.round(point.completions),
+      }));
+  }
+
+  private getDashboardInteractionCount(totals: any): number {
+    return this.toFiniteNumber(totals?.likes) +
+      this.toFiniteNumber(totals?.shares) +
+      this.toFiniteNumber(totals?.downloads) +
+      this.toFiniteNumber(totals?.bookmarks) +
+      this.toFiniteNumber(totals?.comments) +
+      this.toFiniteNumber(totals?.ratingsCount);
+  }
+
+  private buildDashboardTotals(packs: any[], overview: any, revenue: any, isFilteredContentView = false) {
+    const starts = packs.reduce((sum, pack) => sum + this.toFiniteNumber(pack?.totals?.starts), 0);
+    const completes = packs.reduce((sum, pack) => sum + this.toFiniteNumber(pack?.totals?.completes), 0);
+    const views = packs.reduce((sum, pack) => sum + this.toFiniteNumber(pack?.totals?.views), 0);
+    const watchTime = packs.reduce((sum, pack) => sum + this.toFiniteNumber(pack?.totals?.watchTime), 0);
+    const packRevenue = packs.reduce((sum, pack) => sum + this.toFiniteNumber(pack?.totals?.revenue), 0);
+    const interactions = packs.reduce((sum, pack) => sum + this.getDashboardInteractionCount(pack?.totals || {}), 0);
+    const uniqueUsers = Math.max(
+      ...packs.map((pack) => this.toFiniteNumber(pack?.totals?.preciseUniqueUsers || pack?.totals?.uniqueUsers)),
+      isFilteredContentView ? 0 : this.toFiniteNumber(overview?.totals?.uniqueUsers),
+      0,
+    );
+    const revenueTotal = this.toFiniteNumber(revenue?.totalRevenue) ||
+      packRevenue ||
+      (isFilteredContentView ? 0 : this.toFiniteNumber(overview?.revenue?.total));
+
+    return {
+      revenue: this.round2(revenueTotal),
+      members: Math.round(uniqueUsers),
+      enrollments: Math.round(starts),
+      interactions: Math.round(interactions),
+      views: Math.round(views),
+      completions: Math.round(completes),
+      completionRate: starts > 0 ? this.round2((completes / starts) * 100) : 0,
+      engagementRate: views > 0 ? this.round2(((interactions + starts + completes) / views) * 100) : 0,
+      avgDuration: starts > 0 ? Math.round((watchTime / starts) / 60) : 0,
+    };
+  }
+
+  private buildDashboardRevenueByType(packs: any[], revenue: any) {
+    const byType = new Map<string, number>();
+    for (const pack of packs) {
+      byType.set(pack.contentType, (byType.get(pack.contentType) || 0) + this.toFiniteNumber(pack?.totals?.revenue));
+    }
+    if ([...byType.values()].every((value) => value === 0)) {
+      for (const item of revenue?.byContent || []) {
+        const type = String(item?.contentType || 'unknown');
+        byType.set(type, (byType.get(type) || 0) + this.toFiniteNumber(item?.revenue));
+      }
+    }
+    return Array.from(byType.entries())
+      .map(([type, value]) => ({
+        label: this.titleCase(type === 'course' ? 'Courses' : `${type}s`),
+        type,
+        value: this.round2(value),
+        color: this.getDashboardTypeColor(type),
+      }))
+      .filter((item) => item.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }
+
+  private buildDashboardMemberSources(rows: any[]) {
+    const channelTotals = rows.reduce((acc: Record<string, number>, row: any) => {
+      const channel = String(row?.channel || 'direct');
+      acc[channel] = (acc[channel] || 0) + this.toFiniteNumber(row?.count);
+      return acc;
+    }, {});
+    const total = (Object.values(channelTotals) as number[]).reduce((sum, value) => sum + value, 0);
+    const colors: Record<string, string> = {
+      direct: 'var(--p)',
+      referral: 'var(--orange)',
+      social: 'var(--cyan)',
+      search: 'var(--pink)',
+      email: '#16a34a',
+      paid: '#f97316',
+    };
+    return (Object.entries(channelTotals) as Array<[string, number]>)
+      .map(([channel, count]) => ({
+        label: this.titleCase(channel === 'direct' ? 'Direct Link' : channel),
+        channel,
+        value: total > 0 ? this.round2((count / total) * 100) : 0,
+        count,
+        color: colors[channel] || 'var(--p)',
+      }))
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.count - a.count);
+  }
+
+  private buildDashboardContentPerformance(packs: any[]) {
+    const rows: any[] = [];
+    for (const pack of packs) {
+      const leaderboard = this.getDashboardChart(pack, 'content-leaderboard')?.data || [];
+      const revenueByContent = new Map<string, number>(
+        (this.getDashboardChart(pack, 'revenue-by-content')?.data || []).map((item: any) => [
+          String(item?.contentId || ''),
+          this.toFiniteNumber(item?.revenue),
+        ]),
+      );
+      for (const item of leaderboard) {
+        const contentId = String(item?.contentId || '');
+        const interactions = this.getDashboardInteractionCount(item);
+        rows.push({
+          id: contentId || `${pack.contentType}-${rows.length}`,
+          title: String(item?.title || contentId || 'Untitled'),
+          type: pack.contentType,
+          enrollments: Math.round(pack.contentType === 'post' ? interactions : this.toFiniteNumber(item?.starts)),
+          interactions: Math.round(interactions),
+          revenue: this.round2(revenueByContent.get(contentId) || this.toFiniteNumber(item?.revenueAttributed)),
+          rating: this.round2(this.toFiniteNumber(item?.avgRating || item?.rating || 0)),
+          views: Math.round(this.toFiniteNumber(item?.views)),
+          completionRate: this.round2(this.toFiniteNumber(item?.completionRate)),
+          engagementRate: this.round2(this.toFiniteNumber(item?.engagementRate)),
+        });
+      }
+    }
+
+    return rows.sort((a, b) => {
+      if (b.revenue !== a.revenue) return b.revenue - a.revenue;
+      return b.views - a.views;
+    }).slice(0, 25);
+  }
+
+  private resolveDashboardPrecisionLabel(packs: any[]): string {
+    const labels = packs.map((pack) => String(pack?.precision?.label || '')).filter(Boolean);
+    if (labels.includes('Reliable')) return 'Reliable';
+    if (labels.includes('Directional')) return 'Directional';
+    if (labels.includes('Low sample')) return 'Low sample';
+    return 'No tracked sample yet';
   }
 
   private getChartContentTypes(): AnalyticsChartContentType[] {

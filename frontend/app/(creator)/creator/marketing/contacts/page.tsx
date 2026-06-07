@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation"
+﻿import { CreatorFeaturePage } from '@/components/creator-dashboard/CreatorFeaturePage'
 
-export default function ContactsPage() {
-  redirect("/creator/marketing/emails")
+export default function Page() {
+  return <CreatorFeaturePage variant="marketing-contacts" />
 }
