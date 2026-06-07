@@ -103,7 +103,6 @@ function readStoredSession(): Partial<AdminSessionResponse> | null {
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [admin, setAdmin] = useState<AdminUser | null>(null)
-  const [accessToken, setAccessToken] = useState<string | null>(null)
   const [roles, setRoles] = useState<string[]>([])
   const [permissions, setPermissions] = useState<string[]>([])
   const [capabilities, setCapabilities] = useState<AdminCapabilities>(EMPTY_CAPABILITIES)
@@ -118,7 +117,6 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   const resetSessionState = useCallback(() => {
     setAdmin(null)
-    setAccessToken(null)
     setRoles([])
     setPermissions([])
     setCapabilities(EMPTY_CAPABILITIES)
@@ -132,16 +130,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       : []
     const nextCapabilities = payload.capabilities || EMPTY_CAPABILITIES
 
-    if (payload.access_token) {
-      localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, payload.access_token)
-      setAccessToken(payload.access_token)
-    } else {
-      setAccessToken(localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY))
-    }
-
-    if (payload.refresh_token) {
-      localStorage.setItem(ADMIN_REFRESH_TOKEN_KEY, payload.refresh_token)
-    }
+    localStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY)
+    localStorage.removeItem(ADMIN_REFRESH_TOKEN_KEY)
 
     if (nextAdmin) {
       localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(nextAdmin))
@@ -173,14 +163,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
     const bootstrapAuth = async () => {
       try {
-        const storedAccessToken = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY)
-        const storedRefreshToken = localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY)
         const storedSession = readStoredSession()
-        const hasStoredSession = Boolean(storedAccessToken || storedRefreshToken || storedSession?.admin)
-
-        if (storedAccessToken) {
-          setAccessToken(storedAccessToken)
-        }
+        const hasStoredSession = Boolean(storedSession?.admin)
 
         if (storedSession?.admin && !cancelled) {
           applySessionPayload(storedSession)
@@ -190,16 +174,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
           try {
             await syncSession()
           } catch (sessionError) {
-            if (!storedRefreshToken) {
-              clearStoredAdminAuth()
-              if (!cancelled) {
-                resetSessionState()
-              }
-              return
-            }
-
             try {
-              const refreshResponse = await adminApi.auth.refreshToken(storedRefreshToken)
+              const refreshResponse = await adminApi.auth.refreshToken()
               const refreshPayload = extractPayload<AdminSessionResponse>(refreshResponse)
               applySessionPayload(refreshPayload)
             } catch {
@@ -295,12 +271,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   const refreshToken = useCallback(async (): Promise<void> => {
     try {
-      const storedRefreshToken = localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY)
-      if (!storedRefreshToken) {
-        throw new Error("Missing admin refresh token")
-      }
-
-      const response = await adminApi.auth.refreshToken(storedRefreshToken)
+      const response = await adminApi.auth.refreshToken()
       const data = extractPayload<AdminSessionResponse>(response)
       applySessionPayload(data)
     } catch (e) {

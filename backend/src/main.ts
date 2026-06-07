@@ -18,6 +18,7 @@ import {
 } from '@/shared/utils/security-config.util';
 import { validateStartupEnv } from '@/shared/utils/startup-env.validation';
 import { csrfProtectionMiddleware } from '@/shared/middleware/csrf-protection.middleware';
+import { SecurityMiddleware } from '@/shared/middleware/security.middleware';
 
 // Compatibility for Node < 20 where globalThis.crypto may be undefined.
 if (!globalThis.crypto) {
@@ -44,6 +45,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const expressApp = app.getHttpAdapter().getInstance();
   const monitoringService = app.get(MonitoringService);
+  const securityMiddleware = app.get(SecurityMiddleware);
   expressApp.disable('x-powered-by');
 
   const trustProxy = process.env.TRUST_PROXY;
@@ -84,6 +86,7 @@ async function bootstrap() {
 
 
   app.use(cookieParser());
+  app.use((req, res, next) => securityMiddleware.use(req, res, next));
   app.use(csrfProtectionMiddleware);
 
 

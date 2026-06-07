@@ -16,7 +16,7 @@ import { AdminVerify2FADto } from '@/domains/admin/dto/verify-2fa.dto';
 import { TokenBlacklistService } from '@/shared/services/token-blacklist.service';
 import { AdminForgotPasswordDto } from '@/domains/admin/dto/forgot-password.dto';
 import { AdminResetPasswordDto } from '@/domains/admin/dto/reset-password.dto';
-import { getJwtRefreshSecret, getJwtSecret, isProductionEnvironment } from '@/shared/utils/security-config.util';
+import { getJwtRefreshSecret, getJwtSecret } from '@/shared/utils/security-config.util';
 import { User, UserDocument } from '@/infrastructure/database/schemas/auth/user.schema';
 import { UpdateAdminProfileDto } from '@/domains/admin/dto/update-admin-profile.dto';
 import { ChangeAdminPasswordDto } from '@/domains/admin/dto/change-admin-password.dto';
@@ -68,6 +68,11 @@ const DEFAULT_ADMIN_PREFERENCES: AdminPreferences = {
   emailNotifications: true,
 };
 
+const ADMIN_ACCESS_TOKEN_TTL_SECONDS = 30 * 60;
+const ADMIN_REMEMBER_ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
+const ADMIN_REFRESH_TOKEN_TTL_SECONDS = 12 * 60 * 60;
+const ADMIN_REMEMBER_REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
+
 const FULL_ADMIN_CAPABILITIES: AdminCapabilities = {
   dashboard: true,
   users: true,
@@ -118,6 +123,73 @@ export class AdminService {
     return bcrypt.hash(password, saltRounds);
   }
 
+  private validateAdminPasswordStrength(password: string): void {
+    const passwordText = String(password || '');
+    const rejectedFragments = ['password', 'admin', 'chabaqa', 'shabaka', '123456', 'qwerty'];
+
+    if (
+      passwordText.length < 12 ||
+      !/[a-z]/.test(passwordText) ||
+      !/[A-Z]/.test(passwordText) ||
+      !/[0-9]/.test(passwordText) ||
+      !/[^a-zA-Z0-9]/.test(passwordText) ||
+      rejectedFragments.some((fragment) => passwordText.toLowerCase().includes(fragment))
+    ) {
+      throw new BadRequestException(
+        'Admin password must be at least 12 characters and include uppercase, lowercase, number, and symbol characters.',
+      );
+    }
+  }
+
+  private getAdminLoginLockoutThreshold(): number {
+    const configured = Number(process.env.ADMIN_LOGIN_LOCKOUT_THRESHOLD || 5);
+    return Number.isFinite(configured) && configured >= 3 ? configured : 5;
+  }
+
+  private getAdminLoginLockoutMinutes(): number {
+    const configured = Number(process.env.ADMIN_LOGIN_LOCKOUT_MINUTES || 15);
+    return Number.isFinite(configured) && configured >= 1 ? configured : 15;
+  }
+
+  private isAdminLocked(admin: AdminDocument): boolean {
+    return Boolean(admin.lockoutUntil && admin.lockoutUntil.getTime() > Date.now());
+  }
+
+  private async recordFailedAdminLogin(admin: AdminDocument): Promise<void> {
+    const threshold = this.getAdminLoginLockoutThreshold();
+    const nextFailedAttempts = (admin.failedLoginAttempts || 0) + 1;
+    const update: Record<string, any> = { failedLoginAttempts: nextFailedAttempts };
+
+    if (nextFailedAttempts >= threshold) {
+      update.lockoutUntil = new Date(Date.now() + this.getAdminLoginLockoutMinutes() * 60 * 1000);
+    }
+
+    await this.adminModel.findByIdAndUpdate(admin._id, { $set: update }).exec();
+  }
+
+  private async clearFailedAdminLogins(adminId: Types.ObjectId): Promise<void> {
+    await this.adminModel.findByIdAndUpdate(adminId, {
+      $set: {
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+      },
+    }).exec();
+  }
+
+  private async recordSuccessfulAdminLogin(adminId: Types.ObjectId): Promise<void> {
+    await this.adminModel.findByIdAndUpdate(adminId, {
+      $set: {
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+        lastLoginAt: new Date(),
+      },
+    }).exec();
+  }
+
+  private shouldRequire2FA(): boolean {
+    return process.env.ADMIN_ALLOW_PASSWORD_ONLY_LOGIN !== 'true';
+  }
+
   // create admin
   async createAdmin(createAdminDto: CreateAdminDto): Promise<Admin> {
     const { emailExists, nameExists } = await this.checkAdminExists(createAdminDto.email, createAdminDto.name);
@@ -130,10 +202,12 @@ export class AdminService {
       throw new ConflictException(`Le nom '${createAdminDto.name}' est déjà utilisé par un autre compte`);
     }
 
+    this.validateAdminPasswordStrength(createAdminDto.password);
     const hashedPassword = await this.hashPassword(createAdminDto.password);
     const newAdmin = await new this.adminModel({
       ...createAdminDto,
       password: hashedPassword,
+      passwordChangedAt: new Date(),
     });
     return newAdmin.save();
   }
@@ -142,10 +216,15 @@ export class AdminService {
     if (!admin) {
       throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
+    if (this.isAdminLocked(admin)) {
+      throw new UnauthorizedException('Admin account is temporarily locked');
+    }
     const isPasswordValid = await bcrypt.compare(password, admin.password);
     if (!isPasswordValid) {
+      await this.recordFailedAdminLogin(admin);
       throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
+    await this.clearFailedAdminLogins(admin._id);
     return admin;
   }
 
@@ -158,10 +237,11 @@ export class AdminService {
       sub: admin._id,
       email: admin.email,
       role: admin.role,
+      rememberMe,
     };
 
-    const accessTokenDuration = rememberMe ? '4h' : '2h';
-    const refreshTokenDuration = rememberMe ? '30d' : '7d';
+    const accessTokenDuration = rememberMe ? `${ADMIN_REMEMBER_ACCESS_TOKEN_TTL_SECONDS}s` : `${ADMIN_ACCESS_TOKEN_TTL_SECONDS}s`;
+    const refreshTokenDuration = rememberMe ? `${ADMIN_REMEMBER_REFRESH_TOKEN_TTL_SECONDS}s` : `${ADMIN_REFRESH_TOKEN_TTL_SECONDS}s`;
 
     const accessToken = this.jwtService.sign(
       {
@@ -335,7 +415,7 @@ export class AdminService {
         email: adminProfile?.email || adminInfo.email || '',
         role: adminInfo.role || adminProfile?.role || roles[0] || 'admin',
         createdAt: adminProfile?.createdAt || adminInfo.lastLoginAt || adminInfo.lastActivityAt || new Date(),
-        twoFactorEnabled: process.env.ADMIN_ALLOW_PASSWORD_ONLY_LOGIN !== 'true',
+        twoFactorEnabled: this.shouldRequire2FA(),
       },
       roles,
       permissions,
@@ -460,6 +540,7 @@ export class AdminService {
     if (currentPassword === newPassword) {
       throw new BadRequestException('New password must be different from current password');
     }
+    this.validateAdminPasswordStrength(newPassword);
 
     if (adminContext.authSource === 'legacy_admin') {
       const admin = await this.adminModel.findById(adminContext._id).select('+password').exec();
@@ -473,7 +554,9 @@ export class AdminService {
       }
 
       admin.password = await this.hashPassword(newPassword);
+      admin.passwordChangedAt = new Date();
       await admin.save();
+      await this.tokenBlacklistService.revokeAllUserTokens(admin._id);
       return { message: 'Password updated successfully' };
     }
 
@@ -489,6 +572,7 @@ export class AdminService {
 
     account.password = await this.hashPassword(newPassword);
     await account.save();
+    await this.tokenBlacklistService.revokeAllUserTokens(new Types.ObjectId(String(adminContext.userId)));
 
     return { message: 'Password updated successfully' };
   }
@@ -545,8 +629,7 @@ export class AdminService {
   async loginAdmin(loginAdminDto: AdminLoginDto): Promise<AdminLoginResponseDto> {
     const admin = await this.validateAdmin(loginAdminDto.email, loginAdminDto.password);
 
-    const shouldRequire2FA =
-      isProductionEnvironment() && process.env.ADMIN_ALLOW_PASSWORD_ONLY_LOGIN !== 'true';
+    const shouldRequire2FA = this.shouldRequire2FA();
 
     if (shouldRequire2FA) {
       const verificationCode = this.generateVerificationCode();
@@ -571,6 +654,7 @@ export class AdminService {
     }
 
     const { accessToken, refreshToken, rememberMe } = this.generateTokens(admin, loginAdminDto.remember_me);
+    await this.recordSuccessfulAdminLogin(admin._id);
     const session = await this.getAdminSessionForLegacyAdmin(admin._id.toString());
 
     return {
@@ -618,6 +702,7 @@ export class AdminService {
     await this.verificationCodeModel.deleteOne({ _id: verificationCodeData._id });
     // Générer les tokens
     const { accessToken, refreshToken } = this.generateTokens(admin, rememberMe);
+    await this.recordSuccessfulAdminLogin(admin._id);
     const session = await this.getAdminSessionForLegacyAdmin(admin._id.toString());
     return {
       access_token: accessToken,
@@ -635,6 +720,7 @@ export class AdminService {
   // refresh token
   async refreshToken(refreshToken: string): Promise<{
     access_token: string;
+    refresh_token: string;
     expires_in: number;
     admin: AdminSessionPayload['admin'];
     roles: string[];
@@ -658,23 +744,16 @@ export class AdminService {
         throw new UnauthorizedException('Utilisateur non trouvé');
       }
 
-      const currentTime = Date.now();
-      const newAccessTokenId = `${admin._id}-access-${currentTime}`;
+      await this.tokenBlacklistService.revokeTokenFromJWT(payload.sub, payload, 'refresh');
 
-      const newPayload = {
-        ...payload,
-        jti: newAccessTokenId,
-      };
-
-      const newAccessToken = this.jwtService.sign(newPayload, {
-        expiresIn: '2h',
-        secret: getJwtSecret(),
-      });
+      const rememberMe = Boolean(payload.rememberMe);
+      const { accessToken: newAccessToken, refreshToken: newRefreshToken } = this.generateTokens(admin, rememberMe);
       const session = await this.getAdminSessionForLegacyAdmin(admin._id.toString());
 
       return {
         access_token: newAccessToken,
-        expires_in: 2 * 60 * 60,
+        refresh_token: newRefreshToken,
+        expires_in: rememberMe ? ADMIN_REMEMBER_ACCESS_TOKEN_TTL_SECONDS : ADMIN_ACCESS_TOKEN_TTL_SECONDS,
         admin: session.admin,
         roles: session.roles,
         permissions: session.permissions,
@@ -769,7 +848,7 @@ export class AdminService {
     }
     // Vérifier le code de vérification
     const codeDoc = await this.verificationCodeModel.findOne({
-      email: email.toLowerCase(),
+      adminId: admin._id,
       code: verificationCode,
       type: 'password_reset',
       isUsed: false,
@@ -787,13 +866,20 @@ export class AdminService {
       throw new BadRequestException('Code de vérification déjà utilisé');
     }
     // Marquer le code comme utilisé
+    this.validateAdminPasswordStrength(newPassword);
     await this.verificationCodeModel.findByIdAndUpdate(codeDoc._id, { isUsed: true });
     // Hacher le nouveau mot de passe
     const hashedPassword = await this.hashPassword(newPassword);
     // Mettre à jour le mot de passe dans la base de données
-    await this.adminModel.findByIdAndUpdate(admin._id, { password: hashedPassword });
+    await this.adminModel.findByIdAndUpdate(admin._id, {
+      password: hashedPassword,
+      passwordChangedAt: new Date(),
+      failedLoginAttempts: 0,
+      lockoutUntil: null,
+    });
+    await this.tokenBlacklistService.revokeAllUserTokens(admin._id);
     // Supprimer tous les codes de vérification pour cet email
-    await this.verificationCodeModel.deleteMany({ email: email.toLowerCase() });
+    await this.verificationCodeModel.deleteMany({ adminId: admin._id, type: 'password_reset' });
     return { message: 'Mot de passe réinitialisé avec succès' };
   }
 

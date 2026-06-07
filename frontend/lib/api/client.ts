@@ -352,19 +352,10 @@ class ApiClient {
 
         if (!res.ok) return false
 
-        const payload = await res.json().catch(() => ({}))
-        const data = payload?.data || payload || {}
-        const newToken = (data.access_token || data.accessToken || '').trim()
-
-        if (newToken) {
-          localStorage.setItem('accessToken', newToken)
-          localStorage.removeItem('access_token')
-          // Sync the JS-accessible cookie so middleware sees the refreshed token.
-          try {
-            const { syncAccessTokenCookie } = await import('@/lib/cookie-sync')
-            syncAccessTokenCookie(newToken)
-          } catch { /* non-critical */ }
-        }
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refreshToken')
+        localStorage.removeItem('refresh_token')
 
         return true
       } catch (error) {

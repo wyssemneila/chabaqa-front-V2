@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 // Import schemas
 import { AuditLog, AuditLogSchema } from '@/domains/admin/schemas/audit-log.schema';
+import { SecurityAlert, SecurityAlertSchema } from '@/domains/admin/schemas/security-alert.schema';
 import { AdminUser, AdminUserSchema } from '@/domains/admin/schemas/admin-user.schema';
 import { User, UserSchema } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Admin, AdminSchema } from '@/infrastructure/database/schemas/auth/admin.schema';
@@ -42,6 +43,7 @@ import { AdminRolesGuard } from '@/domains/admin/common/guards/admin-roles.guard
   imports: [
     MongooseModule.forFeature([
       { name: AuditLog.name, schema: AuditLogSchema },
+      { name: SecurityAlert.name, schema: SecurityAlertSchema },
       { name: AdminUser.name, schema: AdminUserSchema },
       { name: User.name, schema: UserSchema },
       { name: Admin.name, schema: AdminSchema },

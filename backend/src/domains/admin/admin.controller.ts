@@ -455,8 +455,8 @@ export class AdminController {
     }
     const result = await this.adminService.refreshToken(refreshToken);
 
-    if (result.access_token) {
-      CookieUtil.setAdminAccessTokenCookie(res as any, result.access_token, false);
+    if (result.access_token && result.refresh_token) {
+      CookieUtil.setAdminTokenCookies(res as any, result.access_token, result.refresh_token, false);
       CookieUtil.setCsrfTokenCookie(res as any);
     }
     return result;
@@ -547,10 +547,13 @@ export class AdminController {
     }
   })
   @HttpCode(HttpStatus.OK)
-  async cleanupDatabase(@Res() response) {
+  async cleanupDatabase(@Req() req, @Res() response) {
     try {
       if (process.env.ALLOW_ADMIN_DB_CLEANUP !== 'true') {
         throw new ForbiddenException('Database cleanup is disabled. Set ALLOW_ADMIN_DB_CLEANUP=true to enable.');
+      }
+      if (req.headers['x-admin-danger-confirm'] !== 'cleanup-database') {
+        throw new ForbiddenException('Missing cleanup confirmation header');
       }
       const result = await this.adminService.cleanupDatabase();
       return response.status(HttpStatus.OK).json({

@@ -156,7 +156,7 @@ function signalResult(type,message){
   const sp=document.getElementById('sp');
   const st=document.getElementById('st');
   if(sp)sp.style.display='none';
-  if(st)st.innerHTML=type==='success'?'<span class="success">'+message+'</span>':'<span class="err">'+message+'</span>';
+  if(st){st.className=type==='success'?'success':'err';st.textContent=message;}
   setTimeout(()=>{try{window.close()}catch(e){}},1500);
   setTimeout(()=>{window.location.href='/creator/sessions?google_'+(type==='success'?'success=true':'error=failed')},3000);
 }

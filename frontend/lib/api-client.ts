@@ -30,9 +30,19 @@ class ApiClient {
 
   private getToken(isAdmin: boolean = false): string | null {
     if (typeof window === 'undefined') return null
+    if (isAdmin) return null
     
-    const tokenKey = isAdmin ? 'admin_access_token' : 'accessToken'
-    return localStorage.getItem(tokenKey)
+    return localStorage.getItem('accessToken')
+  }
+
+  private getCookie(name: string): string {
+    if (typeof document === 'undefined') return ''
+    const prefix = `${encodeURIComponent(name)}=`
+    const cookie = document.cookie
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(prefix))
+    return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : ''
   }
 
   private buildURL(endpoint: string, params?: Record<string, any>): string {
@@ -83,6 +93,10 @@ class ApiClient {
     const requestHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(headers as Record<string, string>),
+    }
+    const csrfToken = this.getCookie('chabaqa_csrf')
+    if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(String(restConfig.method || 'GET').toUpperCase())) {
+      requestHeaders['X-CSRF-Token'] = csrfToken
     }
     
     if (token) {

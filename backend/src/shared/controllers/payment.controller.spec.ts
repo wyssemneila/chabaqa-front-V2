@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { PaymentController } from '@/shared/controllers/payment.controller';
 
 describe('PaymentController webhook hardening', () => {
@@ -8,12 +8,15 @@ describe('PaymentController webhook hardening', () => {
     createWebhookEvent?: jest.Mock;
     orderFindOne?: jest.Mock;
     auditLog?: jest.Mock;
+    orderFindById?: jest.Mock;
+    konnect?: Record<string, any>;
   } = {}) => {
     const stripe = {
       createWebhookEvent: overrides.createWebhookEvent || jest.fn(),
     };
     const orderModel = {
       findOne: overrides.orderFindOne || jest.fn(),
+      findById: overrides.orderFindById || jest.fn(),
     };
     const processedWebhookEventModel = {
       countDocuments: overrides.countDocuments || jest.fn().mockResolvedValue(0),
@@ -26,7 +29,7 @@ describe('PaymentController webhook hardening', () => {
     const controller = new PaymentController(
       {} as any,
       stripe as any,
-      {} as any, // konnect
+      (overrides.konnect || {}) as any,
       {} as any,
       {} as any,
       {} as any,
@@ -145,5 +148,48 @@ describe('PaymentController webhook hardening', () => {
       }),
       { upsert: true },
     );
+  });
+
+  it('blocks order-state BOLA access for non-buyer and non-creator users', async () => {
+    const orderId = '64a1b2c3d4e5f6789abcdef0';
+    const attackerId = '64a1b2c3d4e5f6789abcdef1';
+    const { controller } = buildController({
+      orderFindById: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          _id: orderId,
+          buyerId: '64a1b2c3d4e5f6789abcdef2',
+          creatorId: '64a1b2c3d4e5f6789abcdef3',
+          status: 'paid',
+        }),
+      }),
+    });
+
+    await expect(
+      controller.getOrderState(orderId, { user: { _id: attackerId } }),
+    ).rejects.toThrow('You are not allowed to view this order');
+  });
+
+  it('rejects Konnect mock confirmation unless explicitly enabled', async () => {
+    const originalMockMode = process.env.KONNECT_MOCK_MODE;
+    delete process.env.KONNECT_MOCK_MODE;
+
+    try {
+      const { controller } = buildController({
+        konnect: {
+          isMockMode: true,
+          confirmMockPayment: jest.fn().mockReturnValue(true),
+        },
+      });
+
+      await expect(controller.confirmKonnectMockPayment('mock_ref', 'success')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    } finally {
+      if (originalMockMode === undefined) {
+        delete process.env.KONNECT_MOCK_MODE;
+      } else {
+        process.env.KONNECT_MOCK_MODE = originalMockMode;
+      }
+    }
   });
 });

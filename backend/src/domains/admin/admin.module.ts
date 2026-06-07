@@ -24,6 +24,7 @@ import { Conversation, ConversationSchema } from '@/infrastructure/database/sche
 // Import new admin-specific schemas
 import { AdminUser, AdminUserSchema } from '@/domains/admin/schemas/admin-user.schema';
 import { AuditLog, AuditLogSchema } from '@/domains/admin/schemas/audit-log.schema';
+import { SecurityAlert, SecurityAlertSchema } from '@/domains/admin/schemas/security-alert.schema';
 import { ContentModerationQueue, ContentModerationQueueSchema } from '@/domains/admin/schemas/content-moderation-queue.schema';
 
 // Import common services
@@ -94,6 +95,7 @@ import { AnalyticsController } from '@/domains/admin/common/controllers/analytic
       // New admin-specific schemas
       { name: AdminUser.name, schema: AdminUserSchema },
       { name: AuditLog.name, schema: AuditLogSchema },
+      { name: SecurityAlert.name, schema: SecurityAlertSchema },
       { name: ContentModerationQueue.name, schema: ContentModerationQueueSchema },
     ]),
     ConfigModule,

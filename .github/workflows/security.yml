@@ -1,0 +1,160 @@
+name: Security Gates
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      dast_target_url:
+        description: Optional staging URL for OWASP ZAP baseline scan
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - frontend
+          - backend
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+
+  sast:
+    name: SAST
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Semgrep OWASP
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/owasp-top-ten
+            p/typescript
+            p/javascript
+
+      - name: SAST grep policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          if rg -n --glob '!frontend/e2e/**' --glob '!**/*.spec.ts' --glob '!**/*.test.ts*' "localStorage\.setItem\(['\"](admin_access_token|admin_refresh_token|refreshToken|refresh_token)" frontend backend; then
+            echo "Do not persist admin or refresh tokens in JavaScript-readable storage."
+            exit 1
+          fi
+          rg -n --glob '!frontend/playwright-report/**' --glob '!frontend/chabaqa-landing-temp/**' --glob '!**/*.bak' "dangerouslySetInnerHTML|innerHTML\s*=" frontend || true
+
+  security-regression:
+    name: Security Regression Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - backend
+          - frontend
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Backend security tests
+        if: matrix.project == 'backend'
+        run: >
+          npm test -- --runTestsByPath
+          src/shared/middleware/security.middleware.spec.ts
+          src/shared/services/malware-scanner.service.spec.ts
+          src/domains/shared/upload/upload-security.policy.spec.ts
+          src/shared/services/html-sanitizer.service.spec.ts
+          src/domains/admin/common/services/__tests__/security-monitoring.service.spec.ts
+          src/domains/admin/admin.service.spec.ts
+          src/domains/content/media/media.service.security.spec.ts
+          src/domains/communication/dm/dm.service.security.spec.ts
+          src/shared/controllers/payment.controller.spec.ts
+
+      - name: Frontend security tests
+        if: matrix.project == 'frontend'
+        run: >
+          npm test -- --runTestsByPath
+          components/security/__tests__/safe-html.test.tsx
+          lib/api/__tests__/auth.api.test.ts
+          --passWithNoTests
+
+  dast-baseline:
+    name: DAST Baseline
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.dast_target_url != ''
+    steps:
+      - name: Run OWASP ZAP baseline
+        run: |
+          docker run --rm \
+            -v "${{ runner.temp }}:/zap/wrk" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t "${{ inputs.dast_target_url }}" \
+            -r zap-report.html \
+            -w zap-warnings.md \
+            -I
+
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-baseline-report
+          path: |
+            ${{ runner.temp }}/zap-report.html
+            ${{ runner.temp }}/zap-warnings.md

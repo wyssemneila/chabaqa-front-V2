@@ -533,10 +533,6 @@ export class UploadService {
     const filePath = join(targetDirectory, filename);
     await fsPromises.writeFile(filePath, buffer);
 
-    if (options?.userId) {
-      await this.addUsageBytes(options.userId, buffer.length);
-    }
-
     const relativePath = options?.folder
       ? `${options.folder}/${filename}`
       : filename;
@@ -571,6 +567,10 @@ export class UploadService {
       },
       scanResult,
     );
+
+    if (options?.userId) {
+      await this.addUsageBytes(options.userId, buffer.length);
+    }
 
     return {
       assetId: mediaRecord.assetId,

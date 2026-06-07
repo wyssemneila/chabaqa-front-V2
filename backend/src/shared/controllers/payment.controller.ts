@@ -70,6 +70,11 @@ const MANUAL_PROOF_ALLOWED_MIME_TYPES = new Set([
   'image/webp',
   'application/pdf',
 ]);
+const ENABLED_VALUES = new Set(['1', 'true', 'yes', 'on']);
+
+function isKonnectMockConfirmationEnabled(): boolean {
+  return ENABLED_VALUES.has(String(process.env.KONNECT_MOCK_MODE || '').trim().toLowerCase());
+}
 
 const manualProofUploadOptions = {
   storage: manualProofStorage,
@@ -4270,8 +4275,8 @@ export class PaymentController {
     @Query('paymentRef') paymentRef: string,
     @Query('outcome') outcome: string = 'success',
   ) {
-    if (!this.konnect.isMockMode) {
-      throw new BadRequestException('Mock mode is not enabled. Set KONNECT_MOCK_MODE=true.');
+    if (isStrictProductionRuntime() || !isKonnectMockConfirmationEnabled() || !this.konnect.isMockMode) {
+      throw new BadRequestException('Konnect mock confirmation is disabled.');
     }
     if (!paymentRef) throw new BadRequestException('paymentRef is required');
 
