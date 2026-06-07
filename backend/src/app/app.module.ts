@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { extname, basename } from 'path';
 import { resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
 
 import { AppController } from '@/app/app.controller';
@@ -84,6 +85,33 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
       serveRoot: '/uploads',
       serveStaticOptions: {
         index: false,
+        setHeaders: (res, filePath) => {
+          const extension = extname(filePath).toLowerCase();
+          const filename = basename(filePath).replace(/["\r\n]/g, '_');
+          const inlineSafeExtensions = new Set([
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.gif',
+            '.webp',
+            '.mp3',
+            '.wav',
+            '.ogg',
+            '.aac',
+            '.flac',
+            '.mp4',
+            '.mov',
+            '.webm',
+          ]);
+
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+          res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+          res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+
+          if (!inlineSafeExtensions.has(extension)) {
+            res.setHeader('Content-Disposition', `attachment; filename="${filename || 'download'}"`);
+          }
+        },
       },
     }),
 

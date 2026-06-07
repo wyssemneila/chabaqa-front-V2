@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Subscription, SubscriptionDocument, SubscriptionStatus } from '@/infrastructure/database/schemas/commerce/subscription.schema';
+import { BillingInterval, Subscription, SubscriptionDocument, SubscriptionStatus } from '@/infrastructure/database/schemas/commerce/subscription.schema';
 import { Plan, PlanDocument, PlanTier } from '@/infrastructure/database/schemas/commerce/plan.schema';
 import { 
   CreateSubscriptionDto, 
@@ -30,6 +30,79 @@ export class SubscriptionService {
     @InjectModel(Subscription.name) private readonly subModel: Model<SubscriptionDocument>,
     @InjectModel(Plan.name) private readonly planModel: Model<PlanDocument>,
   ) {}
+
+  getPlanAmount(plan: PlanDocument, interval: BillingInterval | 'month' | 'year' = BillingInterval.MONTH): number {
+    if (String(interval) === BillingInterval.YEAR) {
+      return Number(
+        plan.yearlyTotalDT ||
+        ((plan.yearlyPriceDTPerMonth || 0) * 12) ||
+        ((plan.priceDTPerMonth || 0) * 12),
+      );
+    }
+
+    return Number(plan.priceDTPerMonth || 0);
+  }
+
+  private buildFallbackPeriod(interval: BillingInterval | 'month' | 'year', now = new Date()) {
+    const days = String(interval) === BillingInterval.YEAR ? 365 : 30;
+    return {
+      currentPeriodStart: now,
+      currentPeriodEnd: new Date(now.getTime() + days * 24 * 60 * 60 * 1000),
+    };
+  }
+
+  private buildPlanLimitSnapshot(plan: PlanDocument) {
+    return {
+      communitiesMax: plan.limits.communitiesMax,
+      membersMax: plan.limits.membersMax,
+      coursesActivationMax: plan.limits.coursesActivationMax,
+      storageGB: plan.limits.storageGB,
+      adminsMax: plan.limits.adminsMax,
+      emailCampaignRecipientsPerMonth: plan.limits.emailCampaignRecipientsPerMonth,
+      whatsappMessagesPerMonth: plan.limits.whatsappMessagesPerMonth,
+      analyticsLookbackDays: plan.limits.analyticsLookbackDays,
+      sessionBookingsPerMonth: plan.limits.sessionBookingsPerMonth,
+      aiAgentsMax: plan.limits.aiAgentsMax,
+      aiCofounderRunsPerMonth: plan.limits.aiCofounderRunsPerMonth,
+      aiKnowledgeReindexPerMonth: plan.limits.aiKnowledgeReindexPerMonth,
+      aiStaffChatTurnsPerMonth: plan.limits.aiStaffChatTurnsPerMonth,
+    };
+  }
+
+  private normalizeProviderStatus(status?: string): SubscriptionStatus {
+    switch (String(status || '').toLowerCase()) {
+      case SubscriptionStatus.TRIALING:
+        return SubscriptionStatus.TRIALING;
+      case SubscriptionStatus.PAST_DUE:
+      case 'unpaid':
+        return SubscriptionStatus.PAST_DUE;
+      case SubscriptionStatus.CANCELED:
+      case 'cancelled':
+        return SubscriptionStatus.CANCELED;
+      case SubscriptionStatus.INCOMPLETE:
+      case 'incomplete_expired':
+        return SubscriptionStatus.INCOMPLETE;
+      case SubscriptionStatus.ACTIVE:
+      default:
+        return SubscriptionStatus.ACTIVE;
+    }
+  }
+
+  private toPlanDto(plan: PlanDocument): SubscriptionPlanDto {
+    return {
+      tier: plan.tier,
+      name: plan.name,
+      priceDTPerMonth: plan.priceDTPerMonth,
+      yearlyPriceDTPerMonth: plan.yearlyPriceDTPerMonth,
+      yearlyTotalDT: plan.yearlyTotalDT,
+      trialDays: plan.trialDays,
+      limits: plan.limits,
+      features: plan.features,
+      transactionFeePercent: plan.transactionFeePercent,
+      transactionFixedFeeDT: plan.transactionFixedFeeDT,
+      isActive: plan.isActive,
+    };
+  }
 
   async startTrialForCreator(creatorId: string | Types.ObjectId) {
     try {
@@ -173,33 +246,67 @@ export class SubscriptionService {
     return sub;
   }
 
-  async upgradePlan(creatorId: string | Types.ObjectId, tier: PlanTier, session: any = null) {
+  async upgradePlan(
+    creatorId: string | Types.ObjectId,
+    tier: PlanTier,
+    session: any = null,
+    options: {
+      billingInterval?: BillingInterval | 'month' | 'year';
+      provider?: string;
+      providerCustomerId?: string;
+      providerSubscriptionId?: string;
+      providerCheckoutSessionId?: string;
+      providerPriceId?: string;
+      currentPeriodStart?: Date;
+      currentPeriodEnd?: Date;
+      trialEndsAt?: Date;
+      status?: SubscriptionStatus;
+      amount?: number;
+      currency?: string;
+      paymentBrand?: string;
+      paymentLast4?: string;
+      hasPaymentMethod?: boolean;
+      cancelAtPeriodEnd?: boolean;
+    } = {},
+  ) {
     const plan = await this.planModel.findOne({ tier, isActive: true }).session(session);
     if (!plan) {
       throw new BadRequestException('Plan introuvable ou inactif');
     }
 
-    const now = new Date();
-    // For simplicity, set current period to 30 days from now (until provider integration)
-    const next = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const interval = options.billingInterval || BillingInterval.MONTH;
+    const fallbackPeriod = this.buildFallbackPeriod(interval);
+    const currentPeriodStart = options.currentPeriodStart || fallbackPeriod.currentPeriodStart;
+    const currentPeriodEnd = options.currentPeriodEnd || fallbackPeriod.currentPeriodEnd;
+    const amount = options.amount ?? this.getPlanAmount(plan, interval);
+
+    const setPayload: Record<string, any> = {
+      plan: plan.tier,
+      status: options.status || SubscriptionStatus.ACTIVE,
+      currentPeriodStart,
+      currentPeriodEnd,
+      nextBillingAt: currentPeriodEnd,
+      cancelAtPeriodEnd: options.cancelAtPeriodEnd ?? false,
+      billingInterval: interval,
+      amount,
+      currency: options.currency || 'TND',
+      hasPaymentMethod: options.hasPaymentMethod ?? true,
+      ...this.buildPlanLimitSnapshot(plan),
+    };
+
+    if (options.provider) setPayload.provider = options.provider;
+    if (options.providerCustomerId) setPayload.providerCustomerId = options.providerCustomerId;
+    if (options.providerSubscriptionId) setPayload.providerSubscriptionId = options.providerSubscriptionId;
+    if (options.providerCheckoutSessionId) setPayload.providerCheckoutSessionId = options.providerCheckoutSessionId;
+    if (options.providerPriceId) setPayload.providerPriceId = options.providerPriceId;
+    if (options.trialEndsAt) setPayload.trialEndsAt = options.trialEndsAt;
+    if (options.paymentBrand) setPayload.paymentBrand = options.paymentBrand.toLowerCase();
+    if (options.paymentLast4) setPayload.paymentLast4 = options.paymentLast4;
 
     const sub = await this.subModel.findOneAndUpdate(
       { creatorId: new Types.ObjectId(creatorId as any) },
-      {
-        $set: {
-          plan: plan.tier,
-          status: SubscriptionStatus.ACTIVE,
-          currentPeriodStart: now,
-          currentPeriodEnd: next,
-          cancelAtPeriodEnd: false,
-          communitiesMax: plan.limits.communitiesMax,
-          membersMax: plan.limits.membersMax,
-          coursesActivationMax: plan.limits.coursesActivationMax,
-          storageGB: plan.limits.storageGB,
-          adminsMax: plan.limits.adminsMax,
-        },
-      },
-      { upsert: true, new: true, session },
+      { $set: setPayload },
+      { upsert: true, new: true, session, setDefaultsOnInsert: true },
     );
 
     return { message: 'Plan mis à jour', subscription: sub };
@@ -389,6 +496,9 @@ export class SubscriptionService {
         provider: sub.provider || '',
         providerCustomerId: sub.providerCustomerId || undefined,
         providerSubscriptionId: sub.providerSubscriptionId || undefined,
+        billingInterval: sub.billingInterval,
+        providerCheckoutSessionId: sub.providerCheckoutSessionId || undefined,
+        providerPriceId: sub.providerPriceId || undefined,
         trialEndsAt: sub.trialEndsAt || undefined,
         currentPeriodStart: sub.currentPeriodStart,
         currentPeriodEnd: sub.currentPeriodEnd,
@@ -443,33 +553,13 @@ export class SubscriptionService {
       isActive: true
     });
 
-    return {
-      tier: plan.tier,
-      name: plan.name,
-      priceDTPerMonth: plan.priceDTPerMonth,
-      trialDays: plan.trialDays,
-      limits: plan.limits,
-      features: plan.features,
-      transactionFeePercent: plan.transactionFeePercent,
-      transactionFixedFeeDT: plan.transactionFixedFeeDT,
-      isActive: plan.isActive
-    };
+    return this.toPlanDto(plan);
   }
 
   async getPlans(): Promise<SubscriptionPlanDto[]> {
     const plans = await this.planModel.find({ isActive: true }).exec();
 
-    return plans.map(plan => ({
-      tier: plan.tier,
-      name: plan.name,
-      priceDTPerMonth: plan.priceDTPerMonth,
-      trialDays: plan.trialDays,
-      limits: plan.limits,
-      features: plan.features,
-      transactionFeePercent: plan.transactionFeePercent,
-      transactionFixedFeeDT: plan.transactionFixedFeeDT,
-      isActive: plan.isActive
-    }));
+    return plans.map(plan => this.toPlanDto(plan));
   }
 
   async getPlanByTier(tier: PlanTier): Promise<SubscriptionPlanDto> {
@@ -478,17 +568,7 @@ export class SubscriptionService {
       throw new NotFoundException('Plan not found');
     }
 
-    return {
-      tier: plan.tier,
-      name: plan.name,
-      priceDTPerMonth: plan.priceDTPerMonth,
-      trialDays: plan.trialDays,
-      limits: plan.limits,
-      features: plan.features,
-      transactionFeePercent: plan.transactionFeePercent,
-      transactionFixedFeeDT: plan.transactionFixedFeeDT,
-      isActive: plan.isActive
-    };
+    return this.toPlanDto(plan);
   }
 
   async updatePlan(tier: PlanTier, updatePlanDto: UpdateSubscriptionDto): Promise<SubscriptionPlanDto> {
@@ -507,17 +587,7 @@ export class SubscriptionService {
 
     await plan.save();
 
-    return {
-      tier: plan.tier,
-      name: plan.name,
-      priceDTPerMonth: plan.priceDTPerMonth,
-      trialDays: plan.trialDays,
-      limits: plan.limits,
-      features: plan.features,
-      transactionFeePercent: plan.transactionFeePercent,
-      transactionFixedFeeDT: plan.transactionFixedFeeDT,
-      isActive: plan.isActive
-    };
+    return this.toPlanDto(plan);
   }
 
   async deletePlan(tier: PlanTier): Promise<{ message: string }> {
@@ -564,6 +634,9 @@ export class SubscriptionService {
       provider: subscription.provider || '',
       providerCustomerId: subscription.providerCustomerId || undefined,
       providerSubscriptionId: subscription.providerSubscriptionId || undefined,
+      billingInterval: subscription.billingInterval,
+      providerCheckoutSessionId: subscription.providerCheckoutSessionId || undefined,
+      providerPriceId: subscription.providerPriceId || undefined,
       trialEndsAt: subscription.trialEndsAt || undefined,
       currentPeriodStart: subscription.currentPeriodStart,
       currentPeriodEnd: subscription.currentPeriodEnd,
@@ -615,10 +688,13 @@ export class SubscriptionService {
 
       switch (webhookEvent.type) {
         case 'subscription.created':
+        case 'customer.subscription.created':
           return await this.handleSubscriptionCreated(webhookEvent);
         case 'subscription.updated':
+        case 'customer.subscription.updated':
           return await this.handleSubscriptionUpdated(webhookEvent);
         case 'subscription.deleted':
+        case 'customer.subscription.deleted':
           return await this.handleSubscriptionDeleted(webhookEvent);
         case 'invoice.payment_succeeded':
           return await this.handleInvoicePaymentSucceeded(webhookEvent);
@@ -657,9 +733,17 @@ export class SubscriptionService {
     });
 
     if (subscription) {
-      subscription.status = data.status;
-      subscription.currentPeriodStart = new Date(data.current_period_start * 1000);
-      subscription.currentPeriodEnd = new Date(data.current_period_end * 1000);
+      subscription.status = this.normalizeProviderStatus(data.status);
+      if (data.current_period_start) {
+        subscription.currentPeriodStart = new Date(data.current_period_start * 1000);
+      }
+      if (data.current_period_end) {
+        subscription.currentPeriodEnd = new Date(data.current_period_end * 1000);
+        subscription.nextBillingAt = subscription.currentPeriodEnd;
+      }
+      if (typeof data.cancel_at_period_end === 'boolean') {
+        subscription.cancelAtPeriodEnd = data.cancel_at_period_end;
+      }
       await subscription.save();
     }
 
@@ -678,9 +762,14 @@ export class SubscriptionService {
     });
 
     if (subscription) {
-      subscription.status = data.status;
-      subscription.currentPeriodStart = new Date(data.current_period_start * 1000);
-      subscription.currentPeriodEnd = new Date(data.current_period_end * 1000);
+      subscription.status = this.normalizeProviderStatus(data.status);
+      if (data.current_period_start) {
+        subscription.currentPeriodStart = new Date(data.current_period_start * 1000);
+      }
+      if (data.current_period_end) {
+        subscription.currentPeriodEnd = new Date(data.current_period_end * 1000);
+        subscription.nextBillingAt = subscription.currentPeriodEnd;
+      }
       subscription.cancelAtPeriodEnd = data.cancel_at_period_end || false;
       await subscription.save();
     }
@@ -727,6 +816,7 @@ export class SubscriptionService {
       }
       if (data.period_end) {
         subscription.currentPeriodEnd = new Date(data.period_end * 1000);
+        subscription.nextBillingAt = subscription.currentPeriodEnd;
       }
       if (data.amount_paid) {
         subscription.amount = data.amount_paid / 100;

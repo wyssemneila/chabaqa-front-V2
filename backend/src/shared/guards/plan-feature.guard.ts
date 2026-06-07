@@ -59,7 +59,7 @@ export class PlanFeatureGuard implements CanActivate {
       const allowed = await this.policyService.canUseFeature(creatorId, feature);
       if (!allowed) {
         throw new ForbiddenException(
-          `Your current plan does not include the "${feature}" feature. Please upgrade your plan to access this.`,
+          await this.policyService.buildFeatureUpgradeMessage(creatorId, feature),
         );
       }
     }

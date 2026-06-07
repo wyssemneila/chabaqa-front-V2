@@ -457,6 +457,7 @@ export class AdminController {
 
     if (result.access_token) {
       CookieUtil.setAdminAccessTokenCookie(res as any, result.access_token, false);
+      CookieUtil.setCsrfTokenCookie(res as any);
     }
     return result;
   }

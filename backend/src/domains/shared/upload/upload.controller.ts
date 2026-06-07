@@ -34,11 +34,11 @@ const getDestination = (req, file, cb) => {
   const extension = extname(file.originalname).toLowerCase();
   let folder = resolveUploadTypeDir('document');
 
-  if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(extension)) {
+  if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(extension)) {
     folder = resolveUploadTypeDir('image');
-  } else if (['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm'].includes(extension)) {
+  } else if (['.mp4', '.mov', '.webm'].includes(extension)) {
     folder = resolveUploadTypeDir('video');
-  } else if (['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt'].includes(extension)) {
+  } else if (['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.ppt', '.pptx', '.xls', '.xlsx', '.csv'].includes(extension)) {
     folder = resolveUploadTypeDir('document');
   } else if (['.mp3', '.wav', '.ogg', '.aac', '.flac'].includes(extension)) {
     folder = resolveUploadTypeDir('audio');

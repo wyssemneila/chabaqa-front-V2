@@ -231,27 +231,27 @@ export class StripePaymentService {
     amountDT?: number;
     paymentMethod?: LinkPaymentMethod;
     customerId?: string;
+    subscriptionId?: string;
+    subscriptionStatus?: string;
+    currentPeriodStart?: Date;
+    currentPeriodEnd?: Date;
+    trialEndsAt?: Date;
+    cancelAtPeriodEnd?: boolean;
     sessionMetadata?: Record<string, string>;
     error?: string;
   }> {
     try {
       const session = await this.stripe.checkout.sessions.retrieve(sessionId, {
-        expand: ['payment_intent', 'customer'],
+        expand: ['payment_intent', 'customer', 'subscription'],
       });
 
-      if (!session.payment_intent) {
-        return {
-          success: false,
-          error: 'No payment intent found',
-        };
-      }
-
-      const paymentIntent = session.payment_intent as Stripe.PaymentIntent;
-      const customer = session.customer as Stripe.Customer;
-
+      const paymentIntent = session.payment_intent as Stripe.PaymentIntent | null;
+      const customer = session.customer as Stripe.Customer | string | null;
+      const subscription = session.subscription as Stripe.Subscription | string | null;
+      const subscriptionObject = (typeof subscription === 'object' ? subscription : null) as any;
 
       let paymentMethod: LinkPaymentMethod | undefined;
-      if (paymentIntent.payment_method) {
+      if (paymentIntent?.payment_method) {
         const pm = await this.stripe.paymentMethods.retrieve(
           paymentIntent.payment_method as string
         );
@@ -271,15 +271,27 @@ export class StripePaymentService {
         };
       }
 
+      const checkoutComplete = session.status === 'complete';
+      const subscriptionStatus = subscriptionObject?.status;
+      const status = session.payment_status === 'paid'
+        ? 'paid'
+        : (checkoutComplete && session.mode === 'subscription' ? 'complete' : (session.status || paymentIntent?.status));
+
       return {
         success: true,
-        status: session.payment_status === 'paid' ? 'paid' : (session.status || paymentIntent.status),
+        status,
         checkoutStatus: session.status,
-        paymentIntentStatus: paymentIntent.status,
-        amountDT: paymentIntent.amount / 100, // Convert from cents to dollars
+        paymentIntentStatus: paymentIntent?.status,
+        amountDT: typeof session.amount_total === 'number' ? session.amount_total / 100 : paymentIntent ? paymentIntent.amount / 100 : undefined,
         paymentMethod,
-        customerId: customer?.id,
-        sessionMetadata: (session.metadata || {}) as Record<string, string>,
+        customerId: typeof customer === 'string' ? customer : customer?.id,
+        subscriptionId: typeof subscription === 'string' ? subscription : subscription?.id,
+        subscriptionStatus,
+        currentPeriodStart: subscriptionObject?.current_period_start ? new Date(subscriptionObject.current_period_start * 1000) : undefined,
+        currentPeriodEnd: subscriptionObject?.current_period_end ? new Date(subscriptionObject.current_period_end * 1000) : undefined,
+        trialEndsAt: subscriptionObject?.trial_end ? new Date(subscriptionObject.trial_end * 1000) : undefined,
+        cancelAtPeriodEnd: subscriptionObject?.cancel_at_period_end,
+        sessionMetadata: (session.metadata || subscriptionObject?.metadata || {}) as Record<string, string>,
       };
     } catch (e: any) {
       return {
@@ -383,6 +395,16 @@ export class StripePaymentService {
     error?: string;
   }> {
     try {
+      const inputCurrency = (params.currency || 'tnd').toLowerCase();
+      let stripeCurrency = inputCurrency;
+      let amountInStripeCurrency = params.amountDT;
+
+      if (inputCurrency === 'tnd') {
+        const tndToUsdRate = await this.getTndToUsdRate();
+        stripeCurrency = 'usd';
+        amountInStripeCurrency = params.amountDT * tndToUsdRate;
+      }
+
       // First create a product
       const product = await this.stripe.products.create({
         name: params.productName,
@@ -391,8 +413,8 @@ export class StripePaymentService {
 
       // Then create a price
       const price = await this.stripe.prices.create({
-        unit_amount: Math.round(params.amountDT * 100),
-        currency: params.currency || 'usd',
+        unit_amount: Math.round(amountInStripeCurrency * 100),
+        currency: stripeCurrency,
         recurring: {
           interval: params.interval,
         },

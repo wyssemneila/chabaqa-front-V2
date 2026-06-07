@@ -14,6 +14,7 @@ import { VerificationCode, VerificationCodeSchema } from '@/infrastructure/datab
 import { Admin, AdminSchema } from '@/infrastructure/database/schemas/auth/admin.schema';
 import { RevokedToken, RevokedTokenSchema } from '@/infrastructure/database/schemas/auth/revoked-token.schema';
 import { EmailService, TokenBlacklistService } from '@/shared/services';
+import { SocketAuthService } from '@/shared/services/socket-auth.service';
 import { UserLoginActivityModule } from '@/domains/auth/user-login-activity/user-login-activity.module';
 import { UploadModule } from '@/domains/shared/upload/upload.module';
 import { getJwtSecret } from '@/shared/utils/security-config.util';
@@ -38,7 +39,7 @@ import { getJwtSecret } from '@/shared/utils/security-config.util';
     UploadModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GoogleAuthGuard, EmailService, TokenBlacklistService, JwtAuthGuard, OptionalJwtAuthGuard],
-  exports: [AuthService, TokenBlacklistService, JwtAuthGuard, OptionalJwtAuthGuard],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, GoogleAuthGuard, EmailService, TokenBlacklistService, SocketAuthService, JwtAuthGuard, OptionalJwtAuthGuard],
+  exports: [AuthService, TokenBlacklistService, SocketAuthService, JwtAuthGuard, OptionalJwtAuthGuard],
 })
 export class AuthModule { } 

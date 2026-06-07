@@ -1,6 +1,8 @@
 import { Module, Global } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { SecurityService } from '@/shared/services/security.service';
+import { HtmlSanitizerService } from '@/shared/services/html-sanitizer.service';
+import { MalwareScannerService } from '@/shared/services/malware-scanner.service';
 import { IPReputationService } from '@/shared/services/ip-reputation.service';
 import { BotDetectionService } from '@/shared/services/bot-detection.service';
 import { FileValidationService } from '@/shared/services/file-validation.service';
@@ -42,7 +44,9 @@ import { CacheModule } from '@/shared/modules/cache.module';
   ],
   controllers: [CaptchaController],
   providers: [
-    SecurityService, 
+    SecurityService,
+    HtmlSanitizerService,
+    MalwareScannerService,
     IPReputationService, 
     BotDetectionService,
     FileValidationService,
@@ -54,7 +58,9 @@ import { CacheModule } from '@/shared/modules/cache.module';
     WAFMiddleware
   ],
   exports: [
-    SecurityService, 
+    SecurityService,
+    HtmlSanitizerService,
+    MalwareScannerService,
     IPReputationService, 
     BotDetectionService,
     FileValidationService,

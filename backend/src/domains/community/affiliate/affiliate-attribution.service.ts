@@ -28,6 +28,66 @@ export class AffiliateAttributionService {
     return crypto.createHmac('sha256', this.ipSalt).update(value).digest('hex');
   }
 
+  private classifySourceChannel(input: {
+    utmSource?: string;
+    utmMedium?: string;
+    referrer?: string;
+  }): string {
+    const source = String(input.utmSource || '').toLowerCase();
+    const medium = String(input.utmMedium || '').toLowerCase();
+    const referrer = String(input.referrer || '').toLowerCase();
+
+    if (medium.includes('email') || source.includes('newsletter')) return 'email';
+    if (medium.includes('paid') || medium.includes('cpc') || medium.includes('ads')) return 'paid';
+    if (medium.includes('social')) return 'social';
+    if (/instagram|facebook|tiktok|youtube|linkedin|twitter|x\.com/.test(source || referrer)) return 'social';
+    if (/google|bing|yahoo|duckduckgo/.test(referrer)) return 'organic_search';
+    if (referrer) return 'referral';
+    return 'direct';
+  }
+
+  private parseUserAgent(userAgent?: string): {
+    deviceType: string;
+    browser: string;
+    os: string;
+    isBot: boolean;
+  } {
+    const ua = String(userAgent || '');
+    const lower = ua.toLowerCase();
+    const isBot = /bot|crawler|spider|preview|slurp|facebookexternalhit|whatsapp|telegram/.test(lower);
+    const deviceType = isBot
+      ? 'bot'
+      : /ipad|tablet/.test(lower)
+        ? 'tablet'
+        : /mobile|iphone|android/.test(lower)
+          ? 'mobile'
+          : 'desktop';
+    const browser = /edg\//i.test(ua)
+      ? 'Edge'
+      : /opr\//i.test(ua)
+        ? 'Opera'
+        : /chrome|crios/i.test(ua)
+          ? 'Chrome'
+          : /firefox|fxios/i.test(ua)
+            ? 'Firefox'
+            : /safari/i.test(ua)
+              ? 'Safari'
+              : 'Other';
+    const os = /iphone|ipad|ios/i.test(ua)
+      ? 'iOS'
+      : /android/i.test(ua)
+        ? 'Android'
+        : /windows/i.test(ua)
+          ? 'Windows'
+          : /mac os|macintosh/i.test(ua)
+            ? 'macOS'
+            : /linux/i.test(ua)
+              ? 'Linux'
+              : 'Other';
+
+    return { deviceType, browser, os, isBot };
+  }
+
   /**
    * Record a click for a valid affiliate link.
    * Returns the click and resolved link/program for redirect.
@@ -41,6 +101,8 @@ export class AffiliateAttributionService {
       utmSource?: string;
       utmMedium?: string;
       utmCampaign?: string;
+      utmTerm?: string;
+      utmContent?: string;
       viewerUserId?: string;
     },
   ): Promise<{
@@ -62,20 +124,39 @@ export class AffiliateAttributionService {
     if (!partner) return null;
 
     const clickId = uuidv4();
+    const userAgentData = this.parseUserAgent(req.userAgent);
+    const sourceChannel = this.classifySourceChannel({
+      utmSource: req.utmSource || link.utmSource,
+      utmMedium: req.utmMedium || link.utmMedium,
+      referrer: req.referrer,
+    });
     const click = await this.clickModel.create({
       clickId,
       programId: program._id,
+      creatorId: link.creatorId || program.creatorId,
+      communityId: link.communityId || program.communityId,
       partnerUserId: link.partnerUserId,
       linkCode: code,
+      targetContentType: link.targetContentType,
+      targetContentId: link.targetContentId,
       landingPath: link.targetPath,
       referrer: req.referrer ? req.referrer.substring(0, 500) : undefined,
-      utmSource: req.utmSource,
-      utmMedium: req.utmMedium,
-      utmCampaign: req.utmCampaign,
+      utmSource: req.utmSource || link.utmSource,
+      utmMedium: req.utmMedium || link.utmMedium,
+      utmCampaign: req.utmCampaign || link.utmCampaign || link.campaignName,
+      utmTerm: req.utmTerm || link.utmTerm,
+      utmContent: req.utmContent || link.utmContent,
+      sourceChannel,
+      ...userAgentData,
       ipHash: req.ip ? this.hashValue(req.ip) : undefined,
       userAgentHash: req.userAgent ? this.hashValue(req.userAgent) : undefined,
       viewerUserId: req.viewerUserId ? new Types.ObjectId(req.viewerUserId) : undefined,
     });
+
+    await (this.linkModel as any).updateOne?.(
+      { code },
+      { $inc: { clickCount: 1 }, $set: { lastClickedAt: new Date() } },
+    );
 
     return { click, link, program };
   }

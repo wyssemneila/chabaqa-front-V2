@@ -18,8 +18,11 @@ import {
   EmailCampaignQueryDto,
   InactiveUserQueryDto,
   InactiveUserStatsDto,
+  MarketingMergeFieldsQueryDto,
+  MarketingTemplatesQueryDto,
   PreviewAudienceDto,
   PreviewAudienceResponseDto,
+  RenderMarketingPreviewDto,
   UpdateEmailCampaignDto,
   UpdateWelcomeTemplateDto,
 } from '@/domains/communication/email-campaign/dto/email-campaign.dto';
@@ -38,14 +41,34 @@ import { User, UserDocument } from '@/infrastructure/database/schemas/auth/user.
 import { UserLoginActivityDocument } from '@/infrastructure/database/schemas/auth/user-login-activity.schema';
 import { UserLoginActivityService } from '@/domains/auth/user-login-activity/user-login-activity.service';
 import { contentTypeToLabel, inactivityPeriodToText, renderTemplate } from '@/domains/communication/email-campaign/email-campaign-template.util';
+import { MARKETING_EMAIL_TEMPLATES, MarketingEmailTemplate } from '@/domains/communication/email-campaign/email-marketing-templates';
 import { EmailCampaignQueueService } from '@/domains/communication/email-campaign/email-campaign.queue';
 import { PolicyService } from '@/shared/services/policy.service';
 import { Subscription, SubscriptionDocument } from '@/infrastructure/database/schemas/commerce/subscription.schema';
 import { EmailCampaignSendJobPayload } from '@/domains/communication/email-campaign/email-campaign.jobs';
+import { Cours } from '@/infrastructure/database/schemas/learning/course.schema';
+import { Challenge } from '@/infrastructure/database/schemas/learning/challenge.schema';
+import { Event } from '@/infrastructure/database/schemas/commerce/event.schema';
+import { Product } from '@/infrastructure/database/schemas/commerce/product.schema';
+import { Session } from '@/infrastructure/database/schemas/commerce/session.schema';
+import { HtmlSanitizerService } from '@/shared/services/html-sanitizer.service';
 
 type RecipientsQuery = { page?: number; limit?: number; status?: string; opened?: boolean };
 type SendRecipientResult = { authenticationFailure: boolean };
 type TrackingEventType = 'open' | 'click';
+type MarketingContentType = 'event' | 'challenge' | 'cours' | 'product' | 'session' | 'all';
+type MarketingMergeField = {
+  key: string;
+  token: string;
+  label: string;
+  group: string;
+  type: 'string' | 'number' | 'date' | 'url' | 'boolean';
+  description: string;
+  example: string | number | boolean;
+  source: 'user' | 'community' | 'engagement' | 'content' | 'course' | 'campaign' | 'system';
+  availability: string[];
+};
+type MarketingContentData = Record<string, string | number | boolean | null | undefined>;
 type TrackingTokenPayload = {
   v: 1;
   type: TrackingEventType;
@@ -74,6 +97,16 @@ export class EmailCampaignService {
     private readonly userModel: Model<UserDocument>,
     @InjectModel(Community.name)
     private readonly communityModel: Model<CommunityDocument>,
+    @InjectModel(Cours.name)
+    private readonly coursModel: Model<any>,
+    @InjectModel(Challenge.name)
+    private readonly challengeModel: Model<any>,
+    @InjectModel(Event.name)
+    private readonly eventModel: Model<any>,
+    @InjectModel(Product.name)
+    private readonly productModel: Model<any>,
+    @InjectModel(Session.name)
+    private readonly sessionModel: Model<any>,
     @InjectModel('CourseEnrollment')
     private readonly courseEnrollmentModel: Model<any>,
     @InjectModel('UserLoginActivity')
@@ -82,7 +115,12 @@ export class EmailCampaignService {
     private readonly userLoginActivityService: UserLoginActivityService,
     private readonly emailCampaignQueueService: EmailCampaignQueueService,
     private readonly policyService: PolicyService,
+    private readonly htmlSanitizer: HtmlSanitizerService,
   ) {}
+
+  private sanitizeCampaignContent(content: string, isHtml?: boolean): string {
+    return isHtml ? this.htmlSanitizer.sanitizeHtml(content) : content;
+  }
 
   /**
    * Validate that the creator has remaining email campaign quota for the month.
@@ -136,7 +174,7 @@ export class EmailCampaignService {
     const campaign = new this.emailCampaignModel({
       title: dto.title,
       subject: dto.subject,
-      content: dto.content,
+      content: this.sanitizeCampaignContent(dto.content, dto.isHtml),
       communityId: new Types.ObjectId(dto.communityId),
       creatorId: new Types.ObjectId(creatorId),
       recipients,
@@ -145,6 +183,7 @@ export class EmailCampaignService {
       type: dto.type || EmailCampaignType.CUSTOM,
       status,
       isHtml: dto.isHtml || false,
+      templateData: dto.templateData || {},
       trackOpens: dto.trackOpens !== false,
       trackClicks: dto.trackClicks !== false,
       metadata: dto.metadata || {},
@@ -175,6 +214,7 @@ export class EmailCampaignService {
         status: 'pending',
         opened: false,
         clickCount: 0,
+        mergeData: this.buildActivityMarketingData(userActivity, dto.inactivityPeriod as InactivityPeriod),
       } as EmailRecipient;
     });
 
@@ -185,7 +225,7 @@ export class EmailCampaignService {
     const campaign = new this.emailCampaignModel({
       title: dto.title,
       subject: dto.subject,
-      content: dto.content,
+      content: this.sanitizeCampaignContent(dto.content, dto.isHtml),
       communityId: new Types.ObjectId(dto.communityId),
       creatorId: new Types.ObjectId(creatorId),
       recipients,
@@ -223,11 +263,16 @@ export class EmailCampaignService {
     const recipients = await this.buildCommunityRecipients(community);
     const scheduledAt = this.normalizeScheduledAt(dto.scheduledAt);
     const status = this.resolveCampaignStatus(scheduledAt);
+    const contentData = await this.resolveContentMarketingData(
+      community,
+      dto.contentType as MarketingContentType,
+      dto.contentId,
+    );
 
     const campaign = new this.emailCampaignModel({
       title: dto.title,
       subject: dto.subject,
-      content: dto.content,
+      content: this.sanitizeCampaignContent(dto.content, dto.isHtml),
       communityId: new Types.ObjectId(dto.communityId),
       creatorId: new Types.ObjectId(creatorId),
       recipients,
@@ -235,6 +280,7 @@ export class EmailCampaignService {
       scheduledAt,
       type: EmailCampaignType.CUSTOM,
       status,
+      templateData: contentData,
       trackOpens: dto.trackOpens !== false,
       trackClicks: dto.trackClicks !== false,
       isHtml: dto.isHtml || false,
@@ -243,6 +289,7 @@ export class EmailCampaignService {
         contentReminder: true,
         contentType: dto.contentType,
         contentId: dto.contentId,
+        ...contentData,
         communityName: community.name,
       },
     });
@@ -281,11 +328,12 @@ export class EmailCampaignService {
 
     const scheduledAt = this.normalizeScheduledAt(dto.scheduledAt);
     const status = this.resolveCampaignStatus(scheduledAt);
+    const courseData = await this.resolveContentMarketingData(community, 'cours', dto.targetCourseId);
 
     const campaign = new this.emailCampaignModel({
       title: dto.title,
       subject: dto.subject,
-      content: dto.content,
+      content: this.sanitizeCampaignContent(dto.content, dto.isHtml),
       communityId: new Types.ObjectId(dto.communityId),
       creatorId: new Types.ObjectId(creatorId),
       recipients,
@@ -298,9 +346,11 @@ export class EmailCampaignService {
       scheduledAt,
       status,
       isHtml: dto.isHtml || false,
+      templateData: courseData,
       trackOpens: dto.trackOpens !== false,
       trackClicks: dto.trackClicks !== false,
       metadata: {
+        ...courseData,
         communityName: community.name,
         courseProgressReminder: true,
         targetCourseId: dto.targetCourseId,
@@ -375,6 +425,131 @@ export class EmailCampaignService {
     throw new BadRequestException('Unsupported filterType');
   }
 
+  async getMarketingMergeFields(
+    creatorId: string,
+    communityId: string,
+    query: MarketingMergeFieldsQueryDto = {},
+  ): Promise<{
+    communityId: string;
+    syntax: { tokenExample: string; description: string };
+    groups: Array<{ key: string; label: string; fields: MarketingMergeField[] }>;
+    fields: MarketingMergeField[];
+    sampleData: Record<string, any>;
+    dataSummary: Record<string, any>;
+  }> {
+    const community = await this.verifyCommunityAccess(creatorId, communityId);
+    const sampleData = await this.buildMarketingPreviewVariables(creatorId, community, {
+      campaignType: query.campaignType,
+      contentType: query.contentType,
+      contentId: query.contentId,
+      targetCourseId: query.targetCourseId,
+      inactivityPeriod: query.inactivityPeriod,
+    });
+    const fields = this.buildMarketingMergeFieldCatalog(sampleData, {
+      campaignType: query.campaignType,
+      contentType: query.contentType,
+      targetCourseId: query.targetCourseId,
+      inactivityPeriod: query.inactivityPeriod,
+    });
+    const dataSummary = await this.buildMarketingDataSummary(community);
+
+    return {
+      communityId,
+      syntax: {
+        tokenExample: '{{userFirstName}}',
+        description: 'Use double curly braces around any key. Unknown variables render as empty strings during send.',
+      },
+      groups: this.groupMarketingFields(fields),
+      fields,
+      sampleData,
+      dataSummary,
+    };
+  }
+
+  async getMarketingTemplates(
+    creatorId: string,
+    communityId: string,
+    query: MarketingTemplatesQueryDto = {},
+  ): Promise<{
+    communityId: string;
+    templates: Array<MarketingEmailTemplate & { variables: string[]; renderedPreview: { subject: string; content: string } }>;
+    categories: string[];
+    total: number;
+  }> {
+    const community = await this.verifyCommunityAccess(creatorId, communityId);
+    const sampleData = await this.buildMarketingPreviewVariables(creatorId, community, {
+      campaignType: query.type,
+      contentType: query.contentType,
+    });
+
+    const templates = MARKETING_EMAIL_TEMPLATES
+      .filter((template) => !query.type || template.type === query.type)
+      .filter((template) => !query.contentType || !template.contentType || template.contentType === query.contentType || template.contentType === 'all')
+      .filter((template) => !query.category || template.category === query.category)
+      .map((template) => ({
+        ...template,
+        variables: this.extractTemplateTokens(`${template.subject}\n${template.content}`),
+        renderedPreview: {
+          subject: renderTemplate(template.subject, sampleData),
+          content: renderTemplate(template.content, sampleData),
+        },
+      }));
+
+    return {
+      communityId,
+      templates,
+      categories: Array.from(new Set(MARKETING_EMAIL_TEMPLATES.map((template) => template.category))).sort(),
+      total: templates.length,
+    };
+  }
+
+  async renderMarketingPreview(
+    creatorId: string,
+    dto: RenderMarketingPreviewDto,
+  ): Promise<{
+    subject: string;
+    content: string;
+    isHtml: boolean;
+    variables: Record<string, any>;
+    usedVariables: string[];
+    missingVariables: string[];
+    recipient?: { userId: string; email: string; name: string };
+    contentData: MarketingContentData;
+  }> {
+    const community = await this.verifyCommunityAccess(creatorId, dto.communityId);
+    const variables = await this.buildMarketingPreviewVariables(creatorId, community, {
+      campaignType: dto.campaignType,
+      contentType: dto.contentType,
+      contentId: dto.contentId,
+      targetCourseId: dto.targetCourseId,
+      inactivityPeriod: dto.inactivityPeriod,
+      sampleUserId: dto.sampleUserId,
+      metadata: dto.metadata,
+    });
+    const subjectTemplate = dto.subject || '';
+    const usedVariables = this.extractTemplateTokens(`${subjectTemplate}\n${dto.content}`);
+    const knownKeys = new Set(Object.keys(variables));
+    const missingVariables = usedVariables.filter((key) => !knownKeys.has(key));
+    const renderedContent = renderTemplate(dto.content, variables);
+
+    return {
+      subject: renderTemplate(subjectTemplate, variables),
+      content: this.sanitizeCampaignContent(renderedContent, dto.isHtml === true),
+      isHtml: dto.isHtml === true,
+      variables,
+      usedVariables,
+      missingVariables,
+      recipient: variables.userId
+        ? {
+            userId: String(variables.userId),
+            email: String(variables.userEmail || ''),
+            name: String(variables.userName || ''),
+          }
+        : undefined,
+      contentData: this.pickMarketingDataByPrefix(variables, ['content', 'course', 'event', 'challenge', 'product', 'session']),
+    };
+  }
+
   private async resolveCourseProgressAudience(
     communityId: string,
     courseId: string,
@@ -383,6 +558,9 @@ export class EmailCampaignService {
     limit: number,
   ): Promise<EmailRecipient[]> {
     const enrolledBefore = new Date(Date.now() - minEnrolledDays * 24 * 60 * 60 * 1000);
+    const course = typeof (this.coursModel as any).findById === 'function'
+      ? await (this.coursModel as any).findById(courseId).lean().exec().catch(() => null)
+      : null;
 
     // Fetch enrollments for this course created before the threshold
     const enrollments = await this.courseEnrollmentModel
@@ -399,7 +577,7 @@ export class EmailCampaignService {
     // Get community member IDs for scoping
     const community = await this.communityModel
       .findById(communityId)
-      .select('members')
+      .select('members name slug currency')
       .lean()
       .exec();
 
@@ -411,8 +589,8 @@ export class EmailCampaignService {
       const user = enrollment.userId as any;
       if (!user || !memberIds.has(String(user._id))) continue;
 
+      const totalChapters = this.countCourseChapters(course, enrollment);
       const progressEntries: Array<{ isCompleted: boolean }> = enrollment.progression || [];
-      const totalChapters = progressEntries.length;
       const completedChapters = progressEntries.filter((p) => p.isCompleted).length;
       const progressPct = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
 
@@ -424,6 +602,10 @@ export class EmailCampaignService {
           status: 'pending',
           opened: false,
           clickCount: 0,
+          mergeData: {
+            ...this.normalizeContentMarketingData('cours', course || { _id: courseId }, community || {}),
+            ...this.buildCourseProgressMergeData(course || { _id: courseId }, enrollment),
+          },
         } as EmailRecipient);
       }
 
@@ -457,7 +639,7 @@ export class EmailCampaignService {
     const template = new this.emailCampaignModel({
       title: `Welcome Email — ${community.name}`,
       subject: dto.subject,
-      content: dto.content,
+      content: this.sanitizeCampaignContent(dto.content, dto.isHtml),
       communityId: new Types.ObjectId(communityId),
       creatorId: new Types.ObjectId(creatorId),
       type: EmailCampaignType.WELCOME,
@@ -512,9 +694,13 @@ export class EmailCampaignService {
       throw new NotFoundException('Welcome template not found. Create one first.');
     }
 
-    if (dto.subject !== undefined) template.subject = dto.subject;
-    if (dto.content !== undefined) template.content = dto.content;
     if (dto.isHtml !== undefined) template.isHtml = dto.isHtml;
+    if (dto.subject !== undefined) template.subject = dto.subject;
+    if (dto.content !== undefined) {
+      template.content = this.sanitizeCampaignContent(dto.content, template.isHtml);
+    } else if (dto.isHtml === true) {
+      template.content = this.sanitizeCampaignContent(template.content, true);
+    }
 
     return template.save();
   }
@@ -570,22 +756,26 @@ export class EmailCampaignService {
 
       if (!template) return; // no welcome email configured
 
-      const user = await this.userModel.findById(userId).select('email name').lean().exec();
+      const user = await this.userModel.findById(userId).select('_id email name username pays ville createdAt').lean().exec();
       if (!user?.email) return;
 
-      const community = await this.communityModel.findById(communityId).select('name').lean().exec();
+      const community = await this.communityModel
+        .findById(communityId)
+        .select('name slug category members currency price pricing settings fees_of_join inviteLink createur')
+        .lean()
+        .exec();
       const communityName = community?.name || '';
 
-      const variables = this.buildBaseVariables({
-        recipientName: user.name || user.email,
-        communityName,
-        targetDaysThreshold: undefined,
-        targetInactivityPeriod: undefined,
-        contentType: undefined,
+      const variables = await this.buildMarketingPreviewVariables(String(template.creatorId || ''), community || {}, {
+        sampleUserId: userId,
+        metadata: this.buildUserMarketingData(user),
       });
 
       const renderedSubject = renderTemplate(template.subject, variables);
-      const renderedContent = renderTemplate(template.content, variables);
+      const renderedContent = this.sanitizeCampaignContent(
+        renderTemplate(template.content, variables),
+        template.isHtml,
+      );
 
       await this.sendCampaignMessage({
         to: user.email,
@@ -609,6 +799,7 @@ export class EmailCampaignService {
                 sentAt: new Date(),
                 opened: false,
                 clickCount: 0,
+                mergeData: this.buildUserMarketingData(user),
               },
             },
             $inc: { sentCount: 1, totalRecipients: 1 },
@@ -664,7 +855,7 @@ export class EmailCampaignService {
     const automation = new this.emailCampaignModel({
       title: dto.title,
       subject: dto.subject,
-      content: dto.content,
+      content: this.sanitizeCampaignContent(dto.content, dto.isHtml),
       communityId: new Types.ObjectId(dto.communityId),
       creatorId: new Types.ObjectId(creatorId),
       type: EmailCampaignType.INACTIVE_USER_REACTIVATION,
@@ -751,11 +942,15 @@ export class EmailCampaignService {
             communityId,
             lastLoginAt: { $gte: yesterdayCutoff, $lt: cutoff },
           })
-          .populate('userId', 'email name')
+          .populate('userId', '_id email name username pays ville createdAt')
           .lean()
           .exec();
 
-        const community = await this.communityModel.findById(communityId).select('name').lean().exec();
+        const community = await this.communityModel
+          .findById(communityId)
+          .select('name slug category members currency price pricing settings fees_of_join inviteLink createur')
+          .lean()
+          .exec();
         const communityName = community?.name || '';
 
         for (const activity of activities) {
@@ -771,12 +966,14 @@ export class EmailCampaignService {
           );
           if (alreadySent) continue;
 
-          const variables = this.buildBaseVariables({
-            recipientName: user.name || user.email,
-            communityName,
-            targetDaysThreshold: minInactiveDays,
-            targetInactivityPeriod: undefined,
-            contentType: undefined,
+          const variables = await this.buildMarketingPreviewVariables(String(automation.creatorId || ''), community || {}, {
+            sampleUserId: String(user._id),
+            metadata: {
+              ...this.buildUserMarketingData(user),
+              ...this.buildActivityMarketingData(activity, undefined),
+              daysThreshold: minInactiveDays,
+              daysSinceLastLogin: minInactiveDays,
+            },
           });
 
           const renderedSubject = renderTemplate(automation.subject, variables);
@@ -805,6 +1002,12 @@ export class EmailCampaignService {
                       sentAt: new Date(),
                       opened: false,
                       clickCount: 0,
+                      mergeData: {
+                        ...this.buildUserMarketingData(user),
+                        ...this.buildActivityMarketingData(activity, undefined),
+                        daysThreshold: minInactiveDays,
+                        daysSinceLastLogin: minInactiveDays,
+                      },
                     },
                   },
                   $inc: { sentCount: 1, totalRecipients: 1 },
@@ -919,8 +1122,11 @@ export class EmailCampaignService {
       return;
     }
 
-    const community = await this.communityModel.findById(campaign.communityId).select('name').lean().exec();
-    const communityName = community?.name || '';
+    const community = await this.communityModel
+      .findById(campaign.communityId)
+      .select('name slug category members currency price pricing settings fees_of_join inviteLink createur')
+      .lean()
+      .exec();
 
     if (campaign.status !== EmailCampaignStatus.SENDING) {
       campaign.status = EmailCampaignStatus.SENDING;
@@ -948,7 +1154,7 @@ export class EmailCampaignService {
     for (let index = 0; index < batches.length; index += 1) {
       const batch = batches[index];
       const results = await Promise.all(
-        batch.map((recipient) => this.sendEmailToRecipient(campaign, recipient, communityName)),
+        batch.map((recipient) => this.sendEmailToRecipient(campaign, recipient, community || {})),
       );
       const authFailureInBatch = results.some((result) => result.authenticationFailure);
       if (authFailureInBatch) {
@@ -1140,11 +1346,16 @@ export class EmailCampaignService {
 
     if (dto.title !== undefined) campaign.title = dto.title;
     if (dto.subject !== undefined) campaign.subject = dto.subject;
-    if (dto.content !== undefined) campaign.content = dto.content;
     if (dto.isHtml !== undefined) campaign.isHtml = dto.isHtml;
+    if (dto.content !== undefined) {
+      campaign.content = this.sanitizeCampaignContent(dto.content, campaign.isHtml);
+    } else if (dto.isHtml === true) {
+      campaign.content = this.sanitizeCampaignContent(campaign.content, true);
+    }
     if (dto.trackOpens !== undefined) campaign.trackOpens = dto.trackOpens;
     if (dto.trackClicks !== undefined) campaign.trackClicks = dto.trackClicks;
     if (dto.metadata !== undefined) campaign.metadata = dto.metadata;
+    if (dto.templateData !== undefined) campaign.templateData = dto.templateData;
 
     if (dto.scheduledAt !== undefined) {
       campaign.scheduledAt = this.normalizeScheduledAt(dto.scheduledAt);
@@ -1275,6 +1486,9 @@ export class EmailCampaignService {
       clickCount: recipient.clickCount,
       clickedAt: recipient.clickedAt,
       errorMessage: recipient.errorMessage,
+      personalizedSubject: recipient.personalizedSubject,
+      personalizedContent: recipient.personalizedContent,
+      mergeData: recipient.mergeData || {},
     }));
 
     return {
@@ -1286,25 +1500,26 @@ export class EmailCampaignService {
   }
 
   async sendTestEmail(
+    creatorId: string,
     toEmail: string,
     subject: string,
     content: string,
     communityId?: string,
     isHtml = false,
   ): Promise<void> {
+    let variables: Record<string, any> = {
+      ...this.buildDateMarketingData(),
+      ...this.buildUserMarketingData({ name: 'Test User', email: toEmail, username: 'test-user' }),
+    };
     let communityName = '';
     if (communityId && Types.ObjectId.isValid(communityId)) {
-      const community = await this.communityModel.findById(communityId).select('name').lean().exec();
+      const community = await this.verifyCommunityAccess(creatorId, communityId);
       communityName = community?.name || '';
+      variables = await this.buildMarketingPreviewVariables(creatorId, community, {
+        sampleUserId: undefined,
+        metadata: variables,
+      });
     }
-
-    const variables = this.buildBaseVariables({
-      recipientName: 'Test User',
-      communityName,
-      targetDaysThreshold: undefined,
-      targetInactivityPeriod: undefined,
-      contentType: undefined,
-    });
 
     const processedSubject = renderTemplate(subject, variables);
     const processedContent = renderTemplate(content, variables);
@@ -1453,7 +1668,7 @@ export class EmailCampaignService {
   private async buildCommunityRecipients(community: CommunityDocument): Promise<EmailRecipient[]> {
     const members = await this.userModel
       .find({ _id: { $in: community.members } })
-      .select('_id email name')
+      .select('_id email name username pays ville createdAt profile_picture photo_profil')
       .lean()
       .exec();
 
@@ -1464,6 +1679,7 @@ export class EmailCampaignService {
       status: 'pending',
       opened: false,
       clickCount: 0,
+      mergeData: this.buildUserMarketingData(member),
     }));
   }
 
@@ -1513,18 +1729,36 @@ export class EmailCampaignService {
   private async sendEmailToRecipient(
     campaign: EmailCampaignDocument,
     recipient: EmailRecipient,
-    communityName: string,
+    community: any,
   ): Promise<SendRecipientResult> {
-    const variables = this.buildBaseVariables({
+    const communityName = community?.name || '';
+    const userSnapshot = await this.findUserSnapshot(recipient.userId?.toString());
+    const activity = await this.findUserActivitySnapshot(
+      recipient.userId?.toString(),
+      campaign.communityId?.toString(),
+    );
+    const baseVariables = this.buildBaseVariables({
       recipientName: recipient.name,
       communityName,
       targetDaysThreshold: campaign.targetDaysThreshold,
       targetInactivityPeriod: campaign.targetInactivityPeriod,
       contentType: String(campaign.metadata?.contentType || ''),
     });
+    const variables = this.normalizeMarketingVariables({
+      ...baseVariables,
+      ...this.buildDateMarketingData(),
+      ...this.buildCommunityMarketingData(community, null),
+      ...this.buildUserMarketingData(userSnapshot || recipient),
+      ...this.buildActivityMarketingData(activity, campaign.targetInactivityPeriod),
+      ...(campaign.templateData || {}),
+      ...(campaign.metadata || {}),
+      ...(recipient.mergeData || {}),
+      campaignTitle: campaign.title,
+      campaignType: campaign.type,
+    });
 
     const subject = renderTemplate(campaign.subject, variables);
-    const content = renderTemplate(campaign.content, variables);
+    const content = this.sanitizeCampaignContent(renderTemplate(campaign.content, variables), campaign.isHtml);
     const trackedContent = this.buildTrackedRecipientContent(campaign, recipient, content);
 
     try {
@@ -1763,15 +1997,10 @@ export class EmailCampaignService {
   private normalizeTrackingDestination(rawUrl: string): string | null {
     if (!rawUrl) return null;
     const decoded = rawUrl.replace(/&amp;/gi, '&');
-    try {
-      const parsed = new URL(decoded);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        return null;
-      }
-      return parsed.toString();
-    } catch {
-      return null;
-    }
+    return this.htmlSanitizer.sanitizeUrl(decoded, {
+      allowRelative: false,
+      allowedProtocols: ['http:', 'https:'],
+    });
   }
 
   private parseRecipientObjectId(value: string): Types.ObjectId | null {
@@ -1826,6 +2055,642 @@ export class EmailCampaignService {
 
   private getInvalidClickRedirectUrl(): string {
     return (process.env.FRONTEND_URL || 'https://chabaqa.io').trim().replace(/\/+$/, '');
+  }
+
+  private async buildMarketingPreviewVariables(
+    creatorId: string,
+    community: any,
+    options: {
+      campaignType?: EmailCampaignType;
+      contentType?: MarketingContentType;
+      contentId?: string;
+      targetCourseId?: string;
+      inactivityPeriod?: InactivityPeriod;
+      sampleUserId?: string;
+      metadata?: Record<string, any>;
+    } = {},
+  ): Promise<Record<string, any>> {
+    const [creator, sampleUser] = await Promise.all([
+      this.findUserSnapshot(String(community?.createur || creatorId)),
+      this.findMarketingSampleUser(community, options.sampleUserId),
+    ]);
+    const activity = sampleUser?._id
+      ? await this.findUserActivitySnapshot(String(sampleUser._id), String(community._id))
+      : null;
+    const contentData = await this.resolveContentMarketingData(
+      community,
+      options.contentType || this.inferContentTypeFromCampaign(options.campaignType),
+      options.contentId || options.targetCourseId,
+    );
+    const courseData = await this.resolveCourseMarketingData(
+      community,
+      sampleUser?._id ? String(sampleUser._id) : undefined,
+      options.targetCourseId || String(contentData.contentId || ''),
+    );
+
+    const variables = {
+      ...this.buildDateMarketingData(),
+      ...this.buildCommunityMarketingData(community, creator),
+      ...this.buildUserMarketingData(sampleUser),
+      ...this.buildActivityMarketingData(activity, options.inactivityPeriod),
+      ...contentData,
+      ...courseData,
+      campaignType: options.campaignType || '',
+      ...(options.metadata || {}),
+    };
+
+    return this.normalizeMarketingVariables(variables);
+  }
+
+  private buildMarketingMergeFieldCatalog(
+    sampleData: Record<string, any>,
+    context: {
+      campaignType?: EmailCampaignType;
+      contentType?: MarketingContentType;
+      targetCourseId?: string;
+      inactivityPeriod?: InactivityPeriod;
+    },
+  ): MarketingMergeField[] {
+    const field = (
+      key: string,
+      label: string,
+      group: string,
+      type: MarketingMergeField['type'],
+      description: string,
+      source: MarketingMergeField['source'],
+      availability: string[],
+    ): MarketingMergeField => ({
+      key,
+      token: `{{${key}}}`,
+      label,
+      group,
+      type,
+      description,
+      source,
+      availability,
+      example: sampleData[key] ?? '',
+    });
+
+    const always = ['announcement', 'newsletter', 'promotion', 'welcome', 'custom'];
+    const content = ['content-reminder', 'event', 'challenge', 'cours', 'product', 'session'];
+    const course = ['course-progress', 'cours'];
+    const inactive = ['inactive-users', 'reactivation'];
+
+    return [
+      field('userName', 'Full name', 'recipient', 'string', 'Recipient full display name.', 'user', always),
+      field('userFirstName', 'First name', 'recipient', 'string', 'Recipient first name for friendly openers.', 'user', always),
+      field('userEmail', 'Email', 'recipient', 'string', 'Recipient email address.', 'user', always),
+      field('username', 'Username', 'recipient', 'string', 'Public username/handle when available.', 'user', always),
+      field('userCountry', 'Country', 'recipient', 'string', 'Recipient country from profile.', 'user', always),
+      field('userCity', 'City', 'recipient', 'string', 'Recipient city from profile.', 'user', always),
+      field('userProfileUrl', 'Profile URL', 'recipient', 'url', 'Link to the public profile when a username exists.', 'user', always),
+      field('memberSinceDays', 'Member age', 'recipient', 'number', 'Days since the user joined or was tracked in this community.', 'engagement', always),
+
+      field('communityName', 'Community name', 'community', 'string', 'Selected community name.', 'community', always),
+      field('communitySlug', 'Community slug', 'community', 'string', 'Selected community slug.', 'community', always),
+      field('communityUrl', 'Community URL', 'community', 'url', 'Public URL for the community.', 'community', always),
+      field('communityCategory', 'Community category', 'community', 'string', 'Community category.', 'community', always),
+      field('communityMemberCount', 'Member count', 'community', 'number', 'Total members in the selected community.', 'community', always),
+      field('communityCurrency', 'Currency', 'community', 'string', 'Default community currency.', 'community', always),
+      field('communityPrice', 'Community price', 'community', 'number', 'Join price or configured community price.', 'community', always),
+      field('communityWelcomeMessage', 'Welcome message', 'community', 'string', 'Configured community welcome copy.', 'community', always),
+      field('creatorName', 'Creator name', 'community', 'string', 'Owner/creator display name.', 'community', always),
+
+      field('currentDate', 'Current date', 'system', 'date', 'Current date in ISO format.', 'system', always),
+      field('currentYear', 'Current year', 'system', 'number', 'Current year.', 'system', always),
+      field('currentMonth', 'Current month', 'system', 'string', 'Current month name.', 'system', always),
+      field('currentDayName', 'Current day', 'system', 'string', 'Current day of week.', 'system', always),
+
+      field('lastLoginDate', 'Last login date', 'engagement', 'date', 'Last known login date in this community.', 'engagement', inactive),
+      field('daysSinceLastLogin', 'Days inactive', 'engagement', 'number', 'Days since the last known login.', 'engagement', inactive),
+      field('inactivityStatus', 'Inactivity status', 'engagement', 'string', 'Current inactivity bucket.', 'engagement', inactive),
+      field('inactivityPeriod', 'Inactivity period', 'engagement', 'string', 'Selected inactivity period label.', 'engagement', inactive),
+      field('daysThreshold', 'Days threshold', 'engagement', 'number', 'Selected inactivity threshold.', 'engagement', inactive),
+      field('reactivationEmailCount', 'Reactivation email count', 'engagement', 'number', 'How many reactivation emails this user has received.', 'engagement', inactive),
+
+      field('contentType', 'Content type key', 'content', 'string', 'Selected content type key.', 'content', content),
+      field('contentTypeLabel', 'Content type label', 'content', 'string', 'Human-readable content type.', 'content', content),
+      field('contentTitle', 'Content title', 'content', 'string', 'Selected content title.', 'content', content),
+      field('contentDescription', 'Content description', 'content', 'string', 'Selected content description.', 'content', content),
+      field('contentUrl', 'Content URL', 'content', 'url', 'Public URL for the selected content.', 'content', content),
+      field('contentPrice', 'Content price', 'content', 'number', 'Selected content price.', 'content', content),
+      field('contentCurrency', 'Content currency', 'content', 'string', 'Selected content currency.', 'content', content),
+      field('contentPublishedAt', 'Published date', 'content', 'date', 'Published or created date for selected content.', 'content', content),
+
+      field('courseTitle', 'Course title', 'course', 'string', 'Target course title.', 'course', course),
+      field('courseProgressPct', 'Course progress', 'course', 'number', 'Recipient course completion percentage.', 'course', course),
+      field('courseCompletedChapters', 'Completed chapters', 'course', 'number', 'Completed course chapters.', 'course', course),
+      field('courseTotalChapters', 'Total chapters', 'course', 'number', 'Total chapters in the target course.', 'course', course),
+      field('courseRemainingChapters', 'Remaining chapters', 'course', 'number', 'Remaining chapters to finish.', 'course', course),
+      field('courseEnrolledDays', 'Enrollment age', 'course', 'number', 'Days since the recipient enrolled.', 'course', course),
+
+      field('eventStartDate', 'Event start date', 'event', 'date', 'Selected event start date.', 'content', ['event']),
+      field('eventStartTime', 'Event start time', 'event', 'string', 'Selected event start time.', 'content', ['event']),
+      field('eventLocation', 'Event location', 'event', 'string', 'Selected event location or online URL.', 'content', ['event']),
+      field('challengeEndDate', 'Challenge end date', 'challenge', 'date', 'Selected challenge end date.', 'content', ['challenge']),
+      field('productSales', 'Product sales', 'product', 'number', 'Sales count for selected product.', 'content', ['product']),
+      field('sessionDuration', 'Session duration', 'session', 'number', 'Duration in minutes for selected session.', 'content', ['session']),
+    ].filter((item) => {
+      if (!context.campaignType && !context.contentType && !context.targetCourseId && !context.inactivityPeriod) return true;
+      const checks = [
+        String(context.campaignType || ''),
+        String(context.contentType || ''),
+        context.targetCourseId ? 'course-progress' : '',
+        context.inactivityPeriod ? 'inactive-users' : '',
+      ].filter(Boolean);
+      return item.availability.some((availability) => checks.includes(availability) || always.includes(availability));
+    });
+  }
+
+  private groupMarketingFields(fields: MarketingMergeField[]): Array<{ key: string; label: string; fields: MarketingMergeField[] }> {
+    const labels: Record<string, string> = {
+      recipient: 'Recipient',
+      community: 'Community',
+      system: 'Date and System',
+      engagement: 'Engagement',
+      content: 'Content',
+      course: 'Course Progress',
+      event: 'Event',
+      challenge: 'Challenge',
+      product: 'Product',
+      session: 'Session',
+    };
+    const order = ['recipient', 'community', 'system', 'engagement', 'content', 'course', 'event', 'challenge', 'product', 'session'];
+    return order
+      .map((key) => ({
+        key,
+        label: labels[key] || key,
+        fields: fields.filter((field) => field.group === key),
+      }))
+      .filter((group) => group.fields.length > 0);
+  }
+
+  private async buildMarketingDataSummary(community: any): Promise<Record<string, any>> {
+    const communityFilter = this.buildCommunityContentFilter(community);
+    const [courseCount, challengeCount, eventCount, productCount, sessionCount, campaignCount, inactiveCount] =
+      await Promise.all([
+        this.safeCountDocuments(this.coursModel, { ...communityFilter, isPublished: true }),
+        this.safeCountDocuments(this.challengeModel, { ...communityFilter }),
+        this.safeCountDocuments(this.eventModel, { ...communityFilter }),
+        this.safeCountDocuments(this.productModel, { ...communityFilter, isPublished: true }),
+        this.safeCountDocuments(this.sessionModel, { ...communityFilter, isActive: true }),
+        this.safeCountDocuments(this.emailCampaignModel, { communityId: community._id }),
+        this.safeCountDocuments(this.userLoginActivityModel, {
+          communityId: community._id,
+          isReactivationTarget: true,
+        }),
+      ]);
+
+    return {
+      members: Array.isArray(community?.members) ? community.members.length : community?.membersCount || 0,
+      courses: courseCount,
+      challenges: challengeCount,
+      events: eventCount,
+      products: productCount,
+      sessions: sessionCount,
+      campaigns: campaignCount,
+      inactiveMembers: inactiveCount,
+    };
+  }
+
+  private async safeCountDocuments(model: any, filter: Record<string, any>): Promise<number> {
+    if (!model || typeof model.countDocuments !== 'function') return 0;
+    try {
+      return await model.countDocuments(filter).exec();
+    } catch {
+      return 0;
+    }
+  }
+
+  private async findMarketingSampleUser(community: any, sampleUserId?: string): Promise<any | null> {
+    if (sampleUserId && Types.ObjectId.isValid(sampleUserId)) {
+      const byId = await this.findUserSnapshot(sampleUserId);
+      if (byId) return byId;
+    }
+
+    const memberIds = Array.isArray(community?.members) ? community.members : [];
+    const model: any = this.userModel;
+    if (!memberIds.length || typeof model.findOne !== 'function') {
+      return {
+        _id: '',
+        name: 'Test User',
+        email: 'member@example.com',
+        username: 'test-user',
+      };
+    }
+
+    try {
+      return await model
+        .findOne({ _id: { $in: memberIds } })
+        .select('_id name email username pays ville createdAt profile_picture photo_profil')
+        .lean()
+        .exec();
+    } catch {
+      return null;
+    }
+  }
+
+  private async findUserSnapshot(userId?: string): Promise<any | null> {
+    if (!userId || !Types.ObjectId.isValid(userId)) return null;
+    const model: any = this.userModel;
+    if (typeof model.findById !== 'function') return null;
+    try {
+      return await model
+        .findById(userId)
+        .select('_id name email username pays ville createdAt profile_picture photo_profil')
+        .lean()
+        .exec();
+    } catch {
+      return null;
+    }
+  }
+
+  private async findUserActivitySnapshot(userId?: string, communityId?: string): Promise<any | null> {
+    if (!userId || !communityId || !Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(communityId)) return null;
+    const model: any = this.userLoginActivityModel;
+    if (typeof model.findOne !== 'function') return null;
+    try {
+      return await model
+        .findOne({
+          userId: new Types.ObjectId(userId),
+          communityId: new Types.ObjectId(communityId),
+        })
+        .lean()
+        .exec();
+    } catch {
+      return null;
+    }
+  }
+
+  private buildUserMarketingData(user: any): Record<string, any> {
+    const name = user?.name || 'Test User';
+    const username = user?.username || '';
+    return {
+      userId: user?._id ? String(user._id) : '',
+      userName: name,
+      userFirstName: this.getFirstName(name),
+      userEmail: user?.email || 'member@example.com',
+      username,
+      userCountry: user?.pays || '',
+      userCity: user?.ville || '',
+      userProfileImage: user?.profile_picture || user?.photo_profil || '',
+      userProfileUrl: username ? `${this.getFrontendBaseUrl()}/profile/${encodeURIComponent(username)}` : '',
+      userCreatedAt: this.formatMarketingDate(user?.createdAt),
+    };
+  }
+
+  private buildCommunityMarketingData(community: any, creator: any): Record<string, any> {
+    const memberCount = Array.isArray(community?.members) ? community.members.length : community?.membersCount || 0;
+    const pricing = community?.pricing || {};
+    const price = pricing.price ?? community?.price ?? community?.fees_of_join ?? 0;
+    const currency = pricing.currency || community?.currency || 'TND';
+    return {
+      communityId: community?._id ? String(community._id) : '',
+      communityName: community?.name || '',
+      communitySlug: community?.slug || '',
+      communityUrl: this.buildCommunityUrl(community),
+      communityCategory: community?.category || '',
+      communityMemberCount: memberCount,
+      communityCurrency: currency,
+      communityPrice: price,
+      communityWelcomeMessage: community?.settings?.welcomeMessage || '',
+      communityInviteLink: community?.inviteLink || '',
+      creatorName: creator?.name || '',
+      creatorEmail: creator?.email || '',
+    };
+  }
+
+  private buildActivityMarketingData(activity: any, period?: InactivityPeriod): Record<string, any> {
+    const daysSinceLastLogin = activity?.daysSinceLastLogin ?? this.getDaysThreshold(period || InactivityPeriod.LAST_7_DAYS);
+    return {
+      lastLoginDate: this.formatMarketingDate(activity?.lastLoginAt),
+      daysSinceLastLogin,
+      inactivityStatus: activity?.inactivityStatus || '',
+      inactivityPeriod: inactivityPeriodToText(period),
+      daysThreshold: this.getDaysThreshold(period || InactivityPeriod.LAST_7_DAYS),
+      lastReactivationEmailSent: this.formatMarketingDate(activity?.lastReactivationEmailSent),
+      reactivationEmailCount: activity?.reactivationEmailCount || 0,
+      joinedAt: this.formatMarketingDate(activity?.joinedAt),
+      memberSinceDays: activity?.joinedAt ? this.daysBetween(activity.joinedAt, new Date()) : '',
+    };
+  }
+
+  private buildDateMarketingData(): Record<string, any> {
+    const now = new Date();
+    return {
+      currentDate: now.toISOString().slice(0, 10),
+      currentYear: now.getUTCFullYear(),
+      currentMonth: now.toLocaleString('en-US', { month: 'long' }),
+      currentDayName: now.toLocaleString('en-US', { weekday: 'long' }),
+    };
+  }
+
+  private async resolveContentMarketingData(
+    community: any,
+    contentType: MarketingContentType | undefined,
+    contentId?: string,
+  ): Promise<MarketingContentData> {
+    const type = contentType || 'all';
+    const label = contentTypeToLabel(type);
+    const fallback = {
+      contentType: type,
+      contentTypeLabel: label || 'content',
+      contentId: contentId || '',
+      contentTitle: label ? `${community?.name || 'Community'} ${label}` : community?.name || 'Community content',
+      contentDescription: '',
+      contentUrl: this.buildCommunityUrl(community),
+      contentPrice: '',
+      contentCurrency: community?.currency || 'TND',
+      contentPublishedAt: '',
+    };
+
+    if (!contentId || type === 'all') return fallback;
+    const model = this.getContentModel(type);
+    if (!model || typeof model.findOne !== 'function') return fallback;
+
+    try {
+      const item = await model
+        .findOne(this.buildContentLookupFilter(community, contentId))
+        .lean()
+        .exec();
+      if (!item) return fallback;
+      return {
+        ...fallback,
+        ...this.normalizeContentMarketingData(type, item, community),
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  private getContentModel(contentType: MarketingContentType): Model<any> | null {
+    switch (contentType) {
+      case 'cours':
+        return this.coursModel;
+      case 'challenge':
+        return this.challengeModel;
+      case 'event':
+        return this.eventModel;
+      case 'product':
+        return this.productModel;
+      case 'session':
+        return this.sessionModel;
+      default:
+        return null;
+    }
+  }
+
+  private buildContentLookupFilter(community: any, contentId: string): Record<string, any> {
+    const idClauses: Record<string, any>[] = [{ id: contentId }, { slug: contentId }];
+    if (Types.ObjectId.isValid(contentId)) {
+      idClauses.push({ _id: new Types.ObjectId(contentId) });
+    }
+    const communityId = String(community?._id || '');
+    const communityClauses: Record<string, any>[] = [{ communityId }];
+    if (Types.ObjectId.isValid(communityId)) {
+      communityClauses.push({ communityId: new Types.ObjectId(communityId) });
+    }
+    return { $and: [{ $or: idClauses }, { $or: communityClauses }] };
+  }
+
+  private buildCommunityContentFilter(community: any): Record<string, any> {
+    const communityId = String(community?._id || '');
+    const clauses: Record<string, any>[] = [{ communityId }];
+    if (Types.ObjectId.isValid(communityId)) {
+      clauses.push({ communityId: new Types.ObjectId(communityId) });
+    }
+    return { $or: clauses };
+  }
+
+  private normalizeContentMarketingData(type: MarketingContentType, item: any, community: any): MarketingContentData {
+    const title = item?.title || item?.titre || item?.name || '';
+    const price = item?.price ?? item?.prix ?? item?.pricing?.price ?? '';
+    const currency = item?.currency || item?.devise || item?.pricing?.currency || community?.currency || 'TND';
+    const contentUrl = this.buildContentUrl(type, item, community);
+    const base = {
+      contentType: type,
+      contentTypeLabel: contentTypeToLabel(type),
+      contentId: String(item?._id || item?.id || ''),
+      contentTitle: title,
+      contentDescription: item?.description || item?.short_description || item?.notes || '',
+      contentUrl,
+      contentPrice: price,
+      contentCurrency: currency,
+      contentPublishedAt: this.formatMarketingDate(item?.publishedAt || item?.createdAt),
+    };
+
+    if (type === 'event') {
+      return {
+        ...base,
+        eventStartDate: this.formatMarketingDate(item?.startDate),
+        eventStartTime: item?.startTime || '',
+        eventEndTime: item?.endTime || '',
+        eventTimezone: item?.timezone || '',
+        eventLocation: item?.location || item?.onlineUrl || '',
+        eventAttendeeCount: item?.totalAttendees ?? (Array.isArray(item?.attendees) ? item.attendees.length : ''),
+      };
+    }
+
+    if (type === 'challenge') {
+      return {
+        ...base,
+        challengeStartDate: this.formatMarketingDate(item?.startDate),
+        challengeEndDate: this.formatMarketingDate(item?.endDate),
+        challengeParticipantCount: Array.isArray(item?.participants) ? item.participants.length : '',
+        challengeReward: item?.completionReward ?? '',
+        challengeDifficulty: item?.difficulty || '',
+      };
+    }
+
+    if (type === 'product') {
+      return {
+        ...base,
+        productSales: item?.sales ?? 0,
+        productInventory: item?.inventory ?? '',
+        productCategory: item?.category || '',
+      };
+    }
+
+    if (type === 'session') {
+      return {
+        ...base,
+        sessionDuration: item?.duration ?? '',
+        sessionCategory: item?.category || '',
+        sessionRating: item?.averageRating ?? '',
+      };
+    }
+
+    if (type === 'cours') {
+      const totalChapters = this.countCourseChapters(item);
+      return {
+        ...base,
+        courseTitle: title,
+        courseTotalChapters: totalChapters,
+        courseLevel: item?.niveau || '',
+        courseCategory: item?.category || '',
+      };
+    }
+
+    return base;
+  }
+
+  private async resolveCourseMarketingData(
+    community: any,
+    userId?: string,
+    courseId?: string,
+  ): Promise<MarketingContentData> {
+    if (!courseId) return {};
+    const course = await this.findContentItem('cours', community, courseId);
+    if (!course) return {};
+
+    const base = this.normalizeContentMarketingData('cours', course, community);
+    if (!userId || !Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(String(course._id))) {
+      return {
+        ...base,
+        courseProgressPct: base.courseProgressPct || 0,
+        courseCompletedChapters: base.courseCompletedChapters || 0,
+        courseRemainingChapters: base.courseTotalChapters || 0,
+        courseEnrolledDays: '',
+      };
+    }
+
+    const enrollment = await this.findCourseEnrollment(userId, String(course._id));
+    return {
+      ...base,
+      ...this.buildCourseProgressMergeData(course, enrollment),
+    };
+  }
+
+  private async findContentItem(contentType: MarketingContentType, community: any, contentId: string): Promise<any | null> {
+    const model = this.getContentModel(contentType);
+    if (!model || typeof model.findOne !== 'function') return null;
+    try {
+      return await model
+        .findOne(this.buildContentLookupFilter(community, contentId))
+        .lean()
+        .exec();
+    } catch {
+      return null;
+    }
+  }
+
+  private async findCourseEnrollment(userId: string, courseId: string): Promise<any | null> {
+    const model: any = this.courseEnrollmentModel;
+    if (typeof model.findOne !== 'function') return null;
+    try {
+      return await model
+        .findOne({
+          userId: new Types.ObjectId(userId),
+          courseId: new Types.ObjectId(courseId),
+          isActive: true,
+        })
+        .lean()
+        .exec();
+    } catch {
+      return null;
+    }
+  }
+
+  private buildCourseProgressMergeData(course: any, enrollment: any): Record<string, any> {
+    const totalChapters = this.countCourseChapters(course, enrollment);
+    const progressEntries: Array<{ isCompleted: boolean; lastAccessedAt?: Date }> = Array.isArray(enrollment?.progression)
+      ? enrollment.progression
+      : [];
+    const completedChapters = progressEntries.filter((progress) => progress.isCompleted).length;
+    const progressPct = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
+    const enrolledAt = enrollment?.enrolledAt || enrollment?.createdAt;
+    const lastAccessedAt = progressEntries
+      .map((progress) => progress.lastAccessedAt)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b as any).getTime() - new Date(a as any).getTime())[0];
+
+    return {
+      courseTitle: course?.titre || course?.title || '',
+      courseProgressPct: progressPct,
+      progressPct,
+      courseCompletedChapters: completedChapters,
+      courseTotalChapters: totalChapters,
+      courseRemainingChapters: Math.max(totalChapters - completedChapters, 0),
+      courseEnrolledAt: this.formatMarketingDate(enrolledAt),
+      courseEnrolledDays: enrolledAt ? this.daysBetween(enrolledAt, new Date()) : '',
+      courseLastAccessedAt: this.formatMarketingDate(lastAccessedAt),
+    };
+  }
+
+  private countCourseChapters(course: any, enrollment?: any): number {
+    const sections = Array.isArray(course?.sections) ? course.sections : [];
+    const sectionChapters = sections.reduce((sum, section) => sum + (Array.isArray(section?.chapitres) ? section.chapitres.length : 0), 0);
+    if (sectionChapters > 0) return sectionChapters;
+    return Array.isArray(enrollment?.progression) ? enrollment.progression.length : 0;
+  }
+
+  private buildContentUrl(type: MarketingContentType, item: any, community: any): string {
+    const id = encodeURIComponent(String(item?.slug || item?.id || item?._id || ''));
+    const communitySlug = encodeURIComponent(String(community?.slug || 'community'));
+    const creatorSlug = encodeURIComponent(String(community?.creatorSlug || community?.createur?.username || 'community'));
+    const route = type === 'cours' ? 'courses' : type === 'event' ? 'events' : `${type}s`;
+    return `${this.getFrontendBaseUrl()}/${creatorSlug}/${communitySlug}/${route}/${id}`;
+  }
+
+  private buildCommunityUrl(community: any): string {
+    const slug = community?.slug ? encodeURIComponent(String(community.slug)) : '';
+    if (!slug) return this.getFrontendBaseUrl();
+    return `${this.getFrontendBaseUrl()}/community/${slug}`;
+  }
+
+  private getFrontendBaseUrl(): string {
+    return (process.env.FRONTEND_URL || 'https://chabaqa.io').trim().replace(/\/+$/, '');
+  }
+
+  private inferContentTypeFromCampaign(type?: EmailCampaignType): MarketingContentType | undefined {
+    if (type === EmailCampaignType.EVENT_REMINDER) return 'event';
+    if (type === EmailCampaignType.COURSE_UPDATE || type === EmailCampaignType.COURSE_PROGRESS_REMINDER) return 'cours';
+    return undefined;
+  }
+
+  private extractTemplateTokens(template: string): string[] {
+    const tokens = new Set<string>();
+    const regex = /{{\s*([a-zA-Z0-9_.-]+)\s*}}/g;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(template)) !== null) {
+      tokens.add(match[1]);
+    }
+    return Array.from(tokens).sort();
+  }
+
+  private pickMarketingDataByPrefix(data: Record<string, any>, prefixes: string[]): MarketingContentData {
+    return Object.entries(data).reduce((result, [key, value]) => {
+      if (prefixes.some((prefix) => key === prefix || key.toLowerCase().startsWith(prefix.toLowerCase()))) {
+        result[key] = value;
+      }
+      return result;
+    }, {} as MarketingContentData);
+  }
+
+  private normalizeMarketingVariables(data: Record<string, any>): Record<string, any> {
+    return Object.entries(data).reduce((result, [key, value]) => {
+      result[key] = value === null || value === undefined ? '' : value;
+      return result;
+    }, {} as Record<string, any>);
+  }
+
+  private getFirstName(name?: string): string {
+    const clean = String(name || '').trim();
+    if (!clean) return 'there';
+    return clean.split(/\s+/)[0];
+  }
+
+  private formatMarketingDate(value: any): string {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString().slice(0, 10);
+  }
+
+  private daysBetween(start: any, end: Date): number {
+    const startDate = new Date(start);
+    if (Number.isNaN(startDate.getTime())) return 0;
+    return Math.max(0, Math.floor((end.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
   }
 
   private buildBaseVariables(input: {

@@ -29,8 +29,11 @@ import {
   EmailCampaignQueryDto,
   InactiveUserQueryDto,
   InactiveUserStatsDto,
+  MarketingMergeFieldsQueryDto,
+  MarketingTemplatesQueryDto,
   PreviewAudienceDto,
   PreviewAudienceResponseDto,
+  RenderMarketingPreviewDto,
   UpdateEmailCampaignDto,
   UpdateWelcomeTemplateDto,
 } from '@/domains/communication/email-campaign/dto/email-campaign.dto';
@@ -195,12 +198,63 @@ export class EmailCampaignController {
     return this.emailCampaignService.getCampaignRecipients(campaignId, req.user._id, query);
   }
 
+  @Get('community/:communityId/merge-fields')
+  @UseGuards(CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.MARKETING_MANAGE)
+  @ApiOperation({
+    summary: 'Get rich marketing merge fields for a community',
+    description:
+      'Returns typed variables, examples, data groups, and data availability for the campaign composer.',
+  })
+  getMarketingMergeFields(
+    @Request() req,
+    @Param('communityId') communityId: string,
+    @Query() query: MarketingMergeFieldsQueryDto,
+  ): Promise<any> {
+    return this.emailCampaignService.getMarketingMergeFields(req.user._id, communityId, query);
+  }
+
+  @Get('community/:communityId/templates')
+  @UseGuards(CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.MARKETING_MANAGE)
+  @ApiOperation({
+    summary: 'Get rich marketing email templates',
+    description:
+      'Returns reusable backend templates with variables, audience hints, rendered preview, and channel compatibility.',
+  })
+  getMarketingTemplates(
+    @Request() req,
+    @Param('communityId') communityId: string,
+    @Query() query: MarketingTemplatesQueryDto,
+  ): Promise<any> {
+    return this.emailCampaignService.getMarketingTemplates(req.user._id, communityId, query);
+  }
+
+  @Post('render-preview')
+  @UseGuards(CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.MARKETING_MANAGE)
+  @CommunityIdFrom({ type: 'body', name: 'communityId' })
+  @ApiOperation({
+    summary: 'Render a marketing email preview with real community data',
+    description:
+      'Renders subject/content with sample recipient, community, content, inactivity, and course-progress data.',
+  })
+  renderMarketingPreview(
+    @Request() req,
+    @Body() dto: RenderMarketingPreviewDto,
+  ): Promise<any> {
+    return this.emailCampaignService.renderMarketingPreview(req.user._id, dto);
+  }
+
   @Post('test-email')
+  @UseGuards(CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.MARKETING_MANAGE)
+  @CommunityIdFrom({ type: 'body', name: 'communityId' })
   @ApiOperation({ summary: 'Send a test email' })
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['toEmail', 'subject', 'content'],
+      required: ['toEmail', 'subject', 'content', 'communityId'],
       properties: {
         toEmail: { type: 'string' },
         subject: { type: 'string' },
@@ -211,6 +265,7 @@ export class EmailCampaignController {
     },
   })
   sendTestEmail(
+    @Request() req,
     @Body()
     body: {
       toEmail: string;
@@ -221,6 +276,7 @@ export class EmailCampaignController {
     },
   ): Promise<void> {
     return this.emailCampaignService.sendTestEmail(
+      req.user._id,
       body.toEmail,
       body.subject,
       body.content,

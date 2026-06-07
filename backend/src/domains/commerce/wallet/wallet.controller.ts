@@ -120,7 +120,7 @@ export class WalletController {
       storage: diskStorage({
         destination: (req, file, cb) => {
           const extension = extname(file.originalname).toLowerCase();
-          const folder = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(extension)
+          const folder = ['.jpg', '.jpeg', '.png', '.webp'].includes(extension)
             ? join(process.cwd(), 'uploads/image')
             : join(process.cwd(), 'uploads/document');
           cb(null, folder);
@@ -132,8 +132,8 @@ export class WalletController {
         },
       }),
       fileFilter: (req, file, cb) => {
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|pdf)$/)) {
-          return cb(new BadRequestException('Only image and PDF files are allowed'), false);
+        if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.mimetype)) {
+          return cb(new BadRequestException('Only JPG, PNG, WebP, and PDF files are allowed'), false);
         }
         cb(null, true);
       },

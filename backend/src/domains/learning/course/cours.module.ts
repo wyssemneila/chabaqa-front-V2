@@ -43,11 +43,11 @@ import { AchievementModule } from '@/domains/shared/achievement/achievement.modu
         destination: (req, file, cb) => {
           const extension = extname(file.originalname).toLowerCase();
           let folder = 'uploads';
-          if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(extension)) {
+          if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(extension)) {
             folder = 'uploads/image';
-          } else if (['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm'].includes(extension)) {
+          } else if (['.mp4', '.mov', '.webm'].includes(extension)) {
             folder = 'uploads/video';
-          } else if (['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt'].includes(extension)) {
+          } else if (['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.ppt', '.pptx', '.xls', '.xlsx', '.csv'].includes(extension)) {
             folder = 'uploads/document';
           } else if (['.mp3', '.wav', '.ogg', '.aac', '.flac'].includes(extension)) {
             folder = 'uploads/audio';

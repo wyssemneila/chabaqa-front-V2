@@ -17,6 +17,7 @@ import { NotificationRoutingService } from '@/domains/communication/notification
 import { User, UserSchema } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Event, EventSchema } from '@/infrastructure/database/schemas/commerce/event.schema';
 import { EmailModule } from '@/domains/communication/email/email.module';
+import { AuthModule } from '@/domains/auth/auth.module';
 
 @Global()
 @Module({
@@ -33,6 +34,7 @@ import { EmailModule } from '@/domains/communication/email/email.module';
       { name: Event.name, schema: EventSchema },
     ]),
     ScheduleModule.forRoot(),
+    AuthModule,
     EmailModule,
   ],
   controllers: [NotificationController],

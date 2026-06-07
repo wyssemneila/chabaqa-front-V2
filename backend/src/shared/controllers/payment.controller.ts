@@ -31,6 +31,7 @@ import { EventService } from '@/domains/commerce/event/event.service';
 import { SubscriptionService } from '@/domains/commerce/subscription/subscription.service';
 import { SessionService } from '@/domains/commerce/session/session.service';
 import { Plan, PlanDocument, PlanTier } from '@/infrastructure/database/schemas/commerce/plan.schema';
+import { BillingInterval, SubscriptionStatus } from '@/infrastructure/database/schemas/commerce/subscription.schema';
 import { JwtAuthGuard } from '@/domains/auth/guards/jwt-auth.guard';
 import { NotificationService } from '@/domains/communication/notification/notification.service';
 import { EmailService } from '@/shared/services/email.service';
@@ -47,14 +48,10 @@ const manualProofStorage = diskStorage({
   destination: (req, file, cb) => {
     const extension = extname(file.originalname || '').toLowerCase();
     let folder = join(process.cwd(), 'uploads', 'document');
-    if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(extension)) {
+    if (['.jpg', '.jpeg', '.png', '.webp'].includes(extension)) {
       folder = join(process.cwd(), 'uploads', 'image');
-    } else if (['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm'].includes(extension)) {
-      folder = join(process.cwd(), 'uploads', 'video');
     } else if (['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt'].includes(extension)) {
       folder = join(process.cwd(), 'uploads', 'document');
-    } else if (['.mp3', '.wav', '.ogg', '.aac', '.flac'].includes(extension)) {
-      folder = join(process.cwd(), 'uploads', 'audio');
     }
     cb(null, folder);
   },
@@ -135,6 +132,53 @@ export class PaymentController {
 
   private normalizePaymentChannel(raw?: string): 'web' | 'mobile' {
     return String(raw || '').toLowerCase() === 'mobile' ? 'mobile' : 'web';
+  }
+
+  private assertPaymentProviderEnabled(provider: 'flouci' | 'konnect' | 'manual'): void {
+    if (!isStrictProductionRuntime()) return;
+
+    const flagByProvider: Record<typeof provider, string> = {
+      flouci: 'PAYMENT_ENABLE_FLOUCI',
+      konnect: 'PAYMENT_ENABLE_KONNECT',
+      manual: 'PAYMENT_ENABLE_MANUAL',
+    };
+
+    if (!this.isEnvFlagEnabled(flagByProvider[provider], false)) {
+      throw new BadRequestException(`${provider} payments are disabled in production`);
+    }
+  }
+
+  private normalizeBillingInterval(raw?: string): BillingInterval {
+    return String(raw || '').toLowerCase() === BillingInterval.YEAR
+      ? BillingInterval.YEAR
+      : BillingInterval.MONTH;
+  }
+
+  private normalizeStripeSubscriptionStatus(raw?: string): SubscriptionStatus {
+    switch (String(raw || '').toLowerCase()) {
+      case SubscriptionStatus.TRIALING:
+        return SubscriptionStatus.TRIALING;
+      case SubscriptionStatus.PAST_DUE:
+      case 'unpaid':
+        return SubscriptionStatus.PAST_DUE;
+      case SubscriptionStatus.CANCELED:
+      case 'cancelled':
+        return SubscriptionStatus.CANCELED;
+      case SubscriptionStatus.INCOMPLETE:
+      case 'incomplete_expired':
+        return SubscriptionStatus.INCOMPLETE;
+      case SubscriptionStatus.ACTIVE:
+      default:
+        return SubscriptionStatus.ACTIVE;
+    }
+  }
+
+  private isSuccessfulStripePayment(verify: { status?: string; subscriptionStatus?: string }): boolean {
+    const status = String(verify.status || '').toLowerCase();
+    const subscriptionStatus = String(verify.subscriptionStatus || '').toLowerCase();
+
+    return ['paid', 'succeeded', 'complete'].includes(status)
+      || [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING].includes(subscriptionStatus as SubscriptionStatus);
   }
 
   private getRedirectAllowlistPrefixes(): string[] {
@@ -247,18 +291,26 @@ export class PaymentController {
       return;
     }
 
-    await this.processedWebhookEventModel.updateOne(
-      { provider, eventId },
-      {
-        $setOnInsert: {
-          provider,
-          eventId,
-          eventType,
-          processedAt: new Date(),
+    try {
+      await this.processedWebhookEventModel.updateOne(
+        { provider, eventId },
+        {
+          $setOnInsert: {
+            provider,
+            eventId,
+            eventType,
+            processedAt: new Date(),
+          },
         },
-      },
-      { upsert: true },
-    );
+        { upsert: true },
+      );
+    } catch (error: any) {
+      // Concurrent webhook deliveries can race between the duplicate check and insert.
+      // Treat duplicate-key as already processed so payment providers do not retry forever.
+      if (error?.code !== 11000) {
+        throw error;
+      }
+    }
   }
 
   private async auditPaymentEvent(
@@ -532,6 +584,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('flouci');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const community = await this.communityModel.findById(communityId);
     if (!community) throw new BadRequestException('Communauté non trouvée');
@@ -604,6 +657,8 @@ export class PaymentController {
     if (sessionId) {
       return this.verifyStripeLink(sessionId);
     }
+
+    this.assertPaymentProviderEnabled('flouci');
 
     if (!paymentId) {
       throw new BadRequestException('paymentId or sessionId is required');
@@ -734,6 +789,7 @@ export class PaymentController {
     @Req() req: any,
     @Body('tier') tier: string
   ) {
+    this.assertPaymentProviderEnabled('flouci');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const plan = await this.planModel.findOne({ tier, isActive: true });
     if (!plan) throw new BadRequestException('Plan introuvable');
@@ -765,6 +821,7 @@ export class PaymentController {
   @Post('webhook')
   @ApiOperation({ summary: 'Webhook Flouci (server-to-server reconciliation)' })
   async webhook(@Req() req: any) {
+    this.assertPaymentProviderEnabled('flouci');
     const body = req.body || {};
     const paymentId: string = body.payment_id;
     if (!paymentId) throw new BadRequestException('payment_id requis');
@@ -801,6 +858,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('flouci');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const offlineMode = (process.env.PAYMENT_MODE || 'instant') === 'offline';
     let cours: CoursDocument | null = null;
@@ -859,6 +917,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('flouci');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const offlineMode = (process.env.PAYMENT_MODE || 'instant') === 'offline';
     const challenge = await this.challengeModel.findById(challengeId);
@@ -907,6 +966,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('flouci');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const offlineMode = (process.env.PAYMENT_MODE || 'instant') === 'offline';
     const event = await this.eventModel.findById(eventId);
@@ -956,6 +1016,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('flouci');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const offlineMode = (process.env.PAYMENT_MODE || 'instant') === 'offline';
     let product = await this.productModel.findById(productId);
@@ -1007,6 +1068,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('flouci');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const offlineMode = (process.env.PAYMENT_MODE || 'instant') === 'offline';
     const session = await this.sessionModel.findById(sessionId);
@@ -1719,9 +1781,8 @@ export class PaymentController {
     const plan = await this.planModel.findOne({ tier, isActive: true });
     if (!plan) throw new BadRequestException('Plan not found');
 
-    const amount = interval === 'year'
-      ? (plan as any).priceYearlyDT || (plan as any).priceDT * 12
-      : (plan as any).priceMonthlyDT || (plan as any).priceDT;
+    const billingInterval = this.normalizeBillingInterval(interval);
+    const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);
 
     if (amount <= 0) throw new BadRequestException('Invalid amount');
 
@@ -1739,6 +1800,11 @@ export class PaymentController {
       status: 'pending',
       metadata: this.buildPendingFulfillmentMetadata({
         channel,
+        tier,
+        billingInterval,
+        provider: 'stripe',
+        amount,
+        currency: 'TND',
         ...(Object.keys(clientContext).length > 0 ? { clientContext } : {}),
         ...this.resolveAffiliateAttribution(req),
       }),
@@ -1747,7 +1813,8 @@ export class PaymentController {
     // Create Stripe price for the subscription
     const priceResult = await this.stripe.createPrice({
       amountDT: amount,
-      interval,
+      interval: billingInterval,
+      currency: 'TND',
       productName: `${plan.name} Plan`,
       productDescription: `Subscription to ${plan.name} plan`
     });
@@ -1769,6 +1836,11 @@ export class PaymentController {
         userId,
         contentType: 'subscription',
         tier,
+        billingInterval,
+        provider: 'stripe',
+        providerPriceId: priceResult.priceId!,
+        amount: String(amount),
+        currency: 'TND',
         orderId: pendingOrder._id.toString(),
         channel,
         ...(Object.keys(clientContext).length > 0 ? { clientContext: JSON.stringify(clientContext) } : {}),
@@ -1779,6 +1851,11 @@ export class PaymentController {
     if (!session.success) throw new BadRequestException(session.error);
 
     pendingOrder.paymentId = session.sessionId;
+    pendingOrder.metadata = {
+      ...(pendingOrder.metadata || {}),
+      providerCheckoutSessionId: session.sessionId,
+      providerPriceId: priceResult.priceId!,
+    };
     await pendingOrder.save();
 
     return this.buildStripeInitResponse({
@@ -1789,7 +1866,7 @@ export class PaymentController {
       checkoutUrl: session.url,
       extra: {
         channel,
-        interval,
+        interval: billingInterval,
       },
     });
   }
@@ -2047,7 +2124,23 @@ export class PaymentController {
     }
   }
 
-  private async grantAccess(order: any, session: any = null, stripeSessionMetadata?: Record<string, string>) {
+  private async grantAccess(
+    order: any,
+    session: any = null,
+    stripeSessionMetadata?: Record<string, string>,
+    stripePaymentDetails?: {
+      sessionId?: string;
+      customerId?: string;
+      subscriptionId?: string;
+      subscriptionStatus?: string;
+      currentPeriodStart?: Date;
+      currentPeriodEnd?: Date;
+      trialEndsAt?: Date;
+      cancelAtPeriodEnd?: boolean;
+      paymentMethod?: { card?: { brand?: string; last4?: string } };
+      amountDT?: number;
+    },
+  ) {
     this.logger.log(`Granting access for order ${order._id} (Type: ${order.contentType})`);
 
     switch (order.contentType) {
@@ -2070,8 +2163,28 @@ export class PaymentController {
         break;
 
       case TrackableContentType.SUBSCRIPTION:
-        const tier = (order.contentId || 'STARTER') as PlanTier;
-        await this.subscriptionService.upgradePlan(order.buyerId.toString(), tier, session);
+        const tier = (stripeSessionMetadata?.tier || order.metadata?.tier || order.contentId || 'STARTER') as PlanTier;
+        const billingInterval = this.normalizeBillingInterval(
+          stripeSessionMetadata?.billingInterval || order.metadata?.billingInterval,
+        );
+        await this.subscriptionService.upgradePlan(order.buyerId.toString(), tier, session, {
+          billingInterval,
+          provider: stripeSessionMetadata?.provider || order.metadata?.provider || 'stripe',
+          providerCustomerId: stripePaymentDetails?.customerId,
+          providerSubscriptionId: stripePaymentDetails?.subscriptionId,
+          providerCheckoutSessionId: stripePaymentDetails?.sessionId || order.metadata?.providerCheckoutSessionId || order.paymentId,
+          providerPriceId: stripeSessionMetadata?.providerPriceId || order.metadata?.providerPriceId,
+          currentPeriodStart: stripePaymentDetails?.currentPeriodStart,
+          currentPeriodEnd: stripePaymentDetails?.currentPeriodEnd,
+          trialEndsAt: stripePaymentDetails?.trialEndsAt,
+          status: this.normalizeStripeSubscriptionStatus(stripePaymentDetails?.subscriptionStatus),
+          amount: Number(order.metadata?.amount || order.amountDT || stripePaymentDetails?.amountDT || 0),
+          currency: order.metadata?.currency || stripeSessionMetadata?.currency || 'TND',
+          paymentBrand: stripePaymentDetails?.paymentMethod?.card?.brand,
+          paymentLast4: stripePaymentDetails?.paymentMethod?.card?.last4,
+          hasPaymentMethod: true,
+          cancelAtPeriodEnd: stripePaymentDetails?.cancelAtPeriodEnd,
+        });
         break;
 
       case TrackableContentType.COURSE:
@@ -2197,7 +2310,7 @@ export class PaymentController {
       throw new BadRequestException('Order not found');
     }
 
-    if (verify.status === 'paid' || verify.status === 'succeeded' || verify.status === 'complete') {
+    if (this.isSuccessfulStripePayment(verify)) {
       let requiresBookingAction = false;
       let didCompleteFulfillment = false;
       let sessionContentId = order.metadata?.contentId || verify.sessionMetadata?.contentId || order.contentId;
@@ -2232,7 +2345,18 @@ export class PaymentController {
         }
 
         try {
-          await this.grantAccess(order, session, verify.sessionMetadata);
+          await this.grantAccess(order, session, verify.sessionMetadata, {
+            sessionId: normalizedSessionId,
+            customerId: verify.customerId,
+            subscriptionId: verify.subscriptionId,
+            subscriptionStatus: verify.subscriptionStatus,
+            currentPeriodStart: verify.currentPeriodStart,
+            currentPeriodEnd: verify.currentPeriodEnd,
+            trialEndsAt: verify.trialEndsAt,
+            cancelAtPeriodEnd: verify.cancelAtPeriodEnd,
+            paymentMethod: verify.paymentMethod,
+            amountDT: verify.amountDT,
+          });
           order = await this.paymentFulfillmentService.markCompleted(order, session);
           didCompleteFulfillment = true;
         } catch (error: any) {
@@ -2474,8 +2598,9 @@ export class PaymentController {
       case 'checkout.session.completed':
       case 'checkout.session.async_payment_succeeded':
         const stripeSession = stripeEvent.data.object as any;
-        if (stripeSession.payment_status === 'paid') {
-          // Process successful payment
+        const isSubscriptionCheckout = stripeSession.mode === 'subscription' || stripeSession.metadata?.contentType === 'subscription';
+        if (stripeSession.payment_status === 'paid' || (isSubscriptionCheckout && stripeSession.status === 'complete')) {
+          // Process successful payment or completed subscription checkout
           let order: any = await this.orderModel.findOne({ paymentId: stripeSession.id });
           if (order) {
             let didCompleteFulfillment = false;
@@ -2495,7 +2620,17 @@ export class PaymentController {
               }
 
               try {
-                await this.grantAccess(order, dbSession, stripeSession.metadata);
+                const stripeSubscription = typeof stripeSession.subscription === 'object' ? stripeSession.subscription : null;
+                await this.grantAccess(order, dbSession, stripeSession.metadata, {
+                  sessionId: stripeSession.id,
+                  customerId: typeof stripeSession.customer === 'string' ? stripeSession.customer : stripeSession.customer?.id,
+                  subscriptionId: typeof stripeSession.subscription === 'string' ? stripeSession.subscription : stripeSession.subscription?.id,
+                  subscriptionStatus: stripeSubscription?.status,
+                  currentPeriodStart: stripeSubscription?.current_period_start ? new Date(stripeSubscription.current_period_start * 1000) : undefined,
+                  currentPeriodEnd: stripeSubscription?.current_period_end ? new Date(stripeSubscription.current_period_end * 1000) : undefined,
+                  trialEndsAt: stripeSubscription?.trial_end ? new Date(stripeSubscription.trial_end * 1000) : undefined,
+                  cancelAtPeriodEnd: stripeSubscription?.cancel_at_period_end,
+                });
                 order = await this.paymentFulfillmentService.markCompleted(order, dbSession);
                 didCompleteFulfillment = true;
               } catch (error: any) {
@@ -2519,9 +2654,22 @@ export class PaymentController {
         }
         break;
 
+      case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
-        // These are handled by subscriptionService.handleWebhook if configured
+      case 'customer.subscription.trial_will_end':
+      case 'invoice.payment_succeeded':
+      case 'invoice.payment_failed':
+      case 'payment_method.attached':
+      case 'payment_method.detached':
+        await this.subscriptionService.handleWebhook({
+          id: stripeEvent.id,
+          object: stripeEvent.object,
+          type: stripeEvent.type,
+          data: stripeEvent.data,
+          created: stripeEvent.created ? new Date(stripeEvent.created * 1000).toISOString() : undefined,
+          livemode: stripeEvent.livemode,
+        });
         break;
     }
 
@@ -3431,6 +3579,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('konnect');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const community = await this.communityModel.findById(communityId);
     if (!community) throw new BadRequestException('Communauté non trouvée');
@@ -3512,6 +3661,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('konnect');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     let cours: CoursDocument | null = null;
     if (Types.ObjectId.isValid(courseId)) {
@@ -3591,6 +3741,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('konnect');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const challenge = await this.challengeModel.findById(challengeId);
     if (!challenge) throw new BadRequestException('Défi non trouvé');
@@ -3663,6 +3814,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('konnect');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const event = await this.eventModel.findById(eventId);
     if (!event) throw new BadRequestException('Événement non trouvé');
@@ -3737,6 +3889,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('konnect');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     let product = await this.productModel.findById(productId);
     if (!product) product = await this.productModel.findOne({ id: productId });
@@ -3813,6 +3966,7 @@ export class PaymentController {
     @Req() req: any,
     @Query('promoCode') promoCode?: string,
   ) {
+    this.assertPaymentProviderEnabled('konnect');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const session = await this.sessionModel.findById(sessionId);
     if (!session) throw new BadRequestException('Session non trouvée');
@@ -3882,6 +4036,7 @@ export class PaymentController {
     @Req() req: any,
     @Body('tier') tier: string,
   ) {
+    this.assertPaymentProviderEnabled('konnect');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const plan = await this.planModel.findOne({ tier, isActive: true });
     if (!plan) throw new BadRequestException('Plan introuvable');
@@ -3936,6 +4091,7 @@ export class PaymentController {
   @ApiOperation({ summary: 'Verify Konnect payment status' })
   @ApiQuery({ name: 'paymentRef', required: true })
   async verifyKonnectPayment(@Query('paymentRef') paymentRef: string) {
+    this.assertPaymentProviderEnabled('konnect');
     if (!paymentRef) throw new BadRequestException('paymentRef is required');
 
     let order: any = await this.orderModel.findOne({ paymentId: paymentRef });
@@ -4018,6 +4174,7 @@ export class PaymentController {
   @Get('konnect/webhook')
   @ApiOperation({ summary: 'Konnect payment webhook (GET with payment_ref query param)' })
   async konnectWebhook(@Query('payment_ref') paymentRef: string) {
+    this.assertPaymentProviderEnabled('konnect');
     this.logger.log(`[Konnect Webhook] Received callback for payment_ref=${paymentRef}`);
     if (!paymentRef) throw new BadRequestException('payment_ref is required');
 

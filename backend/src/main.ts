@@ -17,6 +17,7 @@ import {
   isSwaggerEnabled,
 } from '@/shared/utils/security-config.util';
 import { validateStartupEnv } from '@/shared/utils/startup-env.validation';
+import { csrfProtectionMiddleware } from '@/shared/middleware/csrf-protection.middleware';
 
 // Compatibility for Node < 20 where globalThis.crypto may be undefined.
 if (!globalThis.crypto) {
@@ -83,6 +84,7 @@ async function bootstrap() {
 
 
   app.use(cookieParser());
+  app.use(csrfProtectionMiddleware);
 
 
   app.useGlobalPipes(new ValidationPipe({
