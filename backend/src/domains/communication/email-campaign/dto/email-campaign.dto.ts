@@ -114,6 +114,14 @@ export class CreateEmailCampaignDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+
+  @ApiPropertyOptional({
+    description: 'Resolved marketing merge data used to personalize templates at send time',
+    example: { contentTitle: 'Creator Launch Sprint', communityName: 'Creator Launch' }
+  })
+  @IsOptional()
+  @IsObject()
+  templateData?: Record<string, any>;
 }
 
 /**
@@ -313,6 +321,14 @@ export class UpdateEmailCampaignDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+
+  @ApiPropertyOptional({
+    description: 'Resolved merge data for custom templates',
+    example: { contentTitle: 'Updated Workshop' }
+  })
+  @IsOptional()
+  @IsObject()
+  templateData?: Record<string, any>;
 }
 
 /**
@@ -814,5 +830,133 @@ export class CreateInactivityAutomationDto {
   @IsOptional()
   @IsBoolean()
   isHtml?: boolean;
+}
+
+// Marketing Composer Data
+
+export type MarketingComposerContentType = 'event' | 'challenge' | 'cours' | 'product' | 'session' | 'all';
+
+export class MarketingMergeFieldsQueryDto {
+  @ApiPropertyOptional({ enum: EmailCampaignType, description: 'Campaign type to tailor variables for' })
+  @IsOptional()
+  @IsEnum(EmailCampaignType)
+  campaignType?: EmailCampaignType;
+
+  @ApiPropertyOptional({ enum: ['event', 'challenge', 'cours', 'product', 'session', 'all'] })
+  @IsOptional()
+  @IsEnum(['event', 'challenge', 'cours', 'product', 'session', 'all'])
+  contentType?: MarketingComposerContentType;
+
+  @ApiPropertyOptional({ description: 'Specific content id/slug to sample data from' })
+  @IsOptional()
+  @IsString()
+  contentId?: string;
+
+  @ApiPropertyOptional({ description: 'Course id for course-progress variables' })
+  @IsOptional()
+  @IsString()
+  targetCourseId?: string;
+
+  @ApiPropertyOptional({ enum: InactivityPeriod })
+  @IsOptional()
+  @IsEnum(InactivityPeriod)
+  inactivityPeriod?: InactivityPeriod;
+}
+
+export class MarketingTemplatesQueryDto {
+  @ApiPropertyOptional({ enum: EmailCampaignType })
+  @IsOptional()
+  @IsEnum(EmailCampaignType)
+  type?: EmailCampaignType;
+
+  @ApiPropertyOptional({ enum: ['event', 'challenge', 'cours', 'product', 'session', 'all'] })
+  @IsOptional()
+  @IsEnum(['event', 'challenge', 'cours', 'product', 'session', 'all'])
+  contentType?: MarketingComposerContentType;
+
+  @ApiPropertyOptional({ description: 'Template category such as newsletter, content, learning, reactivation' })
+  @IsOptional()
+  @IsString()
+  category?: string;
+}
+
+export class RenderMarketingPreviewDto {
+  @ApiProperty({ example: '507f1f77bcf86cd799439011' })
+  @IsString()
+  @IsNotEmpty()
+  communityId: string;
+
+  @ApiPropertyOptional({ example: 'Hello {{userFirstName}} from {{communityName}}' })
+  @IsOptional()
+  @IsString()
+  subject?: string;
+
+  @ApiProperty({ example: 'Hi {{userFirstName}}, your progress is {{courseProgressPct}}%.' })
+  @IsString()
+  @IsNotEmpty()
+  content: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isHtml?: boolean;
+
+  @ApiPropertyOptional({ enum: EmailCampaignType })
+  @IsOptional()
+  @IsEnum(EmailCampaignType)
+  campaignType?: EmailCampaignType;
+
+  @ApiPropertyOptional({ enum: ['event', 'challenge', 'cours', 'product', 'session', 'all'] })
+  @IsOptional()
+  @IsEnum(['event', 'challenge', 'cours', 'product', 'session', 'all'])
+  contentType?: MarketingComposerContentType;
+
+  @ApiPropertyOptional({ description: 'Specific content id/slug for content variables' })
+  @IsOptional()
+  @IsString()
+  contentId?: string;
+
+  @ApiPropertyOptional({ enum: InactivityPeriod })
+  @IsOptional()
+  @IsEnum(InactivityPeriod)
+  inactivityPeriod?: InactivityPeriod;
+
+  @ApiPropertyOptional({ description: 'Specific recipient user id to preview with' })
+  @IsOptional()
+  @IsString()
+  sampleUserId?: string;
+
+  @ApiPropertyOptional({ description: 'Course id for course progress preview' })
+  @IsOptional()
+  @IsString()
+  targetCourseId?: string;
+
+  @ApiPropertyOptional({ minimum: 1, maximum: 99 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(99)
+  targetMaxProgressPct?: number;
+
+  @ApiPropertyOptional({ minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  targetMinEnrolledDays?: number;
+
+  @ApiPropertyOptional({ description: 'Extra variable values to merge into the preview' })
+  @IsOptional()
+  @IsObject()
+  metadata?: Record<string, any>;
+
+  @ApiPropertyOptional({
+    description: 'Resolved merge data for custom templates',
+    example: { contentTitle: 'Launch Workshop', contentUrl: 'https://chabaqa.io/example' }
+  })
+  @IsOptional()
+  @IsObject()
+  templateData?: Record<string, any>;
 }
 

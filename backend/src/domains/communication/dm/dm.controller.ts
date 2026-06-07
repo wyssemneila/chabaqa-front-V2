@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Request, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '@/domains/auth/jwt-auth.guard';
@@ -8,8 +8,51 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService, FileType } from '@/domains/shared/upload/upload.service';
 import { MediaPurpose } from '@/domains/content/media/media.types';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { EditDmMessageDto, ReactDmMessageDto, SendDmMessageDto, TypingDmDto } from '@/domains/communication/dm/dto/dm-message.dto';
+
+const DM_ATTACHMENT_MAX_BYTES = 100 * 1024 * 1024;
+const DM_ATTACHMENT_ALLOWED_EXTENSIONS = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.webp',
+  '.mp4', '.mov', '.webm',
+  '.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt',
+  '.mp3', '.wav', '.ogg', '.aac', '.flac',
+]);
+
+const dmAttachmentStorage = diskStorage({
+  destination: (_req, file, cb) => {
+    const extension = extname(file.originalname || '').toLowerCase();
+    let folder = join(process.cwd(), 'uploads', 'document');
+
+    if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(extension)) {
+      folder = join(process.cwd(), 'uploads', 'image');
+    } else if (['.mp4', '.mov', '.webm'].includes(extension)) {
+      folder = join(process.cwd(), 'uploads', 'video');
+    } else if (['.mp3', '.wav', '.ogg', '.aac', '.flac'].includes(extension)) {
+      folder = join(process.cwd(), 'uploads', 'audio');
+    }
+
+    cb(null, folder);
+  },
+  filename: (_req, file, cb) => {
+    const extension = extname(file.originalname || '');
+    cb(null, `${Date.now()}-${uuidv4()}${extension}`);
+  },
+});
+
+const dmAttachmentUploadOptions = {
+  storage: dmAttachmentStorage,
+  limits: { fileSize: DM_ATTACHMENT_MAX_BYTES },
+  fileFilter: (_req: any, file: Express.Multer.File, cb: Function) => {
+    const extension = extname(file.originalname || '').toLowerCase();
+    if (!DM_ATTACHMENT_ALLOWED_EXTENSIONS.has(extension)) {
+      cb(new BadRequestException('Unsupported direct-message attachment type'), false);
+      return;
+    }
+    cb(null, true);
+  },
+};
 
 @ApiTags('Direct Messages')
 @Controller('dm')
@@ -77,7 +120,7 @@ export class DmController {
   async listMessages(@Param('conversationId') conversationId: string, @Query('page') page = 1, @Query('limit') limit = 30, @Request() req: any) {
     const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
     const userId = (req.user?._id || req.user?.userId || req.user?.sub || req.user?.id || '').toString();
-    return this.dmService.listMessages(conversationId, userId, Number(page), Number(limit), { isAdmin });
+    return this.dmService.listMessagesRich(conversationId, userId, Number(page), Number(limit), { isAdmin });
   }
 
   @Post(':conversationId/messages')
@@ -85,44 +128,98 @@ export class DmController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Envoyer un message' })
   @Throttle({ default: { ttl: 60, limit: 20 } } as any)
-  async sendMessage(@Param('conversationId') conversationId: string, @Body() body: { text?: string; attachments?: { url: string; type: 'image' | 'file' | 'video'; size: number }[] }, @Request() req: any) {
+  async sendMessage(@Param('conversationId') conversationId: string, @Body() body: SendDmMessageDto, @Request() req: any) {
     const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
-    const message = await this.dmService.sendMessage(conversationId, this.getRequestUserId(req), body, { isAdmin });
+    const message = await this.dmService.sendMessageRich(conversationId, this.getRequestUserId(req), body, { isAdmin });
     return { message };
+  }
+
+  @Get(':conversationId/messages/search')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Rechercher dans les messages d\'une conversation' })
+  async searchMessages(
+    @Param('conversationId') conversationId: string,
+    @Query('q') q: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Request() req: any,
+  ) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    return this.dmService.searchMessages(conversationId, this.getRequestUserId(req), q, Number(page), Number(limit), { isAdmin });
+  }
+
+  @Get(':conversationId/messages/pinned')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lister les messages épinglés' })
+  async listPinnedMessages(@Param('conversationId') conversationId: string, @Request() req: any) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    return this.dmService.listPinnedMessages(conversationId, this.getRequestUserId(req), { isAdmin });
+  }
+
+  @Patch(':conversationId/messages/:messageId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Modifier un message envoyé' })
+  async editMessage(
+    @Param('conversationId') conversationId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: EditDmMessageDto,
+    @Request() req: any,
+  ) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    return this.dmService.editMessage(conversationId, messageId, this.getRequestUserId(req), body.text, { isAdmin });
+  }
+
+  @Delete(':conversationId/messages/:messageId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Supprimer un message pour soi ou pour tout le monde' })
+  async deleteMessage(
+    @Param('conversationId') conversationId: string,
+    @Param('messageId') messageId: string,
+    @Query('scope') scope: 'me' | 'everyone' = 'me',
+    @Request() req: any,
+  ) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    return this.dmService.deleteMessage(conversationId, messageId, this.getRequestUserId(req), scope, { isAdmin });
+  }
+
+  @Post(':conversationId/messages/:messageId/reactions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Ajouter, changer ou retirer une réaction emoji sur un message' })
+  async reactToMessage(
+    @Param('conversationId') conversationId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: ReactDmMessageDto,
+    @Request() req: any,
+  ) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    return this.dmService.toggleReaction(conversationId, messageId, this.getRequestUserId(req), body.emoji, { isAdmin });
+  }
+
+  @Patch(':conversationId/messages/:messageId/pin')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Épingler ou désépingler un message' })
+  async pinMessage(
+    @Param('conversationId') conversationId: string,
+    @Param('messageId') messageId: string,
+    @Body('pinned') pinned: any = true,
+    @Request() req: any,
+  ) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const shouldPin = pinned === false || pinned === 'false' ? false : true;
+    return this.dmService.pinMessage(conversationId, messageId, this.getRequestUserId(req), shouldPin, { isAdmin });
   }
 
   @Post(':conversationId/attachments')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Uploader une pièce jointe et l\'envoyer dans la conversation' })
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: (req, file, cb) => {
-        const extension = extname(file.originalname).toLowerCase();
-        let folder = 'uploads/document';
-
-        if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(extension)) {
-          folder = 'uploads/image';
-        } else if (['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm'].includes(extension)) {
-          folder = 'uploads/video';
-        } else if (['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt'].includes(extension)) {
-          folder = 'uploads/document';
-        } else if (['.mp3', '.wav', '.ogg', '.aac', '.flac'].includes(extension)) {
-          folder = 'uploads/audio';
-        }
-
-        cb(null, folder);
-      },
-      filename: (req, file, cb) => {
-        const extension = extname(file.originalname);
-        const uniqueName = `${Date.now()}-${uuidv4()}${extension}`;
-        cb(null, uniqueName);
-      },
-    }),
-    limits: {
-      fileSize: 500 * 1024 * 1024,
-    },
-  }))
+  @UseInterceptors(FileInterceptor('file', dmAttachmentUploadOptions))
   async uploadAttachment(
     @Param('conversationId') conversationId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -140,8 +237,14 @@ export class DmController {
     const attachmentType: 'image' | 'file' | 'video' =
       processed.type === FileType.IMAGE ? 'image' : processed.type === FileType.VIDEO ? 'video' : 'file';
     const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
-    const message = await this.dmService.sendMessage(conversationId, this.getRequestUserId(req), {
-      attachments: [{ url: processed.url, type: attachmentType, size: processed.size }]
+    const message = await this.dmService.sendMessageRich(conversationId, this.getRequestUserId(req), {
+      attachments: [{
+        url: processed.url,
+        type: attachmentType,
+        size: processed.size,
+        name: file.originalname,
+        mimeType: file.mimetype,
+      }]
     }, { isAdmin });
     return { message };
   }
@@ -151,7 +254,16 @@ export class DmController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Marquer comme lu' })
   async markRead(@Param('conversationId') conversationId: string, @Request() req: any) {
-    return this.dmService.markRead(conversationId, this.getRequestUserId(req));
+    return this.dmService.markReadRich(conversationId, this.getRequestUserId(req));
+  }
+
+  @Post(':conversationId/typing')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Diffuser l\'indicateur de saisie' })
+  async typing(@Param('conversationId') conversationId: string, @Body() body: TypingDmDto, @Request() req: any) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    return this.dmService.emitTyping(conversationId, this.getRequestUserId(req), body.isTyping, { isAdmin });
   }
 
   @Get('help/queue')

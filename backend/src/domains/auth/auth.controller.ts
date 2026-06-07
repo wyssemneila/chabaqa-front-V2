@@ -116,6 +116,7 @@ export class AuthController {
     const result = await this.authService.refreshToken(refreshToken);
     if (result?.accessToken) {
       CookieUtil.setAccessTokenCookie(res as any, result.accessToken, !!result.rememberMe);
+      CookieUtil.setCsrfTokenCookie(res as any);
     }
 
     return {
@@ -162,6 +163,20 @@ export class AuthController {
       }
       throw new UnauthorizedException('Erreur lors de la récupération du profil');
     }
+  }
+
+  @Get('csrf')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Issue CSRF Token',
+    description: 'Sets a browser-readable CSRF cookie for cookie-authenticated unsafe requests.',
+  })
+  async issueCsrf(@Res({ passthrough: true }) res: Response) {
+    const csrfToken = CookieUtil.setCsrfTokenCookie(res as any);
+    return {
+      success: true,
+      data: { csrfToken },
+    };
   }
 
   @Post('logout')

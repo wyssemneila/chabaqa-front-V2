@@ -16,6 +16,12 @@
       "sourceType": "autoskills-registry",
       "computedHash": "82fb11a63fb1e35ee2469516ed02d54695f783115b1540c0e783197af4240a3a"
     },
+    "mobile-ios-design": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/ui-design/skills/mobile-ios-design/SKILL.md",
+      "computedHash": "30f9f969f4fa664addff529ca3f62352f951cd672e6f10b8a9ea26fb5c55b9b5"
+    },
     "seo": {
       "source": "addyosmani/web-quality-skills",
       "sourceType": "autoskills-registry",

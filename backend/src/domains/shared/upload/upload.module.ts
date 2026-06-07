@@ -4,6 +4,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { UploadController } from '@/domains/shared/upload/upload.controller';
 import { UploadService } from '@/domains/shared/upload/upload.service';
 import { MediaResolverService } from '@/shared/services/media-resolver.service';
+import { MalwareScannerService } from '@/shared/services/malware-scanner.service';
 import { PolicyModule } from '@/shared/modules/policy.module';
 import { StorageUsage, StorageUsageSchema } from '@/infrastructure/database/schemas/shared/storage-usage.schema';
 import { MediaAsset, MediaAssetSchema } from '@/infrastructure/database/schemas/content/media-asset.schema';
@@ -29,15 +30,15 @@ import { ensureUploadDirectories, resolveUploadTypeDir, resolveUploadsRoot } fro
           let folder = resolveUploadsRoot();
           
           // Images
-          if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(extension)) {
+          if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(extension)) {
             folder = resolveUploadTypeDir('image');
           }
           // Vidéos
-          else if (['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm'].includes(extension)) {
+          else if (['.mp4', '.mov', '.webm'].includes(extension)) {
             folder = resolveUploadTypeDir('video');
           }
           // Documents
-          else if (['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt'].includes(extension)) {
+          else if (['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.ppt', '.pptx', '.xls', '.xlsx', '.csv'].includes(extension)) {
             folder = resolveUploadTypeDir('document');
           }
           // Audio
@@ -60,12 +61,14 @@ import { ensureUploadDirectories, resolveUploadTypeDir, resolveUploadsRoot } fro
         // Validation basique des types de fichiers
         const allowedTypes = [
           // Images
-          'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+          'image/jpeg', 'image/png', 'image/gif', 'image/webp',
           // Vidéos
-          'video/mp4', 'video/avi', 'video/quicktime', 'video/x-msvideo', 'video/webm',
+          'video/mp4', 'video/quicktime', 'video/webm',
           // Documents
           'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'text/plain', 'application/rtf', 'application/vnd.oasis.opendocument.text',
+          'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'text/plain', 'text/csv', 'application/csv', 'application/rtf', 'application/vnd.oasis.opendocument.text',
           // Audio
           'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/flac'
         ];
@@ -82,7 +85,7 @@ import { ensureUploadDirectories, resolveUploadTypeDir, resolveUploadsRoot } fro
     }),
   ],
   controllers: [UploadController],
-  providers: [UploadService, MediaResolverService],
-  exports: [UploadService, MediaResolverService], // Exporter le service pour utilisation dans d'autres modules
+  providers: [UploadService, MediaResolverService, MalwareScannerService],
+  exports: [UploadService, MediaResolverService, MalwareScannerService], // Exporter le service pour utilisation dans d'autres modules
 })
 export class UploadModule {}

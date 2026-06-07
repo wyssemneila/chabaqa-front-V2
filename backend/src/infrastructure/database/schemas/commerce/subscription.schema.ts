@@ -12,6 +12,11 @@ export enum SubscriptionStatus {
   INCOMPLETE = 'incomplete',
 }
 
+export enum BillingInterval {
+  MONTH = 'month',
+  YEAR = 'year',
+}
+
 @Schema({ timestamps: true })
 export class Subscription {
   _id: Types.ObjectId;
@@ -20,9 +25,10 @@ export class Subscription {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   creatorId: Types.ObjectId;
 
-  // Subscriber (customer) who is paying for this subscription
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  subscriberId: Types.ObjectId;
+  // Subscriber/customer paying for creator-community subscriptions.
+  // Optional for Chabaqa SaaS creator plans where creatorId is the billing owner.
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  subscriberId?: Types.ObjectId;
 
   // Current plan tier
   @Prop({ type: String, enum: Object.values(PlanTier), required: true })
@@ -113,6 +119,15 @@ export class Subscription {
 
   @Prop({ type: String, default: 'TND' })
   currency: string;
+
+  @Prop({ type: String, enum: Object.values(BillingInterval), default: BillingInterval.MONTH })
+  billingInterval: BillingInterval;
+
+  @Prop({ type: String })
+  providerCheckoutSessionId?: string;
+
+  @Prop({ type: String })
+  providerPriceId?: string;
 
   // Next billing date if applicable
   @Prop({ type: Date })

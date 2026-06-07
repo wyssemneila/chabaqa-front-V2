@@ -27,6 +27,119 @@ export class DmService {
     private readonly notificationService: NotificationService,
   ) { }
 
+  private readonly userPopulateFields = 'name firstName lastName email profile_picture photo_profil avatar photo username role';
+
+  private toObjectId(value: string, field = 'id'): Types.ObjectId {
+    const normalized = String(value || '').trim();
+    if (!Types.ObjectId.isValid(normalized)) {
+      throw new BadRequestException(`Invalid ${field} format`);
+    }
+    return new Types.ObjectId(normalized);
+  }
+
+  private refId(value: any): Types.ObjectId | null {
+    if (!value) return null;
+    const candidate = value?._id || value?.id || value;
+    if (!Types.ObjectId.isValid(String(candidate))) return null;
+    return new Types.ObjectId(String(candidate));
+  }
+
+  private isSameId(left: any, right: any): boolean {
+    const leftId = this.refId(left);
+    const rightId = this.refId(right);
+    return !!leftId && !!rightId && leftId.equals(rightId);
+  }
+
+  private buildMessagePopulate(query: any) {
+    return query
+      .populate('senderId', this.userPopulateFields)
+      .populate('recipientId', this.userPopulateFields)
+      .populate({
+        path: 'replyToMessageId',
+        select: 'text attachments senderId deletedAt createdAt',
+        populate: { path: 'senderId', select: this.userPopulateFields },
+      })
+      .populate('pinnedBy', this.userPopulateFields)
+      .populate('editedBy', this.userPopulateFields)
+      .populate('deletedBy', this.userPopulateFields);
+  }
+
+  private normalizePage(page = 1) {
+    return Math.max(1, Number(page) || 1);
+  }
+
+  private normalizeLimit(limit = 30, max = 100) {
+    return Math.min(max, Math.max(1, Number(limit) || 30));
+  }
+
+  private async getConversationForUser(
+    conversationId: string,
+    userId: string,
+    options?: { isAdmin?: boolean; allowUnassignedHelpAdmin?: boolean },
+  ): Promise<{
+    conv: ConversationDocument;
+    uid: Types.ObjectId;
+    isParticipantA: boolean;
+    isParticipantB: boolean;
+    isAdminViewingHelp: boolean;
+  }> {
+    const conv = await this.conversationModel.findById(conversationId)
+      .populate('participantA', this.userPopulateFields)
+      .populate('participantB', this.userPopulateFields)
+      .populate('communityId', 'name slug logo');
+
+    if (!conv) throw new NotFoundException('Conversation introuvable');
+    await this.enforceSessionTempLifecycle(conv);
+
+    const uid = this.toObjectId(userId, 'userId');
+    const participantAId = this.refId((conv as any).participantA);
+    const participantBId = this.refId((conv as any).participantB);
+    const isParticipantA = !!participantAId && uid.equals(participantAId);
+    const isParticipantB = !!participantBId && uid.equals(participantBId);
+    const isParticipant = isParticipantA || isParticipantB;
+    const isAdminViewingHelp = !!options?.isAdmin && conv.type === 'HELP_DM';
+    const canUseUnassignedHelp = !!options?.allowUnassignedHelpAdmin && isAdminViewingHelp && !participantBId;
+
+    if (!isParticipant && !isAdminViewingHelp && !canUseUnassignedHelp) {
+      throw new ForbiddenException('You do not have access to this conversation');
+    }
+
+    if ((conv.type === 'COMMUNITY_DM' || conv.type === 'PEER_DM') && conv.communityId) {
+      const community = await this.communityModel.findById(this.refId(conv.communityId));
+      if (!community || !community.isMember(uid)) {
+        throw new ForbiddenException('Vous n\'êtes plus membre de cette communauté');
+      }
+    }
+
+    return { conv, uid, isParticipantA, isParticipantB, isAdminViewingHelp };
+  }
+
+  private async findMessageForConversation(conversationId: Types.ObjectId, messageId: string) {
+    const msg = await this.messageModel.findOne({
+      _id: this.toObjectId(messageId, 'messageId'),
+      conversationId,
+    });
+    if (!msg) throw new NotFoundException('Message introuvable');
+    return msg;
+  }
+
+  private async refreshConversationLastMessage(conv: ConversationDocument) {
+    const latest = await this.messageModel
+      .findOne({
+        conversationId: conv._id,
+        deletedAt: { $exists: false },
+      })
+      .sort({ createdAt: -1 })
+      .select('text attachments createdAt')
+      .exec();
+
+    conv.lastMessageText = latest
+      ? latest.text || ((latest.attachments || []).length > 0 ? '[Pièce jointe]' : '')
+      : '';
+    conv.lastMessageAt = (latest as any)?.createdAt || undefined;
+    await conv.save();
+  }
+
   async startCommunityConversation(userId: string, communityId: string): Promise<ConversationDocument> {
     const community = await this.communityModel.findById(communityId);
     if (!community) throw new NotFoundException('Communauté introuvable');
@@ -558,6 +671,335 @@ export class DmService {
     ]);
     this.dmGateway.emitRead(conv._id.toString(), uid.toString(), now);
     return { ok: true, readAt: now };
+  }
+
+  async listMessagesRich(conversationId: string, userId: string, page = 1, limit = 30, options?: { isAdmin?: boolean }) {
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId, options);
+    const normalizedPage = this.normalizePage(page);
+    const normalizedLimit = this.normalizeLimit(limit, 100);
+    const skip = (normalizedPage - 1) * normalizedLimit;
+    const filter = { conversationId: conv._id, deletedFor: { $ne: uid } };
+
+    const [items, total] = await Promise.all([
+      this.buildMessagePopulate(this.messageModel.find(filter))
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(normalizedLimit),
+      this.messageModel.countDocuments(filter),
+    ]);
+    const totalPages = Math.ceil(total / normalizedLimit);
+
+    return {
+      messages: items.reverse(),
+      conversation: conv,
+      page: normalizedPage,
+      total,
+      totalPages,
+      hasMore: normalizedPage < totalPages,
+      limit: normalizedLimit,
+    };
+  }
+
+  async sendMessageRich(
+    conversationId: string,
+    senderId: string,
+    payload: {
+      text?: string;
+      attachments?: {
+        url: string;
+        type: 'image' | 'file' | 'video';
+        size: number;
+        name?: string;
+        mimeType?: string;
+        width?: number;
+        height?: number;
+      }[];
+      replyToMessageId?: string;
+      clientRequestId?: string;
+    },
+    options?: { isAdmin?: boolean },
+  ) {
+    const { conv, uid: sid } = await this.getConversationForUser(conversationId, senderId, {
+      ...options,
+      allowUnassignedHelpAdmin: true,
+    });
+
+    const participantAId = this.refId(conv.participantA);
+    const participantBId = this.refId(conv.participantB);
+
+    if (conv.type === 'HELP_DM' && !participantBId && options?.isAdmin) {
+      conv.participantB = sid;
+    }
+
+    if (conv.type === 'HELP_DM' && participantBId && options?.isAdmin && !sid.equals(participantBId)) {
+      throw new ForbiddenException('This help conversation is assigned to another admin');
+    }
+
+    if (conv.type === 'SESSION_TEMP_DM' && !conv.isOpen) {
+      throw new ForbiddenException('This session chat is closed');
+    }
+
+    const text = String(payload.text || '').trim();
+    const attachments = payload.attachments || [];
+    if (!text && attachments.length === 0) {
+      throw new BadRequestException('Message vide');
+    }
+
+    let replyToMessageId: Types.ObjectId | undefined;
+    if (payload.replyToMessageId) {
+      const replyTarget = await this.findMessageForConversation(conv._id, payload.replyToMessageId);
+      if (replyTarget.deletedAt) {
+        throw new BadRequestException('Cannot reply to a deleted message');
+      }
+      if (replyTarget.deletedFor?.some((id: any) => this.isSameId(id, sid))) {
+        throw new BadRequestException('Cannot reply to a hidden message');
+      }
+      replyToMessageId = replyTarget._id;
+    }
+
+    if (payload.clientRequestId) {
+      const existing = await this.buildMessagePopulate(this.messageModel.findOne({
+        conversationId: conv._id,
+        senderId: sid,
+        clientRequestId: payload.clientRequestId,
+      }));
+      if (existing) return existing;
+    }
+
+    const refreshedParticipantBId = this.refId(conv.participantB);
+    const recipientId = participantAId && sid.equals(participantAId) ? refreshedParticipantBId : participantAId;
+    if (!recipientId) {
+      if (conv.type === 'HELP_DM') throw new BadRequestException('Aucun admin n\'est assigné');
+      throw new BadRequestException('Recipient is unavailable');
+    }
+
+    const msg = await this.messageModel.create({
+      conversationId: conv._id,
+      senderId: sid,
+      recipientId,
+      text,
+      attachments,
+      replyToMessageId,
+      clientRequestId: payload.clientRequestId,
+    });
+
+    conv.lastMessageText = text || (attachments.length > 0 ? '[Pièce jointe]' : '');
+    conv.lastMessageAt = new Date();
+    if (participantAId && sid.equals(participantAId)) {
+      conv.unreadCountB = (conv.unreadCountB || 0) + 1;
+    } else {
+      conv.unreadCountA = (conv.unreadCountA || 0) + 1;
+    }
+    await conv.save();
+
+    const populatedMsg = await this.buildMessagePopulate(this.messageModel.findById(msg._id));
+    const realtimeMessage = populatedMsg || msg;
+    this.dmGateway.emitNewMessage(conv._id.toString(), recipientId.toString(), realtimeMessage);
+
+    let sender: any = null;
+    let senderName = 'Unknown User';
+    if (options?.isAdmin) {
+      const adminSender = await this.adminModel.findById(senderId);
+      sender = adminSender;
+      senderName = adminSender?.name || 'Support Agent';
+    } else {
+      const userSender = await this.userModel.findById(senderId);
+      sender = userSender;
+      senderName = userSender?.name || 'User';
+    }
+
+    if (sender) {
+      this.notificationService.createNotification({
+        recipient: recipientId.toString(),
+        sender: senderId,
+        type: 'new_dm_message',
+        title: `New message from ${senderName}`,
+        body: text || 'You received a new attachment.',
+        data: { conversationId: conv._id.toString(), messageId: msg._id.toString() },
+      });
+    }
+
+    return realtimeMessage;
+  }
+
+  async markReadRich(conversationId: string, userId: string) {
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId);
+    const now = new Date();
+    if (this.isSameId(uid, conv.participantA)) conv.unreadCountA = 0;
+    else if (this.isSameId(uid, conv.participantB)) conv.unreadCountB = 0;
+    else throw new ForbiddenException();
+
+    await Promise.all([
+      conv.save(),
+      this.messageModel.updateMany(
+        { conversationId: conv._id, recipientId: uid, readAt: { $exists: false }, deletedFor: { $ne: uid } },
+        { $set: { readAt: now } },
+      ),
+    ]);
+    this.dmGateway.emitRead(conv._id.toString(), uid.toString(), now);
+    return { ok: true, readAt: now };
+  }
+
+  async editMessage(conversationId: string, messageId: string, userId: string, text: string, options?: { isAdmin?: boolean }) {
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId, options);
+    const msg = await this.findMessageForConversation(conv._id, messageId);
+    if (!this.isSameId(msg.senderId, uid)) {
+      throw new ForbiddenException('Only the sender can edit this message');
+    }
+    if (msg.deletedAt) {
+      throw new BadRequestException('Cannot edit a deleted message');
+    }
+    const normalizedText = String(text || '').trim();
+    if (!normalizedText) throw new BadRequestException('Message vide');
+
+    msg.editHistory = [
+      ...(msg.editHistory || []),
+      { text: msg.text || '', editedBy: uid, editedAt: new Date() } as any,
+    ];
+    msg.text = normalizedText;
+    msg.editedAt = new Date();
+    msg.editedBy = uid;
+    await msg.save();
+
+    const populated = await this.buildMessagePopulate(this.messageModel.findById(msg._id));
+    await this.refreshConversationLastMessage(conv);
+    this.dmGateway.emitMessageUpdated(conv._id.toString(), populated || msg);
+    return { message: populated || msg };
+  }
+
+  async deleteMessage(
+    conversationId: string,
+    messageId: string,
+    userId: string,
+    scope: 'me' | 'everyone' = 'me',
+    options?: { isAdmin?: boolean },
+  ) {
+    if (scope !== 'me' && scope !== 'everyone') {
+      throw new BadRequestException('Invalid delete scope');
+    }
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId, options);
+    const msg = await this.findMessageForConversation(conv._id, messageId);
+
+    if (scope === 'everyone') {
+      if (!this.isSameId(msg.senderId, uid) && !options?.isAdmin) {
+        throw new ForbiddenException('Only the sender can delete this message for everyone');
+      }
+      msg.text = '';
+      msg.attachments = [];
+      msg.deletedAt = new Date();
+      msg.deletedBy = uid;
+      msg.reactions = [];
+      await msg.save();
+      await this.refreshConversationLastMessage(conv);
+    } else {
+      const deletedFor = msg.deletedFor || [];
+      if (!deletedFor.some((id: any) => this.isSameId(id, uid))) {
+        deletedFor.push(uid);
+        msg.deletedFor = deletedFor;
+        await msg.save();
+      }
+    }
+
+    this.dmGateway.emitMessageDeleted(conv._id.toString(), msg._id.toString(), scope, uid.toString());
+    return { ok: true, messageId: msg._id.toString(), scope };
+  }
+
+  async toggleReaction(conversationId: string, messageId: string, userId: string, emoji: string, options?: { isAdmin?: boolean }) {
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId, options);
+    const msg = await this.findMessageForConversation(conv._id, messageId);
+    if (msg.deletedAt) throw new BadRequestException('Cannot react to a deleted message');
+
+    const normalizedEmoji = String(emoji || '').trim();
+    if (!normalizedEmoji || normalizedEmoji.length > 16) {
+      throw new BadRequestException('Invalid reaction');
+    }
+
+    const reactions = Array.isArray(msg.reactions) ? msg.reactions : [];
+    const selectedReaction = (reactions as any[]).find((reaction) => reaction.emoji === normalizedEmoji);
+    const wasSelected = !!selectedReaction && (selectedReaction.userIds || []).some((id: any) => this.isSameId(id, uid));
+    for (const reaction of reactions as any[]) {
+      reaction.userIds = (reaction.userIds || []).filter((id: any) => !this.isSameId(id, uid));
+    }
+
+    if (!wasSelected) {
+      if (selectedReaction) {
+        selectedReaction.userIds = [...(selectedReaction.userIds || []), uid];
+      } else {
+        reactions.push({ emoji: normalizedEmoji, userIds: [uid] } as any);
+      }
+    }
+
+    msg.reactions = (reactions as any[]).filter((reaction) => (reaction.userIds || []).length > 0) as any;
+    msg.markModified('reactions');
+    await msg.save();
+
+    this.dmGateway.emitReactionUpdated(conv._id.toString(), msg._id.toString(), msg.reactions || []);
+    return { messageId: msg._id.toString(), reactions: msg.reactions || [] };
+  }
+
+  async pinMessage(conversationId: string, messageId: string, userId: string, pinned: boolean, options?: { isAdmin?: boolean }) {
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId, options);
+    const msg = await this.findMessageForConversation(conv._id, messageId);
+    if (msg.deletedAt) throw new BadRequestException('Cannot pin a deleted message');
+
+    msg.pinnedAt = pinned ? new Date() : undefined;
+    msg.pinnedBy = pinned ? uid : undefined;
+    await msg.save();
+
+    const populated = await this.buildMessagePopulate(this.messageModel.findById(msg._id));
+    this.dmGateway.emitPinned(conv._id.toString(), populated || msg);
+    return { message: populated || msg };
+  }
+
+  async listPinnedMessages(conversationId: string, userId: string, options?: { isAdmin?: boolean }) {
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId, options);
+    const messages = await this.buildMessagePopulate(this.messageModel.find({
+      conversationId: conv._id,
+      pinnedAt: { $exists: true },
+      deletedAt: { $exists: false },
+      deletedFor: { $ne: uid },
+    })).sort({ pinnedAt: -1 }).limit(50);
+    return { messages };
+  }
+
+  async searchMessages(conversationId: string, userId: string, query: string, page = 1, limit = 20, options?: { isAdmin?: boolean }) {
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId, options);
+    const q = String(query || '').trim();
+    if (q.length < 2) throw new BadRequestException('Search query must be at least 2 characters');
+
+    const normalizedPage = this.normalizePage(page);
+    const normalizedLimit = this.normalizeLimit(limit, 50);
+    const skip = (normalizedPage - 1) * normalizedLimit;
+    const filter = {
+      conversationId: conv._id,
+      deletedAt: { $exists: false },
+      deletedFor: { $ne: uid },
+      text: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' },
+    };
+
+    const [messages, total] = await Promise.all([
+      this.buildMessagePopulate(this.messageModel.find(filter))
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(normalizedLimit),
+      this.messageModel.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(total / normalizedLimit);
+    return {
+      messages,
+      page: normalizedPage,
+      total,
+      totalPages,
+      hasMore: normalizedPage < totalPages,
+      limit: normalizedLimit,
+    };
+  }
+
+  async emitTyping(conversationId: string, userId: string, isTyping: boolean, options?: { isAdmin?: boolean }) {
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId, options);
+    this.dmGateway.emitTyping(conv._id.toString(), uid.toString(), !!isTyping);
+    return { ok: true };
   }
 
   async assignHelpThread(conversationId: string, adminId: string) {

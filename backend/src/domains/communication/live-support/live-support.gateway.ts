@@ -6,9 +6,12 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
-import { getCorsOriginHandler, getJwtSecret } from '@/shared/utils/security-config.util';
+import { getCorsOriginHandler } from '@/shared/utils/security-config.util';
+import { SocketAuthService } from '@/shared/services/socket-auth.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { Conversation, ConversationDocument } from '@/infrastructure/database/schemas/communication/conversation.schema';
 
 @WebSocketGateway({
   namespace: '/live-support',
@@ -18,29 +21,25 @@ export class LiveSupportGateway implements OnGatewayConnection, OnGatewayDisconn
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly socketAuthService: SocketAuthService,
+    @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
+  ) {}
 
   async handleConnection(client: Socket) {
     try {
-      const token = (client.handshake.auth?.token || client.handshake.headers['authorization'] || '')
-        .toString()
-        .replace('Bearer ', '')
-        .trim();
-      const payload: any = this.jwtService.verify(token, {
-        secret: getJwtSecret(),
-      });
-
-      const actorId = String(payload?.sub || payload?.userId || '').trim();
+      const actor = await this.socketAuthService.authenticate(client);
+      const actorId = actor.id;
       if (!actorId) {
         client.disconnect();
         return;
       }
 
-      const role = String(payload?.role || '').toLowerCase();
-      const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
+      const isAdmin = actor.isAdmin;
 
       (client as any).actorId = actorId;
       (client as any).isAdmin = isAdmin;
+      client.data.actor = actor;
 
       if (isAdmin) {
         client.join('support:admins');
@@ -56,8 +55,22 @@ export class LiveSupportGateway implements OnGatewayConnection, OnGatewayDisconn
   async handleDisconnect(_client: Socket) {}
 
   @SubscribeMessage('support:join-ticket')
-  handleJoinTicket(@ConnectedSocket() client: Socket, payload: { conversationId: string }) {
+  async handleJoinTicket(@ConnectedSocket() client: Socket, payload: { conversationId: string }) {
     if (!payload?.conversationId) return;
+    const actorId = String((client as any).actorId || '').trim();
+    if (!actorId) return client.disconnect();
+
+    const canJoin = await this.canJoinTicketRoom(
+      actorId,
+      payload.conversationId,
+      { isAdmin: Boolean((client as any).isAdmin) },
+    );
+
+    if (!canJoin) {
+      client.emit('support:error', { code: 'FORBIDDEN' });
+      return;
+    }
+
     client.join(`support:ticket:${payload.conversationId}`);
   }
 
@@ -99,5 +112,33 @@ export class LiveSupportGateway implements OnGatewayConnection, OnGatewayDisconn
     if (participantA) {
       this.server.to(`support:user:${participantA}`).emit('support:message:new', { conversationId: ticketId, message });
     }
+  }
+
+  private async canJoinTicketRoom(
+    actorId: string,
+    conversationId: string,
+    options?: { isAdmin?: boolean },
+  ): Promise<boolean> {
+    if (!Types.ObjectId.isValid(actorId) || !Types.ObjectId.isValid(conversationId)) return false;
+
+    const aid = new Types.ObjectId(actorId);
+    const ticket = await this.conversationModel
+      .findOne({ _id: new Types.ObjectId(conversationId), type: 'LIVE_SUPPORT' })
+      .select('participantA assignedAdminId supportStatus')
+      .lean();
+
+    if (!ticket) return false;
+
+    if (options?.isAdmin) {
+      const assignedAdminId = ticket.assignedAdminId ? new Types.ObjectId(String(ticket.assignedAdminId)) : null;
+      return (
+        ticket.supportStatus === 'WAITING_ADMIN' ||
+        ticket.supportStatus === 'CLOSED' ||
+        Boolean(assignedAdminId?.equals(aid))
+      );
+    }
+
+    const participantA = ticket.participantA ? new Types.ObjectId(String(ticket.participantA)) : null;
+    return Boolean(participantA?.equals(aid));
   }
 }

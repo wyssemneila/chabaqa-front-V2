@@ -62,7 +62,7 @@ export class SubscriptionController {
   @Post('upgrade')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Upgrade plan tier (manual/stubbed until provider is integrated)' })
+  @ApiOperation({ summary: 'Upgrade plan tier for the current creator subscription' })
   @ApiBody({ schema: { type: 'object', properties: { tier: { type: 'string', enum: Object.values(PlanTier) } }, required: ['tier'] } })
   async upgrade(@Request() req: any, @Body('tier') tier: string) {
     const creatorId = req.user._id || req.user.sub;

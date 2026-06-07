@@ -30,9 +30,9 @@ const multerOptions = {
     destination: (req, file, cb) => {
       const extension = extname(file.originalname).toLowerCase();
       let folder = 'uploads/document';
-      if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(extension)) {
+      if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(extension)) {
         folder = 'uploads/image';
-      } else if (['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v'].includes(extension)) {
+      } else if (['.mp4', '.mov', '.webm'].includes(extension)) {
         folder = 'uploads/video';
       } else if (['.mp3', '.wav', '.ogg', '.aac', '.flac'].includes(extension)) {
         folder = 'uploads/audio';

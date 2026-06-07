@@ -128,7 +128,7 @@ export class CommunityPermissionGuard implements CanActivate {
         case 'entity':
           return this.resolveEntityCommunity(
             source.modelName,
-            request.params?.[source.paramName],
+            request.params?.[source.paramName] || request.body?.[source.paramName] || request.query?.[source.paramName],
           );
       }
     }
@@ -171,16 +171,21 @@ export class CommunityPermissionGuard implements CanActivate {
       const isObjectId = /^[0-9a-fA-F]{24}$/.test(entityId);
       const doc =
         (isObjectId
-          ? await model.findById(entityId).select('communityId').lean().exec()
+          ? await model.findById(entityId).select('communityId programId').lean().exec()
           : null) ||
         (await model
           .findOne({ id: entityId })
-          .select('communityId')
+          .select('communityId programId')
           .lean()
           .exec());
       if (doc && (doc as any).communityId) {
         return String((doc as any).communityId);
       }
+
+      if (doc && (doc as any).programId) {
+        return this.resolveEntityCommunity('AffiliateProgram', String((doc as any).programId));
+      }
+
       return null;
     } catch (err) {
       this.logger.warn(

@@ -5,14 +5,25 @@ import { EmailCampaignService } from '@/domains/communication/email-campaign/ema
 import { EmailCampaign, EmailCampaignStatus } from '@/infrastructure/database/schemas/communication/email-campaign.schema';
 import { User } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Community } from '@/infrastructure/database/schemas/community/community.schema';
+import { Cours } from '@/infrastructure/database/schemas/learning/course.schema';
+import { Challenge } from '@/infrastructure/database/schemas/learning/challenge.schema';
+import { Event } from '@/infrastructure/database/schemas/commerce/event.schema';
+import { Product } from '@/infrastructure/database/schemas/commerce/product.schema';
+import { Session } from '@/infrastructure/database/schemas/commerce/session.schema';
 import { EmailService } from '@/shared/services/email.service';
 import { UserLoginActivityService } from '@/domains/auth/user-login-activity/user-login-activity.service';
 import { EmailCampaignQueueService } from '@/domains/communication/email-campaign/email-campaign.queue';
 import { PolicyService } from '@/shared/services/policy.service';
+import { HtmlSanitizerService } from '@/shared/services/html-sanitizer.service';
 
 describe('EmailCampaignService', () => {
   let service: EmailCampaignService;
   let emailCampaignModel: any;
+  let coursModel: any;
+  let challengeModel: any;
+  let eventModel: any;
+  let productModel: any;
+  let sessionModel: any;
   let queueService: { queueCampaignSend: jest.Mock; removeScheduledCampaignSend: jest.Mock };
   let emailService: { sendGenericEmail: jest.Mock; isAuthenticationFailureError: jest.Mock };
 
@@ -22,6 +33,9 @@ describe('EmailCampaignService', () => {
   const community = {
     _id: communityId,
     name: 'Chabaqa Test Community',
+    slug: 'test-community',
+    category: 'Marketing',
+    currency: 'TND',
     members: [new Types.ObjectId()],
   };
 
@@ -45,6 +59,7 @@ describe('EmailCampaignService', () => {
       targetDaysThreshold: data.targetDaysThreshold,
       targetInactivityPeriod: data.targetInactivityPeriod,
       metadata: data.metadata || {},
+      templateData: data.templateData || {},
       isHtml: data.isHtml || false,
       trackOpens: data.trackOpens !== false,
       trackClicks: data.trackClicks !== false,
@@ -122,6 +137,16 @@ describe('EmailCampaignService', () => {
       updateReactivationEmailSent: jest.fn().mockResolvedValue(undefined),
       getInactivityStats: jest.fn().mockResolvedValue({}),
     };
+    const createContentModel = () => ({
+      findById: jest.fn().mockReturnValue({ lean: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }) }),
+      findOne: jest.fn().mockReturnValue({ lean: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }) }),
+      countDocuments: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(0) }),
+    });
+    coursModel = createContentModel();
+    challengeModel = createContentModel();
+    eventModel = createContentModel();
+    productModel = createContentModel();
+    sessionModel = createContentModel();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -129,11 +154,17 @@ describe('EmailCampaignService', () => {
         { provide: getModelToken(EmailCampaign.name), useValue: emailCampaignCtor },
         { provide: getModelToken(User.name), useValue: userModel },
         { provide: getModelToken(Community.name), useValue: communityModel },
+        { provide: getModelToken(Cours.name), useValue: coursModel },
+        { provide: getModelToken(Challenge.name), useValue: challengeModel },
+        { provide: getModelToken(Event.name), useValue: eventModel },
+        { provide: getModelToken(Product.name), useValue: productModel },
+        { provide: getModelToken(Session.name), useValue: sessionModel },
         { provide: getModelToken('CourseEnrollment'), useValue: {} },
         { provide: getModelToken('UserLoginActivity'), useValue: {} },
         { provide: EmailService, useValue: emailService },
         { provide: UserLoginActivityService, useValue: userLoginActivityService },
         { provide: EmailCampaignQueueService, useValue: queueService },
+        HtmlSanitizerService,
         {
           provide: PolicyService,
           useValue: {
@@ -581,6 +612,92 @@ describe('EmailCampaignService', () => {
     expect(stats.totalClicks).toBe(12);
     expect(stats.totalEmailsSent).toBe(15);
     expect(stats.averageClickRate).toBeCloseTo((3 / 15) * 100, 5);
+  });
+
+  it('returns rich marketing merge fields with grouped sample data', async () => {
+    const result = await service.getMarketingMergeFields(creatorId, communityId.toString(), {
+      campaignType: 'course_progress_reminder' as any,
+      contentType: 'cours',
+    });
+
+    expect(result.syntax.tokenExample).toBe('{{userFirstName}}');
+    expect(result.fields.some((field) => field.key === 'courseProgressPct')).toBe(true);
+    expect(result.fields.some((field) => field.key === 'communityName')).toBe(true);
+    expect(result.groups.some((group) => group.key === 'course')).toBe(true);
+    expect(result.sampleData.communityName).toBe(community.name);
+  });
+
+  it('renders marketing preview with real selected course data', async () => {
+    const courseId = new Types.ObjectId();
+    coursModel.findOne.mockReturnValue({
+      lean: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: courseId,
+          titre: 'Advanced Email Growth',
+          description: 'Precise lifecycle marketing lessons.',
+          communityId: communityId.toString(),
+          sections: [
+            { chapitres: [{ id: 'c1' }, { id: 'c2' }] },
+            { chapitres: [{ id: 'c3' }] },
+          ],
+        }),
+      }),
+    });
+
+    const preview = await service.renderMarketingPreview(creatorId, {
+      communityId: communityId.toString(),
+      subject: 'Course: {{courseTitle}}',
+      content: '{{userFirstName}} is {{courseProgressPct}}% through {{courseTitle}} with {{courseTotalChapters}} chapters.',
+      contentType: 'cours',
+      contentId: courseId.toString(),
+      targetCourseId: courseId.toString(),
+    } as any);
+
+    expect(preview.subject).toContain('Advanced Email Growth');
+    expect(preview.content).toContain('0% through Advanced Email Growth');
+    expect(preview.content).toContain('3 chapters');
+    expect(preview.missingVariables).toEqual([]);
+  });
+
+  it('renders queued sends with recipient mergeData values', async () => {
+    const recipient: any = {
+      userId: new Types.ObjectId(),
+      email: 'learner@test.com',
+      name: 'Learner One',
+      status: 'pending',
+      opened: false,
+      clickCount: 0,
+      mergeData: {
+        courseTitle: 'Advanced Email Growth',
+        courseProgressPct: 42,
+        courseRemainingChapters: 5,
+      },
+    };
+    const campaignDoc = buildCampaignDoc({
+      title: 'Course nudge',
+      subject: '{{userFirstName}}, continue {{courseTitle}}',
+      content: 'You are {{courseProgressPct}}% done and have {{courseRemainingChapters}} chapters left.',
+      communityId,
+      creatorId: new Types.ObjectId(creatorId),
+      status: EmailCampaignStatus.DRAFT,
+      recipients: [recipient],
+      totalRecipients: 1,
+    });
+    emailCampaignModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(campaignDoc) });
+
+    await service.executeSendCampaignJob({
+      campaignId: campaignDoc._id.toString(),
+      requestedBy: creatorId,
+      trigger: 'manual',
+    });
+
+    expect(emailService.sendGenericEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: recipient.email,
+        subject: expect.stringContaining('Advanced Email Growth'),
+        text: expect.stringContaining('42% done'),
+      }),
+    );
   });
 
   it('aborts remaining recipients when smtp authentication fails', async () => {

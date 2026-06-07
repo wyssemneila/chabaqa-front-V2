@@ -91,7 +91,8 @@ export class AffiliateCommissionService {
 
       // Compute commission from creatorNetDT
       const creatorNetDT = order.creatorNetDT || 0;
-      const commissionDT = Math.round(creatorNetDT * program.commissionPercent) / 100;
+      const commissionPercent = partner.customCommissionPercent ?? program.commissionPercent;
+      const commissionDT = Math.round(creatorNetDT * commissionPercent) / 100;
 
       if (commissionDT <= 0) {
         this.logger.warn(`Commission is 0 for order ${order._id}`);
@@ -100,18 +101,39 @@ export class AffiliateCommissionService {
 
       const holdDays = program.holdDays || Number(process.env.AFFILIATE_DEFAULT_HOLD_DAYS || 14);
       const holdUntil = new Date(Date.now() + holdDays * 24 * 60 * 60 * 1000);
+      const clickCreatedAt = (click as any).createdAt ? new Date((click as any).createdAt) : undefined;
+      const conversionLagHours = clickCreatedAt
+        ? Math.max(0, Math.round(((Date.now() - clickCreatedAt.getTime()) / 3_600_000) * 10) / 10)
+        : undefined;
 
       const conversion = await this.conversionModel.create({
         orderId: order._id,
         programId: program._id,
+        clickId,
+        linkCode: link.code || click.linkCode,
         partnerUserId: partner.partnerUserId,
         buyerId: order.buyerId,
         creatorId: order.creatorId,
         communityId: order.communityId,
         contentType: order.contentType,
         contentId: order.contentId,
+        landingPath: click.landingPath || link.targetPath,
+        referrer: click.referrer,
+        utmSource: click.utmSource,
+        utmMedium: click.utmMedium,
+        utmCampaign: click.utmCampaign,
+        utmTerm: click.utmTerm,
+        utmContent: click.utmContent,
+        sourceChannel: click.sourceChannel,
+        deviceType: click.deviceType,
+        browser: click.browser,
+        os: click.os,
+        clickCreatedAt,
+        conversionLagHours,
         amountDT: order.amountDT,
         creatorNetDT,
+        commissionBasisDT: creatorNetDT,
+        commissionPercentSnapshot: commissionPercent,
         commissionDT,
         status: 'pending',
         holdUntil,
@@ -119,7 +141,7 @@ export class AffiliateCommissionService {
 
       this.logger.log(
         `Created conversion ${conversion._id} for order ${order._id}: ` +
-        `commission=${commissionDT} DT (${program.commissionPercent}% of ${creatorNetDT})`,
+        `commission=${commissionDT} DT (${commissionPercent}% of ${creatorNetDT})`,
       );
 
       return conversion;

@@ -53,8 +53,8 @@ export const TYPE_MAX_BYTES: Record<MediaType, number> = {
 };
 
 export const TYPE_EXTENSIONS: Record<MediaType, string[]> = {
-  [MediaType.IMAGE]: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'],
-  [MediaType.VIDEO]: ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v'],
+  [MediaType.IMAGE]: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
+  [MediaType.VIDEO]: ['.mp4', '.mov', '.webm'],
   [MediaType.DOCUMENT]: [
     '.pdf',
     '.doc',
@@ -62,14 +62,10 @@ export const TYPE_EXTENSIONS: Record<MediaType, string[]> = {
     '.txt',
     '.rtf',
     '.odt',
-    '.zip',
     '.ppt',
     '.pptx',
     '.xls',
     '.xlsx',
-    '.md',
-    '.json',
-    '.xml',
     '.csv',
   ],
   [MediaType.AUDIO]: ['.mp3', '.wav', '.ogg', '.aac', '.flac'],

@@ -27,6 +27,15 @@ export class SubscriptionResponseDto {
   @ApiPropertyOptional({ example: 'sub_123456789' })
   providerSubscriptionId?: string;
 
+  @ApiPropertyOptional({ example: 'month', enum: ['month', 'year'] })
+  billingInterval?: string;
+
+  @ApiPropertyOptional({ example: 'cs_test_123456789' })
+  providerCheckoutSessionId?: string;
+
+  @ApiPropertyOptional({ example: 'price_123456789' })
+  providerPriceId?: string;
+
   @ApiPropertyOptional({ example: '2024-07-15T00:00:00.000Z' })
   trialEndsAt?: Date;
 
@@ -114,6 +123,12 @@ export class SubscriptionPlanDto {
 
   @ApiProperty({ example: 29.99 })
   priceDTPerMonth: number;
+
+  @ApiProperty({ example: 23.99 })
+  yearlyPriceDTPerMonth?: number;
+
+  @ApiProperty({ example: 287.88 })
+  yearlyTotalDT?: number;
 
   @ApiProperty({ example: 7 })
   trialDays: number;

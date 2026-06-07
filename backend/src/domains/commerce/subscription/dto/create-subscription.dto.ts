@@ -55,6 +55,15 @@ export class CreateSubscriptionDto {
   @IsString()
   providerSubscriptionId?: string;
 
+  @ApiPropertyOptional({
+    description: 'Billing interval',
+    example: 'month',
+    enum: ['month', 'year']
+  })
+  @IsOptional()
+  @IsString()
+  billingInterval?: 'month' | 'year';
+
   @ApiPropertyOptional({ 
     description: 'Trial end date',
     example: '2024-07-15T00:00:00.000Z'

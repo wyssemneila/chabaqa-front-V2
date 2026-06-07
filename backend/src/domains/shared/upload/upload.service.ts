@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { extname, join, relative, resolve } from 'path';
-import { createReadStream, existsSync, mkdirSync } from 'fs';
+import { createReadStream, existsSync, mkdirSync, promises as fsPromises } from 'fs';
 import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { InjectModel } from '@nestjs/mongoose';
@@ -16,6 +16,13 @@ import {
   PURPOSE_DEFAULT_VISIBILITY,
 } from '@/domains/content/media/media.types';
 import { ensureUploadDirectories, getConfiguredUploadPath, resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
+import {
+  ALLOWED_UPLOAD_EXTENSIONS,
+  getAllowedUploadCategory,
+  isAllowedUploadMime,
+  validateUploadSignature,
+} from '@/domains/shared/upload/upload-security.policy';
+import { MalwareScannerService, MalwareScanResult } from '@/shared/services/malware-scanner.service';
 
 export enum FileType {
   IMAGE = 'image',
@@ -52,41 +59,12 @@ export class UploadService {
 
   // Configuration des types de fichiers autorisés
   private readonly allowedTypes = {
-    [FileType.IMAGE]: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'],
-    [FileType.VIDEO]: ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm'],
+    [FileType.IMAGE]: ALLOWED_UPLOAD_EXTENSIONS.image,
+    [FileType.VIDEO]: ALLOWED_UPLOAD_EXTENSIONS.video,
     [FileType.DOCUMENT]: [
-      '.pdf',
-      '.doc',
-      '.docx',
-      '.txt',
-      '.rtf',
-      '.odt',
-      '.zip',
-      '.ppt',
-      '.pptx',
-      '.xls',
-      '.xlsx',
-      '.md',
-      '.json',
-      '.xml',
-      '.csv',
-      '.fig',
-      '.sketch',
-      '.xd',
-      '.ai',
-      '.psd',
-      '.epub',
-      '.mobi',
-      '.html',
-      '.css',
-      '.js',
-      '.php',
-      '.py',
-      '.java',
-      '.cpp',
-      '.c',
+      ...ALLOWED_UPLOAD_EXTENSIONS.document,
     ],
-    [FileType.AUDIO]: ['.mp3', '.wav', '.ogg', '.aac', '.flac']
+    [FileType.AUDIO]: ALLOWED_UPLOAD_EXTENSIONS.audio
   };
 
   // Taille maximale par type (en bytes)
@@ -101,6 +79,7 @@ export class UploadService {
     @InjectModel(StorageUsage.name) private storageModel: Model<StorageUsageDocument>,
     @InjectModel(MediaAsset.name) private mediaAssetModel: Model<MediaAssetDocument>,
     private readonly policyService: PolicyService,
+    private readonly malwareScanner: MalwareScannerService,
   ) {
     this.ensureUploadDirectories();
   }
@@ -116,13 +95,9 @@ export class UploadService {
    * Déterminer le type de fichier basé sur l'extension
    */
   getFileType(filename: string): FileType {
+    const category = getAllowedUploadCategory(filename);
+    if (category) return category as FileType;
     const extension = extname(filename).toLowerCase();
-
-    for (const [type, extensions] of Object.entries(this.allowedTypes)) {
-      if (extensions.includes(extension)) {
-        return type as FileType;
-      }
-    }
 
     throw new BadRequestException(`Type de fichier non supporté: ${extension}`);
   }
@@ -143,8 +118,8 @@ export class UploadService {
 
     // Vérifier le mimetype selon le type de fichier
     const validMimeTypes = {
-      'image': ['image/'],
-      'video': ['video/'],
+      'image': ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+      'video': ['video/mp4', 'video/quicktime', 'video/webm'],
       'document': [
         'application/pdf',
         'application/msword',
@@ -153,20 +128,11 @@ export class UploadService {
         'application/vnd.ms-powerpoint',
         'application/rtf',
         'application/vnd.oasis.opendocument',
-        'application/zip',
-        'application/x-zip-compressed',
-        'application/json',
-        'application/xml',
-        'application/javascript',
         'text/plain',
-        'text/markdown',
-        'text/xml',
-        'text/css',
-        'text/javascript',
-        'text/html',
-        'application/octet-stream',
+        'text/csv',
+        'application/csv',
       ],
-      'audio': ['audio/']
+      'audio': ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave', 'audio/x-wav', 'audio/ogg', 'audio/aac', 'audio/flac']
     };
 
     const allowedMimeTypes = validMimeTypes[fileType] || [];
@@ -174,13 +140,56 @@ export class UploadService {
       file.mimetype.startsWith(mimePrefix) || file.mimetype === mimePrefix
     );
 
-    if (!isValidMimeType) {
+    if (!isValidMimeType || !isAllowedUploadMime(fileType, file.mimetype)) {
       console.error(`❌ Type MIME rejeté: ${file.mimetype} pour le type ${fileType}`);
       console.error(`   Types acceptés: ${allowedMimeTypes.join(', ')}`);
       throw new BadRequestException(`Type MIME invalide pour ${fileType}. Types acceptés: ${allowedMimeTypes.join(', ')}`);
     }
 
     return fileType;
+  }
+
+  private async readUploadedHeader(file: Express.Multer.File): Promise<Buffer> {
+    const maxBytes = 4100;
+    if (file.buffer?.length) {
+      return file.buffer.subarray(0, maxBytes);
+    }
+    if (!file.path || !existsSync(file.path)) {
+      throw new BadRequestException('Impossible de valider le contenu du fichier');
+    }
+
+    const handle = await fsPromises.open(file.path, 'r');
+    try {
+      const buffer = Buffer.alloc(maxBytes);
+      const { bytesRead } = await handle.read(buffer, 0, maxBytes, 0);
+      return buffer.subarray(0, bytesRead);
+    } finally {
+      await handle.close();
+    }
+  }
+
+  private async assertFileSignature(file: Express.Multer.File, fileType: FileType): Promise<void> {
+    const header = await this.readUploadedHeader(file);
+    const reason = validateUploadSignature(file.originalname, fileType, header);
+    if (reason) {
+      throw new BadRequestException(`Contenu de fichier invalide: ${reason}`);
+    }
+  }
+
+  private async assertMalwareScan(file: Express.Multer.File, fileType: FileType): Promise<MalwareScanResult> {
+    if (!file.path) {
+      return { status: 'unavailable', engine: 'local', error: 'file_path_missing' };
+    }
+
+    const result = await this.malwareScanner.scanFile(file.path);
+    if (result.status === 'infected') {
+      await this.malwareScanner.quarantineFile(file.path, result.signature || 'malware');
+    } else if (result.status === 'unavailable' && this.malwareScanner.getMode() === 'required') {
+      await this.malwareScanner.quarantineFile(file.path, 'scanner_unavailable');
+    }
+
+    this.malwareScanner.enforceScanResult(result);
+    return result;
   }
 
   // Track and enforce storage quotas (DB-backed)
@@ -270,6 +279,8 @@ export class UploadService {
     let usageAdded = false;
     try {
       const fileType = this.validateFile(file);
+      await this.assertFileSignature(file, fileType);
+      const scanResult = await this.assertMalwareScan(file, fileType);
       if (context?.userId) {
         const limits = await this.policyService.getEffectiveLimitsForCreator(context.userId);
         const used = await this.getUsageBytes(context.userId);
@@ -281,7 +292,7 @@ export class UploadService {
         usageAdded = true;
       }
       const url = this.generateFileUrl(filename, fileType);
-      const mediaRecord = await this.registerMediaAsset(file, filename, fileType, url, context);
+      const mediaRecord = await this.registerMediaAsset(file, filename, fileType, url, context, scanResult);
 
       return {
         assetId: mediaRecord.assetId,
@@ -307,8 +318,7 @@ export class UploadService {
   private async safeRemoveUploadedFile(filePath?: string): Promise<void> {
     if (!filePath) return;
     try {
-      const fs = require('fs').promises;
-      await fs.unlink(filePath);
+      await fsPromises.unlink(filePath);
     } catch {
       // Best effort cleanup only.
     }
@@ -342,6 +352,7 @@ export class UploadService {
     fileType: FileType,
     publicUrl: string,
     context?: UploadContext,
+    scanResult?: MalwareScanResult,
   ): Promise<{ assetId: string; url: string }> {
     const uploadsRoot = resolve(join(process.cwd(), this.uploadPath));
     const filePath = resolve(file.path || join(this.getDestinationPath(fileType), filename));
@@ -364,6 +375,7 @@ export class UploadService {
       mimeType: file.mimetype,
       size: file.size,
       checksum,
+      malwareScan: scanResult,
       uploadedBy: this.toObjectId(context?.userId),
       entityType: context?.entityType,
       entityId: context?.entityId,
@@ -486,11 +498,16 @@ export class UploadService {
       throw new BadRequestException(`Type d'image non supporté: ${mimeType}`);
     }
 
-    if (!this.allowedTypes[FileType.IMAGE].includes(extension)) {
+    if (!this.allowedTypes[FileType.IMAGE].includes(extension) || !isAllowedUploadMime('image', mimeType)) {
       throw new BadRequestException(`Extension non autorisée: ${extension}`);
     }
 
     const buffer = Buffer.from(encodedData, 'base64');
+    const signatureError = validateUploadSignature(`upload${extension}`, 'image', buffer);
+    if (signatureError) {
+      throw new BadRequestException(`Contenu de fichier invalide: ${signatureError}`);
+    }
+
     if (buffer.length > this.maxSizes[FileType.IMAGE]) {
       const maxSizeMB = this.maxSizes[FileType.IMAGE] / (1024 * 1024);
       throw new BadRequestException(`Image trop volumineuse. Taille maximale: ${maxSizeMB}MB`);
@@ -513,9 +530,8 @@ export class UploadService {
       mkdirSync(targetDirectory, { recursive: true });
     }
 
-    const fs = require('fs').promises;
     const filePath = join(targetDirectory, filename);
-    await fs.writeFile(filePath, buffer);
+    await fsPromises.writeFile(filePath, buffer);
 
     if (options?.userId) {
       await this.addUsageBytes(options.userId, buffer.length);
@@ -532,6 +548,15 @@ export class UploadService {
       size: buffer.length,
       path: filePath,
     } as Express.Multer.File;
+    const scanResult = await this.malwareScanner.scanFile(filePath);
+    if (scanResult.status === 'infected') {
+      await this.malwareScanner.quarantineFile(filePath, scanResult.signature || 'malware');
+      throw new BadRequestException('Uploaded image failed malware scanning');
+    } else if (scanResult.status === 'unavailable' && this.malwareScanner.getMode() === 'required') {
+      await this.malwareScanner.quarantineFile(filePath, 'scanner_unavailable');
+    }
+    this.malwareScanner.enforceScanResult(scanResult);
+
     const mediaRecord = await this.registerMediaAsset(
       pseudoMulterFile,
       filename,
@@ -544,6 +569,7 @@ export class UploadService {
         entityId: options?.entityId,
         visibility: options?.visibility,
       },
+      scanResult,
     );
 
     return {
@@ -569,13 +595,10 @@ export class UploadService {
       '.png': 'image/png',
       '.gif': 'image/gif',
       '.webp': 'image/webp',
-      '.svg': 'image/svg+xml',
       '.mp4': 'video/mp4',
-      '.avi': 'video/x-msvideo',
       '.mov': 'video/quicktime',
       '.webm': 'video/webm',
       '.pdf': 'application/pdf',
-      '.zip': 'application/zip',
       '.doc': 'application/msword',
       '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       '.xls': 'application/vnd.ms-excel',
@@ -583,16 +606,12 @@ export class UploadService {
       '.ppt': 'application/vnd.ms-powerpoint',
       '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       '.txt': 'text/plain',
-      '.md': 'text/markdown',
-      '.json': 'application/json',
-      '.xml': 'application/xml',
-      '.csv': 'text/plain',
-      '.html': 'text/html',
-      '.css': 'text/css',
-      '.js': 'application/javascript',
+      '.csv': 'text/csv',
       '.mp3': 'audio/mpeg',
       '.wav': 'audio/wav',
-      '.ogg': 'audio/ogg'
+      '.ogg': 'audio/ogg',
+      '.aac': 'audio/aac',
+      '.flac': 'audio/flac',
     };
 
     return mimeTypes[extension] || 'application/octet-stream';
@@ -606,7 +625,6 @@ export class UploadService {
       'image/png': '.png',
       'image/gif': '.gif',
       'image/webp': '.webp',
-      'image/svg+xml': '.svg',
     };
     return map[normalized] || null;
   }

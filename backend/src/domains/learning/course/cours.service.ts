@@ -801,7 +801,9 @@ export class CoursService {
     const activeCoursesCount = await this.coursModel.countDocuments({ creatorId: new Types.ObjectId(userId) });
     const canCreate = await this.policyService.canActivateMoreCourses(userId, activeCoursesCount);
     if (!canCreate) {
-      throw new ForbiddenException('Limite de cours atteinte pour votre plan. Veuillez mettre à niveau.');
+      throw new ForbiddenException(
+        await this.policyService.buildLimitUpgradeMessage(userId, 'coursesActivationMax', activeCoursesCount),
+      );
     }
 
     // Vérifier que l'utilisateur existe

@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { randomBytes } from 'node:crypto';
 
 export class CookieUtil {
   private static getCookieDomain(): string | undefined {
@@ -68,6 +69,24 @@ export class CookieUtil {
     REFRESH_TOKEN: 'adminRefreshToken',
   };
 
+  static readonly CSRF_COOKIE_NAME = process.env.CSRF_COOKIE_NAME || 'chabaqa_csrf';
+  static readonly CSRF_HEADER_NAME = (process.env.CSRF_HEADER_NAME || 'x-csrf-token').toLowerCase();
+
+  static readonly CSRF_COOKIE_CONFIG = {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    maxAge: 2 * 60 * 60 * 1000,
+    path: '/',
+    domain: CookieUtil.getCookieDomain(),
+  };
+
+  static setCsrfTokenCookie(res: Response): string {
+    const token = randomBytes(32).toString('base64url');
+    res.cookie(this.CSRF_COOKIE_NAME, token, this.CSRF_COOKIE_CONFIG);
+    return token;
+  }
+
   /**
    * Définit le cookie d'access token
    */
@@ -98,6 +117,7 @@ export class CookieUtil {
   static setTokenCookies(res: Response, accessToken: string, refreshToken: string, rememberMe: boolean = false): void {
     this.setAccessTokenCookie(res, accessToken, rememberMe);
     this.setRefreshTokenCookie(res, refreshToken, rememberMe);
+    this.setCsrfTokenCookie(res);
   }
 
   static setAdminAccessTokenCookie(res: Response, token: string, rememberMe: boolean = false): void {
@@ -121,6 +141,7 @@ export class CookieUtil {
   static setAdminTokenCookies(res: Response, accessToken: string, refreshToken: string, rememberMe: boolean = false): void {
     this.setAdminAccessTokenCookie(res, accessToken, rememberMe);
     this.setAdminRefreshTokenCookie(res, refreshToken, rememberMe);
+    this.setCsrfTokenCookie(res);
   }
 
   /**
@@ -154,6 +175,12 @@ export class CookieUtil {
         sameSite: this.ACCESS_TOKEN_CONFIG.sameSite,
       });
     }
+    res.clearCookie(this.CSRF_COOKIE_NAME, clearOpts(this.CSRF_COOKIE_CONFIG));
+    res.clearCookie(this.CSRF_COOKIE_NAME, {
+      path: this.CSRF_COOKIE_CONFIG.path,
+      secure: this.CSRF_COOKIE_CONFIG.secure,
+      sameSite: this.CSRF_COOKIE_CONFIG.sameSite,
+    });
   }
 
   static clearAdminTokenCookies(res: Response): void {
@@ -182,5 +209,11 @@ export class CookieUtil {
         sameSite: this.ACCESS_TOKEN_CONFIG.sameSite,
       });
     }
+    res.clearCookie(this.CSRF_COOKIE_NAME, clearOpts(this.CSRF_COOKIE_CONFIG));
+    res.clearCookie(this.CSRF_COOKIE_NAME, {
+      path: this.CSRF_COOKIE_CONFIG.path,
+      secure: this.CSRF_COOKIE_CONFIG.secure,
+      sameSite: this.CSRF_COOKIE_CONFIG.sameSite,
+    });
   }
 } 

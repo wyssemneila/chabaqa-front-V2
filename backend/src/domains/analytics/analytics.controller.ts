@@ -69,6 +69,16 @@ export class AnalyticsController {
     return normalized;
   }
 
+  private normalizeChartContentType(value?: string): string | undefined {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized || normalized === 'all') return undefined;
+    const allowed = ['course', 'challenge', 'session', 'event', 'product', 'post'];
+    if (!allowed.includes(normalized)) {
+      throw new BadRequestException('contentType must be one of: course, challenge, session, event, product, post');
+    }
+    return normalized;
+  }
+
   @Get('overview')
   @UseGuards(CommunityPermissionGuard)
   @RequireCommunityPermission(CommunityPermission.ANALYTICS_VIEW)
@@ -141,6 +151,48 @@ export class AnalyticsController {
     const { fromDate, toDate } = this.parseDateRange(from, to);
     const filters = this.parseCommunityFilters(communityId, communitySlug);
     return this.analyticsService.getReferrers(creatorId, fromDate, toDate, filters.communityId, filters.communitySlug);
+  }
+
+  @Get('content-charts')
+  @UseGuards(CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.ANALYTICS_VIEW)
+  @OptionalCommunityPermission()
+  @ApiOperation({ summary: 'Rich chart-ready analytics for each creator content type' })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'communityId', required: false })
+  @ApiQuery({ name: 'communitySlug', required: false })
+  @ApiQuery({ name: 'contentType', required: false, enum: ['course', 'challenge', 'session', 'event', 'product', 'post', 'all'] })
+  @ApiQuery({ name: 'contentId', required: false, description: 'Optional content item id for detail charts. Requires contentType.' })
+  async getContentCharts(
+    @Req() req,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('communityId') communityId?: string,
+    @Query('communitySlug') communitySlug?: string,
+    @Query('contentType') contentType?: string,
+    @Query('contentId') contentId?: string,
+  ) {
+    const user = req.user;
+    const creatorId = user.sub || user._id || user.userId;
+    const { fromDate, toDate } = this.parseDateRange(from, to);
+    const filters = this.parseCommunityFilters(communityId, communitySlug);
+    const normalizedContentType = this.normalizeChartContentType(contentType);
+    const normalizedContentId = contentId ? this.normalizeContentId(contentId) : undefined;
+
+    if (normalizedContentId && !normalizedContentType) {
+      throw new BadRequestException('contentType is required when contentId is provided');
+    }
+
+    return this.analyticsService.getContentCharts(
+      creatorId,
+      fromDate,
+      toDate,
+      filters.communityId,
+      filters.communitySlug,
+      normalizedContentType,
+      normalizedContentId,
+    );
   }
 
   @Get('funnel')

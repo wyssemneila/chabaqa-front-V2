@@ -9,7 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { createHmac } from 'crypto';
 import { existsSync } from 'fs';
 import { Model, Types } from 'mongoose';
-import { join } from 'path';
+import { basename, extname, join } from 'path';
 import { MediaAsset, MediaAssetDocument } from '@/infrastructure/database/schemas/content/media-asset.schema';
 import { MediaCompleteDto, MediaPresignDto } from '@/domains/content/media/dto/media.dto';
 import {
@@ -230,7 +230,16 @@ export class MediaService {
       throw new NotFoundException('Media file missing from storage');
     }
 
+    const extension = extname(filePath).toLowerCase();
+    const inlineSafeExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp3', '.wav', '.ogg', '.aac', '.flac', '.mp4', '.mov', '.webm']);
     res.setHeader('Content-Type', asset.mimeType || 'application/octet-stream');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    if (!inlineSafeExtensions.has(extension)) {
+      const filename = basename(filePath).replace(/["\r\n]/g, '_') || 'download';
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    }
     return res.sendFile(filePath);
   }
 

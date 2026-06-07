@@ -33,6 +33,16 @@ export function validateStartupEnv(): void {
     return;
   }
 
+  const konnectMockMode = String(process.env.KONNECT_MOCK_MODE || '').trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(konnectMockMode)) {
+    throw new Error('[startup-env] KONNECT_MOCK_MODE cannot be enabled in production');
+  }
+
+  const swaggerEnabled = String(process.env.ENABLE_SWAGGER || '').trim().toLowerCase();
+  if (['1', 'yes', 'on'].includes(swaggerEnabled)) {
+    throw new Error('[startup-env] ENABLE_SWAGGER must be exactly "true" when intentionally enabled');
+  }
+
   const missing: string[] = [];
 
   requireAny(['MONGODB_URI', 'MONGO_URI'], missing);

@@ -43,6 +43,9 @@ export class MediaAsset {
   @Prop({ type: String })
   checksum?: string;
 
+  @Prop({ type: Object, default: null })
+  malwareScan?: Record<string, any> | null;
+
   @Prop({ type: Types.ObjectId, ref: 'User', index: true })
   uploadedBy?: Types.ObjectId;
 

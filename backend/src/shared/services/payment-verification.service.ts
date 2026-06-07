@@ -52,9 +52,9 @@ export class PaymentVerificationService {
 
   normalizeStatus(raw?: string): PaymentVerificationStatus {
     const value = String(raw || '').toLowerCase();
-    if (['paid', 'success', 'succeeded', 'complete', 'completed'].includes(value)) return 'paid';
+    if (['paid', 'success', 'succeeded', 'complete', 'completed', 'active', 'trialing'].includes(value)) return 'paid';
     if (['paid_action_required', 'requires_action', 'requires_booking'].includes(value)) return 'requires_action';
-    if (['failed', 'failure', 'error', 'rejected'].includes(value)) return 'failed';
+    if (['failed', 'failure', 'error', 'rejected', 'unpaid', 'past_due', 'incomplete_expired'].includes(value)) return 'failed';
     if (['cancelled', 'canceled', 'expired'].includes(value)) return 'cancelled';
     return 'pending';
   }
@@ -73,12 +73,15 @@ export class PaymentVerificationService {
 
   fromPayload(provider: PaymentVerificationProvider, payload: Record<string, any>): PaymentVerificationResult {
     const status = this.normalizeStatus(payload.status);
+    const requestedAction = payload.actionRequired || payload.action;
     const actionRequired =
-      payload.actionRequired ||
-      payload.action === 'choose_session_slot' ||
-      payload.fulfillmentStatus === 'requires_booking'
+      requestedAction === 'choose_session_slot' || payload.fulfillmentStatus === 'requires_booking'
         ? 'choose_session_slot'
-        : undefined;
+        : requestedAction === 'retry_payment' || status === 'failed'
+          ? 'retry_payment'
+          : requestedAction === 'contact_support'
+            ? 'contact_support'
+            : undefined;
     const fulfillmentStatus = this.normalizeFulfillment(
       payload.fulfillmentStatus || payload.metadata?.fulfillmentStatus,
       status,

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Subscription, SubscriptionDocument } from '@/infrastructure/database/schemas/commerce/subscription.schema';
-import { Plan, PlanDocument, PlanFeatures, PlanLimits } from '@/infrastructure/database/schemas/commerce/plan.schema';
+import { Plan, PlanDocument, PlanFeatures, PlanLimits, PlanTier } from '@/infrastructure/database/schemas/commerce/plan.schema';
 
 export interface EffectiveLimits {
   communitiesMax: number;
@@ -33,6 +33,90 @@ const UNLIMITED_LIMITS: EffectiveLimits = {
   analyticsLookbackDays: 365,
   sessionBookingsPerMonth: 999999,
 };
+
+const PLAN_ORDER: PlanTier[] = [PlanTier.STARTER, PlanTier.GROWTH, PlanTier.PRO];
+const PLAN_NAMES: Record<string, string> = {
+  [PlanTier.STARTER]: 'Starter',
+  [PlanTier.GROWTH]: 'Growth',
+  [PlanTier.PRO]: 'Pro',
+  [PlanTier.ENTERPRISE]: 'Enterprise',
+};
+
+const FALLBACK_PLAN_LIMITS: Record<PlanTier.STARTER | PlanTier.GROWTH | PlanTier.PRO, EffectiveLimits> = {
+  [PlanTier.STARTER]: {
+    communitiesMax: 1,
+    membersMax: 100,
+    coursesActivationMax: 3,
+    storageGB: 5,
+    adminsMax: 1,
+    emailCampaignRecipientsPerMonth: 0,
+    whatsappMessagesPerMonth: 0,
+    analyticsLookbackDays: 30,
+    sessionBookingsPerMonth: 0,
+  },
+  [PlanTier.GROWTH]: {
+    communitiesMax: 1,
+    membersMax: 500,
+    coursesActivationMax: 999999,
+    storageGB: 50,
+    adminsMax: 2,
+    emailCampaignRecipientsPerMonth: 1000,
+    whatsappMessagesPerMonth: 250,
+    analyticsLookbackDays: 180,
+    sessionBookingsPerMonth: 300,
+  },
+  [PlanTier.PRO]: {
+    communitiesMax: 1,
+    membersMax: 999999,
+    coursesActivationMax: 999999,
+    storageGB: 300,
+    adminsMax: 3,
+    emailCampaignRecipientsPerMonth: 15000,
+    whatsappMessagesPerMonth: 1000,
+    analyticsLookbackDays: 365,
+    sessionBookingsPerMonth: 1000,
+  },
+};
+
+const FEATURE_LABELS: Partial<Record<keyof PlanFeatures, string>> = {
+  courses: 'Courses',
+  products: 'Products',
+  challenges: 'Challenges',
+  sessions: '1:1 sessions',
+  events: 'Events',
+  automationQuota: 'Automation',
+  branding: 'Remove Chabaqa branding',
+  gamification: 'Gamification',
+  verifiedBadge: 'Verified creator badge',
+  featuredBadge: 'Featured creator badge',
+};
+
+const FEATURE_MINIMUM_PLAN: Partial<Record<keyof PlanFeatures, PlanTier>> = {
+  challenges: PlanTier.GROWTH,
+  sessions: PlanTier.GROWTH,
+  events: PlanTier.GROWTH,
+  automationQuota: PlanTier.GROWTH,
+  gamification: PlanTier.GROWTH,
+  verifiedBadge: PlanTier.GROWTH,
+  branding: PlanTier.PRO,
+  featuredBadge: PlanTier.PRO,
+};
+
+const LIMIT_LABELS: Record<keyof EffectiveLimits, string> = {
+  communitiesMax: 'communities',
+  membersMax: 'members',
+  coursesActivationMax: 'active courses',
+  storageGB: 'GB of storage',
+  adminsMax: 'admin seats',
+  emailCampaignRecipientsPerMonth: 'email recipients per month',
+  whatsappMessagesPerMonth: 'WhatsApp messages per month',
+  analyticsLookbackDays: 'analytics history days',
+  sessionBookingsPerMonth: 'session bookings per month',
+};
+
+function formatLimit(value: number): string {
+  return value >= 999999 ? 'unlimited' : value.toLocaleString('en-US');
+}
 
 @Injectable()
 export class PolicyService {
@@ -130,6 +214,67 @@ export class PolicyService {
     if (!sub) return null;
 
     return this.planModel.findOne({ tier: sub.plan }).lean();
+  }
+
+  async getCurrentPlanTierForCreator(creatorId: Types.ObjectId | string): Promise<PlanTier> {
+    const sub = await this.subModel
+      .findOne({ creatorId: new Types.ObjectId(creatorId as any) })
+      .select('plan')
+      .lean();
+
+    return (sub?.plan as PlanTier) || PlanTier.STARTER;
+  }
+
+  async buildFeatureUpgradeMessage(
+    creatorId: Types.ObjectId | string,
+    feature: keyof PlanFeatures,
+  ): Promise<string> {
+    const currentTier = await this.getCurrentPlanTierForCreator(creatorId);
+    const requiredTier = FEATURE_MINIMUM_PLAN[feature] || PlanTier.PRO;
+    const featureLabel = FEATURE_LABELS[feature] || String(feature);
+
+    return `${featureLabel} is not included in your current ${PLAN_NAMES[currentTier] || currentTier} plan. Upgrade to ${PLAN_NAMES[requiredTier] || requiredTier} or higher to unlock this feature.`;
+  }
+
+  async buildLimitUpgradeMessage(
+    creatorId: Types.ObjectId | string,
+    limitKey: keyof EffectiveLimits,
+    currentUsage: number,
+  ): Promise<string> {
+    const currentTier = await this.getCurrentPlanTierForCreator(creatorId);
+    const limits = await this.getEffectiveLimitsForCreator(creatorId);
+    const currentLimit = limits[limitKey] ?? 0;
+    const label = LIMIT_LABELS[limitKey] || String(limitKey);
+    const recommendedTier = await this.findRecommendedPlanForLimit(limitKey, currentLimit, currentTier);
+    const usageText = `${currentUsage.toLocaleString('en-US')} / ${formatLimit(currentLimit)}`;
+
+    if (recommendedTier) {
+      return `You have reached your ${PLAN_NAMES[currentTier] || currentTier} plan limit for ${label} (${usageText}). Upgrade to ${PLAN_NAMES[recommendedTier] || recommendedTier} to increase this limit and continue.`;
+    }
+
+    return `You have reached your ${PLAN_NAMES[currentTier] || currentTier} plan limit for ${label} (${usageText}). No higher self-service plan currently increases this limit; contact support if you need more capacity.`;
+  }
+
+  private async findRecommendedPlanForLimit(
+    limitKey: keyof EffectiveLimits,
+    currentLimit: number,
+    currentTier: PlanTier,
+  ): Promise<PlanTier | null> {
+    const currentIndex = PLAN_ORDER.indexOf(currentTier);
+    const candidateTiers = PLAN_ORDER.slice(Math.max(currentIndex + 1, 0));
+
+    for (const tier of candidateTiers) {
+      const dbPlan = await this.planModel.findOne({ tier, isActive: true }).select('limits').lean();
+      const candidateLimit = (dbPlan?.limits?.[limitKey as keyof PlanLimits] as number | undefined)
+        ?? FALLBACK_PLAN_LIMITS[tier as PlanTier.STARTER | PlanTier.GROWTH | PlanTier.PRO]?.[limitKey]
+        ?? 0;
+
+      if (candidateLimit > currentLimit) {
+        return tier;
+      }
+    }
+
+    return null;
   }
 
   // ──────────────────────────────────────────────

@@ -376,7 +376,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       const createdCount = await this.communityModel.countDocuments({ createur: new Types.ObjectId(userId) });
       const canCreate = await this.policyService.canCreateAnotherCommunity(userId, createdCount);
       if (!canCreate) {
-        throw new ForbiddenException('Limite de communautés atteinte pour votre plan. Veuillez mettre à niveau.');
+        throw new ForbiddenException(
+          await this.policyService.buildLimitUpgradeMessage(userId, 'communitiesMax', createdCount),
+        );
       }
 
       // Vérifier si une communauté avec ce nom existe déjà
@@ -602,7 +604,7 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       };
 
     } catch (error) {
-      if (error instanceof ConflictException || error instanceof NotFoundException || error instanceof BadRequestException) {
+      if (error instanceof ConflictException || error instanceof NotFoundException || error instanceof BadRequestException || error instanceof ForbiddenException) {
         throw error;
       }
       if (this.isInviteCodeDuplicateError(error)) {
@@ -1583,7 +1585,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
     const currentAdminsCount = community.admins.length + 1; // including creator implicitly
     const canAdd = await this.policyService.canAddAdmin(community.createur.toString(), currentAdminsCount);
     if (!canAdd) {
-      throw new ForbiddenException('Limite d\'administrateurs atteinte pour le plan du créateur');
+      throw new ForbiddenException(
+        await this.policyService.buildLimitUpgradeMessage(community.createur.toString(), 'adminsMax', currentAdminsCount),
+      );
     }
 
     const targetId = new Types.ObjectId(targetUserId);
@@ -1742,7 +1746,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       const currentMembers = community.membersCount || community.members.length;
       const canAdd = await this.policyService.canAddMember(creatorId.toString(), currentMembers);
       if (!canAdd) {
-        throw new ForbiddenException('Limite de membres atteinte pour le plan du créateur.');
+        throw new ForbiddenException(
+          await this.policyService.buildLimitUpgradeMessage(creatorId.toString(), 'membersMax', currentMembers),
+        );
       }
 
       // Vérifier si l'utilisateur est déjà membre
@@ -1860,7 +1866,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       const currentMembers2 = community.membersCount || community.members.length;
       const canAdd2 = await this.policyService.canAddMember(creatorId2.toString(), currentMembers2);
       if (!canAdd2) {
-        throw new ForbiddenException('Limite de membres atteinte pour le plan du créateur.');
+        throw new ForbiddenException(
+          await this.policyService.buildLimitUpgradeMessage(creatorId2.toString(), 'membersMax', currentMembers2),
+        );
       }
 
       // Vérifier si l'utilisateur est déjà membre

@@ -6,6 +6,7 @@ export type AffiliateProgramDocument = AffiliateProgram & Document;
 
 export type AffiliateProgramScopeType = 'community' | 'creator' | 'content';
 export type AffiliateProgramStatus = 'active' | 'paused';
+export type AffiliateAttributionModel = 'last_click' | 'first_click';
 
 @Schema({ timestamps: true })
 export class AffiliateProgram {
@@ -16,6 +17,12 @@ export class AffiliateProgram {
 
   @Prop({ type: Types.ObjectId, ref: 'Community' })
   communityId?: Types.ObjectId;
+
+  @Prop({ type: String, trim: true, maxlength: 120 })
+  name?: string;
+
+  @Prop({ type: String, trim: true, maxlength: 1000 })
+  description?: string;
 
   @Prop({ type: String, enum: ['community', 'creator', 'content'], required: true })
   scopeType: AffiliateProgramScopeType;
@@ -35,9 +42,19 @@ export class AffiliateProgram {
   @Prop({ type: Number, default: 14 })
   holdDays: number;
 
+  @Prop({ type: String, enum: ['last_click', 'first_click'], default: 'last_click' })
+  attributionModel?: AffiliateAttributionModel;
+
+  @Prop({ type: Boolean, default: false })
+  autoApprovePartners?: boolean;
+
+  @Prop({ type: String, trim: true, maxlength: 2000 })
+  terms?: string;
+
   @Prop({ type: String, enum: ['active', 'paused'], default: 'active' })
   status: AffiliateProgramStatus;
 }
 
 export const AffiliateProgramSchema = SchemaFactory.createForClass(AffiliateProgram);
 AffiliateProgramSchema.index({ creatorId: 1, communityId: 1, status: 1 });
+AffiliateProgramSchema.index({ creatorId: 1, scopeType: 1, createdAt: -1 });

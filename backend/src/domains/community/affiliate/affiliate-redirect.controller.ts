@@ -30,6 +30,8 @@ export class AffiliateRedirectController {
       utmSource: req.query?.utm_source as string,
       utmMedium: req.query?.utm_medium as string,
       utmCampaign: req.query?.utm_campaign as string,
+      utmTerm: req.query?.utm_term as string,
+      utmContent: req.query?.utm_content as string,
       viewerUserId: (req as any).user?._id?.toString(),
     });
 

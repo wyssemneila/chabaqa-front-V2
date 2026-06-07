@@ -89,6 +89,9 @@ export class EmailRecipient {
 
   @Prop({ required: false })
   personalizedSubject?: string;
+
+  @Prop({ type: Object, default: {} })
+  mergeData?: Record<string, any>;
 }
 
 export const EmailRecipientSchema = SchemaFactory.createForClass(EmailRecipient);

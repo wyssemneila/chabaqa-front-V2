@@ -14,6 +14,43 @@ import { Ga4ReportingService } from '@/domains/analytics/ga4/ga4-reporting.servi
 import { CacheService } from '@/infrastructure/cache/cache.service';
 import { PolicyService } from '@/shared/services/policy.service';
 
+type AnalyticsChartContentType = 'course' | 'challenge' | 'session' | 'event' | 'product' | 'post';
+
+type AnalyticsChartVisualization =
+  | 'line'
+  | 'area'
+  | 'bar'
+  | 'stacked_bar'
+  | 'donut'
+  | 'funnel'
+  | 'heatmap'
+  | 'table';
+
+interface AnalyticsChartPayload {
+  id: string;
+  title: string;
+  description: string;
+  visualization: AnalyticsChartVisualization;
+  metrics: string[];
+  data: any[];
+  xKey?: string;
+  yKeys?: string[];
+  valueKey?: string;
+  source: string;
+  precision: 'exact' | 'rollup' | 'hybrid' | 'derived';
+  unit?: string;
+}
+
+interface AnalyticsChartContentMeta {
+  title?: string;
+  communityId?: string;
+  currency?: string;
+  price?: number;
+  trackingIds?: string[];
+  orderIds?: string[];
+  enrollmentCourseObjectId?: Types.ObjectId;
+}
+
 
 @Injectable()
 export class AnalyticsService {
@@ -1860,6 +1897,36 @@ export class AnalyticsService {
     to: Date | null,
     communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
   ) {
+    const contentLookup = (fromCollection: string, as: string) => ({
+      $lookup: {
+        from: fromCollection,
+        let: { trackingContentId: '$contentId' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $or: [
+                  { $eq: ['$id', '$$trackingContentId'] },
+                  { $eq: [{ $toString: '$_id' }, '$$trackingContentId'] },
+                ],
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 1,
+              id: 1,
+              creatorId: 1,
+              authorId: 1,
+              communityId: 1,
+            },
+          },
+          { $limit: 1 },
+        ],
+        as,
+      },
+    });
+
     const contentDoc = {
       $ifNull: [
         { $arrayElemAt: ['$course', 0] },
@@ -1893,12 +1960,12 @@ export class AnalyticsService {
     }
 
     pipeline.push(
-      { $lookup: { from: 'cours', localField: 'contentId', foreignField: 'id', as: 'course' } },
-      { $lookup: { from: 'challenges', localField: 'contentId', foreignField: 'id', as: 'challenge' } },
-      { $lookup: { from: 'sessions', localField: 'contentId', foreignField: 'id', as: 'session' } },
-      { $lookup: { from: 'events', localField: 'contentId', foreignField: 'id', as: 'event' } },
-      { $lookup: { from: 'products', localField: 'contentId', foreignField: 'id', as: 'product' } },
-      { $lookup: { from: 'posts', localField: 'contentId', foreignField: 'id', as: 'post' } },
+      contentLookup('cours', 'course'),
+      contentLookup('challenges', 'challenge'),
+      contentLookup('sessions', 'session'),
+      contentLookup('events', 'event'),
+      contentLookup('products', 'product'),
+      contentLookup('posts', 'post'),
       { $addFields: { contentDoc } },
       { $addFields: { creatorIdResolved: { $ifNull: ['$contentDoc.creatorId', '$contentDoc.authorId'] } } },
       { $match: { creatorIdResolved: this.getCreatorObjectId(creatorId) } },
@@ -3689,6 +3756,1373 @@ export class AnalyticsService {
 
     this.setCache(key, analytics);
     return analytics;
+  }
+
+  async getContentCharts(
+    creatorId: string,
+    from: Date,
+    to: Date,
+    communityId?: string,
+    communitySlug?: string,
+    contentType?: string,
+    contentId?: string,
+  ) {
+    const { from: clampedFrom, to: clampedTo, lookbackDays } = await this.clampDateRangeForPlan(creatorId, from, to);
+    const communityScope = await this.resolveCommunityScope(creatorId, communityId, communitySlug);
+    const normalizedType = contentType ? this.normalizeChartContentType(contentType) : null;
+
+    if (contentType && !normalizedType) {
+      throw new NotFoundException('Unsupported analytics content type');
+    }
+
+    if (contentId && !normalizedType) {
+      throw new NotFoundException('contentType is required when filtering by contentId');
+    }
+
+    const cacheScope = normalizedType || 'all';
+    const key = this.cacheKey(
+      creatorId,
+      clampedFrom.toISOString(),
+      clampedTo.toISOString(),
+      `content-charts:v2:${cacheScope}:${contentId || 'all'}:${communityScope.cacheKeyPart}`,
+    );
+    const cached = await this.getCache<any>(key);
+    if (cached) return cached;
+
+    const types = normalizedType ? [normalizedType] : this.getChartContentTypes();
+    const packs = await Promise.all(
+      types.map((type) =>
+        this.buildContentTypeChartPack(
+          creatorId,
+          type,
+          clampedFrom,
+          clampedTo,
+          communityScope,
+          normalizedType ? contentId : undefined,
+        ),
+      ),
+    );
+
+    const result = normalizedType
+      ? packs[0]
+      : {
+          generatedAt: new Date().toISOString(),
+          range: {
+            from: clampedFrom.toISOString(),
+            to: clampedTo.toISOString(),
+            timezone: 'UTC',
+            lookbackDays,
+          },
+          community: {
+            scoped: communityScope.hasFilter,
+            id: communityScope.hasFilter ? communityScope.cacheKeyPart : null,
+          },
+          byContentType: packs.reduce<Record<string, any>>((acc, pack) => {
+            acc[pack.contentType] = pack;
+            return acc;
+          }, {}),
+        };
+
+    this.setCache(key, result, 2 * 60 * 1000);
+    return result;
+  }
+
+  private getChartContentTypes(): AnalyticsChartContentType[] {
+    return ['course', 'challenge', 'session', 'event', 'product', 'post'];
+  }
+
+  private normalizeChartContentType(value: string): AnalyticsChartContentType | null {
+    const normalized = String(value || '').trim().toLowerCase();
+    return this.getChartContentTypes().includes(normalized as AnalyticsChartContentType)
+      ? (normalized as AnalyticsChartContentType)
+      : null;
+  }
+
+  private toFiniteNumber(value: unknown): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private round2(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
+  private buildAnalyticsChart(params: {
+    id: string;
+    title: string;
+    description: string;
+    visualization: AnalyticsChartVisualization;
+    metrics: string[];
+    data: any[];
+    source: string;
+    precision: AnalyticsChartPayload['precision'];
+    xKey?: string;
+    yKeys?: string[];
+    valueKey?: string;
+    unit?: string;
+  }): AnalyticsChartPayload {
+    return {
+      id: params.id,
+      title: params.title,
+      description: params.description,
+      visualization: params.visualization,
+      metrics: params.metrics,
+      data: params.data,
+      xKey: params.xKey,
+      yKeys: params.yKeys,
+      valueKey: params.valueKey,
+      source: params.source,
+      precision: params.precision,
+      unit: params.unit,
+    };
+  }
+
+  private getContentCollectionConfig(type: AnalyticsChartContentType) {
+    const configs: Record<AnalyticsChartContentType, { collection: string; creatorField: string; titleFields: string[] }> = {
+      course: { collection: 'cours', creatorField: 'creatorId', titleFields: ['titre', 'title', 'name'] },
+      challenge: { collection: 'challenges', creatorField: 'creatorId', titleFields: ['title', 'name'] },
+      session: { collection: 'sessions', creatorField: 'creatorId', titleFields: ['title', 'name'] },
+      event: { collection: 'events', creatorField: 'creatorId', titleFields: ['title', 'name'] },
+      product: { collection: 'products', creatorField: 'creatorId', titleFields: ['name', 'title'] },
+      post: { collection: 'posts', creatorField: 'authorId', titleFields: ['title', 'content', 'name'] },
+    };
+    return configs[type];
+  }
+
+  private getDailyChartMetricKeys(type: AnalyticsChartContentType): string[] {
+    const common = ['views', 'starts', 'completes', 'uniqueUsers'];
+    const byType: Record<AnalyticsChartContentType, string[]> = {
+      course: ['chapterCompletes', 'watchTime', 'ratingsCount', 'revenueAttributed'],
+      challenge: ['likes', 'shares', 'bookmarks', 'comments', 'activeStreaks', 'maxStreakDays'],
+      session: ['sessionShowUps', 'sessionNoShows', 'sessionRebookings', 'ratingsCount', 'revenueAttributed'],
+      event: ['likes', 'shares', 'revenueAttributed'],
+      product: ['likes', 'shares', 'downloads', 'bookmarks', 'revenueAttributed'],
+      post: ['likes', 'shares', 'bookmarks', 'comments', 'ratingsCount'],
+    };
+
+    return Array.from(new Set([...common, ...byType[type]]));
+  }
+
+  private getFunnelStepsForContentType(type: AnalyticsChartContentType): Array<{ key: string; label: string }> {
+    if (type === 'course') {
+      return [
+        { key: TrackingActionType.VIEW, label: 'Views' },
+        { key: TrackingActionType.START, label: 'Course starts' },
+        { key: TrackingActionType.CHAPTER_START, label: 'Chapter starts' },
+        { key: TrackingActionType.CHAPTER_COMPLETE, label: 'Chapter completes' },
+        { key: TrackingActionType.COMPLETE, label: 'Course completes' },
+      ];
+    }
+
+    if (type === 'challenge') {
+      return [
+        { key: TrackingActionType.VIEW, label: 'Views' },
+        { key: TrackingActionType.START, label: 'Participants' },
+        { key: TrackingActionType.COMPLETE, label: 'Submissions' },
+        { key: TrackingActionType.CHALLENGE_STREAK, label: 'Streak actions' },
+      ];
+    }
+
+    if (type === 'session') {
+      return [
+        { key: TrackingActionType.VIEW, label: 'Views' },
+        { key: TrackingActionType.START, label: 'Bookings' },
+        { key: TrackingActionType.SESSION_SHOW, label: 'Show-ups' },
+        { key: TrackingActionType.SESSION_NOSHOW, label: 'No-shows' },
+        { key: TrackingActionType.SESSION_REBOOK, label: 'Rebookings' },
+      ];
+    }
+
+    if (type === 'post') {
+      return [
+        { key: TrackingActionType.VIEW, label: 'Views' },
+        { key: TrackingActionType.LIKE, label: 'Likes' },
+        { key: TrackingActionType.COMMENT, label: 'Comments' },
+        { key: TrackingActionType.SHARE, label: 'Shares' },
+        { key: TrackingActionType.BOOKMARK, label: 'Bookmarks' },
+      ];
+    }
+
+    if (type === 'product') {
+      return [
+        { key: TrackingActionType.VIEW, label: 'Views' },
+        { key: TrackingActionType.LIKE, label: 'Likes' },
+        { key: TrackingActionType.SHARE, label: 'Shares' },
+        { key: TrackingActionType.DOWNLOAD, label: 'Downloads' },
+      ];
+    }
+
+    return [
+      { key: TrackingActionType.VIEW, label: 'Views' },
+      { key: TrackingActionType.START, label: type === 'event' ? 'Registrations' : 'Starts' },
+      { key: TrackingActionType.COMPLETE, label: type === 'event' ? 'Attended' : 'Completes' },
+      { key: TrackingActionType.SHARE, label: 'Shares' },
+    ];
+  }
+
+  private getPrimaryMetricForContentType(type: AnalyticsChartContentType): string {
+    if (type === 'product') return 'revenueAttributed';
+    if (type === 'post') return 'likes';
+    if (type === 'challenge') return 'completes';
+    if (type === 'session' || type === 'event') return 'starts';
+    return 'views';
+  }
+
+  private getContentTitleFromDoc(doc: any, fallback: string): string {
+    if (!doc) return fallback;
+    const candidates = [doc.titre, doc.title, doc.name, doc.slug, doc.content, doc.id, doc._id];
+    const value = candidates.find((candidate) => typeof candidate === 'string' && candidate.trim().length > 0);
+    if (!value) return fallback;
+    const text = String(value).trim();
+    return text.length > 80 ? `${text.slice(0, 77)}...` : text;
+  }
+
+  private buildContentLookupForCharts(type: AnalyticsChartContentType, localField = 'contentId', alias = 'contentDoc') {
+    const config = this.getContentCollectionConfig(type);
+    return {
+      $lookup: {
+        from: config.collection,
+        let: { lookupContentId: `$${localField}` },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $or: [
+                  { $eq: ['$id', '$$lookupContentId'] },
+                  { $eq: [{ $toString: '$_id' }, '$$lookupContentId'] },
+                ],
+              },
+            },
+          },
+          {
+            $project: {
+              id: 1,
+              titre: 1,
+              title: 1,
+              name: 1,
+              slug: 1,
+              content: 1,
+              communityId: 1,
+              prix: 1,
+              price: 1,
+              devise: 1,
+            },
+          },
+          { $limit: 1 },
+        ],
+        as: alias,
+      },
+    } as any;
+  }
+
+  private buildDailyChartMatch(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; communityIdStrings: string[] },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const match: Record<string, any> = {
+      creatorId: this.getCreatorObjectId(creatorId),
+      contentType,
+      date: { $gte: from, $lte: to },
+    };
+    if (communityScope.hasFilter) this.setDailyCommunityFilter(match, communityScope.communityIdStrings);
+    if (contentMeta?.trackingIds?.length) {
+      match.contentId = { $in: contentMeta.trackingIds };
+    }
+    return match;
+  }
+
+  private buildTrackingChartPipeline(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const pipeline = this.buildTrackingScopePipeline(creatorId, from, to, communityScope);
+    const match: Record<string, any> = { contentType };
+    if (contentMeta?.trackingIds?.length) {
+      match.contentId = { $in: contentMeta.trackingIds };
+    }
+    pipeline.push({ $match: match });
+    return pipeline;
+  }
+
+  private async getDailySeriesForCharts(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; communityIdStrings: string[] },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const metrics = this.getDailyChartMetricKeys(contentType);
+    const group: Record<string, any> = {
+      _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+    };
+    for (const metric of metrics) {
+      group[metric] = { $sum: `$${metric}` };
+    }
+
+    const rows = await this.dailyModel.aggregate([
+      { $match: this.buildDailyChartMatch(creatorId, contentType, from, to, communityScope, contentMeta) },
+      { $group: group },
+      { $sort: { _id: 1 } },
+    ]);
+
+    return rows.map((row: any) => {
+      const item: Record<string, any> = { date: row._id };
+      for (const metric of metrics) {
+        item[metric] = this.toFiniteNumber(row?.[metric]);
+      }
+      item.completionRate = item.starts > 0 ? this.round2((item.completes / item.starts) * 100) : 0;
+      item.engagementRate = item.views > 0
+        ? this.round2(((item.likes || 0) + (item.shares || 0) + (item.bookmarks || 0) + (item.comments || 0)) / item.views * 100)
+        : 0;
+      return item;
+    });
+  }
+
+  private sumDailyRows(rows: any[], metrics: string[]) {
+    const totals = metrics.reduce<Record<string, number>>((acc, metric) => {
+      acc[metric] = 0;
+      return acc;
+    }, {});
+
+    for (const row of rows) {
+      for (const metric of metrics) {
+        totals[metric] += this.toFiniteNumber(row?.[metric]);
+      }
+    }
+
+    totals.completionRate = totals.starts > 0 ? this.round2((totals.completes / totals.starts) * 100) : 0;
+    totals.engagementRate = totals.views > 0
+      ? this.round2(((totals.likes || 0) + (totals.shares || 0) + (totals.bookmarks || 0) + (totals.comments || 0)) / totals.views * 100)
+      : 0;
+    totals.avgWatchTimeSeconds = totals.starts > 0 ? this.round2((totals.watchTime || 0) / totals.starts) : 0;
+    return totals;
+  }
+
+  private async getTrackingActionBreakdownForCharts(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const tracking = this.dbConnection.collection('trackingactions');
+    const rows = await tracking.aggregate([
+      ...this.buildTrackingChartPipeline(creatorId, contentType, from, to, communityScope, contentMeta),
+      {
+        $group: {
+          _id: '$actionType',
+          events: { $sum: 1 },
+          users: { $addToSet: '$userId' },
+          lastSeenAt: { $max: '$timestamp' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          actionType: '$_id',
+          events: 1,
+          uniqueUsers: { $size: '$users' },
+          lastSeenAt: 1,
+        },
+      },
+      { $sort: { events: -1 } },
+    ]).toArray();
+
+    return rows.map((row: any) => ({
+      actionType: String(row.actionType || 'unknown'),
+      events: this.toFiniteNumber(row.events),
+      uniqueUsers: this.toFiniteNumber(row.uniqueUsers),
+      lastSeenAt: row.lastSeenAt || null,
+    }));
+  }
+
+  private async getTrackingActionTrendForCharts(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const tracking = this.dbConnection.collection('trackingactions');
+    const rows = await tracking.aggregate([
+      ...this.buildTrackingChartPipeline(creatorId, contentType, from, to, communityScope, contentMeta),
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+            actionType: '$actionType',
+          },
+          events: { $sum: 1 },
+          users: { $addToSet: '$userId' },
+        },
+      },
+      { $sort: { '_id.date': 1 } },
+    ]).toArray();
+
+    const byDate = new Map<string, Record<string, any>>();
+    for (const row of rows) {
+      const date = String(row?._id?.date || '');
+      const actionType = String(row?._id?.actionType || 'unknown');
+      if (!date) continue;
+      if (!byDate.has(date)) byDate.set(date, { date });
+      const target = byDate.get(date)!;
+      target[actionType] = this.toFiniteNumber(row.events);
+      target[`${actionType}Users`] = Array.isArray(row.users) ? row.users.length : 0;
+    }
+    return Array.from(byDate.values());
+  }
+
+  private async getActivityHeatmapForCharts(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const tracking = this.dbConnection.collection('trackingactions');
+    const rows = await tracking.aggregate([
+      ...this.buildTrackingChartPipeline(creatorId, contentType, from, to, communityScope, contentMeta),
+      {
+        $group: {
+          _id: {
+            dayOfWeek: { $dayOfWeek: '$timestamp' },
+            hour: { $hour: '$timestamp' },
+          },
+          events: { $sum: 1 },
+          users: { $addToSet: '$userId' },
+        },
+      },
+      { $sort: { '_id.dayOfWeek': 1, '_id.hour': 1 } },
+    ]).toArray();
+
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return rows.map((row: any) => {
+      const dayIndex = Math.max(1, Math.min(7, Number(row?._id?.dayOfWeek || 1))) - 1;
+      return {
+        dayOfWeek: row?._id?.dayOfWeek,
+        day: dayLabels[dayIndex],
+        hour: this.toFiniteNumber(row?._id?.hour),
+        events: this.toFiniteNumber(row.events),
+        uniqueUsers: Array.isArray(row.users) ? row.users.length : 0,
+      };
+    });
+  }
+
+  private async getDeviceBreakdownForCharts(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const tracking = this.dbConnection.collection('trackingactions');
+    const basePipeline = this.buildTrackingChartPipeline(creatorId, contentType, from, to, communityScope, contentMeta);
+    const rows = await tracking.aggregate(this.buildDeviceAggregatePipeline(basePipeline)).toArray();
+    return rows
+      .filter((row: any) => this.isMeaningfulDeviceValue(row?.device))
+      .slice(0, 12)
+      .map((row: any) => ({
+        device: String(row.device || 'unknown'),
+        os: String(row.os || 'unknown'),
+        browser: String(row.browser || 'unknown'),
+        users: this.toFiniteNumber(row.count),
+      }));
+  }
+
+  private async getReferrerBreakdownForCharts(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const tracking = this.dbConnection.collection('trackingactions');
+    const rows = await tracking.aggregate([
+      ...this.buildTrackingChartPipeline(creatorId, contentType, from, to, communityScope, contentMeta),
+      {
+        $project: {
+          userId: 1,
+          timestamp: 1,
+          referrer: '$metadata.referrer',
+          utm_source: '$metadata.utm_source',
+          utm_medium: '$metadata.utm_medium',
+          utm_campaign: '$metadata.utm_campaign',
+        },
+      },
+      {
+        $group: {
+          _id: {
+            referrer: '$referrer',
+            utm_source: '$utm_source',
+            utm_medium: '$utm_medium',
+            utm_campaign: '$utm_campaign',
+          },
+          count: { $sum: 1 },
+          users: { $addToSet: '$userId' },
+          lastSeenAt: { $max: '$timestamp' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          referrer: '$_id.referrer',
+          utm_source: '$_id.utm_source',
+          utm_medium: '$_id.utm_medium',
+          utm_campaign: '$_id.utm_campaign',
+          count: 1,
+          uniqueUsers: { $size: '$users' },
+          lastSeenAt: 1,
+        },
+      },
+      { $sort: { count: -1 } },
+      { $limit: 50 },
+    ]).toArray();
+
+    const formatted = this.formatReferrerRows(rows);
+    const total = formatted.reduce((sum: number, row: any) => sum + this.toFiniteNumber(row.count), 0);
+    return formatted.map((row: any) => ({
+      ...row,
+      share: total > 0 ? this.round2((this.toFiniteNumber(row.count) / total) * 100) : 0,
+    }));
+  }
+
+  private async getContentLeaderboardForCharts(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; communityIdStrings: string[] },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const metrics = this.getDailyChartMetricKeys(contentType);
+    const group: Record<string, any> = { _id: '$contentId' };
+    for (const metric of metrics) {
+      group[metric] = { $sum: `$${metric}` };
+    }
+
+    const rows = await this.dailyModel.aggregate([
+      { $match: this.buildDailyChartMatch(creatorId, contentType, from, to, communityScope, contentMeta) },
+      { $group: group },
+      { $project: { _id: 0, contentId: '$_id', ...metrics.reduce<Record<string, number>>((acc, metric) => ({ ...acc, [metric]: 1 }), {}) } },
+      this.buildContentLookupForCharts(contentType),
+      { $addFields: { contentDoc: { $arrayElemAt: ['$contentDoc', 0] } } },
+      { $sort: { [this.getPrimaryMetricForContentType(contentType)]: -1, views: -1 } },
+      { $limit: 25 },
+    ]);
+
+    return rows.map((row: any) => ({
+      contentId: String(row.contentId || ''),
+      title: this.getContentTitleFromDoc(row.contentDoc, String(row.contentId || 'Untitled')),
+      ...metrics.reduce<Record<string, number>>((acc, metric) => {
+        acc[metric] = this.toFiniteNumber(row?.[metric]);
+        return acc;
+      }, {}),
+      completionRate: this.toFiniteNumber(row.starts) > 0
+        ? this.round2((this.toFiniteNumber(row.completes) / this.toFiniteNumber(row.starts)) * 100)
+        : 0,
+      engagementRate: this.toFiniteNumber(row.views) > 0
+        ? this.round2(((this.toFiniteNumber(row.likes) + this.toFiniteNumber(row.shares) + this.toFiniteNumber(row.bookmarks) + this.toFiniteNumber(row.comments)) / this.toFiniteNumber(row.views)) * 100)
+        : 0,
+    }));
+  }
+
+  private buildOrderScopeStagesForCharts(
+    contentType: AnalyticsChartContentType,
+    communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
+  ) {
+    if (!communityScope.hasFilter) return [];
+    const config = this.getContentCollectionConfig(contentType);
+    return [
+      this.buildOrderContentCommunityLookup(config.collection, contentType, 'orderContentDoc'),
+      {
+        $addFields: {
+          resolvedCommunityId: {
+            $ifNull: ['$communityId', { $arrayElemAt: ['$orderContentDoc.communityId', 0] }],
+          },
+        },
+      },
+      { $match: { resolvedCommunityId: { $in: communityScope.lookupCommunityValues } } },
+    ];
+  }
+
+  private async getOrderChartsForContentType(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const ordersCollection = this.dbConnection.db?.collection('orders');
+    if (!ordersCollection || contentType === 'post') {
+      return { totals: { revenue: 0, orders: 0, uniqueBuyers: 0, avgOrderValue: 0 }, trend: [], byContent: [] };
+    }
+
+    const match: Record<string, any> = {
+      creatorId: this.getCreatorObjectId(creatorId),
+      status: 'paid',
+      contentType,
+      createdAt: { $gte: from, $lte: to },
+    };
+    if (contentMeta?.orderIds?.length) {
+      match.contentId = { $in: contentMeta.orderIds };
+    }
+
+    const scopeStages = this.buildOrderScopeStagesForCharts(contentType, communityScope);
+    const revenueExpr = { $ifNull: ['$creatorNetDT', 0] };
+
+    const [trend, byContent, totalsRows] = await Promise.all([
+      ordersCollection.aggregate([
+        { $match: match },
+        ...scopeStages,
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            revenue: { $sum: revenueExpr },
+            orders: { $sum: 1 },
+            buyers: { $addToSet: '$buyerId' },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]).toArray(),
+      ordersCollection.aggregate([
+        { $match: match },
+        ...scopeStages,
+        {
+          $group: {
+            _id: '$contentId',
+            revenue: { $sum: revenueExpr },
+            orders: { $sum: 1 },
+            buyers: { $addToSet: '$buyerId' },
+          },
+        },
+        { $project: { _id: 0, contentId: '$_id', revenue: 1, orders: 1, uniqueBuyers: { $size: '$buyers' } } },
+        this.buildContentLookupForCharts(contentType),
+        { $addFields: { contentDoc: { $arrayElemAt: ['$contentDoc', 0] } } },
+        { $sort: { revenue: -1 } },
+        { $limit: 25 },
+      ]).toArray(),
+      ordersCollection.aggregate([
+        { $match: match },
+        ...scopeStages,
+        {
+          $group: {
+            _id: null,
+            revenue: { $sum: revenueExpr },
+            orders: { $sum: 1 },
+            buyers: { $addToSet: '$buyerId' },
+          },
+        },
+        { $project: { _id: 0, revenue: 1, orders: 1, uniqueBuyers: { $size: '$buyers' } } },
+      ]).toArray(),
+    ]);
+
+    const totals = {
+      revenue: this.round2(this.toFiniteNumber(totalsRows?.[0]?.revenue)),
+      orders: this.toFiniteNumber(totalsRows?.[0]?.orders),
+      uniqueBuyers: this.toFiniteNumber(totalsRows?.[0]?.uniqueBuyers),
+      avgOrderValue: this.toFiniteNumber(totalsRows?.[0]?.orders) > 0
+        ? this.round2(this.toFiniteNumber(totalsRows?.[0]?.revenue) / this.toFiniteNumber(totalsRows?.[0]?.orders))
+        : 0,
+    };
+
+    return {
+      totals,
+      trend: trend.map((row: any) => ({
+        date: row._id,
+        revenue: this.round2(this.toFiniteNumber(row.revenue)),
+        orders: this.toFiniteNumber(row.orders),
+        uniqueBuyers: Array.isArray(row.buyers) ? row.buyers.length : 0,
+      })),
+      byContent: byContent.map((row: any) => ({
+        contentId: String(row.contentId || ''),
+        title: this.getContentTitleFromDoc(row.contentDoc, String(row.contentId || 'Untitled')),
+        revenue: this.round2(this.toFiniteNumber(row.revenue)),
+        orders: this.toFiniteNumber(row.orders),
+        uniqueBuyers: this.toFiniteNumber(row.uniqueBuyers),
+      })),
+    };
+  }
+
+  private async getCourseSpecificCharts(
+    creatorId: string,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const coursesCollection = this.dbConnection.db?.collection('cours');
+    const enrollmentsCollection = this.dbConnection.db?.collection('courseenrollments');
+    if (!coursesCollection || !enrollmentsCollection) return { charts: [], totals: {}, sources: [] };
+
+    const courseQuery: Record<string, any> = { creatorId: this.getCreatorObjectId(creatorId) };
+    if (communityScope.hasFilter) {
+      courseQuery.communityId = { $in: communityScope.lookupCommunityValues };
+    }
+    if (contentMeta?.trackingIds?.length) {
+      const objectIds = contentMeta.trackingIds.filter((id) => Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id));
+      courseQuery.$or = [
+        { id: { $in: contentMeta.trackingIds } },
+        ...(objectIds.length ? [{ _id: { $in: objectIds } }] : []),
+      ];
+    }
+
+    const courses = await coursesCollection
+      .find(courseQuery)
+      .project({ _id: 1, id: 1, titre: 1, title: 1, prix: 1, devise: 1 })
+      .toArray();
+    const courseObjectIds = courses.map((course: any) => course._id).filter(Boolean);
+    if (!courseObjectIds.length) return { charts: [], totals: {}, sources: ['courseenrollments'] };
+
+    const enrollmentBase = [
+      { $match: { courseId: { $in: courseObjectIds } } },
+      { $addFields: { enrollmentDate: { $ifNull: ['$enrolledAt', '$createdAt'] } } },
+      { $match: { enrollmentDate: { $gte: from, $lte: to } } },
+    ];
+
+    const [trend, progressBuckets] = await Promise.all([
+      enrollmentsCollection.aggregate([
+        ...enrollmentBase,
+        {
+          $group: {
+            _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$enrollmentDate' } }, courseId: '$courseId' },
+            enrollments: { $sum: 1 },
+            completed: {
+              $sum: {
+                $cond: [
+                  {
+                    $or: [
+                      { $ne: ['$completedAt', null] },
+                      { $eq: ['$isCompleted', true] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+        { $group: { _id: '$_id.date', enrollments: { $sum: '$enrollments' }, completed: { $sum: '$completed' } } },
+        { $sort: { _id: 1 } },
+      ]).toArray(),
+      enrollmentsCollection.aggregate([
+        ...enrollmentBase,
+        {
+          $project: {
+            progressItems: { $cond: [{ $isArray: '$progression' }, '$progression', []] },
+          },
+        },
+        {
+          $project: {
+            progressPercent: {
+              $cond: [
+                { $gt: [{ $size: '$progressItems' }, 0] },
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        {
+                          $size: {
+                            $filter: {
+                              input: '$progressItems',
+                              as: 'progress',
+                              cond: { $eq: ['$$progress.isCompleted', true] },
+                            },
+                          },
+                        },
+                        { $size: '$progressItems' },
+                      ],
+                    },
+                    100,
+                  ],
+                },
+                0,
+              ],
+            },
+            watchTimeSeconds: {
+              $sum: {
+                $map: {
+                  input: '$progressItems',
+                  as: 'progress',
+                  in: { $ifNull: ['$$progress.watchTime', 0] },
+                },
+              },
+            },
+          },
+        },
+        {
+          $bucket: {
+            groupBy: '$progressPercent',
+            boundaries: [0, 25, 50, 75, 100, 101],
+            default: 'unknown',
+            output: {
+              learners: { $sum: 1 },
+              avgWatchTimeSeconds: { $avg: '$watchTimeSeconds' },
+            },
+          },
+        },
+      ]).toArray(),
+    ]);
+
+    const charts: AnalyticsChartPayload[] = [
+      this.buildAnalyticsChart({
+        id: 'course-enrollment-trend',
+        title: 'Enrollment and Completion Trend',
+        description: 'Daily course enrollments and completed enrollments from enrollment records.',
+        visualization: 'line',
+        metrics: ['enrollments', 'completed'],
+        xKey: 'date',
+        yKeys: ['enrollments', 'completed'],
+        source: 'courseenrollments',
+        precision: 'exact',
+        data: trend.map((row: any) => ({
+          date: row._id,
+          enrollments: this.toFiniteNumber(row.enrollments),
+          completed: this.toFiniteNumber(row.completed),
+          completionRate: this.toFiniteNumber(row.enrollments) > 0
+            ? this.round2((this.toFiniteNumber(row.completed) / this.toFiniteNumber(row.enrollments)) * 100)
+            : 0,
+        })),
+      }),
+      this.buildAnalyticsChart({
+        id: 'course-progress-distribution',
+        title: 'Learner Progress Distribution',
+        description: 'Learners grouped by how much of the course they completed.',
+        visualization: 'bar',
+        metrics: ['learners', 'avgWatchTimeSeconds'],
+        xKey: 'bucket',
+        yKeys: ['learners'],
+        source: 'courseenrollments.progression',
+        precision: 'exact',
+        data: progressBuckets.map((row: any) => {
+          const bucket = row._id === 'unknown' ? 'Unknown' : `${row._id}-${row._id === 100 ? 100 : Number(row._id) + 24}%`;
+          return {
+            bucket,
+            learners: this.toFiniteNumber(row.learners),
+            avgWatchTimeSeconds: this.round2(this.toFiniteNumber(row.avgWatchTimeSeconds)),
+          };
+        }),
+      }),
+    ];
+
+    if (contentMeta?.trackingIds?.length) {
+      try {
+        const chapters = await this.getCourseChaptersFunnel(
+          creatorId,
+          contentMeta.trackingIds[0],
+          from,
+          to,
+          communityScope.hasFilter ? communityScope.lookupCommunityValues[0]?.toString() : undefined,
+        );
+        charts.push(this.buildAnalyticsChart({
+          id: 'course-chapter-dropoff',
+          title: 'Chapter Drop-off',
+          description: 'Start and completion counts for each chapter in the selected course.',
+          visualization: 'bar',
+          metrics: ['uniqueStarts', 'uniqueCompletes', 'dropOffRate'],
+          xKey: 'stepTitle',
+          yKeys: ['uniqueStarts', 'uniqueCompletes'],
+          source: 'trackingactions.metadata.chapterId',
+          precision: 'exact',
+          data: chapters.items || [],
+        }));
+      } catch {
+        // The generic chart pack should still be usable when chapter metadata is unavailable.
+      }
+    }
+
+    const totals = trend.reduce(
+      (acc: any, row: any) => {
+        acc.enrollments += this.toFiniteNumber(row.enrollments);
+        acc.completedEnrollments += this.toFiniteNumber(row.completed);
+        return acc;
+      },
+      { enrollments: 0, completedEnrollments: 0 },
+    );
+
+    return { charts, totals, sources: ['courseenrollments'] };
+  }
+
+  private async getChallengeSpecificCharts(
+    creatorId: string,
+    from: Date,
+    to: Date,
+    communityScope: { hasFilter: boolean; lookupCommunityValues: Array<string | Types.ObjectId> },
+    contentMeta?: AnalyticsChartContentMeta | null,
+  ) {
+    const challengesCollection = this.dbConnection.db?.collection('challenges');
+    const submissionsCollection = this.dbConnection.db?.collection('challengesubmissions');
+    if (!challengesCollection || !submissionsCollection) return { charts: [], totals: {}, sources: [] };
+
+    const challengeQuery: Record<string, any> = { creatorId: this.getCreatorObjectId(creatorId) };
+    if (communityScope.hasFilter) {
+      challengeQuery.communityId = { $in: communityScope.lookupCommunityValues };
+    }
+    if (contentMeta?.trackingIds?.length) {
+      const objectIds = contentMeta.trackingIds.filter((id) => Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id));
+      challengeQuery.$or = [
+        { id: { $in: contentMeta.trackingIds } },
+        ...(objectIds.length ? [{ _id: { $in: objectIds } }] : []),
+      ];
+    }
+
+    const challenges = await challengesCollection.find(challengeQuery).project({ _id: 1, id: 1, title: 1, tasks: 1 }).toArray();
+    const challengeObjectIds = challenges.map((challenge: any) => challenge._id).filter(Boolean);
+    if (!challengeObjectIds.length) return { charts: [], totals: {}, sources: ['challengesubmissions'] };
+
+    const baseMatch = { challengeId: { $in: challengeObjectIds }, createdAt: { $gte: from, $lte: to } };
+    const [statusRows, trendRows, taskRows] = await Promise.all([
+      submissionsCollection.aggregate([
+        { $match: baseMatch },
+        { $group: { _id: '$status', submissions: { $sum: 1 }, users: { $addToSet: '$userId' } } },
+        { $project: { _id: 0, status: '$_id', submissions: 1, uniqueUsers: { $size: '$users' } } },
+        { $sort: { submissions: -1 } },
+      ]).toArray(),
+      submissionsCollection.aggregate([
+        { $match: baseMatch },
+        {
+          $group: {
+            _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, status: '$status' },
+            submissions: { $sum: 1 },
+          },
+        },
+        { $sort: { '_id.date': 1 } },
+      ]).toArray(),
+      submissionsCollection.aggregate([
+        { $match: baseMatch },
+        { $group: { _id: '$taskId', submissions: { $sum: 1 }, approved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } }, users: { $addToSet: '$userId' } } },
+        { $project: { _id: 0, taskId: '$_id', submissions: 1, approved: 1, uniqueUsers: { $size: '$users' } } },
+        { $sort: { submissions: -1 } },
+        { $limit: 25 },
+      ]).toArray(),
+    ]);
+
+    const byDate = new Map<string, Record<string, any>>();
+    for (const row of trendRows) {
+      const date = String(row?._id?.date || '');
+      const status = String(row?._id?.status || 'unknown');
+      if (!date) continue;
+      if (!byDate.has(date)) byDate.set(date, { date });
+      byDate.get(date)![status] = this.toFiniteNumber(row.submissions);
+    }
+
+    const charts: AnalyticsChartPayload[] = [
+      this.buildAnalyticsChart({
+        id: 'challenge-submission-status',
+        title: 'Submission Status',
+        description: 'Challenge submissions grouped by review status.',
+        visualization: 'donut',
+        metrics: ['submissions', 'uniqueUsers'],
+        valueKey: 'submissions',
+        source: 'challengesubmissions',
+        precision: 'exact',
+        data: statusRows,
+      }),
+      this.buildAnalyticsChart({
+        id: 'challenge-submission-trend',
+        title: 'Submission Trend by Status',
+        description: 'Daily challenge submissions split by review status.',
+        visualization: 'stacked_bar',
+        metrics: ['pending', 'approved', 'rejected', 'feedback_required'],
+        xKey: 'date',
+        yKeys: ['pending', 'approved', 'rejected', 'feedback_required'],
+        source: 'challengesubmissions',
+        precision: 'exact',
+        data: Array.from(byDate.values()),
+      }),
+      this.buildAnalyticsChart({
+        id: 'challenge-task-submissions',
+        title: 'Task Submission Volume',
+        description: 'Which challenge tasks receive the most submissions.',
+        visualization: 'bar',
+        metrics: ['submissions', 'approved', 'uniqueUsers'],
+        xKey: 'taskId',
+        yKeys: ['submissions', 'approved'],
+        source: 'challengesubmissions.taskId',
+        precision: 'exact',
+        data: taskRows,
+      }),
+    ];
+
+    if (contentMeta?.trackingIds?.length) {
+      try {
+        const tasks = await this.getChallengeTasksFunnel(
+          creatorId,
+          contentMeta.trackingIds[0],
+          from,
+          to,
+          communityScope.hasFilter ? communityScope.lookupCommunityValues[0]?.toString() : undefined,
+        );
+        charts.push(this.buildAnalyticsChart({
+          id: 'challenge-task-dropoff',
+          title: 'Task Drop-off',
+          description: 'Start and completion counts for each task in the selected challenge.',
+          visualization: 'bar',
+          metrics: ['uniqueStarts', 'uniqueCompletes', 'dropOffRate'],
+          xKey: 'stepTitle',
+          yKeys: ['uniqueStarts', 'uniqueCompletes'],
+          source: 'trackingactions.metadata.taskId',
+          precision: 'exact',
+          data: tasks.items || [],
+        }));
+      } catch {
+        // Keep the rest of the chart pack available.
+      }
+    }
+
+    const totals = statusRows.reduce(
+      (acc: any, row: any) => {
+        acc.submissions += this.toFiniteNumber(row.submissions);
+        acc.uniqueSubmitters += this.toFiniteNumber(row.uniqueUsers);
+        if (row.status === 'approved') acc.approved += this.toFiniteNumber(row.submissions);
+        return acc;
+      },
+      { submissions: 0, approved: 0, uniqueSubmitters: 0 },
+    );
+
+    return { charts, totals, sources: ['challengesubmissions'] };
+  }
+
+  private buildTypeSpecificSnapshotChart(
+    contentType: AnalyticsChartContentType,
+    totals: Record<string, number>,
+    actionMap: Map<string, any>,
+    orderTotals: any,
+  ): AnalyticsChartPayload {
+    const actionValue = (actionType: string) => this.toFiniteNumber(actionMap.get(actionType)?.events);
+
+    const rowsByType: Record<AnalyticsChartContentType, any[]> = {
+      course: [
+        { label: 'Views', value: totals.views || actionValue(TrackingActionType.VIEW) },
+        { label: 'Starts', value: totals.starts || actionValue(TrackingActionType.START) },
+        { label: 'Chapter completes', value: totals.chapterCompletes || actionValue(TrackingActionType.CHAPTER_COMPLETE) },
+        { label: 'Course completes', value: totals.completes || actionValue(TrackingActionType.COMPLETE) },
+        { label: 'Purchases', value: this.toFiniteNumber(orderTotals.orders) },
+      ],
+      challenge: [
+        { label: 'Views', value: totals.views || actionValue(TrackingActionType.VIEW) },
+        { label: 'Participants', value: totals.starts || actionValue(TrackingActionType.START) },
+        { label: 'Submissions', value: totals.completes || actionValue(TrackingActionType.COMPLETE) },
+        { label: 'Streak actions', value: totals.activeStreaks || actionValue(TrackingActionType.CHALLENGE_STREAK) },
+        { label: 'Comments', value: totals.comments || actionValue(TrackingActionType.COMMENT) },
+      ],
+      session: [
+        { label: 'Views', value: totals.views || actionValue(TrackingActionType.VIEW) },
+        { label: 'Bookings', value: totals.starts || actionValue(TrackingActionType.START) },
+        { label: 'Show-ups', value: totals.sessionShowUps || actionValue(TrackingActionType.SESSION_SHOW) },
+        { label: 'No-shows', value: totals.sessionNoShows || actionValue(TrackingActionType.SESSION_NOSHOW) },
+        { label: 'Rebookings', value: totals.sessionRebookings || actionValue(TrackingActionType.SESSION_REBOOK) },
+      ],
+      event: [
+        { label: 'Views', value: totals.views || actionValue(TrackingActionType.VIEW) },
+        { label: 'Registrations', value: totals.starts || actionValue(TrackingActionType.START) },
+        { label: 'Attended', value: totals.completes || actionValue(TrackingActionType.COMPLETE) },
+        { label: 'Orders', value: this.toFiniteNumber(orderTotals.orders) },
+        { label: 'Revenue', value: this.toFiniteNumber(orderTotals.revenue) },
+      ],
+      product: [
+        { label: 'Views', value: totals.views || actionValue(TrackingActionType.VIEW) },
+        { label: 'Downloads', value: totals.downloads || actionValue(TrackingActionType.DOWNLOAD) },
+        { label: 'Likes', value: totals.likes || actionValue(TrackingActionType.LIKE) },
+        { label: 'Orders', value: this.toFiniteNumber(orderTotals.orders) },
+        { label: 'Revenue', value: this.toFiniteNumber(orderTotals.revenue) },
+      ],
+      post: [
+        { label: 'Views', value: totals.views || actionValue(TrackingActionType.VIEW) },
+        { label: 'Likes', value: totals.likes || actionValue(TrackingActionType.LIKE) },
+        { label: 'Comments', value: totals.comments || actionValue(TrackingActionType.COMMENT) },
+        { label: 'Shares', value: totals.shares || actionValue(TrackingActionType.SHARE) },
+        { label: 'Bookmarks', value: totals.bookmarks || actionValue(TrackingActionType.BOOKMARK) },
+      ],
+    };
+
+    const titles: Record<AnalyticsChartContentType, string> = {
+      course: 'Learning Depth Snapshot',
+      challenge: 'Challenge Participation Snapshot',
+      session: 'Session Attendance Snapshot',
+      event: 'Event Conversion Snapshot',
+      product: 'Product Commerce Snapshot',
+      post: 'Post Engagement Snapshot',
+    };
+
+    return this.buildAnalyticsChart({
+      id: `${contentType}-snapshot`,
+      title: titles[contentType],
+      description: 'Content-specific headline metrics prepared for KPI, bar, or funnel UI.',
+      visualization: 'bar',
+      metrics: ['value'],
+      xKey: 'label',
+      yKeys: ['value'],
+      valueKey: 'value',
+      source: 'analytics_daily + trackingactions + orders',
+      precision: 'hybrid',
+      data: rowsByType[contentType],
+    });
+  }
+
+  private async buildContentTypeChartPack(
+    creatorId: string,
+    contentType: AnalyticsChartContentType,
+    from: Date,
+    to: Date,
+    communityScope: {
+      hasFilter: boolean;
+      cacheKeyPart: string;
+      communityIdStrings: string[];
+      lookupCommunityValues: Array<string | Types.ObjectId>;
+    },
+    contentId?: string,
+  ) {
+    const contentMeta = contentId
+      ? (await this.resolveContentMeta({
+          creatorId,
+          contentType,
+          contentId,
+          communityScope,
+        }) as AnalyticsChartContentMeta)
+      : null;
+
+    const metrics = this.getDailyChartMetricKeys(contentType);
+    const [
+      dailySeries,
+      actionBreakdown,
+      actionTrend,
+      heatmap,
+      devices,
+      referrers,
+      leaderboard,
+      orderCharts,
+    ] = await Promise.all([
+      this.getDailySeriesForCharts(creatorId, contentType, from, to, communityScope, contentMeta),
+      this.getTrackingActionBreakdownForCharts(creatorId, contentType, from, to, communityScope, contentMeta),
+      this.getTrackingActionTrendForCharts(creatorId, contentType, from, to, communityScope, contentMeta),
+      this.getActivityHeatmapForCharts(creatorId, contentType, from, to, communityScope, contentMeta),
+      this.getDeviceBreakdownForCharts(creatorId, contentType, from, to, communityScope, contentMeta),
+      this.getReferrerBreakdownForCharts(creatorId, contentType, from, to, communityScope, contentMeta),
+      this.getContentLeaderboardForCharts(creatorId, contentType, from, to, communityScope, contentMeta),
+      this.getOrderChartsForContentType(creatorId, contentType, from, to, communityScope, contentMeta),
+    ]);
+
+    const totals = {
+      ...this.sumDailyRows(dailySeries, metrics),
+      revenue: this.toFiniteNumber(orderCharts.totals.revenue),
+      orders: this.toFiniteNumber(orderCharts.totals.orders),
+      uniqueBuyers: this.toFiniteNumber(orderCharts.totals.uniqueBuyers),
+      avgOrderValue: this.toFiniteNumber(orderCharts.totals.avgOrderValue),
+    };
+
+    const actionMap = new Map(actionBreakdown.map((row: any) => [row.actionType, row]));
+    const funnelData = this.getFunnelStepsForContentType(contentType).map((step, index, steps) => {
+      const current = actionMap.get(step.key);
+      const previous = index > 0 ? actionMap.get(steps[index - 1].key) : null;
+      const uniqueUsers = this.toFiniteNumber(current?.uniqueUsers);
+      const previousUsers = this.toFiniteNumber(previous?.uniqueUsers);
+      return {
+        stepKey: step.key,
+        stepLabel: step.label,
+        events: this.toFiniteNumber(current?.events),
+        uniqueUsers,
+        rateFromPrevious: index === 0 || previousUsers <= 0 ? null : this.round2((uniqueUsers / previousUsers) * 100),
+      };
+    });
+
+    if (contentType !== 'post' && orderCharts.totals.orders > 0) {
+      const previousUsers = this.toFiniteNumber(funnelData.at(-1)?.uniqueUsers);
+      funnelData.push({
+        stepKey: 'purchase',
+        stepLabel: 'Purchases',
+        events: this.toFiniteNumber(orderCharts.totals.orders),
+        uniqueUsers: this.toFiniteNumber(orderCharts.totals.uniqueBuyers),
+        rateFromPrevious: previousUsers > 0
+          ? this.round2((this.toFiniteNumber(orderCharts.totals.uniqueBuyers) / previousUsers) * 100)
+          : null,
+      });
+    }
+
+    const charts: AnalyticsChartPayload[] = [
+      this.buildAnalyticsChart({
+        id: 'daily-performance',
+        title: 'Daily Performance',
+        description: 'Daily rollup metrics for this content type.',
+        visualization: 'line',
+        metrics,
+        xKey: 'date',
+        yKeys: metrics.filter((metric) => !['revenueAttributed', 'watchTime'].includes(metric)),
+        source: 'analytics_daily',
+        precision: 'rollup',
+        data: dailySeries,
+      }),
+      this.buildAnalyticsChart({
+        id: 'action-trend',
+        title: 'Raw Action Trend',
+        description: 'Raw tracked events by action type, useful when rollups are delayed.',
+        visualization: 'stacked_bar',
+        metrics: this.getFunnelStepsForContentType(contentType).map((step) => step.key),
+        xKey: 'date',
+        yKeys: this.getFunnelStepsForContentType(contentType).map((step) => step.key),
+        source: 'trackingactions',
+        precision: 'exact',
+        data: actionTrend,
+      }),
+      this.buildAnalyticsChart({
+        id: 'conversion-funnel',
+        title: 'Conversion Funnel',
+        description: 'Unique users moving through the natural funnel for this content type.',
+        visualization: 'funnel',
+        metrics: ['events', 'uniqueUsers', 'rateFromPrevious'],
+        valueKey: 'uniqueUsers',
+        source: 'trackingactions + orders',
+        precision: 'hybrid',
+        data: funnelData,
+      }),
+      this.buildAnalyticsChart({
+        id: 'action-breakdown',
+        title: 'Action Breakdown',
+        description: 'Tracked actions and unique users for each action.',
+        visualization: 'donut',
+        metrics: ['events', 'uniqueUsers'],
+        valueKey: 'events',
+        source: 'trackingactions',
+        precision: 'exact',
+        data: actionBreakdown,
+      }),
+      this.buildAnalyticsChart({
+        id: 'content-leaderboard',
+        title: 'Top Content Items',
+        description: 'Best-performing items inside this content type.',
+        visualization: 'table',
+        metrics: [...metrics, 'completionRate', 'engagementRate'],
+        source: 'analytics_daily',
+        precision: 'rollup',
+        data: leaderboard,
+      }),
+      this.buildAnalyticsChart({
+        id: 'audience-devices',
+        title: 'Audience Devices',
+        description: 'Unique users grouped by device, OS, and browser.',
+        visualization: 'bar',
+        metrics: ['users'],
+        xKey: 'device',
+        yKeys: ['users'],
+        source: 'trackingactions.metadata',
+        precision: 'exact',
+        data: devices,
+      }),
+      this.buildAnalyticsChart({
+        id: 'traffic-sources',
+        title: 'Traffic Sources',
+        description: 'Referrer and UTM sources grouped into channels.',
+        visualization: 'bar',
+        metrics: ['count', 'uniqueUsers', 'share'],
+        xKey: 'source',
+        yKeys: ['count'],
+        source: 'trackingactions.metadata',
+        precision: 'exact',
+        data: referrers,
+      }),
+      this.buildAnalyticsChart({
+        id: 'activity-heatmap',
+        title: 'Activity Heatmap',
+        description: 'When users interact with this content type by day and hour.',
+        visualization: 'heatmap',
+        metrics: ['events', 'uniqueUsers'],
+        xKey: 'hour',
+        yKeys: ['day'],
+        valueKey: 'events',
+        source: 'trackingactions.timestamp',
+        precision: 'exact',
+        data: heatmap,
+      }),
+      this.buildTypeSpecificSnapshotChart(contentType, totals, actionMap, orderCharts.totals),
+    ];
+
+    if (contentType !== 'post') {
+      charts.push(
+        this.buildAnalyticsChart({
+          id: 'revenue-trend',
+          title: 'Revenue Trend',
+          description: 'Paid orders and creator net revenue over time.',
+          visualization: 'line',
+          metrics: ['revenue', 'orders', 'uniqueBuyers'],
+          xKey: 'date',
+          yKeys: ['revenue', 'orders'],
+          source: 'orders',
+          precision: 'exact',
+          unit: 'TND',
+          data: orderCharts.trend,
+        }),
+        this.buildAnalyticsChart({
+          id: 'revenue-by-content',
+          title: 'Revenue by Content',
+          description: 'Paid orders and revenue grouped by content item.',
+          visualization: 'table',
+          metrics: ['revenue', 'orders', 'uniqueBuyers'],
+          source: 'orders',
+          precision: 'exact',
+          unit: 'TND',
+          data: orderCharts.byContent,
+        }),
+      );
+    }
+
+    const specific = contentType === 'course'
+      ? await this.getCourseSpecificCharts(creatorId, from, to, communityScope, contentMeta)
+      : contentType === 'challenge'
+        ? await this.getChallengeSpecificCharts(creatorId, from, to, communityScope, contentMeta)
+        : { charts: [], totals: {}, sources: [] };
+
+    charts.push(...specific.charts);
+
+    const trackingEvents = actionBreakdown.reduce((sum: number, row: any) => sum + this.toFiniteNumber(row.events), 0);
+    const uniqueUsers = Math.max(
+      ...actionBreakdown.map((row: any) => this.toFiniteNumber(row.uniqueUsers)),
+      this.toFiniteNumber((totals as Record<string, number>).uniqueUsers),
+      0,
+    );
+
+    return {
+      contentType,
+      contentId: contentId || null,
+      contentMeta: contentMeta
+        ? {
+            title: contentMeta.title,
+            communityId: contentMeta.communityId,
+            currency: contentMeta.currency,
+            price: contentMeta.price,
+            trackingIds: contentMeta.trackingIds,
+            orderIds: contentMeta.orderIds,
+          }
+        : null,
+      generatedAt: new Date().toISOString(),
+      range: { from: from.toISOString(), to: to.toISOString(), timezone: 'UTC' },
+      totals: { ...totals, ...specific.totals, trackingEvents, preciseUniqueUsers: uniqueUsers },
+      charts,
+      precision: {
+        label: trackingEvents < 30 ? 'Low sample' : trackingEvents < 250 ? 'Directional' : 'Reliable',
+        sources: Array.from(new Set(['analytics_daily', 'trackingactions', 'orders', ...specific.sources])),
+        notes: [
+          'analytics_daily powers fast time-series and leaderboards.',
+          'trackingactions powers exact action, device, source, funnel, and heatmap charts.',
+          contentType === 'course' ? 'courseenrollments powers enrollment and learner-progress charts.' : null,
+          contentType === 'challenge' ? 'challengesubmissions powers submission status and task charts.' : null,
+        ].filter(Boolean),
+      },
+    };
   }
 
   async debugCreatorStatus(creatorId: string, communityId?: string, communitySlug?: string) {

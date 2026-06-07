@@ -15,6 +15,27 @@ export class AffiliatePartner {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   partnerUserId: Types.ObjectId;
 
+  @Prop({ type: String, trim: true, lowercase: true })
+  inviteEmail?: string;
+
+  @Prop({ type: String, trim: true, maxlength: 120 })
+  displayName?: string;
+
+  @Prop({ type: [String], default: [] })
+  tags?: string[];
+
+  @Prop({ type: Number, min: 0, max: 100 })
+  customCommissionPercent?: number;
+
+  @Prop({ type: String, trim: true, maxlength: 80 })
+  couponCode?: string;
+
+  @Prop({ type: String, trim: true, maxlength: 80 })
+  source?: string;
+
+  @Prop({ type: String, trim: true, maxlength: 1000 })
+  notes?: string;
+
   @Prop({ type: String, enum: ['pending', 'approved', 'rejected', 'paused'], default: 'pending' })
   status: AffiliatePartnerStatus;
 
@@ -27,3 +48,5 @@ export class AffiliatePartner {
 
 export const AffiliatePartnerSchema = SchemaFactory.createForClass(AffiliatePartner);
 AffiliatePartnerSchema.index({ programId: 1, partnerUserId: 1 }, { unique: true });
+AffiliatePartnerSchema.index({ programId: 1, status: 1, createdAt: -1 });
+AffiliatePartnerSchema.index({ partnerUserId: 1, status: 1 });
