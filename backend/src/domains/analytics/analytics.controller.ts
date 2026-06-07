@@ -79,6 +79,25 @@ export class AnalyticsController {
     return normalized;
   }
 
+  private normalizeDashboardContentType(value?: string): string | undefined {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized || normalized === 'all') return undefined;
+    const aliases: Record<string, string> = {
+      courses: 'course',
+      challenges: 'challenge',
+      sessions: 'session',
+      events: 'event',
+      products: 'product',
+      posts: 'post',
+    };
+    const resolved = aliases[normalized] || normalized;
+    const allowed = ['course', 'challenge', 'session', 'event', 'product', 'post'];
+    if (!allowed.includes(resolved)) {
+      throw new BadRequestException('contentType must be one of: all, course, challenge, session, event, product, post');
+    }
+    return resolved;
+  }
+
   @Get('overview')
   @UseGuards(CommunityPermissionGuard)
   @RequireCommunityPermission(CommunityPermission.ANALYTICS_VIEW)
@@ -192,6 +211,44 @@ export class AnalyticsController {
       filters.communitySlug,
       normalizedContentType,
       normalizedContentId,
+    );
+  }
+
+  @Get('dashboard')
+  @UseGuards(CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.ANALYTICS_VIEW)
+  @OptionalCommunityPermission()
+  @ApiOperation({ summary: 'V2 creator analytics dashboard charts and KPI payload' })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'communityId', required: false })
+  @ApiQuery({ name: 'communitySlug', required: false })
+  @ApiQuery({ name: 'contentType', required: false, enum: ['all', 'course', 'challenge', 'session', 'event', 'product', 'post'] })
+  async getDashboardAnalytics(
+    @Req() req,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('communityId') communityId?: string,
+    @Query('communitySlug') communitySlug?: string,
+    @Query('contentType') contentType?: string,
+  ) {
+    const user = req.user;
+    const creatorId = user.sub || user._id || user.userId;
+    const planHint = (user.creatorPlan as 'starter'|'growth'|'pro'|undefined);
+    const plan: PlanTier | undefined = planHint
+      ? (planHint === 'pro' ? PlanTier.PRO : planHint === 'growth' ? PlanTier.GROWTH : PlanTier.STARTER)
+      : undefined;
+    const { fromDate, toDate } = this.parseDateRange(from, to);
+    const filters = this.parseCommunityFilters(communityId, communitySlug);
+    const normalizedContentType = this.normalizeDashboardContentType(contentType);
+    return this.analyticsService.getDashboardAnalytics(
+      creatorId,
+      fromDate,
+      toDate,
+      plan,
+      filters.communityId,
+      filters.communitySlug,
+      normalizedContentType,
     );
   }
 

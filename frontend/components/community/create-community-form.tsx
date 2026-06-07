@@ -5,14 +5,28 @@ import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
   ArrowRight,
+  Users,
+  Lock,
+  Globe,
+  Coins,
+  Instagram,
+  Facebook,
+  Youtube,
+  Linkedin,
   Check,
+  Globe2,
+  Copy,
+  ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { communitiesApi, type CreateCommunityData } from "@/lib/api/communities.api"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { communitiesApi, type CreateCommunityData } from "@/lib/api/community/communities.api"
+import { ImageUpload } from "@/app/(dashboard)/components/image-upload"
 import { useAuthContext } from "@/app/providers/auth-provider"
-import { StepBasicInfo } from "./step-basic-info"
-import { StepCommunitySettings } from "./step-community-settings"
-import { PrivateCommunitySuccess } from "./private-community-success"
 
 interface CreateCommunityFormProps {
   onSuccess?: (communityId: string) => void
@@ -74,17 +88,6 @@ export function CreateCommunityForm({
     }
   }
 
-  const hasValidMainLink = () => {
-    const value = formData.socialLinks.website.trim()
-    if (!value) return false
-    try {
-      const parsed = new URL(value)
-      return parsed.protocol === "http:" || parsed.protocol === "https:"
-    } catch {
-      return false
-    }
-  }
-
   const submitCommunity = async () => {
     setIsSubmitting(true)
     setError("")
@@ -110,6 +113,7 @@ export function CreateCommunityForm({
       if (response.success) {
         setSuccess(true)
         
+        // If the backend returned a new token (role upgrade), apply it immediately
         if (response.accessToken && response.user) {
           updateAuth(response.accessToken, response.user)
         }
@@ -132,6 +136,7 @@ export function CreateCommunityForm({
         if (!isPrivate && onSuccess && newCommunityId) {
           onSuccess(newCommunityId)
         } else if (!isPrivate) {
+          // Default redirect to creator dashboard
           setTimeout(() => {
             router.push('/creator/dashboard')
           }, 1500)
@@ -148,19 +153,22 @@ export function CreateCommunityForm({
   const canContinue = () => {
     switch (currentStep) {
       case 1:
-        return formData.name.trim() !== "" && formData.country.trim() !== "" && hasValidMainLink()
+        return formData.name.trim() !== "" && formData.country.trim() !== ""
       case 2:
         if (formData.joinFee === "paid") {
           return formData.feeAmount && parseFloat(formData.feeAmount) > 0
         }
         return true
+      case 3:
+        const socialLinks = formData.socialLinks
+        return Object.values(socialLinks).some(link => link && link.trim() !== "")
       default:
         return false
     }
   }
 
   const nextStep = () => {
-    if (canContinue() && currentStep < 2) {
+    if (canContinue() && currentStep < 3) {
       setCurrentStep(currentStep + 1)
     }
   }
@@ -174,9 +182,228 @@ export function CreateCommunityForm({
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        return <StepBasicInfo formData={formData} updateFormData={updateFormData} />
+        return (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">Name your community</h2>
+              <p className="text-gray-600">You can always change these details later.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-4">Community Logo *</label>
+                <div className="bg-gray-50 rounded-2xl p-6">
+                  <ImageUpload
+                    currentImage={formData.logo}
+                    onImageChange={(url) => updateFormData("logo", url)}
+                    aspectRatio="square"
+                    maxSize={2}
+                    showPreview={true}
+                  />
+                  <p className="text-xs text-gray-500 mt-4">Up to 2MB, Square format recommended (1:1)</p>
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Community Name *</label>
+                  <Input
+                    placeholder="e.g Creators Club, Digital Pioneers"
+                    value={formData.name}
+                    onChange={(e) => updateFormData("name", e.target.value)}
+                    className="text-lg py-3 px-4 border-2 border-gray-200 rounded-xl focus:border-[#8e78fb] focus:ring-0 focus:ring-[#8e78fb] transition-colors"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">Choose a name that represents your community</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Country *</label>
+                  <Input
+                    placeholder="e.g Tunisia, France, Morocco"
+                    value={formData.country}
+                    onChange={(e) => updateFormData("country", e.target.value)}
+                    className="text-lg py-3 px-4 border-2 border-gray-200 rounded-xl focus:border-[#8e78fb] focus:ring-0 transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-2xl p-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">Cover Image (optional)</label>
+              <ImageUpload
+                currentImage={formData.coverImage}
+                onImageChange={(url) => updateFormData("coverImage", url)}
+                aspectRatio="wide"
+                maxSize={5}
+                showPreview={true}
+              />
+              <p className="text-xs text-gray-500 mt-4">Up to 5MB, Landscape format recommended (16:9)</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">Bio (optional)</label>
+              <Textarea
+                placeholder="Tell people what your community is about. What value does it provide? Who should join?"
+                value={formData.bio}
+                onChange={(e) => updateFormData("bio", e.target.value)}
+                className="min-h-[140px] text-base px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#8e78fb] focus:ring-0 transition-colors resize-none"
+              />
+              <p className="text-xs text-gray-500 mt-2">{formData.bio.length}/500 characters</p>
+            </div>
+          </div>
+        )
+
       case 2:
-        return <StepCommunitySettings formData={formData} updateFormData={updateFormData} />
+        return (
+          <div className="space-y-10">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">Community Settings</h2>
+              <p className="text-gray-600">Configure access control and pricing options.</p>
+            </div>
+
+            <div className="bg-gradient-to-b from-slate-50 to-white rounded-2xl p-8">
+              <label className="block text-lg font-bold text-gray-900 mb-6">Community Status</label>
+              <RadioGroup
+                value={formData.status}
+                onValueChange={(value) => updateFormData("status", value)}
+                className="space-y-4"
+              >
+                <div className={`flex items-center space-x-4 p-6 border-2 rounded-2xl transition-all cursor-pointer ${formData.status === "public" ? "border-[#8e78fb] bg-purple-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <RadioGroupItem value="public" id="public" className="w-5 h-5 text-[#8e78fb]" />
+                  <div className="flex items-center space-x-4 flex-1">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Globe className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <Label htmlFor="public" className="text-base font-semibold cursor-pointer text-gray-900">Public</Label>
+                      <p className="text-sm text-gray-600 mt-1">Anyone can discover and join your community</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`flex items-center space-x-4 p-6 border-2 rounded-2xl transition-all cursor-pointer ${formData.status === "private" ? "border-[#8e78fb] bg-purple-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <RadioGroupItem value="private" id="private" className="w-5 h-5 text-[#8e78fb]" />
+                  <div className="flex items-center space-x-4 flex-1">
+                    <div className="w-12 h-12 bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Lock className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <Label htmlFor="private" className="text-base font-semibold cursor-pointer text-gray-900">Private</Label>
+                      <p className="text-sm text-gray-600 mt-1">Only members you invite can access</p>
+                    </div>
+                  </div>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="bg-gradient-to-b from-slate-50 to-white rounded-2xl p-8">
+              <label className="block text-lg font-bold text-gray-900 mb-6">Membership Fee</label>
+              <RadioGroup
+                value={formData.joinFee}
+                onValueChange={(value) => updateFormData("joinFee", value)}
+                className="space-y-4"
+              >
+                <div className={`flex items-center space-x-4 p-6 border-2 rounded-2xl transition-all cursor-pointer ${formData.joinFee === "free" ? "border-[#8e78fb] bg-purple-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <RadioGroupItem value="free" id="free" className="w-5 h-5 text-[#8e78fb]" />
+                  <div className="flex items-center space-x-4 flex-1">
+                    <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Users className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <Label htmlFor="free" className="text-base font-semibold cursor-pointer text-gray-900">Free Community</Label>
+                      <p className="text-sm text-gray-600 mt-1">Everyone can join without paying</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`flex flex-col space-x-4 p-6 border-2 rounded-2xl transition-all cursor-pointer ${formData.joinFee === "paid" ? "border-[#8e78fb] bg-purple-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <div className="flex items-center space-x-4">
+                    <RadioGroupItem value="paid" id="paid" className="w-5 h-5 text-[#8e78fb]" />
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Coins className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <Label htmlFor="paid" className="text-base font-semibold cursor-pointer text-gray-900">Paid Community</Label>
+                        <p className="text-sm text-gray-600 mt-1">Members pay a fee to join</p>
+                      </div>
+                    </div>
+                  </div>
+                  {formData.joinFee === "paid" && (
+                    <div className="mt-6 ms-14 space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">Select Currency</label>
+                        <Select value={formData.currency} onValueChange={(value) => updateFormData("currency", value)}>
+                          <SelectTrigger className="border-2 border-gray-200 rounded-xl focus:border-[#8e78fb] focus:ring-0">
+                            <SelectValue placeholder="Select currency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="TND">🇹🇳 TND - Tunisian Dinar</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">Entry Fee Amount</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g. 25.50"
+                          value={formData.feeAmount}
+                          onChange={(e) => updateFormData("feeAmount", e.target.value)}
+                          className="border-2 border-gray-200 rounded-xl focus:border-[#8e78fb] focus:ring-0"
+                        />
+                        <p className="text-xs text-gray-500 mt-2">Members must pay this amount to join your community</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+        )
+
+      case 3:
+        return (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">Social Media Links</h2>
+              <p className="text-gray-600">Connect your community with social platforms. (At least one is required)</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { id: "instagram", icon: Instagram, color: "from-pink-400 to-pink-600", label: "Instagram" },
+                { id: "tiktok", icon: null, color: "from-black to-gray-800", label: "TikTok", text: "TT" },
+                { id: "facebook", icon: Facebook, color: "from-blue-500 to-blue-700", label: "Facebook" },
+                { id: "youtube", icon: Youtube, color: "from-red-500 to-red-600", label: "YouTube" },
+                { id: "linkedin", icon: Linkedin, color: "from-blue-600 to-blue-700", label: "LinkedIn" },
+                { id: "website", icon: Globe2, color: "from-gray-500 to-gray-700", label: "Website" },
+              ].map((social) => (
+                <div key={social.id} className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-6 border-2 border-gray-100 hover:border-[#8e78fb] transition-all">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className={`w-12 h-12 bg-gradient-to-br ${social.color} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                      {social.icon ? <social.icon className="w-6 h-6 text-white" /> : <div className="text-white font-bold text-sm">{social.text}</div>}
+                    </div>
+                    <label className="block text-sm font-semibold text-gray-900">{social.label}</label>
+                  </div>
+                  <Input
+                    placeholder={`Your ${social.label} ${social.id === "website" ? "URL" : "username"}`}
+                    value={(formData.socialLinks as any)[social.id]}
+                    onChange={(e) => updateFormData(`socialLinks.${social.id}`, e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-lg focus:border-[#8e78fb] focus:ring-0 transition-colors"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6">
+              <p className="text-sm text-blue-900">
+                <span className="font-semibold">💡 Tip:</span> Adding social links helps members connect with you across platforms and increases community visibility.
+              </p>
+            </div>
+          </div>
+        )
+
       default:
         return null
     }
@@ -195,48 +422,89 @@ export function CreateCommunityForm({
 
   if (success && createdCommunity?.isPrivate) {
     return (
-      <PrivateCommunitySuccess
-        createdCommunity={createdCommunity}
-        inviteCopied={inviteCopied}
-        onCopyInviteLink={handleCopyInviteLink}
-      />
+      <div className="w-full max-w-3xl mx-auto">
+        <div className="rounded-3xl border border-green-200 bg-green-50 p-6 md:p-8">
+          <h2 className="text-2xl font-bold text-gray-900">Private community created</h2>
+          <p className="mt-2 text-gray-700">
+            Share this invitation link to allow people to join <span className="font-semibold">{createdCommunity.name}</span>.
+          </p>
+
+          <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Invite link</p>
+            <p className="mt-2 break-all text-sm text-gray-800">
+              {createdCommunity.inviteLink || "Invite link is being prepared. You can generate it from your communities page."}
+            </p>
+          </div>
+
+          <div className="mt-5 flex flex-col sm:flex-row gap-3">
+            <Button
+              type="button"
+              onClick={handleCopyInviteLink}
+              disabled={!createdCommunity.inviteLink}
+              className="sm:w-auto"
+            >
+              <Copy className="w-4 h-4 me-2" />
+              {inviteCopied ? "Copied" : "Copy invite link"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push(`/community/${createdCommunity.slug}`)}
+              disabled={!createdCommunity.slug}
+              className="sm:w-auto"
+            >
+              <ExternalLink className="w-4 h-4 me-2" />
+              Go to community
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => router.push("/creator/communities")}
+              className="sm:w-auto"
+            >
+              Manage communities
+            </Button>
+          </div>
+        </div>
+      </div>
     )
   }
 
   return (
     <div className="w-full">
-      <div className="mb-8">
+      {/* Header Section */}
+      <div className="mb-12">
         <Button
           variant="ghost"
           onClick={() => router.push(backUrl)}
-          className="mb-5 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          className="mb-6 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          {backLabel}
+          <ArrowLeft className="w-4 h-4 me-2" />
         </Button>
 
         <div className="max-w-3xl">
-          <h1 className="text-2xl md:text-3xl font-semibold text-gray-950 leading-tight">Create Community</h1>
-          <p className="text-sm text-gray-600 mt-2">Set up the required basics now. Branding and social polish can come after creation.</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">Create Your Community</h1>
+          <p className="text-lg text-gray-600 mt-4">Build a thriving space for your audience in just 3 steps</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 md:gap-4 mb-8">
-        {[1, 2].map((step) => (
+      {/* Progress Steps */}
+      <div className="flex items-center gap-3 md:gap-4 mb-12">
+        {[1, 2, 3].map((step) => (
           <div key={step} className="flex items-center">
             <div
-              className={`flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold transition-colors ${step === currentStep
-                ? "bg-chabaqa-primary text-white"
+              className={`flex items-center justify-center w-12 h-12 rounded-full text-sm font-bold transition-all duration-300 shadow-md ${step === currentStep
+                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white scale-105"
                 : step < currentStep
-                  ? "bg-emerald-600 text-white"
+                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
                   : "bg-gray-200 text-gray-500"
                 }`}
             >
               {step < currentStep ? <Check className="w-5 h-5" /> : step}
             </div>
-            {step < 2 && (
+            {step < 3 && (
               <div
-                className={`h-px mx-2 md:mx-4 transition-colors w-10 md:w-20 ${step < currentStep ? "bg-emerald-600" : "bg-gray-200"
+                className={`h-1 mx-2 md:mx-4 rounded-full transition-all duration-300 w-8 md:w-16 ${step < currentStep ? "bg-gradient-to-r from-purple-500 to-pink-500" : "bg-gray-200"
                   }`}
               />
             )}
@@ -246,18 +514,19 @@ export function CreateCommunityForm({
 
       {/* Error & Success Messages */}
       {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 text-sm font-medium">
-          {error}
+        <div className="mb-8 p-4 bg-red-50 border-2 border-red-200 rounded-2xl text-red-700 text-sm font-medium">
+          ✕ {error}
         </div>
       )}
 
       {success && (
-        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700 text-sm font-medium">
-          Your community has been created successfully. Redirecting...
+        <div className="mb-8 p-4 bg-green-50 border-2 border-green-200 rounded-2xl text-green-700 text-sm font-medium">
+          ✓ Your community has been created successfully! Redirecting...
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 p-6 md:p-8 mb-8">
+      {/* Form Content */}
+      <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8 md:p-10 lg:p-12 mb-10">
         {renderStepContent()}
       </div>
 
@@ -269,36 +538,36 @@ export function CreateCommunityForm({
             onClick={prevStep}
             className="px-8 py-3 rounded-xl font-semibold border-2 text-gray-700 hover:bg-gray-50"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4 me-2" />
             Back
           </Button>
         ) : <div />}
 
         <Button
-          onClick={currentStep === 2 ? submitCommunity : nextStep}
+          onClick={currentStep === 3 ? submitCommunity : nextStep}
           disabled={!canContinue() || isSubmitting}
-          className={`px-8 py-3 rounded-lg font-semibold text-white transition-colors ${canContinue() && !isSubmitting
-            ? "bg-chabaqa-primary hover:bg-chabaqa-primary/90 text-white"
+          className={`px-8 py-3 rounded-xl font-semibold text-white transition-all duration-300 ${canContinue() && !isSubmitting
+            ? "bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg hover:shadow-xl hover:scale-105 text-white"
             : "bg-gray-300 cursor-not-allowed"
             }`}
         >
           {isSubmitting ? (
             <div className="flex items-center">
-              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin -ms-1 me-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               Creating Community...
             </div>
-          ) : currentStep === 2 ? (
+          ) : currentStep === 3 ? (
             <>
               Create Community
-              <Check className="w-4 h-4 ml-2" />
+              <Check className="w-4 h-4 ms-2" />
             </>
           ) : (
             <>
               Continue
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-4 h-4 ms-2" />
             </>
           )}
         </Button>

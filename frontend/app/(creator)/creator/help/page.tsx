@@ -1,574 +1,508 @@
-"use client"
+'use client'
 
-import { PageShell } from "@/components/creator-dashboard"
+import { useState } from 'react'
+import DashSidebar from '@/components/creator-dashboard/DashSidebar'
+import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
+import {
+  Search, PlayCircle, MessageSquare, Mail, BookOpen,
+  Video, HelpCircle, FileText, ChevronDown, ChevronUp,
+  ExternalLink, Download, Clock, Tag, ArrowRight, Zap,
+  CheckCircle, Users, Globe, Shield,
+} from 'lucide-react'
 
-import { useState } from "react"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import {
-  Search,
-  BookOpen,
-  Video,
-  FileText,
-  MessageCircle,
-  Mail,
-  Users,
-  Trophy,
-  Calendar,
-  ShoppingBag,
-  Bell,
-  Settings,
-  CreditCard,
-  Lock,
-  Zap,
-  TrendingUp,
-  HelpCircle,
-  ExternalLink,
-  ChevronRight,
-  PlayCircle,
-  Download,
-  Star
-} from "lucide-react"
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface HelpArticle {
-  id: string
-  title: string
-  category: string
-  description: string
-  views: number
-  helpful: number
-  isPopular?: boolean
+type Tab = 'articles' | 'videos' | 'faqs' | 'resources'
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
+const ARTICLES = [
+  { id: 1,  category: 'Getting Started', title: 'Getting started with Chabaqa',                          readTime: 4,  featured: true  },
+  { id: 2,  category: 'Getting Started', title: 'How to create your first community',                    readTime: 6,  featured: true  },
+  { id: 3,  category: 'Courses',         title: 'Creating and structuring a course',                     readTime: 8,  featured: false },
+  { id: 4,  category: 'Courses',         title: 'Managing course enrollments and access',                readTime: 5,  featured: false },
+  { id: 5,  category: 'Revenue',         title: 'Understanding your payouts and revenue',                readTime: 7,  featured: false },
+  { id: 6,  category: 'Revenue',         title: 'Setting up subscription plans',                        readTime: 6,  featured: false },
+  { id: 7,  category: 'Marketing',       title: 'How to run an email campaign',                         readTime: 5,  featured: false },
+  { id: 8,  category: 'Marketing',       title: 'Setting up affiliate links for your community',        readTime: 9,  featured: false },
+  { id: 9,  category: 'Analytics',       title: 'Reading your analytics dashboard',                     readTime: 6,  featured: false },
+  { id: 10, category: 'Settings',        title: 'Managing team roles and permissions',                  readTime: 4,  featured: false },
+  { id: 11, category: 'Settings',        title: 'Integrating third-party tools with Chabaqa',           readTime: 7,  featured: false },
+  { id: 12, category: 'Challenges',      title: 'Creating challenges that drive engagement',            readTime: 5,  featured: false },
+]
+
+const VIDEOS = [
+  { id: 1,  title: 'Complete Platform Walkthrough',        duration: '12:30', views: '4.2k', category: 'Getting Started', featured: true  },
+  { id: 2,  title: 'Creating Your First Course',           duration: '8:45',  views: '3.1k', category: 'Courses',         featured: true  },
+  { id: 3,  title: 'Setting Up Your Community',           duration: '6:20',  views: '2.8k', category: 'Communities',     featured: false },
+  { id: 4,  title: 'Analytics Deep Dive',                  duration: '10:15', views: '1.9k', category: 'Analytics',       featured: false },
+  { id: 5,  title: 'Email Marketing Best Practices',       duration: '7:30',  views: '1.5k', category: 'Marketing',       featured: false },
+  { id: 6,  title: 'Revenue & Payout Setup',               duration: '5:50',  views: '2.2k', category: 'Revenue',         featured: false },
+  { id: 7,  title: 'Managing Challenges & Events',         duration: '9:00',  views: '1.1k', category: 'Content',         featured: false },
+  { id: 8,  title: 'WhatsApp Campaign Tutorial',           duration: '6:45',  views: '980',  category: 'Marketing',       featured: false },
+]
+
+const FAQS = [
+  {
+    id: 1, category: 'Billing',
+    q: 'When do I receive my payouts?',
+    a: 'Payouts are processed every 15 days. Funds are transferred to your connected bank account or Stripe within 2–5 business days after processing.',
+  },
+  {
+    id: 2, category: 'Courses',
+    q: 'How many students can enroll in my course?',
+    a: 'There is no limit on the number of students that can enroll in a course. Chabaqa scales automatically to handle any volume of enrollments.',
+  },
+  {
+    id: 3, category: 'Communities',
+    q: 'Can I have multiple communities on one account?',
+    a: 'Yes. You can create and manage multiple communities from a single creator account. Each community has its own members, content, and analytics.',
+  },
+  {
+    id: 4, category: 'Billing',
+    q: 'What payment methods do subscribers use?',
+    a: 'Subscribers can pay using credit/debit cards (Visa, Mastercard), bank transfers (for Tunisian banks), and mobile payment integrations. More methods are being added.',
+  },
+  {
+    id: 5, category: 'Settings',
+    q: 'How do I add a team member to my account?',
+    a: 'Go to Settings → Team & Roles. Click "Invite Member", enter their email, and assign a role (Admin, Moderator, or Analyst). They will receive an invitation email.',
+  },
+  {
+    id: 6, category: 'Marketing',
+    q: 'What is the open rate for email campaigns?',
+    a: 'Average open rates vary by community niche, but Chabaqa creators typically see 28–45% open rates. Using personalization tokens and sending at optimal times can improve this.',
+  },
+  {
+    id: 7, category: 'Content',
+    q: 'What video formats are supported for courses?',
+    a: 'We support MP4, MOV, AVI, and MKV files. Maximum file size per video is 2 GB. We recommend MP4 with H.264 encoding for best quality and loading speed.',
+  },
+  {
+    id: 8, category: 'Communities',
+    q: 'Can members access content from multiple communities?',
+    a: 'Yes. A member can join multiple communities. Each community has its own subscription, so members pay separately unless you create a bundle offer.',
+  },
+]
+
+const RESOURCES = [
+  { id: 1,  title: 'Creator Starter Kit',            type: 'PDF',      size: '2.4 MB',  category: 'Getting Started', icon: FileText   },
+  { id: 2,  title: 'Course Curriculum Template',     type: 'DOCX',     size: '340 KB',  category: 'Courses',         icon: FileText   },
+  { id: 3,  title: 'Community Growth Playbook',      type: 'PDF',      size: '3.1 MB',  category: 'Communities',     icon: FileText   },
+  { id: 4,  title: 'Email Templates Pack (10)',       type: 'ZIP',      size: '180 KB',  category: 'Marketing',       icon: Mail       },
+  { id: 5,  title: 'Analytics Metrics Glossary',     type: 'PDF',      size: '890 KB',  category: 'Analytics',       icon: FileText   },
+  { id: 6,  title: 'Chabaqa API Documentation',      type: 'Link',     size: null,      category: 'Integrations',    icon: Globe      },
+  { id: 7,  title: 'Branding & Logo Assets',          type: 'ZIP',      size: '4.8 MB',  category: 'Branding',        icon: Download   },
+  { id: 8,  title: 'Affiliate Program Guide',         type: 'PDF',      size: '1.2 MB',  category: 'Marketing',       icon: Users      },
+]
+
+const CATEGORY_COLORS: Record<string, string> = {
+  'Getting Started': '#7c3aed', 'Courses': '#0891b2', 'Revenue': '#16a34a',
+  'Marketing': '#ea580c', 'Analytics': '#6366f1', 'Settings': '#64748b',
+  'Communities': '#db2777', 'Challenges': '#d97706', 'Billing': '#16a34a',
+  'Content': '#0891b2', 'Integrations': '#6366f1', 'Branding': '#7c3aed',
 }
 
-interface VideoTutorial {
-  id: string
-  title: string
-  duration: string
-  thumbnail: string
-  category: string
+// ─── Search filter helper ─────────────────────────────────────────────────────
+
+function filterByQuery<T extends { title: string; category: string }>(items: T[], q: string) {
+  if (!q.trim()) return items
+  const lq = q.toLowerCase()
+  return items.filter(i => i.title.toLowerCase().includes(lq) || i.category.toLowerCase().includes(lq))
 }
 
-const categories = [
-  { id: "getting-started", name: "Getting Started", icon: BookOpen, count: 12 },
-  { id: "community", name: "Community Management", icon: Users, count: 18 },
-  { id: "courses", name: "Courses & Content", icon: Video, count: 15 },
-  { id: "challenges", name: "Challenges", icon: Trophy, count: 10 },
-  { id: "events", name: "Events", icon: Calendar, count: 8 },
-  { id: "products", name: "Products & Payments", icon: ShoppingBag, count: 14 },
-  { id: "notifications", name: "Notifications", icon: Bell, count: 7 },
-  { id: "analytics", name: "Analytics & Reports", icon: TrendingUp, count: 9 }
-]
+function filterFaqs(items: typeof FAQS, q: string) {
+  if (!q.trim()) return items
+  const lq = q.toLowerCase()
+  return items.filter(i => i.q.toLowerCase().includes(lq) || i.a.toLowerCase().includes(lq) || i.category.toLowerCase().includes(lq))
+}
 
-const popularArticles: HelpArticle[] = [
-  {
-    id: "1",
-    title: "How to create your first community",
-    category: "Getting Started",
-    description: "Step-by-step guide to setting up and launching your community",
-    views: 5420,
-    helpful: 489,
-    isPopular: true
-  },
-  {
-    id: "2",
-    title: "Setting up automated email campaigns",
-    category: "Notifications",
-    description: "Learn how to create effective email campaigns for member engagement",
-    views: 3210,
-    helpful: 312,
-    isPopular: true
-  },
-  {
-    id: "3",
-    title: "Creating engaging course content",
-    category: "Courses & Content",
-    description: "Best practices for structuring and delivering course materials",
-    views: 2890,
-    helpful: 267,
-    isPopular: true
-  },
-  {
-    id: "4",
-    title: "Understanding analytics and metrics",
-    category: "Analytics & Reports",
-    description: "How to read and use your community analytics effectively",
-    views: 2540,
-    helpful: 234
-  },
-  {
-    id: "5",
-    title: "Setting up payment and subscriptions",
-    category: "Products & Payments",
-    description: "Configure payment methods and subscription plans",
-    views: 2120,
-    helpful: 198
-  },
-  {
-    id: "6",
-    title: "Running successful challenges",
-    category: "Challenges",
-    description: "Tips and strategies for creating engaging community challenges",
-    views: 1890,
-    helpful: 176
-  }
-]
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-const videoTutorials: VideoTutorial[] = [
-  {
-    id: "1",
-    title: "Platform Overview - Complete Walkthrough",
-    duration: "12:45",
-    thumbnail: "overview",
-    category: "Getting Started"
-  },
-  {
-    id: "2",
-    title: "Creating Your First Course",
-    duration: "8:30",
-    thumbnail: "course",
-    category: "Courses"
-  },
-  {
-    id: "3",
-    title: "Setting Up Notifications",
-    duration: "6:15",
-    thumbnail: "notifications",
-    category: "Notifications"
-  },
-  {
-    id: "4",
-    title: "Community Engagement Strategies",
-    duration: "10:20",
-    thumbnail: "engagement",
-    category: "Community"
-  }
-]
+function CategoryBadge({ category }: { category: string }) {
+  const color = CATEGORY_COLORS[category] ?? 'var(--p)'
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
+      style={{ background: color + '18', color }}>
+      {category}
+    </span>
+  )
+}
 
-const faqs = [
-  {
-    category: "General",
-    questions: [
-      {
-        q: "How do I get started with Chabaqa?",
-        a: "Getting started is easy! First, create your creator account, then set up your community profile. You can start by inviting members, creating your first content, and customizing your community settings. Check out our 'Getting Started' guide for detailed steps."
-      },
-      {
-        q: "What's included in the free plan?",
-        a: "The free plan includes basic community features, up to 100 members, email notifications, basic analytics, and access to community discussions. You can upgrade anytime to unlock advanced features like courses, challenges, and custom branding."
-      },
-      {
-        q: "Can I migrate my existing community?",
-        a: "Yes! We offer migration assistance for communities moving from other platforms. Contact our support team to discuss your specific needs and we'll help you transition smoothly."
-      }
-    ]
-  },
-  {
-    category: "Community Management",
-    questions: [
-      {
-        q: "How do I moderate my community?",
-        a: "As a creator, you have full moderation controls. You can set community guidelines, approve/reject posts, manage member roles, and use automated moderation tools. Access these settings from your Community Settings page."
-      },
-      {
-        q: "Can I have multiple moderators?",
-        a: "Yes! You can assign moderator roles to trusted community members. They'll be able to help manage posts, respond to member queries, and maintain community standards."
-      },
-      {
-        q: "How do I handle inactive members?",
-        a: "Use our automated re-engagement notifications to reach out to inactive members. You can also create targeted campaigns based on inactivity periods (7, 15, 30 days) to encourage members to return."
-      }
-    ]
-  },
-  {
-    category: "Content & Courses",
-    questions: [
-      {
-        q: "What file formats are supported for courses?",
-        a: "We support video (MP4, MOV), audio (MP3, WAV), documents (PDF, DOCX), and images (JPG, PNG, GIF). Maximum file size is 500MB per file."
-      },
-      {
-        q: "Can I drip-release course content?",
-        a: "Yes! You can schedule content to be released over time. Set specific dates or release content based on member enrollment dates for a structured learning experience."
-      },
-      {
-        q: "How do I track student progress?",
-        a: "Access detailed progress reports from your Course Analytics dashboard. You can see completion rates, quiz scores, time spent, and individual student progress."
-      }
-    ]
-  },
-  {
-    category: "Payments & Subscriptions",
-    questions: [
-      {
-        q: "What payment methods do you support?",
-        a: "We support all major credit cards, debit cards, and digital wallets through Stripe. You can also set up bank transfers for certain regions."
-      },
-      {
-        q: "When do I receive payouts?",
-        a: "Payouts are processed weekly. Funds are typically available in your bank account 2-5 business days after processing, depending on your bank."
-      },
-      {
-        q: "What are the platform fees?",
-        a: "Our platform fee is 5% of transaction value, plus standard payment processing fees. The free plan has higher fees (10%), while Pro and Enterprise plans get reduced rates. Check our pricing page for detailed information."
-      }
-    ]
-  },
-  {
-    category: "Notifications",
-    questions: [
-      {
-        q: "How many notification types can I create?",
-        a: "There's no limit! Create as many notification rules as you need for different scenarios - welcome messages, course updates, event reminders, challenge notifications, and more."
-      },
-      {
-        q: "Can I customize notification timing?",
-        a: "Yes! You can set notifications to trigger immediately, schedule them for specific times, or set up conditional triggers based on user actions (e.g., 24 hours before an event, after course completion)."
-      },
-      {
-        q: "What's the difference between in-app and email notifications?",
-        a: "In-app notifications appear within the platform when members log in. Email notifications are sent directly to members' inboxes. We recommend using both channels for important updates."
-      }
-    ]
-  }
-]
+function ArticleCard({ article }: { article: typeof ARTICLES[number] }) {
+  return (
+    <div className="group flex items-start gap-3 p-4 rounded-2xl cursor-pointer transition-all hover:shadow-sm"
+      style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--p)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd)' }}>
+      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+        style={{ background: 'var(--p2)' }}>
+        <BookOpen className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold leading-snug mb-1.5 group-hover:text-[var(--p)] transition-colors"
+          style={{ color: 'var(--t1)' }}>
+          {article.title}
+        </p>
+        <div className="flex items-center gap-2">
+          <CategoryBadge category={article.category} />
+          <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
+            <Clock className="w-3 h-3" strokeWidth={1.7} />
+            {article.readTime} min read
+          </span>
+        </div>
+      </div>
+      <ArrowRight className="w-4 h-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+    </div>
+  )
+}
 
-export default function HelpCenterPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
+function VideoCard({ video }: { video: typeof VIDEOS[number] }) {
+  return (
+    <div className="group rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md"
+      style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--p)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd)' }}>
+      {/* Thumbnail — 16:9 (YouTube/1920×1080) */}
+      <div className="relative w-full flex items-center justify-center"
+        style={{ aspectRatio: '16/9', background: 'linear-gradient(135deg, var(--p2) 0%, var(--bg) 100%)' }}>
+        <div className="w-12 h-12 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
+          style={{ background: 'var(--p)', boxShadow: '0 4px 16px rgba(124,58,237,.3)' }}>
+          <PlayCircle className="w-6 h-6 text-white" strokeWidth={1.7} />
+        </div>
+        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg text-[11px] font-semibold text-white"
+          style={{ background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)' }}>
+          {video.duration}
+        </span>
+      </div>
+      {/* Info */}
+      <div className="p-3.5">
+        <p className="text-[13px] font-semibold leading-snug mb-2 group-hover:text-[var(--p)] transition-colors"
+          style={{ color: 'var(--t1)' }}>
+          {video.title}
+        </p>
+        <div className="flex items-center justify-between">
+          <CategoryBadge category={video.category} />
+          <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{video.views} views</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-  const filteredArticles = popularArticles.filter(article => {
-    const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         article.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = selectedCategory === "all" || article.category.toLowerCase().includes(selectedCategory)
-    return matchesSearch && matchesCategory
-  })
+function FaqItem({ faq, open, onToggle }: {
+  faq: typeof FAQS[number]; open: boolean; onToggle: () => void
+}) {
+  return (
+    <div className="rounded-2xl overflow-hidden transition-all"
+      style={{ background: 'var(--white)', border: `1.5px solid ${open ? 'var(--p)' : 'var(--bd)'}` }}>
+      <button className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left cursor-pointer"
+        onClick={onToggle}>
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+            style={{ background: open ? 'var(--p2)' : 'var(--bg)' }}>
+            <HelpCircle className="w-3.5 h-3.5" style={{ color: open ? 'var(--p)' : 'var(--t3)' }} strokeWidth={1.7} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold leading-snug" style={{ color: open ? 'var(--p)' : 'var(--t1)' }}>
+              {faq.q}
+            </p>
+            {!open && <CategoryBadge category={faq.category} />}
+          </div>
+        </div>
+        <div className="shrink-0" style={{ color: open ? 'var(--p)' : 'var(--t3)' }}>
+          {open ? <ChevronUp className="w-4 h-4" strokeWidth={1.7} /> : <ChevronDown className="w-4 h-4" strokeWidth={1.7} />}
+        </div>
+      </button>
+      {open && (
+        <div className="px-5 pb-5">
+          <div className="ml-9">
+            <div className="mb-2"><CategoryBadge category={faq.category} /></div>
+            <p className="text-[13px] leading-relaxed" style={{ color: 'var(--t2)' }}>{faq.a}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ResourceCard({ resource }: { resource: typeof RESOURCES[number] }) {
+  const Icon = resource.icon
+  const isLink = resource.type === 'Link'
+  return (
+    <div className="group flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all hover:shadow-sm"
+      style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--p)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd)' }}>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
+        <Icon className="w-4 h-4" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>{resource.title}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <CategoryBadge category={resource.category} />
+          {resource.size && (
+            <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{resource.size}</span>
+          )}
+        </div>
+      </div>
+      <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+        style={{ background: 'var(--p2)' }}>
+        {isLink
+          ? <ExternalLink className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+          : <Download     className="w-3.5 h-3.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+        }
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function HelpPage() {
+  const [tab, setTab]         = useState<Tab>('articles')
+  const [query, setQuery]     = useState('')
+  const [openFaq, setOpenFaq] = useState<number | null>(null)
+
+  const filteredArticles  = filterByQuery(ARTICLES,  query)
+  const filteredVideos    = filterByQuery(VIDEOS,    query)
+  const filteredFaqs      = filterFaqs(FAQS,         query)
+  const filteredResources = filterByQuery(RESOURCES,  query)
+
+  const tabs: { id: Tab; label: string; icon: React.ReactNode; count: number }[] = [
+    { id: 'articles',  label: 'Articles',  icon: <BookOpen  className="w-3.5 h-3.5" strokeWidth={1.7} />, count: filteredArticles.length  },
+    { id: 'videos',    label: 'Videos',    icon: <Video     className="w-3.5 h-3.5" strokeWidth={1.7} />, count: filteredVideos.length    },
+    { id: 'faqs',      label: 'FAQs',      icon: <HelpCircle className="w-3.5 h-3.5" strokeWidth={1.7} />, count: filteredFaqs.length      },
+    { id: 'resources', label: 'Resources', icon: <Download  className="w-3.5 h-3.5" strokeWidth={1.7} />, count: filteredResources.length },
+  ]
 
   return (
-    <PageShell className="container mx-auto space-y-8">
-      {/* Header */}
-      <div className="text-center space-y-4 py-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-chabaqa-primary/10 rounded-full mb-4">
-          <HelpCircle className="w-8 h-8 text-chabaqa-primary" />
-        </div>
-        <h1 className="text-4xl font-bold">How can we help you?</h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Find answers, tutorials, and guides to help you succeed with your community
-        </p>
-      </div>
+    <>
+      <style>{`
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--p3);border-radius:10px}
+      `}</style>
+      <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
+        <DashSidebar />
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
+          <DashTopbar title="Help & Support" subtitle="Guides, tutorials, FAQs and resources" />
 
-      {/* Search Bar */}
-      <Card className="p-6">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <Input
-            placeholder="Search for help articles, guides, and tutorials..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 h-14 text-lg"
-          />
-        </div>
-      </Card>
+          <main id="main-content" className="p-7 flex-1" style={{ animation: 'fadeUp .4s ease both' }}>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-chabaqa-primary">
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Video className="w-6 h-6 text-blue-600" />
+            {/* ── Search bar ── */}
+            <div className="relative mb-7 max-w-2xl">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search articles, videos, FAQs…"
+                className="w-full h-12 pl-11 pr-4 rounded-2xl text-[14px] outline-none"
+                style={{ background: 'var(--white)', border: '1.5px solid var(--bd)', color: 'var(--t1)', transition: 'border-color .15s' }}
+                onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--p)' }}
+                onBlur={e  => { (e.target as HTMLInputElement).style.borderColor = 'var(--bd)' }}
+              />
             </div>
-            <div>
-              <h3 className="font-semibold mb-1">Video Tutorials</h3>
-              <p className="text-sm text-gray-600 mb-3">Watch step-by-step guides</p>
-              <Button variant="link" className="p-0 h-auto text-chabaqa-primary">
-                Browse Videos <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        </Card>
 
-        <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-chabaqa-primary">
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <MessageCircle className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold mb-1">Live Chat Support</h3>
-              <p className="text-sm text-gray-600 mb-3">Get instant help from our team</p>
-              <Button variant="link" className="p-0 h-auto text-chabaqa-primary">
-                Start Chat <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        </Card>
+            {/* ── Quick support cards ── */}
+            <div className="grid grid-cols-3 gap-4 mb-8">
+              {/* Tutorials */}
+              <div className="rounded-2xl p-5 cursor-pointer group transition-all hover:shadow-md"
+                style={{ background: 'var(--p)', border: '1px solid var(--p)' }}
+                onClick={() => setTab('videos')}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                  style={{ background: 'rgba(255,255,255,.2)' }}>
+                  <PlayCircle className="w-5 h-5 text-white" strokeWidth={1.7} />
+                </div>
+                <p className="text-[14px] font-bold text-white">Video Tutorials</p>
+                <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,.75)' }}>
+                  Step-by-step walkthroughs for every feature
+                </p>
+                <div className="flex items-center gap-1 mt-3 text-[12px] font-semibold text-white">
+                  Watch now <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" strokeWidth={1.7} />
+                </div>
+              </div>
 
-        <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-chabaqa-primary">
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Mail className="w-6 h-6 text-purple-600" />
+              {/* Live chat */}
+              <div className="rounded-2xl p-5 cursor-pointer group transition-all hover:shadow-md"
+                style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#25d366' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                  style={{ background: '#25d36618' }}>
+                  <MessageSquare className="w-5 h-5" style={{ color: '#25d366' }} strokeWidth={1.7} />
+                </div>
+                <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Live Chat</p>
+                <p className="text-[12px] mt-1" style={{ color: 'var(--t3)' }}>
+                  Chat with our team in real time
+                </p>
+                <div className="flex items-center gap-1.5 mt-3">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-[12px] font-semibold" style={{ color: '#25d366' }}>Online now</span>
+                </div>
+              </div>
+
+              {/* Email support */}
+              <div className="rounded-2xl p-5 cursor-pointer group transition-all hover:shadow-md"
+                style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#0077B5' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                  style={{ background: '#0077B518' }}>
+                  <Mail className="w-5 h-5" style={{ color: '#0077B5' }} strokeWidth={1.7} />
+                </div>
+                <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>Email Support</p>
+                <p className="text-[12px] mt-1" style={{ color: 'var(--t3)' }}>
+                  We reply within 24 hours
+                </p>
+                <div className="flex items-center gap-1 mt-3 text-[12px] font-semibold" style={{ color: '#0077B5' }}>
+                  Send email <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" strokeWidth={1.7} />
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold mb-1">Email Support</h3>
-              <p className="text-sm text-gray-600 mb-3">Send us a detailed message</p>
-              <Button variant="link" className="p-0 h-auto text-chabaqa-primary">
-                Contact Us <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
 
-      <Tabs defaultValue="articles" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="articles">
-            <FileText className="w-4 h-4 mr-2" />
-            Articles
-          </TabsTrigger>
-          <TabsTrigger value="videos">
-            <Video className="w-4 h-4 mr-2" />
-            Videos
-          </TabsTrigger>
-          <TabsTrigger value="faqs">
-            <HelpCircle className="w-4 h-4 mr-2" />
-            FAQs
-          </TabsTrigger>
-          <TabsTrigger value="resources">
-            <Download className="w-4 h-4 mr-2" />
-            Resources
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Articles Tab */}
-        <TabsContent value="articles" className="space-y-6">
-          {/* Categories */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button
-              variant={selectedCategory === "all" ? "default" : "outline"}
-              className={selectedCategory === "all" ? "bg-chabaqa-primary" : ""}
-              onClick={() => setSelectedCategory("all")}
-            >
-              All Topics
-            </Button>
-            {categories.slice(0, 7).map((cat) => {
-              const Icon = cat.icon
-              return (
-                <Button
-                  key={cat.id}
-                  variant={selectedCategory === cat.id ? "default" : "outline"}
-                  className={selectedCategory === cat.id ? "bg-chabaqa-primary" : ""}
-                  onClick={() => setSelectedCategory(cat.id)}
-                >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {cat.name}
-                </Button>
-              )
-            })}
-          </div>
-
-          {/* Popular Articles */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Popular Articles</h2>
-            <div className="grid gap-4">
-              {filteredArticles.map((article) => (
-                <Card key={article.id} className="p-4 hover:shadow-lg transition-shadow cursor-pointer">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="font-semibold text-lg">{article.title}</h3>
-                        {article.isPopular && (
-                          <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
-                            <Star className="w-3 h-3 mr-1" />
-                            Popular
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-gray-600 mb-3">{article.description}</p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <Badge variant="outline">{article.category}</Badge>
-                        <span>{article.views.toLocaleString()} views</span>
-                        <span>•</span>
-                        <span>{article.helpful} found helpful</span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 ml-4" />
-                  </div>
-                </Card>
+            {/* ── Tabs ── */}
+            <div className="flex items-center gap-1 p-1 rounded-2xl mb-5 w-fit"
+              style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+              {tabs.map(t => (
+                <button key={t.id} onClick={() => setTab(t.id)}
+                  className="flex items-center gap-1.5 h-8 px-4 rounded-xl text-[12px] font-semibold cursor-pointer transition-all"
+                  style={tab === t.id
+                    ? { background: 'var(--p)', color: '#fff' }
+                    : { color: 'var(--t3)' }}>
+                  {t.icon}
+                  {t.label}
+                  <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[11px]"
+                    style={{
+                      background: tab === t.id ? 'rgba(255,255,255,.25)' : 'var(--bg)',
+                      color: tab === t.id ? '#fff' : 'var(--t3)',
+                    }}>
+                    {t.count}
+                  </span>
+                </button>
               ))}
             </div>
-          </div>
 
-          {/* Browse by Category */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Browse by Category</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {categories.map((category) => {
-                const Icon = category.icon
-                return (
-                  <Card key={category.id} className="p-4 hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-10 h-10 bg-chabaqa-primary/10 rounded-lg flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-chabaqa-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{category.name}</h3>
-                        <p className="text-xs text-gray-500">{category.count} articles</p>
-                      </div>
+            {/* ── Articles tab ── */}
+            {tab === 'articles' && (
+              <div>
+                {query && (
+                  <p className="text-[12px] mb-4" style={{ color: 'var(--t3)' }}>
+                    {filteredArticles.length} result{filteredArticles.length !== 1 ? 's' : ''} for "{query}"
+                  </p>
+                )}
+                {/* Featured */}
+                {!query && (
+                  <div className="mb-5">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--t3)' }}>Featured</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {ARTICLES.filter(a => a.featured).map(a => <ArticleCard key={a.id} article={a} />)}
                     </div>
-                  </Card>
-                )
-              })}
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* Videos Tab */}
-        <TabsContent value="videos" className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Video Tutorials</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {videoTutorials.map((video) => (
-                <Card key={video.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-                  <div className="aspect-video bg-gradient-to-br from-chabaqa-primary/20 to-purple-100 flex items-center justify-center relative">
-                    <PlayCircle className="w-16 h-16 text-white drop-shadow-lg" />
-                    <Badge className="absolute bottom-3 right-3 bg-black/70 text-white">
-                      {video.duration}
-                    </Badge>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold mb-2">{video.title}</h3>
-                    <Badge variant="outline">{video.category}</Badge>
+                )}
+                <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--t3)' }}>
+                  {query ? 'Results' : 'All Articles'}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {(query ? filteredArticles : ARTICLES.filter(a => !a.featured)).map(a => <ArticleCard key={a.id} article={a} />)}
+                </div>
+                {filteredArticles.length === 0 && (
+                  <div className="text-center py-16">
+                    <Search className="w-10 h-10 mx-auto mb-3 opacity-30" style={{ color: 'var(--t3)' }} />
+                    <p className="text-[14px] font-medium" style={{ color: 'var(--t2)' }}>No articles found for "{query}"</p>
+                    <p className="text-[12px] mt-1" style={{ color: 'var(--t3)' }}>Try different keywords or browse by category</p>
                   </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </TabsContent>
+                )}
+              </div>
+            )}
 
-        {/* FAQs Tab */}
-        <TabsContent value="faqs" className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Frequently Asked Questions</h2>
-            {faqs.map((section, idx) => (
-              <Card key={idx} className="p-6 mb-4">
-                <h3 className="text-lg font-semibold mb-4 text-chabaqa-primary">{section.category}</h3>
-                <Accordion type="single" collapsible className="w-full">
-                  {section.questions.map((item, qIdx) => (
-                    <AccordionItem key={qIdx} value={`item-${idx}-${qIdx}`}>
-                      <AccordionTrigger className="text-left">{item.q}</AccordionTrigger>
-                      <AccordionContent className="text-gray-600">
-                        {item.a}
-                      </AccordionContent>
-                    </AccordionItem>
+            {/* ── Videos tab ── */}
+            {tab === 'videos' && (
+              <div>
+                {query && (
+                  <p className="text-[12px] mb-4" style={{ color: 'var(--t3)' }}>
+                    {filteredVideos.length} result{filteredVideos.length !== 1 ? 's' : ''} for "{query}"
+                  </p>
+                )}
+                {!query && (
+                  <div className="mb-6">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--t3)' }}>Featured</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      {VIDEOS.filter(v => v.featured).map(v => <VideoCard key={v.id} video={v} />)}
+                    </div>
+                  </div>
+                )}
+                <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--t3)' }}>
+                  {query ? 'Results' : 'All Videos'}
+                </p>
+                <div className="grid grid-cols-3 gap-4">
+                  {(query ? filteredVideos : VIDEOS.filter(v => !v.featured)).map(v => <VideoCard key={v.id} video={v} />)}
+                </div>
+                {filteredVideos.length === 0 && (
+                  <div className="text-center py-16">
+                    <Video className="w-10 h-10 mx-auto mb-3 opacity-30" style={{ color: 'var(--t3)' }} />
+                    <p className="text-[14px] font-medium" style={{ color: 'var(--t2)' }}>No videos found for "{query}"</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── FAQs tab ── */}
+            {tab === 'faqs' && (
+              <div>
+                {query && (
+                  <p className="text-[12px] mb-4" style={{ color: 'var(--t3)' }}>
+                    {filteredFaqs.length} result{filteredFaqs.length !== 1 ? 's' : ''} for "{query}"
+                  </p>
+                )}
+                <div className="space-y-3 max-w-2xl">
+                  {filteredFaqs.map(faq => (
+                    <FaqItem
+                      key={faq.id}
+                      faq={faq}
+                      open={openFaq === faq.id}
+                      onToggle={() => setOpenFaq(openFaq === faq.id ? null : faq.id)}
+                    />
                   ))}
-                </Accordion>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Resources Tab */}
-        <TabsContent value="resources" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Download className="w-6 h-6 text-blue-600" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold mb-2">Creator's Handbook</h3>
-                  <p className="text-sm text-gray-600 mb-3">Complete guide to building and growing your community</p>
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </Button>
-                </div>
+                {filteredFaqs.length === 0 && (
+                  <div className="text-center py-16">
+                    <HelpCircle className="w-10 h-10 mx-auto mb-3 opacity-30" style={{ color: 'var(--t3)' }} />
+                    <p className="text-[14px] font-medium" style={{ color: 'var(--t2)' }}>No FAQs found for "{query}"</p>
+                    <p className="text-[12px] mt-1" style={{ color: 'var(--t3)' }}>
+                      Still have a question?{' '}
+                      <button className="underline cursor-pointer" style={{ color: 'var(--p)' }}>
+                        Contact support
+                      </button>
+                    </p>
+                  </div>
+                )}
               </div>
-            </Card>
+            )}
 
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-6 h-6 text-green-600" />
+            {/* ── Resources tab ── */}
+            {tab === 'resources' && (
+              <div>
+                {query && (
+                  <p className="text-[12px] mb-4" style={{ color: 'var(--t3)' }}>
+                    {filteredResources.length} result{filteredResources.length !== 1 ? 's' : ''} for "{query}"
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  {filteredResources.map(r => <ResourceCard key={r.id} resource={r} />)}
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold mb-2">Best Practices Guide</h3>
-                  <p className="text-sm text-gray-600 mb-3">Proven strategies for community engagement</p>
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </Button>
-                </div>
+                {filteredResources.length === 0 && (
+                  <div className="text-center py-16">
+                    <Download className="w-10 h-10 mx-auto mb-3 opacity-30" style={{ color: 'var(--t3)' }} />
+                    <p className="text-[14px] font-medium" style={{ color: 'var(--t2)' }}>No resources found for "{query}"</p>
+                  </div>
+                )}
               </div>
-            </Card>
+            )}
 
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="w-6 h-6 text-purple-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold mb-2">Content Creation Templates</h3>
-                  <p className="text-sm text-gray-600 mb-3">Ready-to-use templates for courses and posts</p>
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download ZIP
-                  </Button>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <TrendingUp className="w-6 h-6 text-yellow-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold mb-2">Growth Playbook</h3>
-                  <p className="text-sm text-gray-600 mb-3">Strategies to grow and monetize your community</p>
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Still Need Help */}
-      <Card className="p-8 bg-gradient-to-br from-chabaqa-primary to-purple-600 text-white">
-        <div className="max-w-2xl mx-auto text-center space-y-4">
-          <MessageCircle className="w-12 h-12 mx-auto" />
-          <h2 className="text-2xl font-bold">Still need help?</h2>
-          <p className="text-white/90">
-            Our support team is here to help you succeed. Get in touch and we'll respond within 24 hours.
-          </p>
-          <div className="flex justify-center gap-3">
-            <Button variant="secondary" size="lg">
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Start Live Chat
-            </Button>
-            <Button variant="outline" size="lg" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
-              <Mail className="w-4 h-4 mr-2" />
-              Email Support
-            </Button>
-          </div>
+          </main>
         </div>
-      </Card>
-    </PageShell>
+      </div>
+    </>
   )
 }

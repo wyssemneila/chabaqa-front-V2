@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { sessionsApi, type BookingStats, type CreatorBookingViewModel } from "@/lib/api/sessions.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
@@ -16,10 +16,8 @@ export default function CreatorBookingsPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
-  
-  // Filters
-  const [statusFilter, setStatusFilter] = useState<string>("")
-  const [timeFilter, setTimeFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState("")
+  const [timeFilter, setTimeFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
 
   const loadBookings = useCallback(async () => {
@@ -34,12 +32,15 @@ export default function CreatorBookingsPage() {
       if (searchQuery) params.search = searchQuery
 
       const response = await sessionsApi.getCreatorBookings(params)
-      
       setBookings(response.bookings || [])
       setStats(response.stats || null)
       setTotal(response.total || 0)
       setTotalPages(response.totalPages || 1)
     } catch (error: any) {
+      setBookings([])
+      setStats(null)
+      setTotal(0)
+      setTotalPages(1)
       toast({
         title: "Failed to load bookings",
         description: error?.message || "Please try again later.",
@@ -52,12 +53,8 @@ export default function CreatorBookingsPage() {
 
   useEffect(() => {
     if (communityLoading) return
-    loadBookings()
+    void loadBookings()
   }, [communityLoading, loadBookings])
-
-  const handleRefresh = () => {
-    loadBookings()
-  }
 
   return (
     <BookingsPageContent
@@ -74,7 +71,7 @@ export default function CreatorBookingsPage() {
       onStatusFilterChange={setStatusFilter}
       onTimeFilterChange={setTimeFilter}
       onSearchChange={setSearchQuery}
-      onRefresh={handleRefresh}
+      onRefresh={loadBookings}
     />
   )
 }

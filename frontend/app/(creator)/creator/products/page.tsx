@@ -1,156 +1,166 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { ProductsTabs } from "./components/products-tabs"
-import { ProductsPerformance } from "./components/products-performance"
-import { api } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
-import { useCommunityGuard } from "@/hooks/use-community-guard"
-import {
-  ModuleEmptyState,
-  ModulePage,
-  TOAST_MESSAGES,
-} from "@/components/creator-dashboard"
-import { Coins, Package, Plus, ShoppingBag, Star } from "lucide-react"
+import { useRouter } from 'next/navigation'
+import DashSidebar from '@/components/creator-dashboard/DashSidebar'
+import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
+import { useCreatorProductsPage } from '@/hooks/creator-dashboard/use-creator-dashboard-data'
+import { productsApi } from '@/lib/api'
+import type { CreatorProductCard } from '@/lib/creator-dashboard/fetch-adapters'
+import { Plus, Package, Pencil, Trash2, ShieldCheck, FileArchive, DollarSign, Tag } from 'lucide-react'
 
-export default function CreatorProductsPage() {
-  const { toast } = useToast()
-  const {
-    guard,
-    selectedCommunity,
-    selectedCommunityId,
-  } = useCommunityGuard()
+export default function ProductsPage() {
+  const router = useRouter()
+  const { lang } = useDashPrefs()
+  const { data: products, loading, error, refetch } = useCreatorProductsPage()
 
-  const [products, setProducts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [reloadKey, setReloadKey] = useState(0)
-  const [revenue, setRevenue] = useState<number | null>(null)
-  const [sales, setSales] = useState<number | null>(null)
-  const [topProducts, setTopProducts] = useState<any[]>([])
+  const del = async (id: string) => {
+    if (!window.confirm('Delete this product?')) return
+    await productsApi.delete(id)
+    refetch()
+  }
 
-  // Reload when community changes
-  useEffect(() => {
-    if (!selectedCommunityId) {
-      setProducts([])
-      setRevenue(null)
-      setSales(null)
-      setTopProducts([])
-      setLoading(false)
-      return
+  const priceLabel = (p: CreatorProductCard) => {
+    if (p.priceType === 'free') return 'Free'
+    if (p.hasTiers && p.tiers?.length) {
+      const min = Math.min(...p.tiers.map((t:any)=>t.price))
+      return `From ${min} TND`
     }
-
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      setRevenue(null)
-      setSales(null)
-      setTopProducts([])
-      try {
-        const me = await api.auth.me().catch(() => null as any)
-        const user = me?.data || (me as any)?.user || null
-        if (!user) {
-          setProducts([])
-          return
-        }
-
-        const productsRes = await api.products.getByCreator(user._id || user.id, { limit: 50, communityId: selectedCommunityId }).catch(() => null as any)
-        const rawProducts = productsRes?.data?.products || productsRes?.products || productsRes?.data?.items || productsRes?.items || []
-        const normalized = (Array.isArray(rawProducts) ? rawProducts : []).map((p: any) => {
-          const price = (p?.pricing?.price ?? p?.price ?? 0)
-          const sales = Number(p?.sales ?? p?.salesCount ?? 0)
-
-          return {
-            id: p.id || p._id,
-            title: p.title || p.name,
-            name: p.title || p.name,
-            description: p.description || "",
-            price: Number(price || 0),
-            type: p.type,
-            category: p.category,
-            communityId: p.communityId,
-            isPublished: Boolean(p.isPublished),
-            images: Array.isArray(p.images) && p.images.length > 0
-              ? p.images
-              : (p.thumbnail ? [p.thumbnail] : []),
-            variants: Array.isArray(p.variants) ? p.variants : [],
-            inventory: typeof p.inventory === 'number' ? p.inventory : 0,
-            sales,
-            salesCount: sales,
-            rating: Number(p.averageRating ?? p.rating ?? 0),
-            ratingCount: Number(p.ratingCount ?? 0),
-          }
-        })
-        setProducts(normalized)
-
-        // Fetch analytics revenue (last 30 days)
-        const now = new Date()
-        const to = now.toISOString()
-        const from = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString()
-        const prodAgg = await api.creatorAnalytics.getProducts({ from, to, communityId: selectedCommunityId }).catch(() => null as any)
-        const byProduct = prodAgg?.data?.byProduct || prodAgg?.byProduct || prodAgg?.data?.items || prodAgg?.items || []
-        const byProductList = Array.isArray(byProduct) ? byProduct : []
-        const totalRevenue = byProductList.reduce((sum: number, x: any) => sum + Number(x.revenue ?? 0), 0)
-        const totalSales = byProductList.reduce((sum: number, x: any) => sum + Number(x.sales ?? x.orders ?? 0), 0)
-
-        setRevenue(Number.isFinite(totalRevenue) ? totalRevenue : null)
-        setSales(Number.isFinite(totalSales) ? totalSales : null)
-        setTopProducts(
-          byProductList
-            .slice()
-            .sort((a: any, b: any) => Number(b.sales ?? b.orders ?? 0) - Number(a.sales ?? a.orders ?? 0))
-            .slice(0, 3)
-            .map((item: any) => {
-              const rating = Number(item.rating ?? item.avgRating ?? item.customerRating)
-              return {
-                id: item.contentId || item._id || item.id,
-                title: item.title || item.name || `Product ${String(item.contentId || item._id || item.id || "").slice(-6)}`,
-                sales: Number(item.sales ?? item.orders ?? 0),
-                revenue: Number(item.revenue ?? 0),
-                rating: Number.isFinite(rating) ? rating : undefined,
-              }
-            }),
-        )
-      } catch (e: any) {
-        setError(e?.message || "Failed to load products")
-        toast(TOAST_MESSAGES.error("load products"))
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [selectedCommunityId, selectedCommunity, toast, reloadKey])
-
-  // Community guard: loading / error / no-community states
-  if (guard) return guard
+    return `${p.price} TND`
+  }
 
   return (
-    <ModulePage
-      title="Products"
-      description={`Sell digital and physical products for ${selectedCommunity?.name || "this community"}.`}
-      primaryAction={{ label: "Create Product", href: "/creator/products/new", icon: Plus }}
-      metrics={[
-        { title: "Products", value: products.length, icon: ShoppingBag, color: "primary" },
-        { title: "Published", value: products.filter((product) => product.isPublished).length, icon: Package, color: "success" },
-        { title: "Sales", value: sales ?? products.reduce((sum, product) => sum + Number(product.sales || product.salesCount || 0), 0), icon: Star, color: "warning" },
-        { title: "Revenue", value: revenue == null ? "..." : `${revenue.toLocaleString()} TND`, icon: Coins, color: "success" },
-      ]}
-      searchValue={searchQuery}
-      onSearchChange={setSearchQuery}
-      searchPlaceholder="Search products..."
-      dataFreshnessLabel="Product sales and revenue show the latest loaded analytics."
-      density="compact"
-      loading={loading}
-      error={error}
-      onRetry={() => {
-        setError(null)
-        setReloadKey((key) => key + 1)
-      }}
-      emptyState={!loading && !error && products.length === 0 ? <ModuleEmptyState module="products" /> : null}
-    >
-      <ProductsTabs products={products} communityId={selectedCommunityId || ""} searchQuery={searchQuery} />
-      <ProductsPerformance products={products} topProducts={topProducts} />
-    </ModulePage>
+    <>
+      <style>{`
+        @keyframes dashFadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        ::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-thumb{background:var(--p3);border-radius:10px}
+      `}</style>
+      <div className="flex min-h-screen" style={{ background:'var(--bg)' }}>
+        <DashSidebar />
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
+          <DashTopbar title="Products" subtitle="Sell digital files to your community" />
+          <main id="main-content" className="p-7 flex-1" style={{ animation:'dashFadeUp .4s ease both' }}>
+
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-[13px] font-semibold" style={{ color:'var(--t3)' }}>
+                {products.length} product{products.length!==1?'s':''}
+              </p>
+              <button onClick={() => router.push('/creator/products/create')}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
+                style={{ background:'var(--p)' }}>
+                <Plus className="w-4 h-4" strokeWidth={1.7} /> New Product
+              </button>
+            </div>
+
+            {error && !loading && (
+              <div className="mb-4 px-4 py-3 rounded-xl text-sm"
+                style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412' }}>
+                Could not load the live product list. <button onClick={refetch} className="font-bold underline">Retry</button>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex items-center justify-center py-32">
+                <div className="w-8 h-8 rounded-full border-2 border-[var(--p3)] border-t-[var(--p)] animate-spin" />
+              </div>
+            ) : products.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
+                style={{ borderColor:'var(--bd)', background:'var(--white)' }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                  style={{ background:'var(--p2)' }}>
+                  <Package className="w-8 h-8" style={{ color:'var(--p)' }} strokeWidth={1.7} />
+                </div>
+                <p className="text-[15px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>No products yet</p>
+                <p className="text-[13px] mb-6" style={{ color:'var(--t3)' }}>Upload your first digital product</p>
+                <button onClick={() => router.push('/creator/products/create')}
+                  className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90"
+                  style={{ background:'var(--p)' }}>
+                  <Plus className="w-4 h-4" strokeWidth={1.7} /> New Product
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 max-w-4xl">
+                {products.map((p, i) => (
+                  <div key={p.id}
+                    className="flex gap-4 rounded-2xl overflow-hidden transition-all duration-200"
+                    style={{ background:'var(--white)', border:'1px solid var(--bd)', animation:`dashFadeUp .3s ${i*60}ms ease both` }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow='0 8px 32px rgba(0,0,0,.07)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow='none'}>
+
+                    {/* cover */}
+                    <div className="w-[140px] shrink-0 relative"
+                      style={{ background:'linear-gradient(135deg,var(--p) 0%,#6c52f0 100%)' }}>
+                      {p.thumbnail
+                        ? <img src={p.thumbnail} alt="Product thumbnail" loading="lazy" className="w-full h-full object-cover" />
+                        : <div className="absolute inset-0 flex items-center justify-center">
+                            <Package className="w-8 h-8 text-white opacity-40" strokeWidth={1.7} />
+                          </div>
+                      }
+                    </div>
+
+                    {/* info */}
+                    <div className="flex-1 py-4 pr-4 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                            <p className="text-[14px] font-bold truncate" style={{ color:'var(--t1)' }}>{p.title}</p>
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
+                              style={p.isPublished
+                                ? { background:'rgba(74,222,128,.12)', color:'#16a34a', borderColor:'rgba(74,222,128,.3)' }
+                                : { background:'var(--bg)', color:'var(--t3)', borderColor:'var(--bd)' }}>
+                              {p.isPublished ? (lang==='ar'?'منشور':'Published') : (lang==='ar'?'مسودة':'Draft')}
+                            </span>
+                          </div>
+                          <p className="text-[12px] truncate" style={{ color:'var(--t2)' }}>{p.description}</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => router.push(`/creator/products/${p.id}/manage`)}
+                            aria-label="Edit product"
+                            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
+                            style={{ background:'var(--bg)', color:'var(--t3)' }}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => del(p.id)}
+                            aria-label="Delete product"
+                            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
+                            style={{ background:'rgba(239,68,68,.08)', color:'#ef4444' }}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                        {p.category && (
+                          <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                            style={{ background:'var(--p2)', color:'var(--p)' }}>
+                            <Tag className="w-2.5 h-2.5" strokeWidth={1.7} /> {p.category}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1 text-[11px]" style={{ color:'var(--t3)' }}>
+                          <FileArchive className="w-3 h-3" strokeWidth={1.7} />
+                          {p.files?.length ?? 0} file{(p.files?.length ?? 0)!==1?'s':''}
+                        </span>
+                        <span className="flex items-center gap-1 text-[11px] font-semibold"
+                          style={{ color: p.priceType==='free' ? 'var(--cyan)' : 'var(--orange)' }}>
+                          <DollarSign className="w-3 h-3" strokeWidth={1.7} />
+                          {priceLabel(p)}
+                          {p.hasTiers && p.tiers?.length > 0 && ` · ${p.tiers.length} tiers`}
+                        </span>
+                        {p.license && (
+                          <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize"
+                            style={{ background:'var(--bg)', color:'var(--t3)' }}>
+                            <ShieldCheck className="w-2.5 h-2.5" strokeWidth={1.7} /> {p.license}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+    </>
   )
 }

@@ -1,159 +1,170 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useState } from "react"
-import ChallengesTabs from "./components/ChallengesTabs"
-import ChallengePerformanceOverview from "./components/ChallengePerformanceOverview"
-import { api, apiClient } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
-import { useCommunityGuard } from "@/hooks/use-community-guard"
-import { ModuleEmptyState, ModulePage, TOAST_MESSAGES } from "@/components/creator-dashboard"
-import { Coins, Plus, Trophy, Users, Zap } from "lucide-react"
+import { useRouter } from 'next/navigation'
+import DashSidebar from '@/components/creator-dashboard/DashSidebar'
+import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
+import { useDashPrefs } from '@/hooks/use-dash-prefs'
+import { useCreatorChallengesPage } from '@/hooks/creator-dashboard/use-creator-dashboard-data'
+import { challengesApi } from '@/lib/api'
+import {
+  Plus, Trophy,
+  Users, Calendar, Clock, Pencil, Trash2, Layers,
+} from 'lucide-react'
 
-export default function CreatorChallengesPage() {
-  const { toast } = useToast()
-  const { guard, selectedCommunity, selectedCommunityId } = useCommunityGuard()
+const DIFF_COLOR: Record<string, { bg: string; color: string }> = {
+  beginner:     { bg: 'rgba(34,211,238,.12)',  color: 'var(--cyan)'   },
+  intermediate: { bg: 'rgba(251,146,60,.12)',  color: 'var(--orange)' },
+  advanced:     { bg: 'var(--p2)',             color: 'var(--p)'      },
+  expert:       { bg: 'rgba(236,72,153,.12)',  color: 'var(--pink)'   },
+}
 
-  const [challenges, setChallenges] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState("")
-  const [reloadKey, setReloadKey] = useState(0)
-  const [revenue, setRevenue] = useState<number | null>(null)
-  const [topChallenges, setTopChallenges] = useState<any[]>([])
+export default function ChallengesPage() {
+  const router = useRouter()
+  const { lang } = useDashPrefs()
+  const { data: challenges, loading, error, refetch } = useCreatorChallengesPage()
 
-  useEffect(() => {
-    if (!selectedCommunityId) return
-
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const me = await api.auth.me().catch(() => null as any)
-        const user = me?.data || (me as any)?.user || null
-        if (!user) {
-          setChallenges([])
-          setRevenue(null)
-          setTopChallenges([])
-          return
-        }
-
-        const slug = selectedCommunity?.slug || ""
-
-        let listRes: any = null
-        if (selectedCommunityId) {
-          listRes = await apiClient.get<any>(`/challenges/by-user/${user._id || user.id}`, { type: 'created', limit: 50, communityId: selectedCommunityId }).catch(() => null as any)
-        } else if (slug) {
-          listRes = await apiClient.get<any>(`/challenges`, { communitySlug: slug, limit: 50 }).catch(() => null as any)
-        } else {
-          listRes = await apiClient.get<any>(`/challenges/by-user/${user._id || user.id}`, { type: 'created', limit: 50 }).catch(() => null as any)
-        }
-
-        const raw = listRes?.challenges || listRes?.data?.challenges || listRes?.data?.items || listRes?.items || []
-        const normalized = (Array.isArray(raw) ? raw : []).map((c: any) => ({
-          id: c.id || c._id,
-          title: c.title,
-          description: c.description,
-          thumbnail: c.thumbnail,
-          startDate: new Date(c.startDate),
-          endDate: new Date(c.endDate),
-          participants: Array.isArray(c.participants) ? c.participants : Array.from({ length: Number(c.participantsCount ?? 0) }),
-          depositAmount: c.depositAmount ?? 0,
-          prize: c.prize || c.pool || undefined,
-          category: c.category,
-          difficulty: c.difficulty,
-        }))
-        setChallenges(normalized)
-
-        const now = new Date()
-        const to = now.toISOString()
-        const from = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString()
-        const challAgg = await api.creatorAnalytics.getChallenges({ from, to, communityId: selectedCommunityId }).catch(() => null as any)
-        const byChallenge = challAgg?.data?.byChallenge || challAgg?.byChallenge || challAgg?.data?.items || challAgg?.items || []
-        const byChallengeList = Array.isArray(byChallenge) ? byChallenge : []
-        const totalRevenue = byChallengeList.reduce((sum: number, x: any) => sum + Number(x.revenue ?? x.deposits ?? 0), 0)
-        setRevenue(Number.isFinite(totalRevenue) ? totalRevenue : null)
-        setTopChallenges(
-          byChallengeList
-            .slice()
-            .sort((a: any, b: any) => Number(b.views ?? b.participants ?? b.starts ?? 0) - Number(a.views ?? a.participants ?? a.starts ?? 0))
-            .slice(0, 3)
-            .map((x: any) => {
-              const completion = Number(x.completionRate ?? x.challengeCompletionRate)
-              const engagementRate = Number(x.engagementRate)
-              return {
-                id: x.contentId || x._id || x.id,
-                title: x.title || x.name || `Challenge ${String(x.contentId || x._id || x.id || "").slice(-6)}`,
-                participants: Number(x.participants ?? x.starts ?? 0),
-                deposits: Number(x.deposits ?? x.revenue ?? 0),
-                completion: Number.isFinite(completion) ? completion : undefined,
-                engagementRate: Number.isFinite(engagementRate) ? engagementRate : undefined,
-              }
-            }),
-        )
-      } catch (e: any) {
-        setError(e?.message || "Failed to load challenges")
-        setRevenue(null)
-        setTopChallenges([])
-        toast(TOAST_MESSAGES.error(e?.message || 'Failed to load challenges'))
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [selectedCommunityId, selectedCommunity, toast, reloadKey])
-
-  const filtered = useMemo(() => {
-    if (!search) return challenges
-    const q = search.toLowerCase()
-    return challenges.filter(c => (c.title || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q))
-  }, [challenges, search])
-
-  const filteredTopChallenges = useMemo(() => {
-    if (!search) return topChallenges
-    const q = search.toLowerCase()
-    return topChallenges.filter((challenge: any) => (challenge.title || "").toLowerCase().includes(q))
-  }, [topChallenges, search])
-
-  if (guard) return guard
-
-  const activeChallenges = challenges.filter((challenge) => {
-    const now = new Date()
-    return challenge.startDate <= now && challenge.endDate >= now
-  }).length
-
-  const totalParticipants = challenges.reduce((sum, challenge) => {
-    const participants = Array.isArray(challenge.participants) ? challenge.participants.length : Number(challenge.participantsCount || 0)
-    return sum + participants
-  }, 0)
+  const del = async (id: string) => {
+    if (!window.confirm('Delete this challenge?')) return
+    await challengesApi.delete(id)
+    refetch()
+  }
 
   return (
-    <ModulePage
-      title="Challenges"
-      description={`Create and manage accountability programs for ${selectedCommunity?.name || "this community"}.`}
-      primaryAction={{ label: "Create Challenge", href: "/creator/challenges/new", icon: Plus }}
-      metrics={[
-        { title: "Challenges", value: challenges.length, icon: Zap, color: "challenges" },
-        { title: "Active", value: activeChallenges, icon: Trophy, color: "success" },
-        { title: "Participants", value: totalParticipants, icon: Users, color: "primary" },
-        { title: "Revenue", value: revenue == null ? "..." : `${revenue.toLocaleString()} TND`, icon: Coins, color: "success" },
-      ]}
-      searchValue={search}
-      onSearchChange={setSearch}
-      searchPlaceholder="Search challenges..."
-      dataFreshnessLabel="Challenge participation and revenue refresh from creator analytics."
-      density="compact"
-      loading={loading}
-      error={error}
-      onRetry={() => {
-        setError(null)
-        setReloadKey((key) => key + 1)
-      }}
-      emptyState={!loading && !error && challenges.length === 0 ? <ModuleEmptyState module="challenges" /> : null}
-    >
-      <ChallengesTabs allChallenges={filtered} hasSearchQuery={!!search} />
-      {filtered.length > 0 && (
-        <ChallengePerformanceOverview allChallenges={filtered} topChallenges={filteredTopChallenges} />
-      )}
-    </ModulePage>
+    <>
+      <style>{`
+        @keyframes dashFadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        ::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-thumb{background:var(--p3);border-radius:10px}
+      `}</style>
+      <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
+        <DashSidebar />
+        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
+          <DashTopbar title="Challenges" subtitle="Create and manage your community challenges" />
+          <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
+
+            {/* toolbar */}
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-[13px] font-semibold" style={{ color: 'var(--t3)' }}>
+                {challenges.length} challenge{challenges.length !== 1 ? 's' : ''}
+              </p>
+              <button onClick={() => router.push('/creator/challenges/create')}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
+                style={{ background: 'var(--p)' }}>
+                <Plus className="w-4 h-4" strokeWidth={1.7} /> Create Challenge
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-32">
+                <div className="w-8 h-8 rounded-full border-2 border-[var(--p3)] border-t-[var(--p)] animate-spin" />
+              </div>
+            ) : (
+              <>
+              {error && (
+                <div className="mb-4 px-4 py-3 rounded-xl text-sm"
+                  style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412' }}>
+                  Could not load the live challenge list. <button onClick={refetch} className="font-bold underline">Retry</button>
+                </div>
+              )}
+              {challenges.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
+                style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                  style={{ background: 'var(--p2)' }}>
+                  <Trophy className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
+                </div>
+                <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No challenges yet</p>
+                <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Create your first challenge for the community</p>
+                <button onClick={() => router.push('/creator/challenges/create')}
+                  className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
+                  style={{ background: 'var(--p)' }}>
+                  <Plus className="w-4 h-4" strokeWidth={1.7} /> Create Challenge
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 max-w-4xl">
+                {challenges.map((ch, i) => {
+                  const diff = DIFF_COLOR[ch.difficulty] ?? { bg: 'var(--p2)', color: 'var(--p)' }
+                  return (
+                    <div key={ch.id}
+                      className="flex gap-4 rounded-2xl overflow-hidden transition-all duration-200"
+                      style={{ background: 'var(--white)', border: '1px solid var(--bd)', animation: `dashFadeUp .3s ${i*60}ms ease both` }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(0,0,0,.07)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'none'}>
+
+                      {/* cover */}
+                      <div className="w-[140px] shrink-0 relative"
+                        style={{ background: 'linear-gradient(135deg,var(--p) 0%,#6c52f0 100%)' }}>
+                        {(ch as any).banner
+                          ? <img src={(ch as any).banner} alt="Challenge banner" loading="lazy" className="w-full h-full object-cover" />
+                          : <div className="absolute inset-0 flex items-center justify-center">
+                              <Trophy className="w-8 h-8 text-white opacity-40" strokeWidth={1.7} />
+                            </div>
+                        }
+                      </div>
+
+                      {/* info */}
+                      <div className="flex-1 py-4 pr-4 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                              <p className="text-[14px] font-bold truncate" style={{ color: 'var(--t1)' }}>{ch.title}</p>
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
+                                style={ch.isPublished
+                                  ? { background:'rgba(74,222,128,.12)', color:'#16a34a', borderColor:'rgba(74,222,128,.3)' }
+                                  : { background:'var(--bg)', color:'var(--t3)', borderColor:'var(--bd)' }}>
+                                {ch.isPublished ? (lang==='ar'?'منشور':'Published') : (lang==='ar'?'مسودة':'Draft')}
+                              </span>
+                            </div>
+                            <p className="text-[12px] truncate" style={{ color: 'var(--t2)' }}>{ch.description}</p>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => router.push(`/creator/challenges/${ch.id}/manage`)}
+                              aria-label="Edit challenge"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
+                              style={{ background: 'var(--bg)', color: 'var(--t3)' }}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => del(ch.id)}
+                              aria-label="Delete challenge"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
+                              style={{ background: 'rgba(239,68,68,.08)', color: '#ef4444' }}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full capitalize"
+                            style={{ background: diff.bg, color: diff.color }}>
+                            {ch.difficulty}
+                          </span>
+                          <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
+                            <Clock className="w-3 h-3" strokeWidth={1.7} /> {ch.durationDays} days
+                          </span>
+                          <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
+                            <Layers className="w-3 h-3" strokeWidth={1.7} /> {ch.steps?.length ?? 0} steps
+                          </span>
+                          <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
+                            <Users className="w-3 h-3" strokeWidth={1.7} />
+                            {ch.maxParticipants === 'unlimited' ? 'Unlimited' : ch.maxParticipants}
+                          </span>
+                          {ch.startDate && (
+                            <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--t3)' }}>
+                              <Calendar className="w-3 h-3" strokeWidth={1.7} /> {ch.startDate}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+              </>
+            )}
+          </main>
+        </div>
+      </div>
+    </>
   )
 }

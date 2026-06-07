@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 
 import { AuthProvider } from "@/app/providers/auth-provider"
 import { CommunityProvider } from "@/app/providers/community-context"
+import { CreatorCommunityProvider } from "@/app/(creator)/creator/context/creator-community-context"
 
 const LiveSupportWidget = dynamic(
   () => import("@/components/live-support/live-support-widget").then(mod => ({ default: mod.LiveSupportWidget })),
@@ -22,10 +23,12 @@ export default function CreatorLayout({ children }: { children: React.ReactNode 
   return (
     <AuthProvider>
       <CommunityProvider>
-        <CreatorClientLayout>
-          {children}
-        </CreatorClientLayout>
-        <LiveSupportWidget />
+        <CreatorCommunityProvider>
+          <CreatorClientLayout>
+            {children}
+          </CreatorClientLayout>
+          <LiveSupportWidget />
+        </CreatorCommunityProvider>
       </CommunityProvider>
     </AuthProvider>
   )

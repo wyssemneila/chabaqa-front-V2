@@ -178,17 +178,17 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
       args:
-        NEXT_PUBLIC_API_URL: https://chabaqa.io/api
-        NEXT_PUBLIC_APP_URL: https://chabaqa.io
+        NEXT_PUBLIC_API_URL: http://localhost:3000/api
+        NEXT_PUBLIC_APP_URL: http://localhost:8083
         API_INTERNAL_URL: http://chabaqa-backend:3000/api
     ports:
-      - "127.0.0.1:8081:8081"
+      - "127.0.0.1:8083:8083"
     env_file:
       - ./frontend/.env
     environment:
       API_INTERNAL_URL: http://chabaqa-backend:3000/api
-      NEXT_PUBLIC_API_URL: https://chabaqa.io/api
-      NEXT_PUBLIC_APP_URL: https://chabaqa.io
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api
+      NEXT_PUBLIC_APP_URL: http://localhost:8083
     depends_on:
       chabaqa-backend:
         condition: service_healthy
@@ -214,7 +214,7 @@ services:
           cpus: '2.0'
           memory: 512M
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8083/"]
       interval: 15s
       timeout: 10s
       retries: 5

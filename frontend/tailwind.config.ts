@@ -6,8 +6,7 @@ const config: Config = {
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
-    "./hooks/**/*.{ts,tsx}",
-    "./lib/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
   ],
   prefix: "",
@@ -75,15 +74,7 @@ const config: Config = {
           courses: "#47c7ea",
           sessions: "#f65887",
         },
-        brand: {
-          violet: "#8e78fb",
-          sessions: "#f65887",
-          courses: "#47c7ea",
-          challenges: "#ff9b28",
-          slateDark: "#0f172a",
-          slateCard: "#1e293b",
-        },
-        challenges: {
+         challenges: {
           DEFAULT: "#ff9b28",
           50: "#fff7ed",
           100: "#ffedd5",

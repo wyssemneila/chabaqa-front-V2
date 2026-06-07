@@ -75,7 +75,7 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
   const pathname = usePathname()
 
   return (
-    <Sidebar className="border-r hidden lg:block w-64 shrink-0 sticky top-24 self-start space-y-6">
+    <Sidebar className="border-r">
       <SidebarHeader>
         <div className="px-3 py-2">
           <h2 className="text-lg font-semibold gradient-text">Community Hub</h2>
@@ -94,14 +94,7 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
 
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      className={cn(
-                        "group relative pl-3 transition-all duration-300 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-0 before:bg-[#8e78fb] before:rounded-r-md before:transition-all before:duration-300",
-                        isActive && "before:h-3/4 text-[#8e78fb]"
-                      )}
-                    >
+                    <SidebarMenuButton asChild isActive={isActive} className="group">
                       <Link href={href}>
                         <item.icon className="size-4" />
                         <span>{item.title}</span>
@@ -109,7 +102,7 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
                           <Badge
                             variant="secondary"
                             className={cn(
-                              "ml-auto text-xs",
+                              "ms-auto text-xs",
                               item.color === "courses" && "bg-courses-100 text-courses-700",
                               item.color === "challenges" && "bg-challenges-100 text-challenges-700",
                               item.color === "sessions" && "bg-sessions-100 text-sessions-700",
@@ -194,7 +187,7 @@ export function CommunityLayout({
         <div className="flex-1">
           <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex h-14 items-center px-4">
-              <SidebarTrigger className="-ml-1" />
+              <SidebarTrigger className="-ms-1" />
             </div>
           </div>
           <main className="flex-1 p-6">{children}</main>

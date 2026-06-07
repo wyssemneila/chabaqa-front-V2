@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build",
-    "dev": "next dev -p 8080",
+    "dev": "next dev -p 8083",
     "lint": "next lint",
-    "start": "next start -p 8080",
+    "start": "next start -p 8083",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
