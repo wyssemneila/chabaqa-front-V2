@@ -36,7 +36,7 @@ jobs:
           echo "Deployment secrets are present. Using password SSH on port ${VPS_PORT}."
 
       - name: Run remote deployment with password SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
