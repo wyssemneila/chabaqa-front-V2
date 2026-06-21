@@ -61,7 +61,7 @@ export default async function ProductsPage({ params }: Props) {
           return (
             <div key={product.id} className="flex gap-5 p-5">
               {/* Thumbnail — 16:9 */}
-              <div className="flex-shrink-0 w-[240px] aspect-video rounded-xl flex items-center justify-center" style={{ background: '#f7f7fe' }}>
+              <div className="flex-shrink-0 w-[220px] h-[124px] rounded-xl flex items-center justify-center" style={{ background: '#f7f7fe' }}>
                 <ShoppingBag className="w-10 h-10" style={{ color: '#c4b8fd' }} />
               </div>
 

@@ -31,7 +31,7 @@ export default async function ChallengesPage({ params }: Props) {
             <div key={challenge.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid #e8e4ff', background: '#fff' }}>
 
               {/* Thumbnail — 16:9 */}
-              <div className="w-full aspect-video relative" style={{ background: challenge.status === 'active' ? '#fff3e4' : '#f7f7fe' }}>
+              <div className="w-full h-[200px] relative" style={{ background: challenge.status === 'active' ? '#fff3e4' : '#f7f7fe' }}>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(142,120,251,0.1)' }}>
                     <Zap className="w-6 h-6" style={{ color: '#c4b8fd' }} />

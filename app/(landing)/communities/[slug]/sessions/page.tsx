@@ -21,7 +21,7 @@ export default async function SessionsPage({ params }: Props) {
           <div key={session.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid #e8e4ff', background: '#fff' }}>
 
             {/* Thumbnail — 16:9 */}
-            <div className="w-full aspect-video relative" style={{ background: '#f7f7fe' }}>
+            <div className="w-full h-[200px] relative" style={{ background: '#f7f7fe' }}>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(142,120,251,0.1)' }}>
                   <Video className="w-6 h-6" style={{ color: '#c4b8fd' }} />

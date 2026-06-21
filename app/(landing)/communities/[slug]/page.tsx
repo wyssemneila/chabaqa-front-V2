@@ -20,7 +20,7 @@ export default async function CommunityFeedPage({ params }: Props) {
     <div className="flex flex-col gap-5">
 
       {/* ── HERO BANNER ─────────────────────────── */}
-      <div className="rounded-2xl overflow-hidden aspect-video max-h-[280px] relative"
+      <div className="rounded-2xl overflow-hidden h-[180px] relative"
         style={{ background: `linear-gradient(135deg, #ede9ff 0%, #e8e4ff 30%, #f7f7fe 60%, #ede9ff 100%)` }}>
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">

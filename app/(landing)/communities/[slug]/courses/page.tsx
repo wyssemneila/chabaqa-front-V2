@@ -62,7 +62,7 @@ export default async function CoursesPage({ params }: Props) {
             <div key={course.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid #e8e4ff', background: '#fff' }}>
               <div className="flex">
                 {/* Thumbnail — 16:9 */}
-                <div className="relative flex-shrink-0 w-[320px] aspect-video rounded-l-xl overflow-hidden" style={{ background: '#f7f7fe' }}>
+                <div className="relative flex-shrink-0 w-[280px] h-[158px] rounded-l-xl overflow-hidden" style={{ background: '#f7f7fe' }}>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(142,120,251,0.1)' }}>
                       <BookOpen className="w-6 h-6" style={{ color: '#c4b8fd' }} />
