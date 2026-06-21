@@ -9,6 +9,7 @@ import { io, Socket } from "socket.io-client"
 import { resolveSocketBaseUrl } from "@/lib/socket-url"
 import { localizeHref } from "@/lib/i18n/client"
 import { syncAccessTokenCookie } from "@/lib/cookie-sync"
+import { refreshBrowserAccessToken } from "@/lib/auth-refresh"
 
 export interface User {
   _id: string
@@ -110,7 +111,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchMe = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken') || localStorage.getItem('access_token')
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+      let token = localStorage.getItem('accessToken') || localStorage.getItem('access_token')
+      if (!token) {
+        token = await refreshBrowserAccessToken(apiBase)
+      }
       setToken(token)
       if (!token) {
         syncAccessTokenCookie(null)
@@ -128,7 +133,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // We can just use the stored user if we want to be super simple, 
       // or verify token with backend. For now, let's verify.
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
       const res = await fetch(`${apiBase}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -147,32 +151,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // The backend's httpOnly refreshToken cookie may still be valid.
       if (res.status === 401) {
         try {
-          const refreshRes = await fetch(`${apiBase}/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: '{}',
-          })
-          if (refreshRes.ok) {
-            const refreshData = await refreshRes.json()
-            const d = refreshData?.data || refreshData || {}
-            const newToken = (d.accessToken || d.access_token || '').trim()
-            if (newToken) {
-              localStorage.setItem('accessToken', newToken)
-              localStorage.removeItem('access_token')
-              syncAccessTokenCookie(newToken)
-              setToken(newToken)
-              // Retry /auth/me with the fresh token
-              const retryRes = await fetch(`${apiBase}/auth/me`, {
-                headers: { 'Authorization': `Bearer ${newToken}` },
-              })
-              if (retryRes.ok) {
-                const retryData = await retryRes.json()
-                const userData = retryData.data || retryData
-                const normalizedUser = normalizeUser(userData)
-                setUser(normalizedUser)
-                return normalizedUser
-              }
+          const newToken = await refreshBrowserAccessToken(apiBase)
+          if (newToken) {
+            setToken(newToken)
+            // Retry /auth/me with the fresh token
+            const retryRes = await fetch(`${apiBase}/auth/me`, {
+              headers: { 'Authorization': `Bearer ${newToken}` },
+            })
+            if (retryRes.ok) {
+              const retryData = await retryRes.json()
+              const userData = retryData.data || retryData
+              const normalizedUser = normalizeUser(userData)
+              setUser(normalizedUser)
+              return normalizedUser
             }
           }
         } catch {
