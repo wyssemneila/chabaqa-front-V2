@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
-import { Zap, Calendar, Users, Clock, Trophy, Target } from 'lucide-react'
+import { Zap, Calendar, Users, Clock } from 'lucide-react'
 import { getCommunity, LEVEL_CONFIG } from '@/lib/community-data'
 
 interface Props { params: Promise<{ slug: string }> }
@@ -21,17 +21,7 @@ export default async function ChallengesPage({ params }: Props) {
   const activeChallenge = community.challenges.find(c => c.status === 'active')
 
   return (
-    <div className="flex flex-col gap-6">
-
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold" style={{ color: 'var(--t1)' }}>
-          {isAr ? 'التحديات' : 'Challenges'}
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--t3)' }}>
-          {isAr ? 'تحدَّ نفسك وطوّر مهاراتك مع التحديات' : 'Push your limits and grow your skills'}
-        </p>
-      </div>
+    <div className="flex flex-col gap-5">
 
       {/* Active challenge spotlight */}
       {activeChallenge && (
@@ -42,7 +32,7 @@ export default async function ChallengesPage({ params }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,255,255,.25)', color: '#fff' }}>
+                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,255,255,.25)', color: '#fff' }}>
                   {isAr ? '🔴 جارٍ الآن' : '🔴 Live Now'}
                 </span>
               </div>
@@ -55,8 +45,8 @@ export default async function ChallengesPage({ params }: Props) {
               {activeChallenge.progress !== undefined && (
                 <>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] text-white/70">{isAr ? 'تقدمك' : 'Your progress'}</span>
-                    <span className="text-[10px] font-black text-white">{activeChallenge.progress}%</span>
+                    <span className="text-[11px] text-white/70">{isAr ? 'تقدمك' : 'Your progress'}</span>
+                    <span className="text-[11px] font-semibold text-white">{activeChallenge.progress}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full" style={{ background: 'rgba(255,255,255,.25)' }}>
                     <div className="h-2 rounded-full" style={{ width: `${activeChallenge.progress}%`, background: '#fff' }} />
@@ -64,7 +54,7 @@ export default async function ChallengesPage({ params }: Props) {
                 </>
               )}
             </div>
-            <button className="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-95"
+            <button className="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
               style={{ background: '#fff', color: 'var(--p)' }}>
               {isAr ? 'تابع التحدي' : 'Continue'}
             </button>
@@ -72,31 +62,11 @@ export default async function ChallengesPage({ params }: Props) {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { value: community.challenges.length, label: isAr ? 'تحدي' : 'Total', color: 'var(--p)', bg: 'var(--p2)', icon: <Target className="w-4 h-4" strokeWidth={1.7} /> },
-          { value: community.challenges.filter(c => c.status === 'active').length, label: isAr ? 'نشط' : 'Active', color: '#10b981', bg: '#d1fae5', icon: <Zap className="w-4 h-4" strokeWidth={1.7} /> },
-          { value: community.challenges.filter(c => c.status === 'upcoming').length, label: isAr ? 'قادم' : 'Upcoming', color: '#f59e0b', bg: '#fef3c7', icon: <Calendar className="w-4 h-4" strokeWidth={1.7} /> },
-          { value: community.challenges.reduce((a, c) => a + c.participantsCount, 0), label: isAr ? 'مشارك' : 'Participants', color: 'var(--orange, #ff9b28)', bg: '#fff4e5', icon: <Users className="w-4 h-4" strokeWidth={1.7} /> },
-        ].map((s, i) => (
-          <div key={i} className="flex items-center gap-3 p-4 rounded-2xl" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: s.bg, color: s.color }}>
-              {s.icon}
-            </div>
-            <div>
-              <p className="text-lg font-extrabold leading-none" style={{ color: s.color }}>{s.value}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: 'var(--t3)' }}>{s.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* Challenge list */}
       {community.challenges.length === 0 ? (
-        <div className="rounded-2xl p-14 text-center" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'var(--p2)' }}>
-            <Zap className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.3} />
+        <div className="rounded-2xl p-12 text-center" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--p2)' }}>
+            <Zap className="w-7 h-7" style={{ color: 'var(--p)' }} strokeWidth={1.3} />
           </div>
           <p className="text-base font-bold mb-1" style={{ color: 'var(--t1)' }}>
             {isAr ? 'لا توجد تحديات بعد' : 'No challenges yet'}
@@ -112,23 +82,23 @@ export default async function ChallengesPage({ params }: Props) {
             const lvl = LEVEL_CONFIG[challenge.difficulty]
             return (
               <article key={challenge.id}
-                className="group rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-[0_8px_32px_rgba(142,120,251,.12)]"
+                className="group rounded-2xl overflow-hidden cursor-pointer transition-shadow duration-200 hover:shadow-md"
                 style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                 <div className="p-5 flex items-start gap-4">
 
                   {/* Icon */}
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all group-hover:scale-110" style={{ background: 'var(--p2)' }}>
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--p2)' }}>
                     <Zap className="w-5 h-5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                   </div>
 
                   <div className="flex-1 min-w-0">
                     {/* Badges */}
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: status.bg, color: status.color }}>
+                      <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: status.bg, color: status.color }}>
                         <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: status.dot }} />
                         {isAr ? status.labelAr : status.label}
                       </span>
-                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: lvl.bg, color: lvl.color }}>
+                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: lvl.bg, color: lvl.color }}>
                         {isAr ? lvl.labelAr : lvl.label}
                       </span>
                     </div>
@@ -151,8 +121,8 @@ export default async function ChallengesPage({ params }: Props) {
                     {challenge.status === 'active' && challenge.progress !== undefined && (
                       <div className="mt-3">
                         <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-[10px]" style={{ color: 'var(--t3)' }}>{isAr ? 'تقدمك' : 'Your progress'}</span>
-                          <span className="text-[10px] font-black" style={{ color: 'var(--p)' }}>{challenge.progress}%</span>
+                          <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{isAr ? 'تقدمك' : 'Your progress'}</span>
+                          <span className="text-[11px] font-semibold" style={{ color: 'var(--p)' }}>{challenge.progress}%</span>
                         </div>
                         <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg)' }}>
                           <div className="h-2 rounded-full" style={{ width: `${challenge.progress}%`, background: 'linear-gradient(90deg, var(--p), #a78bfa)' }} />
@@ -162,7 +132,7 @@ export default async function ChallengesPage({ params }: Props) {
                   </div>
 
                   {/* CTA */}
-                  <button className="flex-shrink-0 self-start px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 active:scale-95"
+                  <button className="flex-shrink-0 self-start px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
                     style={challenge.status === 'ended'
                       ? { background: 'var(--bg)', color: 'var(--t3)', border: '1px solid var(--bd)' }
                       : { background: 'var(--p)', color: '#fff' }

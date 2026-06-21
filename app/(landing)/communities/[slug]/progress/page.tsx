@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
-import { BookOpen, Zap, BarChart2, CheckCircle2, Loader2, Circle, Trophy } from 'lucide-react'
+import { BookOpen, Zap, BarChart2, CheckCircle2, Loader2, Circle } from 'lucide-react'
 import { getCommunity } from '@/lib/community-data'
 
 interface Props { params: Promise<{ slug: string }> }
@@ -43,21 +43,11 @@ export default async function ProgressPage({ params }: Props) {
   ]
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold" style={{ color: 'var(--t1)' }}>
-          {isAr ? 'تقدمي' : 'My Progress'}
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--t3)' }}>
-          {isAr ? 'تابع رحلتك التعليمية في المجتمع' : `Your learning journey in ${community.name}`}
-        </p>
-      </div>
-
-      {/* Overall progress card */}
-      <div className="rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6"
-        style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 2px 16px rgba(0,0,0,.05)' }}>
+      {/* Overall progress card with ring */}
+      <div className="rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-6"
+        style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
 
         {/* Ring */}
         <div className="relative flex-shrink-0" style={{ width: 116, height: 116 }}>
@@ -74,45 +64,29 @@ export default async function ProgressPage({ params }: Props) {
             </defs>
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-black" style={{ color: 'var(--t1)', lineHeight: 1 }}>{pct}%</span>
-            <span className="text-[10px] mt-0.5" style={{ color: 'var(--t3)' }}>{isAr ? 'مكتمل' : 'Done'}</span>
+            <span className="text-2xl font-extrabold" style={{ color: 'var(--t1)', lineHeight: 1 }}>{pct}%</span>
+            <span className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>{isAr ? 'مكتمل' : 'Done'}</span>
           </div>
         </div>
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1 w-full">
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3 flex-1 w-full">
           {[
-            { value: pct + '%', label: isAr ? 'الإتمام' : 'Completion', color: 'var(--p)', bg: 'var(--p2)' },
             { value: done, label: isAr ? 'مكتمل' : 'Completed', color: '#10b981', bg: '#d1fae5' },
             { value: active, label: isAr ? 'جارٍ' : 'In Progress', color: 'var(--orange, #ff9b28)', bg: '#fff4e5' },
             { value: total, label: isAr ? 'الإجمالي' : 'Total', color: 'var(--t2)', bg: 'var(--bg)' },
           ].map((s, i) => (
             <div key={i} className="flex flex-col items-center gap-1 py-3 rounded-xl" style={{ background: s.bg }}>
               <span className="text-xl font-extrabold" style={{ color: s.color }}>{s.value}</span>
-              <span className="text-[10px] text-center leading-tight" style={{ color: 'var(--t3)' }}>{s.label}</span>
+              <span className="text-[11px] text-center leading-tight" style={{ color: 'var(--t3)' }}>{s.label}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Achievement banner */}
-      {pct >= 50 && (
-        <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, #fef3c7, #fff4e5)', border: '1px solid #fde68a' }}>
-          <Trophy className="w-8 h-8 flex-shrink-0" style={{ color: '#f59e0b' }} strokeWidth={1.5} />
-          <div>
-            <p className="text-sm font-bold" style={{ color: '#92400e' }}>
-              {isAr ? `رائع! أتممت ${pct}% من رحلتك` : `Great job! You've completed ${pct}% of your journey`}
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: '#b45309' }}>
-              {isAr ? 'واصل الجهد لتصل للقمة' : 'Keep going to reach the top'}
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* By content type */}
       <div className="rounded-2xl p-5" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-        <h2 className="text-sm font-bold mb-5" style={{ color: 'var(--t1)' }}>
+        <h2 className="text-sm font-extrabold mb-4" style={{ color: 'var(--t1)' }}>
           {isAr ? 'التقدم حسب النوع' : 'Progress by Content Type'}
         </h2>
         <div className="flex flex-col gap-5">
@@ -130,7 +104,7 @@ export default async function ProgressPage({ params }: Props) {
                       <Icon className="w-3.5 h-3.5" style={{ color: type.color }} strokeWidth={1.7} />
                     </div>
                     <span className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>{type.label}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'var(--bg)', color: 'var(--t3)' }}>
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'var(--bg)', color: 'var(--t3)' }}>
                       {typeTotal} {isAr ? 'عنصر' : 'items'}
                     </span>
                   </div>
@@ -139,7 +113,7 @@ export default async function ProgressPage({ params }: Props) {
                 <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--bg)' }}>
                   <div className="h-2.5 rounded-full transition-all" style={{ width: `${typePct}%`, background: type.color }} />
                 </div>
-                <div className="flex items-center gap-4 mt-1.5 text-[10px]" style={{ color: 'var(--t3)' }}>
+                <div className="flex items-center gap-4 mt-1.5 text-[11px]" style={{ color: 'var(--t3)' }}>
                   <span className="font-semibold" style={{ color: '#10b981' }}>{typeDone} {isAr ? 'مكتمل' : 'done'}</span>
                   <span>{typeTotal - typeDone} {isAr ? 'متبقي' : 'remaining'}</span>
                 </div>
@@ -151,12 +125,12 @@ export default async function ProgressPage({ params }: Props) {
 
       {/* Timeline */}
       <div className="rounded-2xl p-5" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-        <h2 className="text-sm font-bold mb-5" style={{ color: 'var(--t1)' }}>
+        <h2 className="text-sm font-extrabold mb-4" style={{ color: 'var(--t1)' }}>
           {isAr ? 'جدول التعلم' : 'Learning Timeline'}
         </h2>
         {allItems.length === 0 ? (
           <div className="text-center py-8">
-            <BarChart2 className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--p3, #c4b8fd)' }} strokeWidth={1.5} />
+            <BarChart2 className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--p)' }} strokeWidth={1.5} />
             <p className="text-sm" style={{ color: 'var(--t3)' }}>{isAr ? 'لا يوجد نشاط بعد' : 'No activity yet'}</p>
           </div>
         ) : (
@@ -182,10 +156,10 @@ export default async function ProgressPage({ params }: Props) {
                     <p className="text-sm font-semibold line-clamp-1" style={{ color: item.status === 'not_started' ? 'var(--t3)' : 'var(--t1)' }}>
                       {item.title}
                     </p>
-                    <span className="text-[10px] flex-shrink-0 mt-0.5" style={{ color: 'var(--t3)' }}>{item.date}</span>
+                    <span className="text-[11px] flex-shrink-0 mt-0.5" style={{ color: 'var(--t3)' }}>{item.date}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-[9px] px-2 py-0.5 rounded-full font-bold"
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
                       style={item.type === 'course'
                         ? { background: 'var(--p2)', color: 'var(--p)' }
                         : { background: '#fff4e5', color: 'var(--orange, #ff9b28)' }
@@ -197,7 +171,7 @@ export default async function ProgressPage({ params }: Props) {
                         <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg)' }}>
                           <div className="h-1.5 rounded-full" style={{ width: `${item.progress}%`, background: 'var(--p)' }} />
                         </div>
-                        <span className="text-[10px] font-bold flex-shrink-0" style={{ color: 'var(--p)' }}>{item.progress}%</span>
+                        <span className="text-[11px] font-semibold flex-shrink-0" style={{ color: 'var(--p)' }}>{item.progress}%</span>
                       </div>
                     )}
                   </div>

@@ -33,24 +33,14 @@ export default async function ReviewsPage({ params }: Props) {
   }))
 
   return (
-    <div className="flex flex-col gap-6">
-
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold" style={{ color: 'var(--t1)' }}>
-          {isAr ? 'التقييمات' : 'Reviews'}
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--t3)' }}>
-          {isAr ? 'ما يقوله أعضاء المجتمع' : 'What community members are saying'}
-        </p>
-      </div>
+    <div className="flex flex-col gap-5">
 
       {/* Rating overview */}
-      <div className="rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-8" style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 2px 16px rgba(0,0,0,.05)' }}>
+      <div className="rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-6" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
 
         {/* Big rating */}
         <div className="flex flex-col items-center gap-2 flex-shrink-0">
-          <span className="text-6xl font-black" style={{ color: 'var(--t1)', lineHeight: 1 }}>
+          <span className="text-5xl font-extrabold" style={{ color: 'var(--t1)', lineHeight: 1 }}>
             {community.rating.toFixed(1)}
           </span>
           <Stars rating={Math.round(community.rating)} size={16} />
@@ -82,8 +72,8 @@ export default async function ReviewsPage({ params }: Props) {
 
       {/* Write review CTA */}
       {community.isJoined && (
-        <button className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-2xl text-sm font-bold transition-all hover:opacity-90 active:scale-[.98]"
-          style={{ background: 'linear-gradient(135deg, var(--p), #a78bfa)', color: '#fff', boxShadow: '0 8px 24px rgba(142,120,251,.3)' }}>
+        <button className="flex items-center justify-center gap-2.5 w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
+          style={{ background: 'var(--p)', color: '#fff' }}>
           <Star className="w-4 h-4" strokeWidth={2} />
           {isAr ? 'اكتب تقييمك الآن' : 'Write a Review'}
         </button>
@@ -91,9 +81,9 @@ export default async function ReviewsPage({ params }: Props) {
 
       {/* Reviews list */}
       {community.reviews.length === 0 ? (
-        <div className="rounded-2xl p-14 text-center" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'var(--p2)' }}>
-            <MessageSquare className="w-8 h-8" style={{ color: 'var(--p)' }} strokeWidth={1.3} />
+        <div className="rounded-2xl p-12 text-center" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--p2)' }}>
+            <MessageSquare className="w-7 h-7" style={{ color: 'var(--p)' }} strokeWidth={1.3} />
           </div>
           <p className="text-base font-bold mb-1" style={{ color: 'var(--t1)' }}>
             {isAr ? 'لا توجد تقييمات بعد' : 'No reviews yet'}
@@ -106,11 +96,11 @@ export default async function ReviewsPage({ params }: Props) {
         <div className="flex flex-col gap-4">
           {community.reviews.map(review => (
             <article key={review.id}
-              className="rounded-2xl p-5 transition-all hover:shadow-[0_4px_20px_rgba(0,0,0,.06)]"
+              className="rounded-2xl p-5 transition-shadow duration-200 hover:shadow-md"
               style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
 
               <div className="flex items-start gap-3 mb-3">
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-white text-xs flex-shrink-0 shadow-md"
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-white text-xs flex-shrink-0"
                   style={{ background: review.authorColor }}>
                   {review.authorInitials}
                 </div>
