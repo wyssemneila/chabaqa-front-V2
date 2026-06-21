@@ -1,80 +1,95 @@
 import React from "react"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import CreatorSessionsPage from "@/app/(creator)/creator/sessions/page"
 
-const mockToast = jest.fn()
-const mockLoadSessionsCached = jest.fn()
-const mockClientSessionsView = jest.fn(() => <div data-testid="sessions-view" />)
+const mockUseCreatorSessionsPage = jest.fn()
+const mockRefetch = jest.fn()
 
-let selectedCommunityId: string | null = "community-a"
-let isCommunityLoading = false
-
-jest.mock("@/hooks/use-toast", () => ({
-  useToast: () => ({ toast: mockToast }),
+jest.mock("@/hooks/creator-dashboard/use-creator-dashboard-data", () => ({
+  useCreatorSessionsPage: () => mockUseCreatorSessionsPage(),
 }))
 
-jest.mock("@/app/(creator)/creator/context/creator-community-context", () => ({
-  useCreatorCommunity: () => ({
-    selectedCommunityId,
-    isLoading: isCommunityLoading,
-  }),
+jest.mock("@/hooks/use-dash-prefs", () => ({
+  useDashPrefs: () => ({ lang: "en" }),
 }))
 
-jest.mock("@/app/(creator)/creator/context/community-switch-cache", () => ({
-  loadSessionsCached: (...args: any[]) => mockLoadSessionsCached(...args),
+jest.mock("@/components/creator-dashboard/DashSidebar", () => ({
+  __esModule: true,
+  default: () => null,
 }))
 
-jest.mock(
-  "@/app/(creator)/creator/sessions/components/client-sessions-view",
-  () => (props: any) => mockClientSessionsView(props)
-)
+jest.mock("@/components/creator-dashboard/DashTopbar", () => ({
+  __esModule: true,
+  default: () => null,
+}))
 
-describe("CreatorSessionsPage community switching", () => {
+const session = {
+  _id: "session-1",
+  title: "Strategy Session",
+  duration: 60,
+  priceType: "paid",
+  price: 80,
+  isPublished: true,
+  availabilityDays: 3,
+  totalSlots: 6,
+}
+
+const booking = {
+  _id: "booking-1",
+  studentName: "Ada Student",
+  studentEmail: "ada@example.com",
+  sessionId: "session-1",
+  sessionTitle: "Strategy Session",
+  duration: 60,
+  price: 80,
+  date: "2099-06-22T10:00:00.000Z",
+  status: "confirmed",
+}
+
+describe("Creator sessions page", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    selectedCommunityId = "community-a"
-    isCommunityLoading = false
+    mockUseCreatorSessionsPage.mockReturnValue({
+      sessions: [session],
+      bookings: [booking],
+      loading: false,
+      error: "",
+      refetch: mockRefetch,
+    })
   })
 
-  test("ignores stale response from previous community switch", async () => {
-    let resolveA: (value: any) => void = () => {}
-    const promiseA = new Promise((resolve) => {
-      resolveA = resolve
+  test("renders sessions and upcoming bookings from the current data hook", () => {
+    render(<CreatorSessionsPage />)
+
+    expect(screen.getByText("1 sessions · 1 bookings")).toBeInTheDocument()
+    expect(screen.getAllByText("Strategy Session").length).toBeGreaterThan(0)
+    expect(screen.getByText("Ada Student")).toBeInTheDocument()
+  })
+
+  test("renders loading state while session data is being fetched", () => {
+    mockUseCreatorSessionsPage.mockReturnValue({
+      sessions: [],
+      bookings: [],
+      loading: true,
+      error: "",
+      refetch: mockRefetch,
     })
 
-    const payloadA = { sessions: [{ id: "a" }], bookings: [], revenue: 10 }
-    const payloadB = { sessions: [{ id: "b" }], bookings: [], revenue: 20 }
+    render(<CreatorSessionsPage />)
+    expect(screen.getByText("Loading…")).toBeInTheDocument()
+  })
 
-    mockLoadSessionsCached.mockImplementation((communityId: string) => {
-      if (communityId === "community-a") return promiseA
-      return Promise.resolve(payloadB)
+  test("retries through the current data hook after an error", () => {
+    mockUseCreatorSessionsPage.mockReturnValue({
+      sessions: [],
+      bookings: [],
+      loading: false,
+      error: "Failed to load sessions",
+      refetch: mockRefetch,
     })
 
-    const view = render(<CreatorSessionsPage />)
-
-    selectedCommunityId = "community-b"
-    view.rerender(<CreatorSessionsPage />)
-
-    await waitFor(() => {
-      expect(mockClientSessionsView).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          allSessions: payloadB.sessions,
-          revenue: payloadB.revenue,
-          isSwitchLoading: false,
-        })
-      )
-    })
-
-    resolveA(payloadA)
-
-    await waitFor(() => {
-      expect(mockClientSessionsView).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          allSessions: payloadB.sessions,
-          revenue: payloadB.revenue,
-          isSwitchLoading: false,
-        })
-      )
-    })
+    render(<CreatorSessionsPage />)
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }))
+    expect(mockRefetch).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
+import React, { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
 import { useAnalyticsDashboard } from '@/hooks/use-creator-analytics'

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
