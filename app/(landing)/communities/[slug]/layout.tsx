@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
-import { Header } from '@/components/header'
 import { getCommunity } from '@/lib/community-data'
 import { CommunityLayoutClient } from './community-layout-client'
 
@@ -17,11 +16,8 @@ export default async function CommunityLayout({ children, params }: Props) {
   if (!community) notFound()
 
   return (
-    <>
-      <Header />
-      <CommunityLayoutClient community={community} locale={locale}>
-        {children}
-      </CommunityLayoutClient>
-    </>
+    <CommunityLayoutClient community={community} locale={locale}>
+      {children}
+    </CommunityLayoutClient>
   )
 }
