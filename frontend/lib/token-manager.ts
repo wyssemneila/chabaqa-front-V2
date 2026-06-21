@@ -1,6 +1,7 @@
 "use client"
 
 import { syncAccessTokenCookie } from '@/lib/cookie-sync'
+import { refreshBrowserAccessToken } from '@/lib/auth-refresh'
 
 /**
  * Enhanced Token Management Utility
@@ -95,24 +96,12 @@ class TokenManager {
    */
   private async refreshToken(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.API_BASE}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json()
-        const payload = data?.data || data || {}
-        const accessToken = payload.access_token || payload.accessToken
-        if (accessToken) {
-          this.setAccessToken(accessToken) // also syncs cookie
-          return true
-        }
+      const accessToken = await refreshBrowserAccessToken(this.API_BASE)
+      if (accessToken) {
+        this.accessToken = accessToken
+        return true
       }
-      
+
       // If refresh fails, redirect to login
       this.handleAuthFailure();
       return false;

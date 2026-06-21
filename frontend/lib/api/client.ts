@@ -1,3 +1,5 @@
+import { getBrowserCookie, refreshBrowserAccessToken } from '@/lib/auth-refresh';
+
 // API Response types
 export interface ApiSuccessResponse<T> {
   success: true;
@@ -140,7 +142,8 @@ class ApiClient {
   }
 
   private buildUrl(endpoint: string, params?: Record<string, any>): string {
-    const url = new URL(`${this.baseURL}${endpoint}`);
+    const base = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const url = new URL(`${this.baseURL}${endpoint}`, base);
     if (params) {
       Object.keys(params).forEach((key) => {
         if (params[key] !== undefined && params[key] !== null) {
@@ -152,13 +155,7 @@ class ApiClient {
   }
 
   private getCookie(name: string): string {
-    if (typeof document === 'undefined') return '';
-    const encodedName = `${encodeURIComponent(name)}=`;
-    const cookie = document.cookie
-      .split(';')
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(encodedName));
-    return cookie ? decodeURIComponent(cookie.slice(encodedName.length)) : '';
+    return getBrowserCookie(name);
   }
 
   private getHeaders(isFormData: boolean = false, includeCsrf: boolean = false): HeadersInit {
@@ -179,7 +176,7 @@ class ApiClient {
     if (typeof window !== 'undefined') {
       try {
         const { tokenStorage } = require('@/lib/token-storage');
-        const accessToken = tokenStorage.getAccessToken();
+        const accessToken = tokenStorage.getAccessToken() || this.getCookie('accessToken');
         if (accessToken) {
           headers['Authorization'] = `Bearer ${accessToken}`;
         }
@@ -323,12 +320,19 @@ class ApiClient {
       formData.append('files', file);
     });
 
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
+    const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
       headers: this.getHeaders(true, true),
       credentials: 'include',
       body: formData,
     });
+    let response = await doRequest();
+    if (response.status === 401) {
+      const refreshed = await this.tryRefreshToken();
+      if (refreshed) {
+        response = await doRequest();
+      }
+    }
     return this.handleResponse<T>(response);
   }
 
@@ -341,23 +345,8 @@ class ApiClient {
 
     this.refreshPromise = (async () => {
       try {
-        if (typeof window === 'undefined') return false
-
-        const res = await fetch(`${this.baseURL}/auth/refresh`, {
-          method: 'POST',
-          headers: this.getHeaders(false, true),
-          credentials: 'include', // sends httpOnly refreshToken cookie
-          body: '{}',
-        })
-
-        if (!res.ok) return false
-
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('refresh_token')
-
-        return true
+        const accessToken = await refreshBrowserAccessToken(this.baseURL)
+        return !!accessToken
       } catch (error) {
         console.error('[ApiClient] Token refresh failed:', error)
         return false
