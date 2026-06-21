@@ -45,6 +45,7 @@ import { AnalyticsModule } from '@/domains/analytics/analytics.module';
 import { EmailModule } from '@/domains/communication/email/email.module';
 import { FeedbackModule } from '@/domains/content/feedback/feedback.module';
 import { EmailCampaignModule } from '@/domains/communication/email-campaign/email-campaign.module';
+import { WhatsappModule } from '@/domains/communication/whatsapp/whatsapp.module';
 import { GoogleCalendarModule } from '@/domains/communication/google-calendar/google-calendar.module';
 import { SecurityModule } from '@/shared/modules/security.module';
 import { MonitoringModule } from '@/shared/modules/monitoring.module';
@@ -189,6 +190,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     AnalyticsModule,
     FeedbackModule,
     EmailCampaignModule,
+    WhatsappModule,
     GoogleCalendarModule,
     SecurityModule,
     MonitoringModule,
