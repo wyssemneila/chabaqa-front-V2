@@ -141,12 +141,15 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.dast_target_url != ''
     steps:
       - name: Run OWASP ZAP baseline
+        env:
+          DAST_TARGET_URL: ${{ inputs.dast_target_url }}
+          ZAP_WORKDIR: ${{ runner.temp }}
         run: |
           docker run --rm \
-            -v "${{ runner.temp }}:/zap/wrk" \
+            -v "$ZAP_WORKDIR:/zap/wrk" \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
-            -t "${{ inputs.dast_target_url }}" \
+            -t "$DAST_TARGET_URL" \
             -r zap-report.html \
             -w zap-warnings.md \
             -I

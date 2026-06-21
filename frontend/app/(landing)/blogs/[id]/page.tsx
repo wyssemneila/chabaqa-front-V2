@@ -80,10 +80,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <Footer />
       
       {/* JSON-LD Structured Data for Article */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+      <script type="application/ld+json">
+        {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "BlogPosting",
             "headline": post.title,
@@ -113,23 +111,19 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             "keywords": post.tags.join(", "),
             "wordCount": post.content.split(/\s+/).length,
             "timeRequired": post.readTime
-          })
-        }}
-      />
+          })}
+      </script>
       
       {/* Breadcrumb Schema */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
-            generateBreadcrumbSchema([
-              { name: "Home", url: absoluteUrl("/") },
-              { name: "Blog", url: absoluteUrl("/blogs") },
-              { name: post.title, url: absoluteUrl(`/blogs/${post.id}`) },
-            ]),
-          )
-        }}
-      />
+      <script type="application/ld+json">
+        {JSON.stringify(
+          generateBreadcrumbSchema([
+            { name: "Home", url: absoluteUrl("/") },
+            { name: "Blog", url: absoluteUrl("/blogs") },
+            { name: post.title, url: absoluteUrl(`/blogs/${post.id}`) },
+          ]),
+        )}
+      </script>
     </main>
   )
 }

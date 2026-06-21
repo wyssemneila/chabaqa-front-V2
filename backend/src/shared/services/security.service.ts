@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class SecurityService {
@@ -149,38 +150,49 @@ export class SecurityService {
    * Encrypt sensitive data
    */
   encryptData(data: string): string {
-    const crypto = require('crypto');
     const algorithm = 'aes-256-gcm';
-    const key = this.configService.get('ENCRYPTION_KEY') || this.generateSecureToken(32);
-    const iv = crypto.randomBytes(16);
+    const key = this.getEncryptionKey();
+    const iv = crypto.randomBytes(12);
 
-    const cipher = crypto.createCipher(algorithm, key);
+    const cipher = crypto.createCipheriv(algorithm, key, iv, { authTagLength: 16 });
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
+    const authTag = cipher.getAuthTag().toString('hex');
 
-    return `${iv.toString('hex')}:${encrypted}`;
+    return `v2:${iv.toString('hex')}:${authTag}:${encrypted}`;
   }
 
   /**
    * Decrypt sensitive data
    */
   decryptData(encryptedData: string): string {
-    const crypto = require('crypto');
     const algorithm = 'aes-256-gcm';
-    const key = this.configService.get('ENCRYPTION_KEY');
+    const key = this.getEncryptionKey();
 
-    if (!key) {
-      throw new Error('Encryption key not configured');
+    const [version, ivHex, authTagHex, encrypted] = encryptedData.split(':');
+    if (version !== 'v2' || !ivHex || !authTagHex || !encrypted) {
+      throw new Error('Unsupported encrypted data format');
+    }
+    const iv = Buffer.from(ivHex, 'hex');
+    const authTag = Buffer.from(authTagHex, 'hex');
+    if (authTag.length !== 16) {
+      throw new Error('Invalid encrypted data authentication tag');
     }
 
-    const [ivHex, encrypted] = encryptedData.split(':');
-    const iv = Buffer.from(ivHex, 'hex');
-
-    const decipher = crypto.createDecipher(algorithm, key);
+    const decipher = crypto.createDecipheriv(algorithm, key, iv, { authTagLength: 16 });
+    decipher.setAuthTag(authTag);
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
 
     return decrypted;
+  }
+
+  private getEncryptionKey(): Buffer {
+    const key = this.configService.get<string>('ENCRYPTION_KEY');
+    if (!key) {
+      throw new Error('Encryption key not configured');
+    }
+    return crypto.createHash('sha256').update(key).digest();
   }
 
   /**

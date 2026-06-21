@@ -1,9 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+function normalizeRedirectTarget(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl, window.location.origin);
+    if (url.origin !== window.location.origin) return '/';
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return '/';
+  }
+}
 
 export default function KonnectMockCheckoutContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const paymentRef = searchParams.get('paymentRef') || '';
   const successUrl = searchParams.get('successUrl') || '/';
@@ -41,12 +52,13 @@ export default function KonnectMockCheckoutContent() {
       setStatus('done');
 
       // Redirect to the appropriate URL
-      const target = outcome === 'success'
+      const rawTarget = outcome === 'success'
         ? successUrl.replace('PAYMENT_REF_PLACEHOLDER', paymentRef)
         : failUrl;
+      const target = normalizeRedirectTarget(rawTarget);
 
       setTimeout(() => {
-        window.location.href = target;
+        router.replace(target);
       }, 1200);
     } catch (e: any) {
       setMessage(e?.message || 'Network error');

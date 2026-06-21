@@ -937,7 +937,7 @@ export class CourseEnrollmentService {
 
     progress.lastAccessedAt = new Date();
     progress.updatedAt = new Date();
-    let watchPercentage =
+    const watchPercentage =
       chapterDurationSeconds > 0
         ? (Number(progress.watchTime || 0) / chapterDurationSeconds) * 100
         : 0;

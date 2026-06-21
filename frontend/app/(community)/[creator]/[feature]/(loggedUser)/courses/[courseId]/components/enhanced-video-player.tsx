@@ -1039,18 +1039,19 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
     const iframe = vimeoIframeRef.current
     const iframeWindow = iframe.contentWindow
     if (!iframeWindow) return
+    const vimeoOrigin = 'https://player.vimeo.com'
 
     // Enable Vimeo Player API
     const enableApi = () => {
-      iframeWindow.postMessage(JSON.stringify({ method: 'addEventListener', value: 'play' }), '*')
-      iframeWindow.postMessage(JSON.stringify({ method: 'addEventListener', value: 'pause' }), '*')
-      iframeWindow.postMessage(JSON.stringify({ method: 'addEventListener', value: 'timeupdate' }), '*')
-      iframeWindow.postMessage(JSON.stringify({ method: 'addEventListener', value: 'ended' }), '*')
-      iframeWindow.postMessage(JSON.stringify({ method: 'getDuration' }), '*')
+      iframeWindow.postMessage(JSON.stringify({ method: 'addEventListener', value: 'play' }), vimeoOrigin)
+      iframeWindow.postMessage(JSON.stringify({ method: 'addEventListener', value: 'pause' }), vimeoOrigin)
+      iframeWindow.postMessage(JSON.stringify({ method: 'addEventListener', value: 'timeupdate' }), vimeoOrigin)
+      iframeWindow.postMessage(JSON.stringify({ method: 'addEventListener', value: 'ended' }), vimeoOrigin)
+      iframeWindow.postMessage(JSON.stringify({ method: 'getDuration' }), vimeoOrigin)
     }
 
     const handleMessage = (event: MessageEvent) => {
-      if (!event.origin.includes('vimeo.com')) return
+      if (event.origin !== vimeoOrigin) return
       try {
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
         if (data.event === 'ready') {
@@ -1060,7 +1061,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
           // Seek to saved position if available
           if (savedWatchPosition && savedWatchPosition > 0) {
             try {
-              iframeWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: savedWatchPosition }), '*')
+              iframeWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: savedWatchPosition }), vimeoOrigin)
               lastUpdateRef.current = savedWatchPosition
               setWatchTime(savedWatchPosition)
             } catch (e) {
