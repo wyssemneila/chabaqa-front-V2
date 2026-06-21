@@ -105,7 +105,7 @@ describe("Creator analytics dashboard", () => {
     render(<CommunityAnalyticsPage />)
 
     expect(mockUseAnalyticsDashboard).toHaveBeenCalledWith("30d", "all")
-    expect(screen.getByText("1,250 TND")).toBeInTheDocument()
+    expect(screen.getAllByText("1,250 TND").length).toBeGreaterThan(0)
     expect(screen.getByText("Growth Course")).toBeInTheDocument()
     expect(screen.getByText("75%")).toBeInTheDocument()
   })

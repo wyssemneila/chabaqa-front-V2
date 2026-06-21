@@ -1,4 +1,5 @@
 import { AuthController } from '@/domains/auth/auth.controller';
+import { CookieUtil } from '@/shared/utils/cookie.util';
 
 describe('AuthController token compatibility', () => {
   const authServiceMock = {
@@ -34,7 +35,22 @@ describe('AuthController token compatibility', () => {
     );
 
     expect(result.accessToken).toBe('access-token');
-    expect(response.cookie).toHaveBeenCalledTimes(2);
+    expect(response.cookie).toHaveBeenCalledTimes(3);
+    expect(response.cookie).toHaveBeenCalledWith(
+      CookieUtil.COOKIE_NAMES.ACCESS_TOKEN,
+      'access-token',
+      expect.any(Object),
+    );
+    expect(response.cookie).toHaveBeenCalledWith(
+      CookieUtil.COOKIE_NAMES.REFRESH_TOKEN,
+      'refresh-token',
+      expect.any(Object),
+    );
+    expect(response.cookie).toHaveBeenCalledWith(
+      CookieUtil.CSRF_COOKIE_NAME,
+      expect.any(String),
+      expect.any(Object),
+    );
   });
 
   it('refreshes using legacy cookies and returns wrapped compatibility fields', async () => {
@@ -54,7 +70,17 @@ describe('AuthController token compatibility', () => {
     );
 
     expect(authServiceMock.refreshToken).toHaveBeenCalledWith('legacy-refresh-token');
-    expect(response.cookie).toHaveBeenCalledTimes(1);
+    expect(response.cookie).toHaveBeenCalledTimes(2);
+    expect(response.cookie).toHaveBeenCalledWith(
+      CookieUtil.COOKIE_NAMES.ACCESS_TOKEN,
+      'new-access-token',
+      expect.any(Object),
+    );
+    expect(response.cookie).toHaveBeenCalledWith(
+      CookieUtil.CSRF_COOKIE_NAME,
+      expect.any(String),
+      expect.any(Object),
+    );
     expect(result).toEqual(
       expect.objectContaining({
         success: true,

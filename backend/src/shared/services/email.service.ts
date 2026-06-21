@@ -387,7 +387,6 @@ export class EmailService {
         pass: this.getEmailPassword()!,
       },
       tls: {
-        rejectUnauthorized: false,
         minVersion: 'TLSv1.2',
       },
       connectionTimeout: 10000,

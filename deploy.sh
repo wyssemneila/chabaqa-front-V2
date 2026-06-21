@@ -222,7 +222,7 @@ free_host_port() {
 
 cleanup_legacy_pm2_apps
 free_host_port 3000
-free_host_port 8081
+free_host_port 8083
 
 dump_container_diagnostics() {
   local name="$1"
@@ -269,10 +269,13 @@ wait_for_container() {
   done
 }
 
-echo "[deploy] ensuring database services"
-docker compose up -d --no-recreate mongo redis
+echo "[deploy] ensuring infrastructure services"
+docker compose up -d --no-recreate mongo redis clamav
 wait_for_container chabaqa-mongo 120
 wait_for_container chabaqa-redis 120
+if ! wait_for_container chabaqa-clamav 60; then
+  echo "[deploy] clamav is not healthy yet; continuing because uploads remain fail-closed while malware scanning is required"
+fi
 restore_legacy_host_mongo_if_needed
 
 echo "[deploy] recreating backend"
@@ -289,7 +292,7 @@ docker compose ps
 
 echo "[deploy] health checks"
 BACKEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/api/health/ping || true)"
-FRONTEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:8081/ || true)"
+FRONTEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:8083/ || true)"
 
 assert_http_status() {
   local url="$1"
@@ -315,10 +318,10 @@ if [ "$FRONTEND_STATUS" != "200" ] && [ "$FRONTEND_STATUS" != "307" ]; then
   exit 1
 fi
 
-assert_http_status "http://127.0.0.1:8081/logo_chabaqa.png" "200" "frontend logo asset"
-assert_http_status "http://127.0.0.1:8081/Logos/PNG/frensh1.png" "200" "frontend header logo asset"
-assert_http_status "http://127.0.0.1:8081/banners-community/community-1-email-marketing.png" "200" "frontend image fallback asset"
-assert_http_status "http://127.0.0.1:8081/placeholder-user.jpg" "200" "frontend avatar fallback asset"
+assert_http_status "http://127.0.0.1:8083/logo_chabaqa.png" "200" "frontend logo asset"
+assert_http_status "http://127.0.0.1:8083/Logos/PNG/frensh1.png" "200" "frontend header logo asset"
+assert_http_status "http://127.0.0.1:8083/banners-community/community-1-email-marketing.png" "200" "frontend image fallback asset"
+assert_http_status "http://127.0.0.1:8083/placeholder-user.jpg" "200" "frontend avatar fallback asset"
 
 echo "[deploy] success"
 echo "[deploy] frontend: https://chabaqa.io"

@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHmac } from 'crypto';
-import { existsSync } from 'fs';
+import { createReadStream, existsSync } from 'fs';
 import { Model, Types } from 'mongoose';
-import { basename, extname, join } from 'path';
+import { basename, extname, isAbsolute, join, relative, resolve } from 'path';
 import { MediaAsset, MediaAssetDocument } from '@/infrastructure/database/schemas/content/media-asset.schema';
 import { MediaCompleteDto, MediaPresignDto } from '@/domains/content/media/dto/media.dto';
 import {
@@ -225,7 +225,12 @@ export class MediaService {
       throw new NotFoundException('Media asset not found');
     }
 
-    const filePath = join(this.uploadsRoot, asset.storageKey);
+    const uploadsRoot = resolve(this.uploadsRoot);
+    const filePath = resolve(uploadsRoot, asset.storageKey);
+    const relativePath = relative(uploadsRoot, filePath);
+    if (!relativePath || relativePath.startsWith('..') || isAbsolute(relativePath)) {
+      throw new BadRequestException('Invalid media storage path');
+    }
     if (!existsSync(filePath)) {
       throw new NotFoundException('Media file missing from storage');
     }
@@ -240,7 +245,7 @@ export class MediaService {
       const filename = basename(filePath).replace(/["\r\n]/g, '_') || 'download';
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     }
-    return res.sendFile(filePath);
+    return createReadStream(filePath).pipe(res);
   }
 
   async deleteAsset(assetId: string, requester?: { userId?: string; isAdmin?: boolean }) {
