@@ -50,7 +50,7 @@ export default async function MembersPage({ params }: Props) {
           <p className="text-sm text-gray-500">{isAr ? 'لا يوجد أعضاء بعد' : 'No members yet'}</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden divide-y divide-gray-100">
+        <div className="rounded-xl bg-white overflow-hidden divide-y" style={{ border: '1px solid #e8e4ff' }}>
           {allMembers.map(member => {
             const rc = ROLE_CONFIG[member.role]
             return (

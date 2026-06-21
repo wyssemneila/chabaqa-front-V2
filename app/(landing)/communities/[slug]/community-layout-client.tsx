@@ -111,11 +111,11 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
                 <Link key={id} href={tabHref(id)}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all"
                   style={{
-                    color: isActive ? '#111' : '#666',
-                    background: isActive ? '#e8f4f8' : 'transparent',
+                    color: isActive ? '#1a1730' : '#46426a',
+                    background: isActive ? '#ede9ff' : 'transparent',
                   }}>
                   <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.7}
-                    style={{ color: isActive ? '#3AAFA9' : '#999' }} />
+                    style={{ color: isActive ? '#8e78fb' : '#9590b8' }} />
                   {isAr ? labelAr : label}
                 </Link>
               )

@@ -75,7 +75,7 @@ export default async function ReviewsPage({ params }: Props) {
 
         {/* Write review CTA */}
         <div className="mt-5 pt-5 border-t border-gray-100">
-          <button className="text-[13px] font-medium px-4 py-2 rounded-lg bg-[#3AAFA9] text-white">
+          <button className="text-[13px] font-medium px-4 py-2 rounded-lg text-white" style={{ background: '#8e78fb' }}>
             {isAr ? 'اكتب تقييم' : 'Write a Review'}
           </button>
         </div>
