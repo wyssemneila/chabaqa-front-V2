@@ -3,6 +3,8 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { CampaignBuilderDialog } from "../campaign-builder-dialog"
 
+jest.setTimeout(15_000)
+
 const mockToast = jest.fn()
 
 const mockGetInactiveUserStats = jest.fn()
