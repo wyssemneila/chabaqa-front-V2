@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
-import { UserCheck, Clock, Star, CalendarCheck } from 'lucide-react'
+import { Clock, Star, Video } from 'lucide-react'
 import { getCommunity } from '@/lib/community-data'
 
 interface Props { params: Promise<{ slug: string }> }
@@ -13,83 +13,102 @@ export default async function SessionsPage({ params }: Props) {
   const isAr = locale === 'ar'
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
+      {/* Page header */}
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">
+          {isAr ? 'الجلسات' : 'Sessions'}
+        </h1>
+        <p className="text-[13px] text-gray-500 mt-1">
+          {isAr ? 'تصفح الجلسات المتاحة' : 'Browse available sessions'}
+        </p>
+      </div>
 
-      {/* Session cards */}
+      {/* Filter */}
+      <div className="flex items-center gap-4 border-b border-gray-100">
+        <button className="pb-3 text-[13px] font-medium border-b-2 border-[#3AAFA9] text-[#3AAFA9]">
+          {isAr ? 'تصفح الجلسات' : 'Browse Sessions'}
+        </button>
+        <button className="pb-3 text-[13px] font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+          {isAr ? 'يومي' : 'Daily'}
+        </button>
+      </div>
+
+      {/* Sessions grid */}
       {community.sessions.length === 0 ? (
-        <div className="rounded-2xl p-12 text-center" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--p2)' }}>
-            <UserCheck className="w-7 h-7" style={{ color: 'var(--p)' }} strokeWidth={1.3} />
+        <div className="rounded-xl border border-gray-100 p-12 text-center">
+          <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-3">
+            <Video className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
           </div>
-          <p className="text-base font-bold mb-1" style={{ color: 'var(--t1)' }}>
-            {isAr ? 'لا توجد جلسات متاحة' : 'No sessions available'}
+          <p className="text-sm font-semibold text-gray-900 mb-1">
+            {isAr ? 'لا توجد جلسات بعد' : 'No sessions yet'}
           </p>
-          <p className="text-sm" style={{ color: 'var(--t3)' }}>
+          <p className="text-[13px] text-gray-500">
             {isAr ? 'ترقبوا قريباً' : 'Check back soon'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {community.sessions.map(session => (
-            <article key={session.id}
-              className="group flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-shadow duration-200 hover:shadow-md"
-              style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-
-              <div className="p-5 flex flex-col flex-1 gap-4">
-                {/* Mentor info */}
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold text-white text-sm flex-shrink-0"
-                    style={{ background: session.mentorColor }}>
-                    {session.mentorInitials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-extrabold" style={{ color: 'var(--t1)' }}>{session.mentorName}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <svg key={i} viewBox="0 0 24 24" fill={i < Math.round(session.rating) ? '#ff9b28' : 'none'} stroke="#ff9b28" strokeWidth="1.5" width="11" height="11" aria-hidden="true">
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                        </svg>
-                      ))}
-                      <span className="text-[11px] font-semibold ml-0.5" style={{ color: 'var(--t2)' }}>{session.rating.toFixed(1)}</span>
-                      <span className="text-[11px]" style={{ color: 'var(--t3)' }}>({session.reviewsCount})</span>
-                    </div>
-                  </div>
-                  <span className="text-lg font-extrabold flex-shrink-0" style={{ color: 'var(--p)' }}>
-                    {session.price} <span className="text-xs font-medium" style={{ color: 'var(--t3)' }}>{session.currency}</span>
-                  </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {community.sessions.map((session) => (
+            <div key={session.id} className="rounded-xl border border-gray-100 p-5">
+              {/* Mentor info */}
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-semibold"
+                  style={{ background: session.mentorColor }}
+                >
+                  {session.mentorInitials}
                 </div>
-
-                {/* Title */}
-                <h3 className="text-sm font-bold group-hover:text-[var(--p)] transition-colors leading-snug" style={{ color: 'var(--t1)' }}>
-                  {session.title}
-                </h3>
-
-                {/* Meta */}
-                <div className="flex items-center gap-4 text-[11px]" style={{ color: 'var(--t3)' }}>
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" strokeWidth={1.7} />
-                    {session.duration} {isAr ? 'دقيقة' : 'min'}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <CalendarCheck className="w-3.5 h-3.5" strokeWidth={1.7} />
-                    {session.availableSlots} {isAr ? 'موعد متاح' : 'slots left'}
-                  </span>
+                <div>
+                  <p className="text-[14px] font-semibold text-gray-900">{session.mentorName}</p>
+                  <p className="text-[12px] text-gray-500">{session.title}</p>
                 </div>
+              </div>
 
-                {/* Book CTA */}
+              {/* Rating */}
+              <div className="flex items-center gap-1 mb-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-3.5 h-3.5 ${
+                      i < Math.round(session.rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200'
+                    }`}
+                  />
+                ))}
+                <span className="text-[12px] text-gray-500 ml-1">
+                  ({session.reviewsCount})
+                </span>
+              </div>
+
+              {/* Details */}
+              <div className="flex items-center gap-4 text-[12px] text-gray-500 mb-4">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {session.duration} {isAr ? 'دقيقة' : 'min'}
+                </span>
+                <span>
+                  {session.availableSlots} {isAr ? 'مقعد متاح' : 'slots left'}
+                </span>
+              </div>
+
+              {/* Price + CTA */}
+              <div className="flex items-center justify-between">
+                <span className="text-[14px] font-semibold text-gray-900">
+                  {session.price} {session.currency}
+                </span>
                 <button
-                  disabled={session.availableSlots === 0}
-                  className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ background: session.booked ? 'var(--p2)' : 'var(--p)', color: session.booked ? 'var(--p)' : '#fff' }}>
+                  className={`text-[12px] font-medium px-4 py-2 rounded-lg ${
+                    session.booked
+                      ? 'border border-gray-200 text-gray-600'
+                      : 'bg-[#3AAFA9] text-white'
+                  }`}
+                >
                   {session.booked
-                    ? (isAr ? 'محجوز ✓' : 'Booked ✓')
-                    : session.availableSlots === 0
-                      ? (isAr ? 'لا مواعيد متاحة' : 'No slots available')
-                      : (isAr ? 'احجز جلسة' : 'Book Session')
-                  }
+                    ? (isAr ? 'محجوز' : 'Booked')
+                    : (isAr ? 'احجز الآن' : 'Book Now')}
                 </button>
               </div>
-            </article>
+            </div>
           ))}
         </div>
       )}

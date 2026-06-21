@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
-import { BookOpen, Play, Clock, Users, CheckCircle } from 'lucide-react'
+import { BookOpen, Search, Users, Clock, Star } from 'lucide-react'
 import { getCommunity, LEVEL_CONFIG } from '@/lib/community-data'
 
 interface Props { params: Promise<{ slug: string }> }
@@ -12,112 +12,143 @@ export default async function CoursesPage({ params }: Props) {
   if (!community) notFound()
   const isAr = locale === 'ar'
 
+  const tabs = [
+    { key: 'all', label: isAr ? 'الكل' : 'All' },
+    { key: 'in-progress', label: isAr ? 'قيد التقدم' : 'In Progress' },
+    { key: 'completed', label: isAr ? 'مكتمل' : 'Completed' },
+    { key: 'not-started', label: isAr ? 'لم يبدأ' : 'Not Started' },
+  ]
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
+      {/* Page header */}
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">
+          {isAr ? 'الدورات' : 'Courses'}
+        </h1>
+        <p className="text-[13px] text-gray-500 mt-1">
+          {isAr ? `دورات ${community.nameAr}` : `${community.name} courses`}
+        </p>
+      </div>
+
+      {/* Filter tabs + search */}
+      <div className="flex items-center justify-between gap-4 border-b border-gray-100">
+        <div className="flex gap-6">
+          {tabs.map((tab, i) => (
+            <button
+              key={tab.key}
+              className={`pb-3 text-[13px] font-medium border-b-2 transition-colors ${
+                i === 0
+                  ? 'border-[#3AAFA9] text-[#3AAFA9]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder={isAr ? 'بحث...' : 'Search...'}
+            className="pl-9 pr-4 py-2 text-[13px] rounded-lg border border-gray-200 bg-white text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-gray-300 w-[200px]"
+          />
+        </div>
+      </div>
 
       {/* Courses grid */}
       {community.courses.length === 0 ? (
-        <div className="rounded-2xl p-12 text-center" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--p2)' }}>
-            <BookOpen className="w-7 h-7" style={{ color: 'var(--p)' }} strokeWidth={1.3} />
+        <div className="rounded-xl border border-gray-100 p-12 text-center">
+          <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-3">
+            <BookOpen className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
           </div>
-          <p className="text-base font-bold mb-1" style={{ color: 'var(--t1)' }}>
-            {isAr ? 'لا توجد كورسات بعد' : 'No courses yet'}
+          <p className="text-sm font-semibold text-gray-900 mb-1">
+            {isAr ? 'لا توجد دورات بعد' : 'No courses yet'}
           </p>
-          <p className="text-sm" style={{ color: 'var(--t3)' }}>
+          <p className="text-[13px] text-gray-500">
             {isAr ? 'ترقبوا قريباً' : 'Check back soon'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {community.courses.map(course => {
-            const lvl = LEVEL_CONFIG[course.level]
-            const isFree = course.price === 'free'
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {community.courses.map((course) => {
+            const level = LEVEL_CONFIG[course.level]
             return (
-              <article key={course.id}
-                className="group flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-shadow duration-200 hover:shadow-md"
-                style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-
+              <div key={course.id} className="rounded-xl border border-gray-100 overflow-hidden">
                 {/* Thumbnail */}
-                <div className="relative flex items-center justify-center overflow-hidden" style={{ height: 140, background: `linear-gradient(135deg, ${community.avatarColor}22, var(--p2))` }}>
-                  <BookOpen className="w-10 h-10 opacity-40" style={{ color: 'var(--p)' }} strokeWidth={1.2} />
-
-                  {/* Top badges */}
-                  <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: lvl.bg, color: lvl.color }}>
-                      {isAr ? lvl.labelAr : lvl.label}
-                    </span>
-                    {course.enrolled && (
-                      <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'var(--p)', color: '#fff' }}>
-                        <CheckCircle className="w-3 h-3" strokeWidth={2} />
-                        {isAr ? 'مسجل' : 'Enrolled'}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Price badge */}
-                  <span className="absolute top-3 right-3 text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                    style={isFree
-                      ? { background: '#10b981', color: '#fff' }
-                      : { background: 'var(--white)', color: 'var(--t1)', border: '1px solid var(--bd)' }
-                    }>
-                    {isFree ? (isAr ? 'مجاني' : 'Free') : `${course.price} ${course.currency ?? ''}`}
+                <div className="relative h-[140px] bg-gray-50 flex items-center justify-center">
+                  {course.thumbnail ? (
+                    <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <BookOpen className="w-8 h-8 text-gray-300" strokeWidth={1.5} />
+                  )}
+                  <span className="absolute top-3 left-3 text-[11px] font-medium bg-white/90 text-gray-700 px-2 py-0.5 rounded">
+                    {course.lessonsCount} {isAr ? 'درس' : 'lessons'}
                   </span>
-
-                  {/* Play overlay on hover */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ background: 'rgba(0,0,0,.18)' }}>
-                    <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'var(--p)', boxShadow: '0 6px 20px rgba(142,120,251,.5)' }}>
-                      <Play className="w-5 h-5 text-white ml-0.5" strokeWidth={2} />
-                    </div>
-                  </div>
                 </div>
 
-                {/* Body */}
-                <div className="flex flex-col flex-1 p-5 gap-3">
-                  <h3 className="text-sm font-bold leading-snug line-clamp-2 group-hover:text-[var(--p)] transition-colors" style={{ color: 'var(--t1)' }}>
+                {/* Content */}
+                <div className="p-4 flex flex-col gap-2">
+                  <h3 className="text-[14px] font-semibold text-gray-900 line-clamp-2">
                     {isAr ? course.titleAr : course.title}
                   </h3>
 
-                  {/* Instructor */}
-                  <p className="text-xs truncate" style={{ color: 'var(--t3)' }}>{course.instructor}</p>
+                  <div className="flex items-center gap-3 text-[12px] text-gray-500">
+                    <span>{course.instructor}</span>
+                    <span className="w-1 h-1 rounded-full bg-gray-300" />
+                    <span>{isAr ? level.labelAr : level.label}</span>
+                  </div>
 
-                  {/* Meta row */}
-                  <div className="flex items-center gap-3 text-[11px]" style={{ color: 'var(--t3)' }}>
-                    <span className="flex items-center gap-1"><Users className="w-3 h-3" strokeWidth={1.7} />{course.studentsCount}</span>
-                    <span className="flex items-center gap-1"><Play className="w-3 h-3" strokeWidth={1.7} />{course.lessonsCount} {isAr ? 'درس' : 'lessons'}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" strokeWidth={1.7} />{course.duration}</span>
+                  <div className="flex items-center gap-3 text-[12px] text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5" />
+                      {course.studentsCount}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {course.duration}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5" />
+                      {course.rating}
+                    </span>
                   </div>
 
                   {/* Progress bar */}
                   {course.enrolled && course.progress !== undefined && (
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{isAr ? 'تقدمك' : 'Progress'}</span>
-                        <span className="text-[11px] font-semibold" style={{ color: 'var(--p)' }}>{course.progress}%</span>
+                    <div className="mt-1">
+                      <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-[#3AAFA9]"
+                          style={{ width: `${course.progress}%` }}
+                        />
                       </div>
-                      <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg)' }}>
-                        <div className="h-2 rounded-full transition-all" style={{ width: `${course.progress}%`, background: 'linear-gradient(90deg, var(--p), #a78bfa)' }} />
-                      </div>
+                      <p className="text-[11px] text-gray-400 mt-1">{course.progress}% {isAr ? 'مكتمل' : 'complete'}</p>
                     </div>
                   )}
 
-                  {/* CTA */}
-                  <button className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
-                    style={course.enrolled
-                      ? { background: 'var(--p2)', color: 'var(--p)' }
-                      : isFree
-                        ? { background: 'var(--p)', color: '#fff' }
-                        : { background: 'var(--t1)', color: '#fff' }
-                    }>
-                    {course.enrolled
-                      ? (isAr ? '▶ تابع الكورس' : '▶ Continue')
-                      : isFree
-                        ? (isAr ? 'التحق مجاناً' : 'Enroll Free')
-                        : (isAr ? 'اشترِ الكورس' : 'Buy Course')
-                    }
-                  </button>
+                  {/* Price + CTA */}
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-[13px] font-semibold text-gray-900">
+                      {course.price === 'free'
+                        ? (isAr ? 'مجاني' : 'Free')
+                        : `${course.price} ${course.currency || 'TND'}`}
+                    </span>
+                    <button
+                      className={`text-[12px] font-medium px-3 py-1.5 rounded-lg ${
+                        course.enrolled
+                          ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                          : 'bg-[#3AAFA9] text-white'
+                      }`}
+                    >
+                      {course.enrolled
+                        ? (isAr ? 'متابعة' : 'Continue')
+                        : (isAr ? 'سجّل الآن' : 'Enroll Now')}
+                    </button>
+                  </div>
                 </div>
-              </article>
+              </div>
             )
           })}
         </div>
