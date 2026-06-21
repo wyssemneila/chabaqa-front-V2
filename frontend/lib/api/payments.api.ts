@@ -17,9 +17,14 @@ export interface CreateSubscriptionData {
   priceId: string;
 }
 
+export type PayoutMethod = 'bank_transfer' | 'paypal' | 'stripe';
+
 export interface RequestPayoutData {
   amount: number;
-  method?: string;
+  method: PayoutMethod;
+  communityId: string;
+  description?: string;
+  itemsCount?: number;
 }
 
 // Payments API
