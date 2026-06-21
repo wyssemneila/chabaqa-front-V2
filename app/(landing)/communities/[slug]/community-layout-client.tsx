@@ -27,10 +27,6 @@ const NAV: { id: CommunityTab; label: string; labelAr: string; Icon: React.Eleme
   { id: 'progress',   label: 'Leaderboards',labelAr: 'المتصدرين', Icon: Trophy },
 ]
 
-function fmt(n: number) {
-  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`
-}
-
 export function CommunityLayoutClient({ community, locale, children }: Props) {
   const pathname = usePathname()
   const isAr = locale === 'ar'
@@ -49,7 +45,6 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
   const active = activeTab()
   const visibleNav = NAV.filter(n => community.tabs.includes(n.id))
   const owner = community.members.find(m => m.role === 'owner')
-  const topMembers = community.members.slice(0, 3)
 
   return (
     <div style={{ background: '#fff', minHeight: '100vh' }}>
@@ -187,106 +182,6 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
         <main className="flex-1 min-w-0 px-5 lg:px-8 py-6">
           {children}
         </main>
-
-        {/* ── RIGHT SIDEBAR ── */}
-        <aside className="hidden xl:flex flex-col w-[240px] flex-shrink-0 sticky top-[52px] h-[calc(100vh-52px)] overflow-y-auto py-6 pr-4 gap-5">
-
-          {/* Community info card */}
-          <div className="rounded-xl border border-gray-100 overflow-hidden">
-            <div className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400"
-              style={{ borderBottom: '1px solid #f0f0f0' }}>
-              {isAr ? 'مجتمع عام' : 'Public Community'}
-            </div>
-            <div className="px-4 py-3 grid grid-cols-3 gap-2 text-center" style={{ borderBottom: '1px solid #f0f0f0' }}>
-              <div>
-                <p className="text-sm font-bold text-gray-900">{fmt(community.membersCount)}</p>
-                <p className="text-[9px] text-gray-400">{isAr ? 'أعضاء' : 'Members'}</p>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900">{community.tabs.length}</p>
-                <p className="text-[9px] text-gray-400">{isAr ? 'أقسام' : 'Sections'}</p>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900">{community.postsThisWeek}</p>
-                <p className="text-[9px] text-gray-400">{isAr ? 'منشورات' : 'Posts'}</p>
-              </div>
-            </div>
-            {community.isJoined ? (
-              <div className="px-4 py-3">
-                <button className="w-full py-2 rounded-lg text-[11px] font-semibold text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors">
-                  {isAr ? 'دعوة أعضاء' : 'Invite Members'}
-                </button>
-              </div>
-            ) : (
-              <div className="px-4 py-3">
-                <button className="w-full py-2 rounded-lg text-[11px] font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ background: '#3AAFA9' }}>
-                  {isAr ? 'انضم مجاناً' : 'Join for Free'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Top Contributors */}
-          <div className="rounded-xl border border-gray-100">
-            <div className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400"
-              style={{ borderBottom: '1px solid #f0f0f0' }}>
-              {isAr ? 'أبرز المساهمين' : 'Top Contributors'}
-            </div>
-            <div className="px-3 py-2">
-              {topMembers.map((m, i) => (
-                <div key={m.id} className="flex items-center gap-2.5 px-1 py-2">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[9px] font-bold"
-                    style={{ background: m.color }}>
-                    {m.initials}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-semibold text-gray-800 truncate">{m.name}</p>
-                    <p className="text-[10px] text-gray-400">{isAr ? `${(5 - i) * 100} نقطة` : `${(5 - i) * 100} Points`}</p>
-                  </div>
-                  {m.role !== 'member' && (
-                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{
-                        background: m.role === 'owner' ? '#fef3c7' : '#dbeafe',
-                        color: m.role === 'owner' ? '#b45309' : '#1d4ed8',
-                      }}>
-                      {m.role === 'owner' ? (isAr ? 'مؤسس' : 'Master') : (isAr ? 'مشرف' : 'Admin')}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Upcoming Events */}
-          {community.events.length > 0 && (
-            <div className="rounded-xl border border-gray-100">
-              <div className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400"
-                style={{ borderBottom: '1px solid #f0f0f0' }}>
-                {isAr ? 'الفعاليات القادمة' : 'Upcoming Events'}
-              </div>
-              <div className="px-3 py-2">
-                {community.events.slice(0, 2).map(ev => (
-                  <div key={ev.id} className="flex items-center gap-3 px-1 py-2">
-                    <div className="w-10 h-10 rounded-lg flex flex-col items-center justify-center flex-shrink-0"
-                      style={{ background: '#f0faf9', border: '1px solid #e0f2f1' }}>
-                      <span className="text-[9px] font-bold" style={{ color: '#3AAFA9' }}>
-                        {ev.date.split(' ')[0]?.slice(0, 3)}
-                      </span>
-                      <span className="text-[11px] font-bold text-gray-700">
-                        {ev.date.split(' ')[1]?.replace(',', '')}
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold text-gray-800 truncate">{ev.title}</p>
-                      <p className="text-[9px] text-gray-400">{ev.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </aside>
       </div>
     </div>
   )
