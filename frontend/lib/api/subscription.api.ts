@@ -36,6 +36,7 @@ export enum UsageMetricType {
   ADMINS_ADDED = 'admins_added',
   API_REQUESTS = 'api_requests',
   EMAIL_SENT = 'email_sent',
+  WHATSAPP_SENT = 'whatsapp_sent',
   AUTOMATION_TRIGGERED = 'automation_triggered',
 }
 

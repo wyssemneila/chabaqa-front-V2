@@ -84,6 +84,24 @@ services:
       retries: 20
       start_period: 120s
 
+  openwa-api:
+    image: ghcr.io/rmyndharis/openwa:latest
+    container_name: chabaqa-openwa
+    ports:
+      - "127.0.0.1:2785:2785"
+    environment:
+      NODE_ENV: production
+    volumes:
+      - openwa-data:/app/data
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+
   chabaqa-backend:
     container_name: chabaqa-backend
     build:
@@ -128,6 +146,12 @@ services:
       ADMIN_ALLOW_PASSWORD_ONLY_LOGIN: "false"
       ALLOW_ADMIN_DB_CLEANUP: "false"
       ENABLE_SWAGGER: "false"
+      WHATSAPP_ENABLED: "false"
+      OPENWA_BASE_URL: http://openwa-api:2785/api
+      OPENWA_API_KEY: ""
+      OPENWA_WEBHOOK_SECRET: ""
+      WHATSAPP_DAILY_SESSION_SEND_LIMIT: "200"
+      WHATSAPP_SEND_INTERVAL_MS: "1500"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -140,6 +164,8 @@ services:
         condition: service_healthy
       clamav:
         condition: service_healthy
+      openwa-api:
+        condition: service_started
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -234,6 +260,8 @@ volumes:
     name: chabaqa_redis-data
   clamav-data:
     name: chabaqa_clamav-data
+  openwa-data:
+    name: chabaqa_openwa-data
   demo-backend-hls:
     name: chabaqa_demo-backend-hls
 

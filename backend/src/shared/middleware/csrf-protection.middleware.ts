@@ -12,6 +12,7 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const EXEMPT_PATHS = [
   /^\/api\/health(?:\/|$)/,
   /^\/api\/payment\/stripe-link\/webhook$/,
+  /^\/api\/whatsapp\/openwa\/webhook$/,
   /^\/api\/auth\/login$/,
   /^\/api\/auth\/register(?:\/|$)/,
   /^\/api\/auth\/forgot-password$/,

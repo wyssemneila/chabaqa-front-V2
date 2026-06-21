@@ -1,9 +1,13 @@
 const LOCALHOST_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:8082',
+  'http://localhost:8083',
   'http://localhost:8080',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:3001',
+  'http://127.0.0.1:8082',
+  'http://127.0.0.1:8083',
   'http://127.0.0.1:8080',
 ];
 
