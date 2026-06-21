@@ -3,11 +3,23 @@
 import Link from 'next/link'
 import { Moon, Sun, Languages, ExternalLink, Home } from 'lucide-react'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
+import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
 
 interface DashTopbarProps { title: string; subtitle: string }
 
 export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
   const { dark, lang, toggleDark, toggleLang } = useDashPrefs()
+  const { selectedCommunity, isLoading: communityLoading } = useCreatorCommunity()
+  const communitySlug = String(
+    selectedCommunity?.slug ||
+    selectedCommunity?.handle ||
+    selectedCommunity?._id ||
+    selectedCommunity?.id ||
+    '',
+  )
+  const communityHref = communitySlug
+    ? `/community/${encodeURIComponent(communitySlug)}`
+    : '/creator/communities'
 
   return (
     <header className="px-7 h-14 flex items-center justify-between sticky top-0 z-40"
@@ -29,9 +41,16 @@ export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
         </Link>
 
         {/* View Community */}
-        <Link href="/communities/motion-masters" target="_blank"
+        <Link href={communityHref} target={communitySlug ? '_blank' : undefined}
+          rel={communitySlug ? 'noopener noreferrer' : undefined}
+          aria-disabled={communityLoading}
           className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold cursor-pointer transition-all hover:opacity-80"
-          style={{ background: 'var(--p)', color: '#fff' }}>
+          style={{
+            background: 'var(--p)',
+            color: '#fff',
+            opacity: communityLoading ? 0.6 : 1,
+            pointerEvents: communityLoading ? 'none' : 'auto',
+          }}>
           <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.7} />
           {lang === 'ar' ? 'عرض المجتمع' : 'View Community'}
         </Link>
