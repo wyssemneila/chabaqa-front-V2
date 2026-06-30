@@ -118,7 +118,7 @@ export default function CoursesPage() {
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
                   <RefreshCw className="w-4 h-4" />
                 </button>
-                <Link href="/creator/courses/create"
+                <Link href="/creator/courses/new"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90"
                   style={{ background: 'var(--p)', boxShadow: '0 4px 14px rgba(142,120,251,.4)' }}>
                   <Plus className="w-4 h-4" /> {t.createCourse}
@@ -193,7 +193,7 @@ export default function CoursesPage() {
                     {tab === 'all' ? t.noCoursesDesc : t.switchTab}
                   </p>
                   {tab === 'all' && (
-                    <Link href="/creator/courses/create"
+                    <Link href="/creator/courses/new"
                       className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-bold text-white hover:opacity-90"
                       style={{ background: 'var(--p)', boxShadow: '0 4px 14px rgba(142,120,251,.35)' }}>
                       <Plus className="w-4 h-4" /> {t.createFirst}

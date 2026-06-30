@@ -80,11 +80,14 @@ jobs:
         run: npm run build
 
   docker-validate:
-    name: Docker Compose Validation
+    name: Docker Deployment Validation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate deployment scripts
+        run: bash -n deploy.sh deploy-pm2.sh scripts/verify-production.sh scripts/smoke-production.sh
 
       - name: Create CI env placeholders
         run: |
@@ -92,4 +95,4 @@ jobs:
           touch backend/.env
 
       - name: Validate compose file
-        run: docker compose config
+        run: docker compose config --quiet

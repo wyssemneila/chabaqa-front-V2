@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from "react"
 import { Event } from "@/lib/models"
 import EventHeader from "./EventHeader"
 import EventTabs from "./EventTabs"
-import { eventsApi } from "@/lib/api/events.api"
+import { eventsApi, normalizeEventResponse } from "@/lib/api/events.api"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 
@@ -116,10 +116,14 @@ const toDate = (value?: string | Date, fallback?: Date) => {
 const mapApiEventToDraft = (apiEvent: any, fallback?: Event): Event => {
   const source = apiEvent || {}
   const fallbackAny = (fallback || {}) as any
+  const resolvedMongoId = source.mongoId || source._id || fallbackAny.mongoId || fallbackAny._id || source.id || fallbackAny.id || ""
+  const publicId = source.id && source.id !== resolvedMongoId ? source.id : fallbackAny.publicId
 
   return {
     ...(fallback || {}),
-    id: source.id || fallbackAny.id || "",
+    id: resolvedMongoId,
+    mongoId: resolvedMongoId,
+    publicId,
     title: source.title ?? fallbackAny.title ?? "",
     description: source.description ?? fallbackAny.description ?? "",
     image: source.image ?? source.thumbnail ?? fallbackAny.image ?? "",
@@ -369,7 +373,7 @@ export default function ManageEventClient({ initialEvent, serverVersion }: Manag
       const updateData = buildUpdatePayload(draftEvent)
       const response = await eventsApi.update(draftEvent.id, updateData as any)
 
-      const updatedEvent = mapApiEventToDraft((response as any)?.data, draftEvent)
+      const updatedEvent = mapApiEventToDraft(normalizeEventResponse(response), draftEvent)
       setServerSnapshot(updatedEvent)
       setDraftEvent(updatedEvent)
 

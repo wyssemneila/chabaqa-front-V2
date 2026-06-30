@@ -225,7 +225,24 @@ export function YouTubeVideos() {
               </button>
             </div>
             <div className="aspect-video bg-black">
-              <iframe src={`https://www.youtube.com/embed/${modal.id}?autoplay=1&rel=0`} allow="autoplay; encrypted-media" allowFullScreen title={modal.title} className="w-full h-full" />
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${modal.id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                title={modal.title}
+                className="w-full h-full"
+              />
+            </div>
+            <div className="px-5 py-3 border-t border-gray-200 text-end">
+              <a
+                href={`https://www.youtube.com/watch?v=${modal.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-bold text-[#8e78fb] hover:text-[#7a64f0]"
+              >
+                Open on YouTube
+              </a>
             </div>
           </div>
         </div>

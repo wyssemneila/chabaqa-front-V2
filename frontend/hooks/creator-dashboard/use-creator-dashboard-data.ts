@@ -102,7 +102,7 @@ function useCreatorApiList<T>(
 }
 
 export function useCreatorCoursesPage() {
-  const loader = useCallback((creatorId: string) => coursesApi.getByCreator(creatorId, { page: 1, limit: 100 }), [])
+  const loader = useCallback(() => coursesApi.getCreated({ page: 1, limit: 100 }), [])
   const mapper = useCallback((item: any) => mapCourse(item), [])
   return useCreatorApiList<CourseCardData>(loader, mapper)
 }
@@ -218,7 +218,7 @@ export function useCreatorDashboardOverview(): CreatorDataState<CreatorDashboard
       const settled = await Promise.allSettled([
         communitiesApi.getMyManageable(),
         creatorAnalyticsApi.getOverview(),
-        coursesApi.getByCreator(creatorId, { page: 1, limit: 100 }),
+        coursesApi.getCreated({ page: 1, limit: 100 }),
         challengesApi.getByCreator(creatorId, { page: 1, limit: 100 }),
         sessionsApi.getByCreator(creatorId, { page: 1, limit: 100 }),
         eventsApi.getByCreator(creatorId, { page: 1, limit: 100 }),

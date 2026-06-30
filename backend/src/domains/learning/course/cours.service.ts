@@ -1303,10 +1303,7 @@ export class CoursService {
    * Publier/dépublier un cours
    */
   async updateCours(coursId: string, dto: UpdateCoursDto, userId: string): Promise<CoursResponseDto> {
-    const cours = await this.coursModel.findById(coursId);
-    if (!cours) {
-      throw new NotFoundException('Cours introuvable');
-    }
+    const cours = await this.resolveCourseDocument(coursId);
 
     await this.verifierAdminCommunaute(userId, cours.communityId);
 
@@ -1353,10 +1350,7 @@ export class CoursService {
   }
 
   async togglePublication(coursId: string, userId: string): Promise<CoursResponseDto> {
-    const cours = await this.coursModel.findById(coursId);
-    if (!cours) {
-      throw new NotFoundException('Cours introuvable');
-    }
+    const cours = await this.resolveCourseDocument(coursId);
 
     // Vérifier les permissions
     const community = await this.verifierAdminCommunaute(userId, cours.communityId);
@@ -1388,10 +1382,7 @@ export class CoursService {
    * Supprimer un cours
    */
   async supprimerCours(coursId: string, userId: string): Promise<{ message: string }> {
-    const cours = await this.coursModel.findById(coursId);
-    if (!cours) {
-      throw new NotFoundException('Cours introuvable');
-    }
+    const cours = await this.resolveCourseDocument(coursId);
 
     // Vérifier les permissions
     const community = await this.verifierAdminCommunaute(userId, cours.communityId);
@@ -1401,7 +1392,7 @@ export class CoursService {
     await community.save();
 
     // Supprimer le cours
-    await this.coursModel.findByIdAndDelete(coursId);
+    await this.coursModel.findByIdAndDelete(cours._id);
     await this.invalidateCourseCaches(cours.creatorId?.toString?.());
 
     return {
@@ -1725,10 +1716,7 @@ export class CoursService {
     dto: UpdateSectionDto,
     userId: string,
   ): Promise<CoursResponseDto> {
-    const cours = await this.coursModel.findById(coursId);
-    if (!cours) {
-      throw new NotFoundException('Cours non trouvé');
-    }
+    const cours = await this.resolveCourseDocument(coursId);
 
     await this.verifierAdminCommunaute(userId, cours.communityId.toString());
 
@@ -1759,10 +1747,7 @@ export class CoursService {
     dto: UpdateChapitreDto,
     userId: string,
   ): Promise<CoursResponseDto> {
-    const cours = await this.coursModel.findById(coursId);
-    if (!cours) {
-      throw new NotFoundException('Cours non trouvé');
-    }
+    const cours = await this.resolveCourseDocument(coursId);
 
     await this.verifierAdminCommunaute(userId, cours.communityId.toString());
 
@@ -1845,10 +1830,7 @@ export class CoursService {
     console.log(`   👤 User ID: ${userId}`);
 
     try {
-      const cours = await this.coursModel.findById(coursId);
-      if (!cours) {
-        throw new NotFoundException('Cours non trouvé');
-      }
+      const cours = await this.resolveCourseDocument(coursId);
 
       console.log(`   ✅ Cours trouvé: ${cours.titre}`);
       console.log(`   🏢 Community ID: ${cours.communityId}`);
@@ -1930,10 +1912,7 @@ export class CoursService {
 
     try {
       // 1. Vérifier que le cours existe
-      const cours = await this.coursModel.findById(coursId);
-      if (!cours) {
-        throw new NotFoundException('Cours non trouvé');
-      }
+      const cours = await this.resolveCourseDocument(coursId);
 
       console.log(`   ✅ Cours trouvé: ${cours.titre}`);
       console.log(`   🏢 Community ID: ${cours.communityId}`);
@@ -2025,10 +2004,7 @@ export class CoursService {
 
     try {
       // 1. Vérifier que le cours existe
-      const cours = await this.coursModel.findById(coursId);
-      if (!cours) {
-        throw new NotFoundException('Cours non trouvé');
-      }
+      const cours = await this.resolveCourseDocument(coursId);
 
       console.log(`   ✅ Cours trouvé: ${cours.titre}`);
       console.log(`   🏢 Community ID: ${cours.communityId}`);
@@ -2093,10 +2069,7 @@ export class CoursService {
 
     try {
       // 1. Vérifier que le cours existe
-      const cours = await this.coursModel.findById(coursId);
-      if (!cours) {
-        throw new NotFoundException('Cours non trouvé');
-      }
+      const cours = await this.resolveCourseDocument(coursId);
 
       console.log(`   ✅ Cours trouvé: ${cours.titre}`);
       console.log(`   🏢 Community ID: ${cours.communityId}`);
@@ -2180,10 +2153,7 @@ export class CoursService {
 
     try {
       // 1. Vérifier que le cours existe
-      const cours = await this.coursModel.findById(coursId);
-      if (!cours) {
-        throw new NotFoundException('Cours non trouvé');
-      }
+      const cours = await this.resolveCourseDocument(coursId);
 
       // 2. Vérifier que l'utilisateur est admin de la communauté
       await this.verifierAdminCommunaute(userId, cours.communityId.toString());
@@ -2232,10 +2202,7 @@ export class CoursService {
 
     try {
       // 1. Vérifier que le cours existe
-      const cours = await this.coursModel.findById(coursId);
-      if (!cours) {
-        throw new NotFoundException('Cours non trouvé');
-      }
+      const cours = await this.resolveCourseDocument(coursId);
 
       // 2. Vérifier que l'utilisateur est admin de la communauté
       await this.verifierAdminCommunaute(userId, cours.communityId.toString());
@@ -2342,10 +2309,7 @@ export class CoursService {
 
     try {
       // 1. Vérifier que le cours existe
-      const cours = await this.coursModel.findById(coursId);
-      if (!cours) {
-        throw new NotFoundException('Cours non trouvé');
-      }
+      const cours = await this.resolveCourseDocument(coursId);
 
       // 2. Vérifier que l'utilisateur est admin de la communauté
       await this.verifierAdminCommunaute(userId, cours.communityId.toString());
@@ -2405,10 +2369,7 @@ export class CoursService {
    * @returns True si autorisé
    */
   async verifierPermissionsCours(coursId: string, userId: string): Promise<boolean> {
-    const cours = await this.coursModel.findById(coursId);
-    if (!cours) {
-      throw new NotFoundException('Cours non trouvé');
-    }
+    const cours = await this.resolveCourseDocument(coursId);
 
     // Vérifier que l'utilisateur est admin de la communauté du cours
     await this.verifierAdminCommunaute(userId, cours.communityId.toString());
@@ -3256,10 +3217,7 @@ export class CoursService {
 
     try {
       // 1. Vérifier que le cours existe
-      const cours = await this.coursModel.findById(coursId);
-      if (!cours) {
-        throw new NotFoundException('Cours non trouvé');
-      }
+      const cours = await this.resolveCourseDocument(coursId);
 
       // 2. Vérifier que l'utilisateur est admin de la communauté
       await this.verifierAdminCommunaute(userId, cours.communityId.toString());

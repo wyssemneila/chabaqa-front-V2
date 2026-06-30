@@ -1,3 +1,5 @@
+import { syncAccessTokenCookie } from '@/lib/cookie-sync'
+
 export function getBrowserCookie(name: string): string {
   if (typeof document === 'undefined') return ''
 
@@ -10,6 +12,17 @@ export function getBrowserCookie(name: string): string {
   return cookie ? decodeURIComponent(cookie.slice(encodedName.length)) : ''
 }
 
+export function hasBrowserRefreshSession(): boolean {
+  if (typeof document === 'undefined') return false
+
+  return Boolean(
+    getBrowserCookie('refreshToken') ||
+    getBrowserCookie('refresh_token') ||
+    getBrowserCookie('accessToken') ||
+    getBrowserCookie('access_token'),
+  )
+}
+
 function normalizeApiBase(apiBase: string): string {
   return apiBase.replace(/\/+$/, '')
 }
@@ -17,16 +30,6 @@ function normalizeApiBase(apiBase: string): string {
 function extractAccessToken(payload: any): string {
   const data = payload?.data || payload || {}
   return String(data.accessToken || data.access_token || '').trim()
-}
-
-function syncAccessTokenCookie(token: string): void {
-  if (typeof document === 'undefined') return
-
-  const secure =
-    window.location.protocol === 'https:' || process.env.NODE_ENV === 'production'
-  const securePart = secure ? '; Secure' : ''
-
-  document.cookie = `accessToken=${token}; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${securePart}`
 }
 
 function notifyAccessTokenChanged(accessToken: string): void {
@@ -40,9 +43,15 @@ function notifyAccessTokenChanged(accessToken: string): void {
   }
 }
 
-export async function refreshBrowserAccessToken(apiBase: string): Promise<string | null> {
-  if (typeof window === 'undefined') return null
+async function issueBrowserCsrfToken(apiBase: string): Promise<void> {
+  await fetch(`${normalizeApiBase(apiBase)}/auth/csrf`, {
+    method: 'GET',
+    credentials: 'include',
+    cache: 'no-store',
+  }).catch(() => undefined)
+}
 
+async function requestAccessTokenRefresh(apiBase: string): Promise<Response> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
@@ -51,12 +60,30 @@ export async function refreshBrowserAccessToken(apiBase: string): Promise<string
     headers['X-CSRF-Token'] = csrfToken
   }
 
-  const response = await fetch(`${normalizeApiBase(apiBase)}/auth/refresh`, {
+  return fetch(`${normalizeApiBase(apiBase)}/auth/refresh`, {
     method: 'POST',
     headers,
     credentials: 'include',
     body: '{}',
   })
+}
+
+export async function refreshBrowserAccessToken(
+  apiBase: string,
+  options: { skipWhenNoSessionHint?: boolean } = {},
+): Promise<string | null> {
+  if (typeof window === 'undefined') return null
+  if (options.skipWhenNoSessionHint && !hasBrowserRefreshSession()) return null
+
+  if (!getBrowserCookie('chabaqa_csrf')) {
+    await issueBrowserCsrfToken(apiBase)
+  }
+
+  let response = await requestAccessTokenRefresh(apiBase)
+  if (response.status === 403) {
+    await issueBrowserCsrfToken(apiBase)
+    response = await requestAccessTokenRefresh(apiBase)
+  }
 
   if (!response.ok) return null
 

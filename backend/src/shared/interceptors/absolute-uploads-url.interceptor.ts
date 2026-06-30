@@ -24,7 +24,15 @@ export class AbsoluteUploadsUrlInterceptor implements NestInterceptor {
     return proto === Object.prototype || proto === null;
   }
 
-  private normalizeDeep(value: any, seen: WeakSet<object>): any {
+  private isImageLikeKey(key?: string): boolean {
+    return Boolean(key && /(image|images|avatar|photo|picture|thumbnail|thumb|logo|cover|banner|background)/i.test(key));
+  }
+
+  private isBareImageFilename(value: string): boolean {
+    return /^[^/?#]+\.(?:png|jpe?g|webp|gif|svg)$/i.test(value);
+  }
+
+  private normalizeDeep(value: any, seen: WeakSet<object>, key?: string): any {
     if (value === null || value === undefined) return value;
 
     // Normalize Mongoose documents and other class instances to JSON if possible
@@ -32,7 +40,7 @@ export class AbsoluteUploadsUrlInterceptor implements NestInterceptor {
       if (typeof (value as any).toJSON === 'function') {
         try {
           const json = (value as any).toJSON();
-          return this.normalizeDeep(json, seen);
+          return this.normalizeDeep(json, seen, key);
         } catch {
           return value;
         }
@@ -47,13 +55,13 @@ export class AbsoluteUploadsUrlInterceptor implements NestInterceptor {
     }
 
     if (Array.isArray(value)) {
-      return value.map((v) => this.normalizeDeep(v, seen));
+      return value.map((v) => this.normalizeDeep(v, seen, key));
     }
 
     if (typeof value === 'object') {
       const out: any = {};
       for (const [k, v] of Object.entries(value)) {
-        out[k] = this.normalizeDeep(v, seen);
+        out[k] = this.normalizeDeep(v, seen, k);
       }
       return out;
     }
@@ -65,6 +73,9 @@ export class AbsoluteUploadsUrlInterceptor implements NestInterceptor {
       }
       if (value.startsWith('http') && value.includes('/uploads/')) {
         return this.uploadService.ensureAbsoluteUrl(value);
+      }
+      if (this.isImageLikeKey(key) && this.isBareImageFilename(value)) {
+        return this.uploadService.ensureAbsoluteUrl(`uploads/image/${value}`);
       }
       return value;
     }

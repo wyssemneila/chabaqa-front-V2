@@ -80,6 +80,9 @@ export class WhatsappRecipient {
   @Prop()
   repliedAt?: Date;
 
+  @Prop()
+  replyMessageId?: string;
+
   @Prop({ type: Object, default: {} })
   mergeData?: Record<string, any>;
 
@@ -87,7 +90,8 @@ export class WhatsappRecipient {
   personalizedBody?: string;
 }
 
-export const WhatsappRecipientSchema = SchemaFactory.createForClass(WhatsappRecipient);
+export const WhatsappRecipientSchema =
+  SchemaFactory.createForClass(WhatsappRecipient);
 
 @Schema({ timestamps: true })
 export class WhatsappCampaign {
@@ -145,6 +149,18 @@ export class WhatsappCampaign {
   @Prop()
   sentAt?: Date;
 
+  @Prop()
+  startedAt?: Date;
+
+  @Prop()
+  completedAt?: Date;
+
+  @Prop()
+  cancelledAt?: Date;
+
+  @Prop()
+  lastProcessedAt?: Date;
+
   @Prop({ type: [WhatsappRecipientSchema], default: [] })
   recipients: WhatsappRecipient[];
 
@@ -173,8 +189,12 @@ export class WhatsappCampaign {
   templateData?: Record<string, any>;
 }
 
-export const WhatsappCampaignSchema = SchemaFactory.createForClass(WhatsappCampaign);
+export const WhatsappCampaignSchema =
+  SchemaFactory.createForClass(WhatsappCampaign);
 
 WhatsappCampaignSchema.index({ communityId: 1, status: 1 });
 WhatsappCampaignSchema.index({ creatorId: 1, createdAt: -1 });
-WhatsappCampaignSchema.index({ 'recipients.openwaMessageId': 1 }, { sparse: true });
+WhatsappCampaignSchema.index(
+  { 'recipients.openwaMessageId': 1 },
+  { sparse: true },
+);

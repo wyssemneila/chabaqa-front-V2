@@ -1,0 +1,11 @@
+{
+  "dryRun": false,
+  "endpoint": "http://127.0.0.1:9000",
+  "bucket": "chabaqa-media",
+  "uploadsRoot": "/home/ubuntu/chabaqa/backend/uploads",
+  "totalFiles": 23,
+  "uploaded": 23,
+  "skippedExisting": 0,
+  "failed": 0,
+  "failures": []
+}

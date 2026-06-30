@@ -36,9 +36,14 @@
     "backfill:media": "node scripts/backfill-media-assets.js",
     "backfill:chapter-entitlements": "ts-node src/shared/scripts/backfill-chapter-entitlements.ts",
     "repair:course-progression": "ts-node src/shared/scripts/repair-course-progression.ts",
-    "db:seed:rich-demo": "node scripts/run-with-local-db-env.js node scripts/seed-rich-demo.js"
+    "db:seed:rich-demo": "node scripts/run-with-local-db-env.js node scripts/seed-rich-demo.js",
+    "audit:object-storage": "node scripts/audit-object-storage.js",
+    "migrate:object-storage": "node scripts/migrate-uploads-to-object-storage.js",
+    "migrate:object-storage:dry": "node scripts/migrate-uploads-to-object-storage.js --dry-run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1073.0",
+    "@aws-sdk/s3-request-presigner": "^3.1073.0",
     "@nestjs-modules/mailer": "^2.3.4",
     "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/common": "^11.0.1",

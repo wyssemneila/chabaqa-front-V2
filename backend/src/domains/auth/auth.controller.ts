@@ -49,6 +49,18 @@ export class AuthController {
     return '/explore';
   }
 
+  private isPrefetchRequest(req: any): boolean {
+    const query = req?.query || {};
+    const headers = req?.headers || {};
+    return Boolean(
+      query._rsc ||
+      headers.purpose === 'prefetch' ||
+      headers['sec-purpose'] === 'prefetch' ||
+      headers['next-router-prefetch'] ||
+      headers['next-url'],
+    );
+  }
+
   @Post('login')
   @UseGuards(PublicThrottlerGuard)
   @Throttle({ default: { ttl: 60000, limit: 5 } } as any)
@@ -254,6 +266,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 302, description: 'Redirected to signin page after clearing cookies' })
   async signout(@Req() req, @Res() res: Response) {
+    if (this.isPrefetchRequest(req)) {
+      return res.status(HttpStatus.NO_CONTENT).send();
+    }
+
     const accessToken = (
       req.headers?.authorization?.replace('Bearer ', '')
       || req.cookies?.accessToken

@@ -147,12 +147,13 @@ export const buildCourseCreatePayload = (values: CourseCreateValues): CourseCrea
         const chapterIsPreview = chapterSequenceIndex === 0 && Boolean(chapter.isPreview)
         chapterSequenceIndex += 1
         const chapterPrice = chapterIsPreview ? 0 : toNumber(chapter.price, price)
+        const isPaidChapter = !chapterIsPreview && chapterPrice > 0
         return {
           titre: trim(chapter.title) || `Lesson ${chapterIndex + 1}`,
           description: videoUrl && !description ? undefined : description,
           videoUrl: videoUrl || undefined,
-          isPaid: !chapterIsPreview,
-          prix: chapterPrice,
+          isPaid: isPaidChapter,
+          prix: isPaidChapter ? chapterPrice : 0,
           ordre: chapterIndex + 1,
           duree: chapter.duration ? String(chapter.duration) : undefined,
           notes: trim(chapter.notes) || undefined,
@@ -171,4 +172,3 @@ export const getCoursePublishChecklist = (values: CourseCreateValues): CreatorCh
     checklistItem("community", "Community", hasText(values.communitySlug), "Select a community."),
   ]
 }
-

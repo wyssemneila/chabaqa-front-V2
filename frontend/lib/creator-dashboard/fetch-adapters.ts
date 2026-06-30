@@ -1,5 +1,6 @@
 import type { ActivityItem, Community, ContentItem, KpiCard, OnboardStep } from '@/lib/dashboard-data'
 import type { CourseCardData } from '@/components/courses/course-card'
+import { resolveImageUrl } from '@/lib/resolve-image-url'
 
 export type CreatorListStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -13,6 +14,8 @@ export interface CreatorDashboardOverviewVm {
 
 export interface CreatorChallengeCard {
   id: string
+  mongoId?: string
+  publicId?: string
   title: string
   description: string
   category: string
@@ -32,6 +35,8 @@ export interface CreatorChallengeCard {
 
 export interface CreatorEventCard {
   id: string
+  mongoId?: string
+  publicId?: string
   title: string
   description: string
   category: string
@@ -64,6 +69,9 @@ export interface CreatorProductCard {
 
 export interface CreatorSessionCard {
   _id: string
+  id?: string
+  mongoId?: string
+  publicId?: string
   title: string
   banner?: string
   duration: number
@@ -92,11 +100,19 @@ const asArray = (raw: any): any[] => {
   if (Array.isArray(raw?.data)) return raw.data
   if (Array.isArray(raw?.data?.data)) return raw.data.data
   if (Array.isArray(raw?.data?.items)) return raw.data.items
+  if (Array.isArray(raw?.data?.results)) return raw.data.results
+  if (Array.isArray(raw?.data?.docs)) return raw.data.docs
+  if (Array.isArray(raw?.data?.data?.items)) return raw.data.data.items
+  if (Array.isArray(raw?.data?.data?.results)) return raw.data.data.results
+  if (Array.isArray(raw?.data?.data?.docs)) return raw.data.data.docs
   if (Array.isArray(raw?.items)) return raw.items
+  if (Array.isArray(raw?.results)) return raw.results
+  if (Array.isArray(raw?.docs)) return raw.docs
 
   const pluralKeys = [
     'communities',
     'courses',
+    'cours',
     'challenges',
     'events',
     'products',
@@ -143,11 +159,20 @@ const number = (...values: any[]) => {
 }
 
 const bool = (...values: any[]) => {
-  const found = values.find((value) => typeof value === 'boolean')
-  return Boolean(found)
+  for (const value of values) {
+    if (typeof value === 'boolean') return value
+    if (typeof value === 'number') return value > 0
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase()
+      if (['true', '1', 'yes', 'published', 'active', 'live'].includes(normalized)) return true
+      if (['false', '0', 'no', 'draft', 'inactive', 'archived'].includes(normalized)) return false
+    }
+  }
+  return false
 }
 
 const id = (item: any) => text(item?._id, item?.id, item?.mongoId, item?.slug) || `item-${Math.random().toString(36).slice(2)}`
+const mongoId = (item: any) => text(item?.mongoId, item?._id, item?.id, item?.slug) || `item-${Math.random().toString(36).slice(2)}`
 
 const dateOnly = (value: any) => {
   const raw = text(value)
@@ -163,7 +188,75 @@ const daysBetween = (from: any, to: any) => {
   return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000))
 }
 
-const firstImage = (item: any) => text(item?.thumbnail, item?.image, item?.coverImage, item?.banner, item?.images?.[0])
+const isPlaceholderImage = (value: string) => {
+  const raw = value.trim().toLowerCase()
+  return (
+    raw.includes('/placeholder') ||
+    raw.includes('placeholder.svg') ||
+    raw.includes('placeholder-logo') ||
+    raw.includes('placehold.co') ||
+    raw.includes('dummyimage.com') ||
+    raw.includes('ui-avatars.com')
+  )
+}
+
+const imageStrings = (value: any): string[] => {
+  if (!value) return []
+  if (typeof value === 'string') return [value]
+  if (Array.isArray(value)) return value.flatMap(imageStrings)
+  if (typeof value !== 'object') return []
+
+  return [
+    value.url,
+    value.secureUrl,
+    value.secure_url,
+    value.image,
+    value.imageUrl,
+    value.thumbnail,
+    value.thumbnailUrl,
+    value.coverImage,
+    value.coverImageUrl,
+    value.banner,
+    value.bannerUrl,
+    value.photo,
+    value.path,
+    value.src,
+    value.location,
+    value.href,
+    value.fileUrl,
+    value.downloadUrl,
+    value.storageKey,
+    value.key,
+    value.filename,
+  ].flatMap(imageStrings)
+}
+
+const firstImage = (item: any) => {
+  const candidates = [
+    item?.imageUrl,
+    item?.thumbnailUrl,
+    item?.coverImageUrl,
+    item?.bannerUrl,
+    item?.thumbnail,
+    item?.image,
+    item?.coverImage,
+    item?.photo,
+    item?.photo_de_couverture,
+    item?.banner,
+    item?.cover,
+    item?.logo,
+    item?.logoUrl,
+    item?.images,
+    item?.media,
+    item?.attachments,
+    item?.file,
+    item?.asset,
+  ].flatMap(imageStrings)
+
+  const realImage = candidates.find((candidate) => candidate.trim() && !isPlaceholderImage(candidate))
+  const fallback = candidates.find((candidate) => candidate.trim())
+  return resolveImageUrl(realImage || fallback) || ''
+}
 
 export const mapCommunity = (item: any): Community => ({
   emoji: text(item?.emoji) || '◎',
@@ -177,9 +270,13 @@ export const mapCommunity = (item: any): Community => ({
 
 export const mapCourse = (item: any): CourseCardData => {
   const duration = number(item?.duration, item?.duree)
+  const itemId = mongoId(item)
+  const publicId = text(item?.id)
   return {
-    _id: id(item),
-    id: id(item),
+    _id: itemId,
+    id: itemId,
+    mongoId: itemId,
+    publicId: publicId && publicId !== itemId ? publicId : undefined,
     title: text(item?.title, item?.titre, item?.name) || 'Untitled course',
     description: text(item?.description, item?.summary),
     thumbnail: firstImage(item),
@@ -187,7 +284,7 @@ export const mapCourse = (item: any): CourseCardData => {
     duration: duration > 60 ? Math.round(duration / 60) : duration,
     priceType: number(item?.price, item?.prix) > 0 ? 'paid' : (item?.priceType || 'free'),
     price: number(item?.price, item?.prix),
-    isPublished: bool(item?.isPublished, item?.published),
+    isPublished: bool(item?.isPublished, item?.published, item?.status),
     sectionsCount: number(item?.sectionsCount, item?.sections?.length),
     chaptersCount: number(item?.chaptersCount, item?.chapters?.length),
     enrollmentsCount: number(item?.enrollmentsCount, item?.enrollmentCount, item?.studentsCount),
@@ -196,8 +293,12 @@ export const mapCourse = (item: any): CourseCardData => {
 
 export const mapChallenge = (item: any): CreatorChallengeCard => {
   const price = number(item?.participationFee, item?.pricing?.participationFee, item?.price)
+  const itemId = mongoId(item)
+  const publicId = text(item?.id)
   return {
-    id: id(item),
+    id: itemId,
+    mongoId: itemId,
+    publicId: publicId && publicId !== itemId ? publicId : undefined,
     title: text(item?.title, item?.name) || 'Untitled challenge',
     description: text(item?.description) || 'No description yet',
     category: text(item?.category) || 'Challenge',
@@ -210,7 +311,7 @@ export const mapChallenge = (item: any): CreatorChallengeCard => {
     topPerformerReward: String(number(item?.topPerformerBonus, item?.pricing?.topPerformerBonus)),
     priceType: price > 0 ? 'paid' : 'free',
     price,
-    isPublished: bool(item?.isPublished, item?.isActive),
+    isPublished: bool(item?.isPublished, item?.published, item?.isActive, item?.status),
     steps: asArray(item?.tasks || item?.steps),
     banner: firstImage(item),
   }
@@ -220,14 +321,18 @@ export const mapEvent = (item: any): CreatorEventCard => {
   const type = text(item?.type, item?.format).toLowerCase()
   const isOnline = bool(item?.isVirtual) || type.includes('online')
   const format: CreatorEventCard['format'] = type.includes('hybrid') ? 'hybrid' : isOnline ? 'online' : 'offline'
-  const tickets = asArray(item?.tickets).map((ticket: any, index) => ({
-    id: id(ticket) || `ticket-${index}`,
+  const itemMongoId = mongoId(item)
+  const itemPublicId = text(item?.id)
+  const tickets = asArray(item?.tickets || item?.ticketTypes).map((ticket: any, index) => ({
+    id: text(ticket?._id, ticket?.id, ticket?.mongoId) || `ticket-${index}`,
     pricing: number(ticket?.price) > 0 ? 'paid' as const : 'free' as const,
     price: number(ticket?.price),
   }))
 
   return {
-    id: id(item),
+    id: itemMongoId,
+    mongoId: itemMongoId,
+    publicId: itemPublicId && itemPublicId !== itemMongoId ? itemPublicId : undefined,
     title: text(item?.title, item?.name) || 'Untitled event',
     description: text(item?.description) || 'No description yet',
     category: text(item?.category) || 'Event',
@@ -237,7 +342,7 @@ export const mapEvent = (item: any): CreatorEventCard => {
     endDate: dateOnly(item?.endDate),
     endTime: text(item?.endTime),
     coverPreview: firstImage(item),
-    status: bool(item?.isPublished, item?.published) ? 'published' : 'draft',
+    status: bool(item?.isPublished, item?.published, item?.status) ? 'published' : 'draft',
     tickets,
     capacity: number(item?.maxAttendees, item?.capacity) || 'unlimited',
   }
@@ -246,8 +351,9 @@ export const mapEvent = (item: any): CreatorEventCard => {
 export const mapProduct = (item: any): CreatorProductCard => {
   const price = number(item?.price)
   const tiers = asArray(item?.tiers || item?.variants)
+  const itemId = id(item)
   return {
-    id: id(item),
+    id: itemId,
     title: text(item?.title, item?.name) || 'Untitled product',
     description: text(item?.description) || 'No description yet',
     category: text(item?.category, item?.type) || 'Digital',
@@ -257,23 +363,30 @@ export const mapProduct = (item: any): CreatorProductCard => {
     price,
     hasTiers: tiers.length > 0,
     tiers,
-    isPublished: bool(item?.isPublished, item?.published),
+    isPublished: bool(item?.isPublished, item?.published, item?.status),
     files: asArray(item?.files),
     whatIncluded: asArray(item?.features || item?.whatIncluded).map(String),
   }
 }
 
-export const mapSession = (item: any): CreatorSessionCard => ({
-  _id: id(item),
-  title: text(item?.title, item?.name) || 'Untitled session',
-  banner: firstImage(item),
-  duration: number(item?.duration),
-  priceType: number(item?.price) > 0 ? 'paid' : 'free',
-  price: number(item?.price),
-  isPublished: bool(item?.isPublished, item?.isActive),
-  availabilityDays: number(item?.availabilityDays, item?.availableDays),
-  totalSlots: number(item?.totalSlots, item?.availableSlots),
-})
+export const mapSession = (item: any): CreatorSessionCard => {
+  const itemId = mongoId(item)
+  const publicId = text(item?.id)
+  return {
+    _id: itemId,
+    id: itemId,
+    mongoId: itemId,
+    publicId: publicId && publicId !== itemId ? publicId : undefined,
+    title: text(item?.title, item?.name) || 'Untitled session',
+    banner: firstImage(item),
+    duration: number(item?.duration),
+    priceType: number(item?.price) > 0 ? 'paid' : 'free',
+    price: number(item?.price),
+    isPublished: bool(item?.isPublished, item?.published, item?.isActive, item?.status),
+    availabilityDays: number(item?.availabilityDays, item?.availableDays),
+    totalSlots: number(item?.totalSlots, item?.availableSlots),
+  }
+}
 
 export const mapBooking = (item: any): CreatorBookingCard => {
   const rawStatus = text(item?.status)

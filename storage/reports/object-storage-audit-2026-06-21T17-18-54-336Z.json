@@ -1,0 +1,388 @@
+{
+  "generatedAt": "2026-06-21T17:18:54.336Z",
+  "uploadsRoot": "/home/ubuntu/chabaqa/backend/uploads",
+  "totals": {
+    "diskFiles": 29,
+    "diskBytes": 13227295,
+    "mediaAssets": 43,
+    "mediaAssetsPresentOnDisk": 22,
+    "mediaAssetsMissingOnDisk": 21,
+    "untrackedDiskFiles": 1,
+    "objectStorageCheckedKeys": 50,
+    "objectStoragePresent": 23,
+    "objectStorageMissing": 27
+  },
+  "byTopLevelFolder": {
+    ".gitkeep": 1,
+    "image": 22,
+    "quarantine": 6
+  },
+  "missingOnDisk": [
+    {
+      "assetId": "69eb8f9c3bf3dac2b0ffcff2",
+      "storageKey": "image/1777045404488-bcc42df7-bfcf-48f7-adfc-6f28e976b8b8.jpg",
+      "url": "https://chabaqa.io/uploads/image/1777045404488-bcc42df7-bfcf-48f7-adfc-6f28e976b8b8.jpg",
+      "mediaType": "image",
+      "size": 547504
+    },
+    {
+      "assetId": "69ebb79183b05d9d40c83263",
+      "storageKey": "image/1777055633372-926c0b4b-c046-4595-aec8-1aeb55128487.png",
+      "url": "https://chabaqa.io/uploads/image/1777055633372-926c0b4b-c046-4595-aec8-1aeb55128487.png",
+      "mediaType": "image",
+      "size": 31657
+    },
+    {
+      "assetId": "69ebb79c83b05d9d40c83269",
+      "storageKey": "image/1777055644188-7c2f1e35-a0f7-4e03-bfa4-e5ea2e4430fa.jpg",
+      "url": "https://chabaqa.io/uploads/image/1777055644188-7c2f1e35-a0f7-4e03-bfa4-e5ea2e4430fa.jpg",
+      "mediaType": "image",
+      "size": 1282174
+    },
+    {
+      "assetId": "69ebb89a83b05d9d40c83274",
+      "storageKey": "image/1777055898894-6391a586-3282-4b86-821e-618a2cd4da9e.png",
+      "url": "https://chabaqa.io/uploads/image/1777055898894-6391a586-3282-4b86-821e-618a2cd4da9e.png",
+      "mediaType": "image",
+      "size": 1169969
+    },
+    {
+      "assetId": "69ebbb6b83b05d9d40c8378e",
+      "storageKey": "image/1777056619268-5b3498cd-e5ed-489a-9453-f77aca0ae37c.png",
+      "url": "https://chabaqa.io/uploads/image/1777056619268-5b3498cd-e5ed-489a-9453-f77aca0ae37c.png",
+      "mediaType": "image",
+      "size": 1311280
+    },
+    {
+      "assetId": "69ebd3a283b05d9d40c843b2",
+      "storageKey": "image/1777062818153-3c719686-58d8-4152-989c-185020ab6f2b.jpg",
+      "url": "https://chabaqa.io/uploads/image/1777062818153-3c719686-58d8-4152-989c-185020ab6f2b.jpg",
+      "mediaType": "image",
+      "size": 1282174
+    },
+    {
+      "assetId": "69ebe05b83b05d9d40c84d61",
+      "storageKey": "image/1777066075649-ad2cb34d-ca5d-4875-bba9-dd2c62f6b28c.png",
+      "url": "https://chabaqa.io/uploads/image/1777066075649-ad2cb34d-ca5d-4875-bba9-dd2c62f6b28c.png",
+      "mediaType": "image",
+      "size": 1505622
+    },
+    {
+      "assetId": "69ebe2fd83b05d9d40c852de",
+      "storageKey": "image/1777066749507-ee3cce01-8a3c-413c-a7e3-31b0b4b53b7f.png",
+      "url": "https://chabaqa.io/uploads/image/1777066749507-ee3cce01-8a3c-413c-a7e3-31b0b4b53b7f.png",
+      "mediaType": "image",
+      "size": 1311280
+    },
+    {
+      "assetId": "69ebe3c983b05d9d40c85570",
+      "storageKey": "image/1777066953055-ea73692f-1702-4759-bca0-b3f5dc1aab8b.png",
+      "url": "https://chabaqa.io/uploads/image/1777066953055-ea73692f-1702-4759-bca0-b3f5dc1aab8b.png",
+      "mediaType": "image",
+      "size": 1306016
+    },
+    {
+      "assetId": "69ebe87f731182bf55b08100",
+      "storageKey": "image/1777068159952-9e2b2b25-543f-4ffa-b788-1b03b1f5f9c0.png",
+      "url": "https://chabaqa.io/uploads/image/1777068159952-9e2b2b25-543f-4ffa-b788-1b03b1f5f9c0.png",
+      "mediaType": "image",
+      "size": 1452280
+    },
+    {
+      "assetId": "69ebea76731182bf55b0854d",
+      "storageKey": "image/1777068662951-965214cb-c791-4fb1-8a9a-b1eb8551d06e.png",
+      "url": "https://chabaqa.io/uploads/image/1777068662951-965214cb-c791-4fb1-8a9a-b1eb8551d06e.png",
+      "mediaType": "image",
+      "size": 1311280
+    },
+    {
+      "assetId": "69ecaa73731182bf55b0932f",
+      "storageKey": "document/1777117811510-dc2a1bd8-0bac-4cf2-9a28-e0754370eb55.json",
+      "url": "https://chabaqa.io/uploads/document/1777117811510-dc2a1bd8-0bac-4cf2-9a28-e0754370eb55.json",
+      "mediaType": "document",
+      "size": 2034
+    },
+    {
+      "assetId": "69ed40f9731182bf55b0a73e",
+      "storageKey": "image/1777156345491-8feb1c07-b22d-46c4-a5d7-2f50a7d04d3d.png",
+      "url": "https://chabaqa.io/uploads/image/1777156345491-8feb1c07-b22d-46c4-a5d7-2f50a7d04d3d.png",
+      "mediaType": "image",
+      "size": 1430907
+    },
+    {
+      "assetId": "69ed43e9731182bf55b0acc4",
+      "storageKey": "image/1777157097691-5632ad76-5522-4182-8d58-5b5fcaf1b9c3.png",
+      "url": "https://chabaqa.io/uploads/image/1777157097691-5632ad76-5522-4182-8d58-5b5fcaf1b9c3.png",
+      "mediaType": "image",
+      "size": 1771222
+    },
+    {
+      "assetId": "69ed46c7731182bf55b0b1be",
+      "storageKey": "image/1777157831349-6afdff75-2fe9-4c1d-86a5-42808985c70b.png",
+      "url": "https://chabaqa.io/uploads/image/1777157831349-6afdff75-2fe9-4c1d-86a5-42808985c70b.png",
+      "mediaType": "image",
+      "size": 2418173
+    },
+    {
+      "assetId": "69ed47d7731182bf55b0b6c1",
+      "storageKey": "image/1777158103812-a22417d3-9fff-44ec-9bb9-b96a519f1675.png",
+      "url": "https://chabaqa.io/uploads/image/1777158103812-a22417d3-9fff-44ec-9bb9-b96a519f1675.png",
+      "mediaType": "image",
+      "size": 1742894
+    },
+    {
+      "assetId": "69ed484b731182bf55b0c062",
+      "storageKey": "image/1777158219091-a0ce7182-330a-4a2b-85c3-073f6be0bb70.png",
+      "url": "https://chabaqa.io/uploads/image/1777158219091-a0ce7182-330a-4a2b-85c3-073f6be0bb70.png",
+      "mediaType": "image",
+      "size": 829246
+    },
+    {
+      "assetId": "69ed4919731182bf55b0ca5f",
+      "storageKey": "image/1777158425694-80672e87-d3ad-4748-84e4-14b14132e3fb.png",
+      "url": "https://chabaqa.io/uploads/image/1777158425694-80672e87-d3ad-4748-84e4-14b14132e3fb.png",
+      "mediaType": "image",
+      "size": 623985
+    },
+    {
+      "assetId": "69ed4ac8731182bf55b0cf7d",
+      "storageKey": "image/1777158856436-cef9b7eb-2cef-4129-8e4c-71a22ca4adb1.png",
+      "url": "https://chabaqa.io/uploads/image/1777158856436-cef9b7eb-2cef-4129-8e4c-71a22ca4adb1.png",
+      "mediaType": "image",
+      "size": 1843875
+    },
+    {
+      "assetId": "69ede571731182bf55b0da13",
+      "storageKey": "image/1777198449843-944cf723-e4fd-4a72-baa1-631a54ecf073.png",
+      "url": "https://chabaqa.io/uploads/image/1777198449843-944cf723-e4fd-4a72-baa1-631a54ecf073.png",
+      "mediaType": "image",
+      "size": 1449193
+    },
+    {
+      "assetId": "69f23c4779d9caee1a24d5ec",
+      "storageKey": "image/1777482823612-1da65c59-ca44-4ebf-847f-27262e1fb0ce.png",
+      "url": "https://chabaqa.io/uploads/image/1777482823612-1da65c59-ca44-4ebf-847f-27262e1fb0ce.png",
+      "mediaType": "image",
+      "size": 6499
+    }
+  ],
+  "untrackedDiskFiles": [
+    {
+      "storageKey": ".gitkeep",
+      "size": 116,
+      "sha256": "4cd7a4fc1ccd13dde8462246dfcec4013429cead5113b56a857b4a55b9d9bd85"
+    }
+  ],
+  "objectStorage": {
+    "configured": true,
+    "endpoint": "http://127.0.0.1:9000",
+    "bucket": "chabaqa-media",
+    "checkedKeys": 50,
+    "present": 23,
+    "missing": [
+      "quarantine/1780850371126-scanner_unavailable-1780850370143-0f1fc878-714e-4e00-b8fe-0fa331798a67.png",
+      "quarantine/1781519298521-scanner_unavailable-1781519298508-68cad193-fd9a-46bd-9515-125139731519.webp",
+      "quarantine/1781519309805-scanner_unavailable-1781519309802-131664a2-f743-4d08-830c-e4dbac73deca.webp",
+      "quarantine/1781519324933-scanner_unavailable-1781519324928-63ea214f-a787-45e0-8900-03e6a91db02f.webp",
+      "quarantine/1781519325704-scanner_unavailable-1781519325700-9adcaecc-a00b-473b-aac0-9508c7cec02e.webp",
+      "quarantine/1781519326268-scanner_unavailable-1781519326265-96528e4e-d985-4fe1-937f-792042980f66.webp",
+      "image/1777045404488-bcc42df7-bfcf-48f7-adfc-6f28e976b8b8.jpg",
+      "image/1777055633372-926c0b4b-c046-4595-aec8-1aeb55128487.png",
+      "image/1777055644188-7c2f1e35-a0f7-4e03-bfa4-e5ea2e4430fa.jpg",
+      "image/1777055898894-6391a586-3282-4b86-821e-618a2cd4da9e.png",
+      "image/1777056619268-5b3498cd-e5ed-489a-9453-f77aca0ae37c.png",
+      "image/1777062818153-3c719686-58d8-4152-989c-185020ab6f2b.jpg",
+      "image/1777066075649-ad2cb34d-ca5d-4875-bba9-dd2c62f6b28c.png",
+      "image/1777066749507-ee3cce01-8a3c-413c-a7e3-31b0b4b53b7f.png",
+      "image/1777066953055-ea73692f-1702-4759-bca0-b3f5dc1aab8b.png",
+      "image/1777068159952-9e2b2b25-543f-4ffa-b788-1b03b1f5f9c0.png",
+      "image/1777068662951-965214cb-c791-4fb1-8a9a-b1eb8551d06e.png",
+      "document/1777117811510-dc2a1bd8-0bac-4cf2-9a28-e0754370eb55.json",
+      "image/1777156345491-8feb1c07-b22d-46c4-a5d7-2f50a7d04d3d.png",
+      "image/1777157097691-5632ad76-5522-4182-8d58-5b5fcaf1b9c3.png",
+      "image/1777157831349-6afdff75-2fe9-4c1d-86a5-42808985c70b.png",
+      "image/1777158103812-a22417d3-9fff-44ec-9bb9-b96a519f1675.png",
+      "image/1777158219091-a0ce7182-330a-4a2b-85c3-073f6be0bb70.png",
+      "image/1777158425694-80672e87-d3ad-4748-84e4-14b14132e3fb.png",
+      "image/1777158856436-cef9b7eb-2cef-4129-8e4c-71a22ca4adb1.png",
+      "image/1777198449843-944cf723-e4fd-4a72-baa1-631a54ecf073.png",
+      "image/1777482823612-1da65c59-ca44-4ebf-847f-27262e1fb0ce.png"
+    ]
+  },
+  "disk": [
+    {
+      "storageKey": ".gitkeep",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/.gitkeep",
+      "size": 116,
+      "sha256": "4cd7a4fc1ccd13dde8462246dfcec4013429cead5113b56a857b4a55b9d9bd85"
+    },
+    {
+      "storageKey": "image/1779554819716-0ad31ea7-28f8-499a-a4bd-4f2589c200e8.jpeg",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1779554819716-0ad31ea7-28f8-499a-a4bd-4f2589c200e8.jpeg",
+      "size": 1015058,
+      "sha256": "50360ca22b70becb5c6a1b8bf91c517e0a1f319522c6ad296ceeb52ca900848d"
+    },
+    {
+      "storageKey": "image/1779554938727-b2a73f4c-67dc-4756-bd70-eb89ed2d5b2f.jpeg",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1779554938727-b2a73f4c-67dc-4756-bd70-eb89ed2d5b2f.jpeg",
+      "size": 58255,
+      "sha256": "58d3dcba66497049570e6b68c51e760491f2ae6980b3e439a0676d3a64da89d5"
+    },
+    {
+      "storageKey": "image/1779554993861-3efdb72d-5731-4879-a61d-83ea450ee761.jpeg",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1779554993861-3efdb72d-5731-4879-a61d-83ea450ee761.jpeg",
+      "size": 58255,
+      "sha256": "58d3dcba66497049570e6b68c51e760491f2ae6980b3e439a0676d3a64da89d5"
+    },
+    {
+      "storageKey": "image/1779555024588-a1cbceff-9973-4b4a-b4f3-2c91ccb44a19.jpeg",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1779555024588-a1cbceff-9973-4b4a-b4f3-2c91ccb44a19.jpeg",
+      "size": 58255,
+      "sha256": "58d3dcba66497049570e6b68c51e760491f2ae6980b3e439a0676d3a64da89d5"
+    },
+    {
+      "storageKey": "image/1782049622424-21a8a560-c5aa-499a-912e-4eb429a220d2.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782049622424-21a8a560-c5aa-499a-912e-4eb429a220d2.png",
+      "size": 623985,
+      "sha256": "66149b61935cdedabd8780b23334f1e9e9063d9dcb586c07bfecde6c2223ba40"
+    },
+    {
+      "storageKey": "image/1782049625192-7577ddfd-cc82-45b9-9b19-9bada0c0b1f3.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782049625192-7577ddfd-cc82-45b9-9b19-9bada0c0b1f3.png",
+      "size": 1017065,
+      "sha256": "0225c701b4ccf8a33d40a59bca1b7fe496e9a63b4291fa7c7c86ae4e5fe19835"
+    },
+    {
+      "storageKey": "image/1782049780598-f2b08875-faa5-4def-b8dc-d0366c757ea6.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782049780598-f2b08875-faa5-4def-b8dc-d0366c757ea6.png",
+      "size": 517281,
+      "sha256": "0693bcb76e45ec2ce557e8678367da8e551b933684be498706c11c8cd369941f"
+    },
+    {
+      "storageKey": "image/1782049781851-979ebf2e-782b-47b4-87be-2fcc8acd2f4d.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782049781851-979ebf2e-782b-47b4-87be-2fcc8acd2f4d.png",
+      "size": 623985,
+      "sha256": "66149b61935cdedabd8780b23334f1e9e9063d9dcb586c07bfecde6c2223ba40"
+    },
+    {
+      "storageKey": "image/1782049783295-f4909ccb-3eaf-47a3-9185-c75a92d97cd9.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782049783295-f4909ccb-3eaf-47a3-9185-c75a92d97cd9.png",
+      "size": 1017065,
+      "sha256": "0225c701b4ccf8a33d40a59bca1b7fe496e9a63b4291fa7c7c86ae4e5fe19835"
+    },
+    {
+      "storageKey": "image/1782049845479-4f813ae0-22b2-47c6-8ae3-0990941c00bf.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782049845479-4f813ae0-22b2-47c6-8ae3-0990941c00bf.png",
+      "size": 517281,
+      "sha256": "0693bcb76e45ec2ce557e8678367da8e551b933684be498706c11c8cd369941f"
+    },
+    {
+      "storageKey": "image/1782049846172-8ad6970c-9cfb-4c0d-a431-62aca5342c9b.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782049846172-8ad6970c-9cfb-4c0d-a431-62aca5342c9b.png",
+      "size": 623985,
+      "sha256": "66149b61935cdedabd8780b23334f1e9e9063d9dcb586c07bfecde6c2223ba40"
+    },
+    {
+      "storageKey": "image/1782049847432-425e33a9-8d9a-4d44-a225-695cd946b1d6.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782049847432-425e33a9-8d9a-4d44-a225-695cd946b1d6.png",
+      "size": 1017065,
+      "sha256": "0225c701b4ccf8a33d40a59bca1b7fe496e9a63b4291fa7c7c86ae4e5fe19835"
+    },
+    {
+      "storageKey": "image/1782050628369-41cc1dfa-e6b8-48ea-a955-9b5cbe2b6614.jpg",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782050628369-41cc1dfa-e6b8-48ea-a955-9b5cbe2b6614.jpg",
+      "size": 117861,
+      "sha256": "e6749e70239a9db7873c64bf4ca435944ceacb62bb509a22f342e60bb1acda42"
+    },
+    {
+      "storageKey": "image/1782050716412-d92cb001-c89c-4ac2-b567-b7bf869f33ca.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782050716412-d92cb001-c89c-4ac2-b567-b7bf869f33ca.png",
+      "size": 1399162,
+      "sha256": "9952e28d1be4d85fac49f80ac004a542b40e42e740b85aed09b0eaef4a5100c6"
+    },
+    {
+      "storageKey": "image/1782050716980-7eea9495-d4fe-4fce-86d2-25d9e8dd62d2.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782050716980-7eea9495-d4fe-4fce-86d2-25d9e8dd62d2.png",
+      "size": 1462283,
+      "sha256": "86f9da46f3ce2e399b5a65c840e802ae2b7d42fdd2a7378d35b24e0c68496741"
+    },
+    {
+      "storageKey": "image/1782050807473-b1ffa834-1067-409f-b1c9-e35697b384a2.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782050807473-b1ffa834-1067-409f-b1c9-e35697b384a2.webp",
+      "size": 25340,
+      "sha256": "c2f3c0f4e762cafbd4a3c0c8ecc0f26122f5312e00e24f2a1ccbb7778c49bf37"
+    },
+    {
+      "storageKey": "image/1782050807605-e4223f87-e7db-414e-98d3-0ec3b3aa01ba.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782050807605-e4223f87-e7db-414e-98d3-0ec3b3aa01ba.webp",
+      "size": 43352,
+      "sha256": "014820d443aa55f7cab0f353a2b90f7b8af07a15cd7605160555e9a6f48670ef"
+    },
+    {
+      "storageKey": "image/1782050807691-4a18264e-e564-4093-b85c-cf0fe3bf50c4.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782050807691-4a18264e-e564-4093-b85c-cf0fe3bf50c4.webp",
+      "size": 28562,
+      "sha256": "076307ccd1f8494b0da5bc6d01be04bac323704737df3418a0d29cb2b027f7ab"
+    },
+    {
+      "storageKey": "image/1782050829356-c7fb4bdc-5f59-4576-b69b-d3bd9e160d1c.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782050829356-c7fb4bdc-5f59-4576-b69b-d3bd9e160d1c.webp",
+      "size": 25340,
+      "sha256": "c2f3c0f4e762cafbd4a3c0c8ecc0f26122f5312e00e24f2a1ccbb7778c49bf37"
+    },
+    {
+      "storageKey": "image/1782050829460-c56271d9-0e3a-415b-8df7-0f3b7dd69f45.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782050829460-c56271d9-0e3a-415b-8df7-0f3b7dd69f45.webp",
+      "size": 28562,
+      "sha256": "076307ccd1f8494b0da5bc6d01be04bac323704737df3418a0d29cb2b027f7ab"
+    },
+    {
+      "storageKey": "image/1782050829526-b90ddd7d-009e-4232-9411-b963d0061d54.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782050829526-b90ddd7d-009e-4232-9411-b963d0061d54.webp",
+      "size": 43352,
+      "sha256": "014820d443aa55f7cab0f353a2b90f7b8af07a15cd7605160555e9a6f48670ef"
+    },
+    {
+      "storageKey": "image/1782061064169-db6cac21-3a9f-4caf-a6e4-c8e25cebc474.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/image/1782061064169-db6cac21-3a9f-4caf-a6e4-c8e25cebc474.png",
+      "size": 1462283,
+      "sha256": "86f9da46f3ce2e399b5a65c840e802ae2b7d42fdd2a7378d35b24e0c68496741"
+    },
+    {
+      "storageKey": "quarantine/1780850371126-scanner_unavailable-1780850370143-0f1fc878-714e-4e00-b8fe-0fa331798a67.png",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/quarantine/1780850371126-scanner_unavailable-1780850370143-0f1fc878-714e-4e00-b8fe-0fa331798a67.png",
+      "size": 1263547,
+      "sha256": "533af94565c8ec68cb705376c3fcc8d212328130c8f4d3ef66a6159de0aa5bea"
+    },
+    {
+      "storageKey": "quarantine/1781519298521-scanner_unavailable-1781519298508-68cad193-fd9a-46bd-9515-125139731519.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/quarantine/1781519298521-scanner_unavailable-1781519298508-68cad193-fd9a-46bd-9515-125139731519.webp",
+      "size": 36000,
+      "sha256": "a7ec4fd245d9f269daa81228a6ce7fa58194709f589dcfb1f65a8682258a9200"
+    },
+    {
+      "storageKey": "quarantine/1781519309805-scanner_unavailable-1781519309802-131664a2-f743-4d08-830c-e4dbac73deca.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/quarantine/1781519309805-scanner_unavailable-1781519309802-131664a2-f743-4d08-830c-e4dbac73deca.webp",
+      "size": 36000,
+      "sha256": "a7ec4fd245d9f269daa81228a6ce7fa58194709f589dcfb1f65a8682258a9200"
+    },
+    {
+      "storageKey": "quarantine/1781519324933-scanner_unavailable-1781519324928-63ea214f-a787-45e0-8900-03e6a91db02f.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/quarantine/1781519324933-scanner_unavailable-1781519324928-63ea214f-a787-45e0-8900-03e6a91db02f.webp",
+      "size": 36000,
+      "sha256": "a7ec4fd245d9f269daa81228a6ce7fa58194709f589dcfb1f65a8682258a9200"
+    },
+    {
+      "storageKey": "quarantine/1781519325704-scanner_unavailable-1781519325700-9adcaecc-a00b-473b-aac0-9508c7cec02e.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/quarantine/1781519325704-scanner_unavailable-1781519325700-9adcaecc-a00b-473b-aac0-9508c7cec02e.webp",
+      "size": 36000,
+      "sha256": "a7ec4fd245d9f269daa81228a6ce7fa58194709f589dcfb1f65a8682258a9200"
+    },
+    {
+      "storageKey": "quarantine/1781519326268-scanner_unavailable-1781519326265-96528e4e-d985-4fe1-937f-792042980f66.webp",
+      "path": "/home/ubuntu/chabaqa/backend/uploads/quarantine/1781519326268-scanner_unavailable-1781519326265-96528e4e-d985-4fe1-937f-792042980f66.webp",
+      "size": 36000,
+      "sha256": "a7ec4fd245d9f269daa81228a6ce7fa58194709f589dcfb1f65a8682258a9200"
+    }
+  ]
+}

@@ -1,8 +1,19 @@
-import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/domains/auth/jwt-auth.guard';
 import { CommunityPermissionGuard } from '@/domains/community/access/community-permission.guard';
-import { CommunityIdFrom, RequireCommunityPermission } from '@/domains/community/access/community-permission.decorator';
+import {
+  CommunityIdFrom,
+  RequireCommunityPermission,
+} from '@/domains/community/access/community-permission.decorator';
 import { CommunityPermission } from '@/shared/permissions';
 import {
   CreateWhatsappSessionDto,
@@ -24,6 +35,14 @@ export class WhatsappSessionController {
     private readonly whatsappService: WhatsappService,
   ) {}
 
+  @Get('health')
+  @ApiOperation({
+    summary: 'Get WhatsApp integration health for this community',
+  })
+  getHealth() {
+    return this.sessionService.getHealth();
+  }
+
   @Get('session')
   @ApiOperation({ summary: 'Get WhatsApp session for a community' })
   getSession(@Param('communityId') communityId: string) {
@@ -37,11 +56,17 @@ export class WhatsappSessionController {
     @Param('communityId') communityId: string,
     @Body() dto: CreateWhatsappSessionDto,
   ) {
-    return this.sessionService.createSession(req.user._id, communityId, dto.name);
+    return this.sessionService.createSession(
+      req.user._id,
+      communityId,
+      dto.name,
+    );
   }
 
   @Post('session/start')
-  @ApiOperation({ summary: 'Start WhatsApp session and prepare QR/pairing flow' })
+  @ApiOperation({
+    summary: 'Start WhatsApp session and prepare QR/pairing flow',
+  })
   startSession(@Request() req, @Param('communityId') communityId: string) {
     return this.sessionService.startSession(req.user._id, communityId);
   }
@@ -73,6 +98,10 @@ export class WhatsappSessionController {
     @Param('communityId') communityId: string,
     @Body() dto: SendWhatsappTestMessageDto,
   ) {
-    return this.whatsappService.sendTestMessage(communityId, dto.phoneE164, dto.body);
+    return this.whatsappService.sendTestMessage(
+      communityId,
+      dto.phoneE164,
+      dto.body,
+    );
   }
 }

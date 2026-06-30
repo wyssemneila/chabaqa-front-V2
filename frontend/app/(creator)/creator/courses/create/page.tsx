@@ -1,6 +1,6 @@
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
-import { CreateCourseForm } from '@/components/courses/create-course-form'
+import { CourseCreationContainer } from '../new/components/course-creation-container'
 
 export default function CreateCoursePage() {
   return (
@@ -20,7 +20,7 @@ export default function CreateCoursePage() {
         <div className="md:ml-[220px] flex-1 flex flex-col h-screen overflow-hidden">
           <DashTopbar title="Create Course" subtitle="New course wizard" />
           <main id="main-content" className="flex-1 flex flex-col overflow-hidden" style={{ animation: 'dashFadeUp .4s ease both' }}>
-            <CreateCourseForm />
+            <CourseCreationContainer />
           </main>
         </div>
       </div>

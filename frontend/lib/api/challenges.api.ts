@@ -145,6 +145,26 @@ export interface UpdateChallengeSequentialProgressionDto {
   unlockMessage?: string;
 }
 
+export const normalizeChallengeResponse = (response: any): any => {
+  if (!response) return response;
+  if (response?.challenge) return response.challenge;
+  if (response?.data?.challenge) return response.data.challenge;
+  if (response?.data?.data?.challenge) return response.data.data.challenge;
+  if (response?.data?.data) return response.data.data;
+  if (response?.data) return response.data;
+  return response;
+};
+
+export const normalizeChallengeListResponse = (response: any): any[] => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.challenges)) return response.challenges;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.challenges)) return response.data.challenges;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  if (Array.isArray(response?.data?.data?.challenges)) return response.data.data.challenges;
+  return [];
+};
+
 // ==========================================
 // Challenges API
 // ==========================================
@@ -163,18 +183,18 @@ export const challengesApi = {
   },
 
   // Create challenge
-  create: async (data: CreateChallengeData): Promise<ApiSuccessResponse<Challenge>> => {
-    return apiClient.post<ApiSuccessResponse<Challenge>>('/challenges', data);
+  create: async (data: CreateChallengeData): Promise<any> => {
+    return apiClient.post<any>('/challenges', data);
   },
 
   // Get challenge by ID
-  getById: async (id: string): Promise<ApiSuccessResponse<Challenge>> => {
-    return apiClient.get<ApiSuccessResponse<Challenge>>(`/challenges/${id}`);
+  getById: async (id: string): Promise<any> => {
+    return apiClient.get<any>(`/challenges/${id}`);
   },
 
   // Update challenge
-  update: async (id: string, data: UpdateChallengeData): Promise<ApiSuccessResponse<Challenge>> => {
-    return apiClient.patch<ApiSuccessResponse<Challenge>>(`/challenges/${id}`, data);
+  update: async (id: string, data: UpdateChallengeData): Promise<any> => {
+    return apiClient.patch<any>(`/challenges/${id}`, data);
   },
 
   updateTasks: async (id: string, tasks: CreateChallengeTaskData[]): Promise<ApiSuccessResponse<Challenge>> => {

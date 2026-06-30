@@ -6,6 +6,7 @@ import DashIcon from './DashIcon'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
 import { resolveImageUrl } from '@/lib/resolve-image-url'
+import { useAuthContext } from '@/app/providers/auth-provider'
 
 // ─── Nav data with translations ────────────────────────────────────────────────
 const navGroups = [
@@ -56,6 +57,7 @@ const navGroups = [
 export default function DashSidebar() {
   const pathname = usePathname()
   const { lang } = useDashPrefs()
+  const { logout } = useAuthContext()
   const { selectedCommunity, isLoading: communityLoading } = useCreatorCommunity()
   const bare = pathname.replace(/^\/(en|ar)/, '') || '/'
 
@@ -157,13 +159,14 @@ export default function DashSidebar() {
             <DashIcon name="user" size={13} color="var(--p)" />
             {lang === 'ar' ? 'الملف' : 'Profile'}
           </Link>
-          <Link href="/api/auth/signout"
+          <button type="button"
             aria-label="Sign out"
+            onClick={() => void logout()}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-80"
             style={{ background: 'rgba(239,68,68,.09)', color: '#ef4444' }}>
             <DashIcon name="logout" size={13} color="#ef4444" />
             {lang === 'ar' ? 'خروج' : 'Sign Out'}
-          </Link>
+          </button>
         </div>
       </div>
     </aside>

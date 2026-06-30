@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy to VPS
+    name: Docker Deploy to VPS
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -44,7 +44,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script_stop: true
           timeout: 30m
-          command_timeout: 30m
+          command_timeout: 45m
           script: |
             set -euo pipefail
             export PROJECT_DIR="${{ secrets.VPS_PROJECT_DIR }}"
@@ -57,7 +57,7 @@ jobs:
             export GIT_AUTH_TOKEN="${{ github.token }}"
 
             echo "[github-actions] connected to $(hostname) as $(whoami)"
-            echo "[github-actions] deploying ${GIT_REPO}:${BRANCH} into ${PROJECT_DIR}"
+            echo "[github-actions] docker deploying ${GIT_REPO}:${BRANCH} into ${PROJECT_DIR}"
 
             cd "$PROJECT_DIR"
             chmod +x ./deploy.sh

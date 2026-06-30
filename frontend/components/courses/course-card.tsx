@@ -2,10 +2,13 @@
 
 import Link from 'next/link'
 import { BookOpen, Clock, Users, Star, Zap, Globe, Lock, Settings, Eye } from 'lucide-react'
+import { resolveImageUrl } from '@/lib/resolve-image-url'
 
 export interface CourseCardData {
   _id?: string
   id?: string
+  mongoId?: string
+  publicId?: string
   title: string
   description?: string
   thumbnail?: string
@@ -32,9 +35,10 @@ const LEVEL_ICONS: Record<string, React.ElementType> = {
 }
 
 export function CourseCard({ course }: { course: CourseCardData }) {
-  const id = course._id ?? course.id ?? ''
+  const id = course.mongoId ?? course._id ?? course.id ?? ''
   const lvl = LEVEL_COLORS[course.level ?? '']
   const LvlIcon = LEVEL_ICONS[course.level ?? ''] ?? BookOpen
+  const thumbnail = resolveImageUrl(course.thumbnail) || course.thumbnail
 
   return (
     <div
@@ -49,8 +53,8 @@ export function CourseCard({ course }: { course: CourseCardData }) {
     >
       {/* thumbnail */}
       <div className="relative aspect-video overflow-hidden" style={{ background: 'var(--bg)' }}>
-        {course.thumbnail
-          ? <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+        {thumbnail
+          ? <img src={thumbnail} alt={course.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
           : <div className="w-full h-full flex items-center justify-center">
               <BookOpen className="w-10 h-10 opacity-20" style={{ color: 'var(--t3)' }} />
             </div>

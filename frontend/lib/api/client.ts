@@ -101,11 +101,11 @@ class ApiClient {
       if (response.status === 401 && typeof window !== 'undefined') {
         // Check if this is a protected route that requires login
         const protectedRoutes = ['/creator', '/dashboard', '/settings', '/profile', '/admin'];
-        const currentPath = window.location.pathname;
+        const currentPath = window.location.pathname.replace(/^\/(?:en|ar)(?=\/|$)/, '') || '/';
         const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
 
         // Only redirect if on a protected route
-        if (isProtectedRoute) {
+        if (isProtectedRoute && !response.url.includes('/auth/me') && !response.url.includes('/auth/refresh')) {
           // Clear auth state before redirecting to avoid stale state issues
           try {
             localStorage.removeItem('accessToken');
@@ -120,7 +120,8 @@ class ApiClient {
           } catch (clearError) {
             console.warn('Failed to clear auth state on 401:', clearError);
           }
-          window.location.href = '/signin';
+          const locale = window.location.pathname.startsWith('/ar') ? 'ar' : 'en';
+          window.location.href = `/${locale}/signin`;
         }
       }
 

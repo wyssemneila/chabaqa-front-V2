@@ -1,5 +1,7 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
 const API_ORIGIN = API_BASE.replace(/\/api$/, "")
+const IMAGE_FILENAME_PATTERN = /^[^/?#]+\.(?:avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i
+const UPLOAD_IMAGE_PATH_PATTERN = /^\/uploads\/image\/[^?#]+\.(?:avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i
 
 function getSecureApiOrigin(): string {
   const httpsOrigin = API_ORIGIN.replace("http://", "https://")
@@ -12,11 +14,10 @@ function getSecureApiOrigin(): string {
 
 function getSameOriginUploadPath(path: string): string | undefined {
   const cleanPath = path.startsWith("/") ? path : `/${path}`
-  if (
-    cleanPath.startsWith("/uploads/") ||
-    cleanPath.startsWith("/storage/") ||
-    cleanPath.startsWith("/images/")
-  ) {
+  if (cleanPath.startsWith("/uploads/image/")) {
+    return UPLOAD_IMAGE_PATH_PATTERN.test(cleanPath) ? cleanPath : undefined
+  }
+  if (cleanPath.startsWith("/storage/") || cleanPath.startsWith("/images/")) {
     return cleanPath
   }
   return undefined
@@ -33,6 +34,7 @@ export function resolveImageUrl(value?: string): string | undefined {
       if (uploadPath) {
         return `${uploadPath}${url.search || ""}`
       }
+      if (url.pathname.startsWith("/uploads/image/")) return undefined
     } catch {
       // Keep the older fallback behavior for malformed absolute values.
     }
@@ -54,6 +56,8 @@ export function resolveImageUrl(value?: string): string | undefined {
 
   const uploadPath = getSameOriginUploadPath(raw)
   if (uploadPath) return uploadPath
+
+  if (!IMAGE_FILENAME_PATTERN.test(raw)) return undefined
 
   return `${getSecureApiOrigin()}/uploads/image/${raw}`
 }

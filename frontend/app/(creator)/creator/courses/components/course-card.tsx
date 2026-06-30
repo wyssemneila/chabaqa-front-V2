@@ -16,6 +16,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { resolveImageUrl } from "@/lib/resolve-image-url"
 
 interface CourseCardProps {
   course: any
@@ -24,8 +25,8 @@ interface CourseCardProps {
 
 export function CourseCard({ course, onDeleted }: CourseCardProps) {
   const { toast } = useToast()
-  const id = course.id || course._id
-  const deleteId = course._id || course.mongoId || course.id
+  const id = course.mongoId || course._id || course.id
+  const deleteId = course.mongoId || course._id || course.id
   const sectionsCount: number = Array.isArray(course.sections) ? course.sections.length : (course.sectionsCount ?? 0)
   const chaptersTotal: number = Array.isArray(course.sections)
     ? course.sections.reduce((acc: number, s: any) => acc + (Array.isArray(s.chapitres) ? s.chapitres.length : (Array.isArray(s.chapters) ? s.chapters.length : 0)), 0)
@@ -37,11 +38,12 @@ export function CourseCard({ course, onDeleted }: CourseCardProps) {
 
   const enrollmentsCount: number = Array.isArray(course.enrollments) ? course.enrollments.length : (course.enrolledCount ?? 0)
 
+  const rawThumbnail = course.thumbnail || course.thumbnailUrl || course.imageUrl || course.image || course.coverImageUrl || course.coverImage
   const resolvedCourse = {
     ...course,
     id,
     title: course.titre || course.title || 'Untitled Course',
-    thumbnail: course.thumbnail || course.image || course.coverImage,
+    thumbnail: resolveImageUrl(rawThumbnail) || rawThumbnail,
     price: priceNumber,
     sections: Array.isArray(course.sections) ? course.sections : Array.from({ length: sectionsCount }, () => ({ chapitres: [], chapters: [] })),
     enrollments: Array.isArray(course.enrollments) ? course.enrollments : Array.from({ length: enrollmentsCount }),

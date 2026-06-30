@@ -4,15 +4,15 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
-import { Loader2, AlertCircle } from 'lucide-react'
-import { sessionsApi } from '@/lib/api/sessions.api'
+import { AlertCircle } from 'lucide-react'
+import { sessionsApi, normalizeSessionResponse } from '@/lib/api/sessions.api'
 import { SessionEditForm } from './components/session-edit-form'
 import { SessionBookings } from './components/session-bookings'
 import { SessionAvailabilityWrapper } from './components/session-availability-wrapper'
+import { PageState } from '@/components/creator-dashboard/page-state'
 
 function unwrapSession(response: any) {
-  const payload = response?.data?.session ?? response?.data?.data ?? response?.data ?? response
-  return payload?.session ?? payload
+  return normalizeSessionResponse(response)
 }
 
 export default function EditSessionPage() {
@@ -46,7 +46,13 @@ export default function EditSessionPage() {
           throw new Error('Session was not found.')
         }
         if (!cancelled) {
-          setSession(nextSession)
+          const resolvedMongoId = String(nextSession.mongoId || nextSession._id || nextSession.id || '')
+          setSession({
+            ...nextSession,
+            id: resolvedMongoId,
+            mongoId: resolvedMongoId,
+            publicId: nextSession.id && nextSession.id !== resolvedMongoId ? nextSession.id : undefined,
+          })
           const bookingsPayload: any = bookingsResponse
           const nextBookings =
             bookingsPayload?.data?.bookings ||
@@ -79,9 +85,7 @@ export default function EditSessionPage() {
         <DashTopbar title="Edit Session" subtitle="Manage session details, availability and bookings" />
         <main id="main-content" className="flex-1 p-7">
           {loading ? (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--p)' }} />
-            </div>
+            <PageState variant="loading" compact />
           ) : error ? (
             <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -89,8 +93,8 @@ export default function EditSessionPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              <SessionEditForm session={session} sessionId={sessionId} />
-              <SessionAvailabilityWrapper sessionId={sessionId} duration={Number(session?.duration || 60)} />
+              <SessionEditForm session={session} sessionId={String(session?.mongoId || session?.id || sessionId)} />
+              <SessionAvailabilityWrapper sessionId={String(session?.mongoId || session?.id || sessionId)} duration={Number(session?.duration || 60)} />
               <SessionBookings bookings={bookings} />
             </div>
           )}

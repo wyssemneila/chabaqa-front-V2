@@ -9,7 +9,7 @@ import { SessionDetailsStep } from "./session-details-step"
 import { AvailabilityStep } from "./availability-step"
 import { ReviewPublishStep } from "./review-publish-step"
 import { NavigationButtons } from "./navigation-buttons"
-import { sessionsApi, type CreateSessionData } from "@/lib/api/sessions.api"
+import { sessionsApi, normalizeSessionResponse, type CreateSessionData } from "@/lib/api/sessions.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import {
@@ -312,8 +312,8 @@ export function SessionCreationContainer() {
       }
 
       const res = await sessionsApi.create(payload)
-      const created = (res as any)?.data || res
-      const sessionId = created?.id || created?._id || created?.session?.id || created?.session?._id
+      const created = normalizeSessionResponse(res)
+      const sessionId = created?.mongoId || created?._id || created?.id
 
       // Save availability settings if configured
       if (sessionId && formData.recurringAvailability && formData.recurringAvailability.length > 0) {
@@ -358,7 +358,8 @@ export function SessionCreationContainer() {
           ? `${payload.title} is ready with booking settings.`
           : `${payload.title} - add availability and publish when ready.`,
       })
-      router.push('/creator/sessions')
+      if (sessionId) router.push(`/creator/sessions/${sessionId}/edit`)
+      else router.push('/creator/sessions')
     } catch (e: any) {
       toast({ title: 'Failed to create session', description: e?.message || 'Please review required fields.', variant: 'destructive' as any })
     } finally {

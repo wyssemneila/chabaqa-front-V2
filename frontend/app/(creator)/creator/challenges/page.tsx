@@ -46,7 +46,7 @@ export default function ChallengesPage() {
               <p className="text-[13px] font-semibold" style={{ color: 'var(--t3)' }}>
                 {challenges.length} challenge{challenges.length !== 1 ? 's' : ''}
               </p>
-              <button onClick={() => router.push('/creator/challenges/create')}
+              <button onClick={() => router.push('/creator/challenges/new')}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ background: 'var(--p)' }}>
                 <Plus className="w-4 h-4" strokeWidth={1.7} /> Create Challenge
@@ -74,7 +74,7 @@ export default function ChallengesPage() {
                 </div>
                 <p className="text-[15px] font-bold mb-1.5" style={{ color: 'var(--t1)' }}>No challenges yet</p>
                 <p className="text-[13px] mb-6" style={{ color: 'var(--t3)' }}>Create your first challenge for the community</p>
-                <button onClick={() => router.push('/creator/challenges/create')}
+                <button onClick={() => router.push('/creator/challenges/new')}
                   className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
                   style={{ background: 'var(--p)' }}>
                   <Plus className="w-4 h-4" strokeWidth={1.7} /> Create Challenge
@@ -118,13 +118,13 @@ export default function ChallengesPage() {
                             <p className="text-[12px] truncate" style={{ color: 'var(--t2)' }}>{ch.description}</p>
                           </div>
                           <div className="flex gap-1 shrink-0">
-                            <button onClick={() => router.push(`/creator/challenges/${ch.id}/manage`)}
+                            <button onClick={() => router.push(`/creator/challenges/${ch.mongoId || ch.id}/manage`)}
                               aria-label="Edit challenge"
                               className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
                               style={{ background: 'var(--bg)', color: 'var(--t3)' }}>
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => del(ch.id)}
+                            <button onClick={() => del(ch.mongoId || ch.id)}
                               aria-label="Delete challenge"
                               className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
                               style={{ background: 'rgba(239,68,68,.08)', color: '#ef4444' }}>

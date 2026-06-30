@@ -8,6 +8,7 @@ import { MalwareScannerService } from '@/shared/services/malware-scanner.service
 import { PolicyModule } from '@/shared/modules/policy.module';
 import { StorageUsage, StorageUsageSchema } from '@/infrastructure/database/schemas/shared/storage-usage.schema';
 import { MediaAsset, MediaAssetSchema } from '@/infrastructure/database/schemas/content/media-asset.schema';
+import { S3StorageAdapter } from '@/domains/content/media/storage/s3-storage.adapter';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -85,7 +86,7 @@ import { ensureUploadDirectories, resolveUploadTypeDir, resolveUploadsRoot } fro
     }),
   ],
   controllers: [UploadController],
-  providers: [UploadService, MediaResolverService, MalwareScannerService],
-  exports: [UploadService, MediaResolverService, MalwareScannerService], // Exporter le service pour utilisation dans d'autres modules
+  providers: [UploadService, MediaResolverService, MalwareScannerService, S3StorageAdapter],
+  exports: [UploadService, MediaResolverService, MalwareScannerService, S3StorageAdapter], // Exporter le service pour utilisation dans d'autres modules
 })
 export class UploadModule {}

@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { coursesApi } from "@/lib/api/courses.api"
+import { coursesApi, normalizeCourseResponse } from "@/lib/api/courses.api"
 import { Course } from "@/lib/models"
 import { toast } from "sonner"
+import { PageState } from "@/components/creator-dashboard/page-state"
 import { CourseHeader } from "./course-header"
 import { CourseTabs } from "./course-tabs"
 import { DetailsTab } from "./tabs/details-tab"
@@ -29,14 +30,17 @@ export function CourseManager({ courseId }: { courseId: string }) {
   const fetchCourse = async () => {
     try {
       const rawResponse = await coursesApi.getCoursById(courseId)
-      // Handle potentially wrapped response or direct response
-      const response = rawResponse.data || rawResponse
+      const response = normalizeCourseResponse(rawResponse)
 
       console.log("Fetched course data:", response)
 
+      const resolvedMongoId = String(response.mongoId || response._id || response.id || "")
+      const resolvedPublicId = response.id && response.id !== resolvedMongoId ? String(response.id) : undefined
+
       const transformedCourse: Course = {
-        mongoId: response.mongoId || response._id || response.id,
-        id: response.id || response._id,
+        mongoId: resolvedMongoId,
+        id: resolvedMongoId,
+        publicId: resolvedPublicId,
         titre: response.titre || response.title || "",
         title: response.titre || response.title || "",
         description: response.description || "",
@@ -132,6 +136,7 @@ export function CourseManager({ courseId }: { courseId: string }) {
       "resources",
       "reviews",
       "analytics",
+      "ai-tutor",
       "settings",
     ])
 
@@ -413,11 +418,18 @@ export function CourseManager({ courseId }: { courseId: string }) {
   }
 
   if (loading) {
-    return <div>Loading...</div>
+    return <PageState variant="loading" compact />
   }
 
   if (!course) {
-    return <div>Course not found</div>
+    return (
+      <PageState
+        variant="empty"
+        title="Course not found"
+        description="This course could not be loaded from your creator dashboard."
+        actions={[{ label: "Back to courses", onClick: () => router.push("/creator/courses") }]}
+      />
+    )
   }
 
   const totalChapters = course.sections?.reduce((acc, s) => acc + s.chapters.length, 0) || 0
