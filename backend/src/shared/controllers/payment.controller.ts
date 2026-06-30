@@ -944,7 +944,7 @@ export class PaymentController {
   ) {
     this.assertPaymentProviderEnabled('flouci');
     const userId = (req.user?._id || req.user?.sub || '').toString();
-    const plan = await this.planModel.findOne({ tier, isActive: true });
+    const plan = await this.subscriptionService.getActivePlanOrBootstrap(tier);
     if (!plan) throw new BadRequestException('Plan introuvable');
     const billingInterval = this.normalizeBillingInterval(interval);
     const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);
@@ -1986,7 +1986,7 @@ export class PaymentController {
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const channel = this.normalizePaymentChannel(channelRaw);
     const clientContext = this.normalizeClientContext(clientContextRaw);
-    const plan = await this.planModel.findOne({ tier, isActive: true });
+    const plan = await this.subscriptionService.getActivePlanOrBootstrap(tier);
     if (!plan) throw new BadRequestException('Plan not found');
 
     const billingInterval = this.normalizeBillingInterval(interval);
@@ -3098,7 +3098,7 @@ export class PaymentController {
     if (!file) throw new BadRequestException('Payment proof file is required');
 
     const userId = (req.user?._id || req.user?.sub || '').toString();
-    const plan = await this.planModel.findOne({ tier, isActive: true });
+    const plan = await this.subscriptionService.getActivePlanOrBootstrap(tier);
     if (!plan) throw new BadRequestException('Plan not found');
     const billingInterval = this.normalizeBillingInterval(interval);
     const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);
@@ -4359,7 +4359,7 @@ export class PaymentController {
   ) {
     this.assertPaymentProviderEnabled('konnect');
     const userId = (req.user?._id || req.user?.sub || '').toString();
-    const plan = await this.planModel.findOne({ tier, isActive: true });
+    const plan = await this.subscriptionService.getActivePlanOrBootstrap(tier);
     if (!plan) throw new BadRequestException('Plan introuvable');
     const billingInterval = this.normalizeBillingInterval(interval);
     const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);

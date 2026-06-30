@@ -46,6 +46,11 @@ import {
   UsageMetricType
 } from '@/domains/commerce/subscription/dto';
 import { PaginatedResponseDto } from '@/shared/dto/paginated-response.dto';
+import {
+  DEFAULT_CREATOR_PLAN_DOCS,
+  getDefaultCreatorPlanDoc,
+  normalizeCreatorPlanTier,
+} from '@/domains/commerce/subscription/default-creator-plans';
 
 @Injectable()
 export class SubscriptionService {
@@ -145,6 +150,37 @@ export class SubscriptionService {
     return String(interval || '').toLowerCase() === BillingInterval.YEAR
       ? BillingInterval.YEAR
       : BillingInterval.MONTH;
+  }
+
+  private async upsertDefaultCreatorPlan(tier: PlanTier, session: any = null): Promise<PlanDocument | null> {
+    const defaultPlan = getDefaultCreatorPlanDoc(tier);
+    if (!defaultPlan) return null;
+
+    const query = this.planModel.findOneAndUpdate(
+      { tier: defaultPlan.tier },
+      { $set: defaultPlan },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    if (session) query.session(session);
+    return query.exec();
+  }
+
+  private async ensureDefaultCreatorPlans(): Promise<void> {
+    await Promise.all(
+      DEFAULT_CREATOR_PLAN_DOCS.map((plan) => this.upsertDefaultCreatorPlan(plan.tier)),
+    );
+  }
+
+  async getActivePlanOrBootstrap(tier: string | PlanTier, session: any = null): Promise<PlanDocument | null> {
+    const normalizedTier = normalizeCreatorPlanTier(String(tier));
+    if (!normalizedTier) return null;
+
+    const query = this.planModel.findOne({ tier: normalizedTier, isActive: true });
+    if (session) query.session(session);
+    const existing = await query.exec();
+    if (existing) return existing;
+
+    return this.upsertDefaultCreatorPlan(normalizedTier, session);
   }
 
   private toPlanDto(plan: PlanDocument): SubscriptionPlanDto {
@@ -374,7 +410,7 @@ export class SubscriptionService {
       cancelAtPeriodEnd?: boolean;
     } = {},
   ) {
-    const plan = await this.planModel.findOne({ tier, isActive: true }).session(session);
+    const plan = await this.getActivePlanOrBootstrap(tier, session);
     if (!plan) {
       throw new BadRequestException('Plan introuvable ou inactif');
     }
@@ -662,13 +698,22 @@ export class SubscriptionService {
   }
 
   async getPlans(): Promise<SubscriptionPlanDto[]> {
+    await this.ensureDefaultCreatorPlans();
+    const planOrder: PlanTier[] = DEFAULT_CREATOR_PLAN_DOCS.map((plan) => plan.tier);
     const plans = await this.planModel.find({ isActive: true }).exec();
 
-    return plans.map(plan => this.toPlanDto(plan));
+    return plans
+      .sort((a, b) => {
+        const aIndex = planOrder.indexOf(a.tier);
+        const bIndex = planOrder.indexOf(b.tier);
+        return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex)
+          - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+      })
+      .map(plan => this.toPlanDto(plan));
   }
 
   async getPlanByTier(tier: PlanTier): Promise<SubscriptionPlanDto> {
-    const plan = await this.planModel.findOne({ tier, isActive: true }).exec();
+    const plan = await this.getActivePlanOrBootstrap(tier);
     if (!plan) {
       throw new NotFoundException('Plan not found');
     }
@@ -1079,7 +1124,9 @@ export class SubscriptionService {
     const customerId = order.buyerId instanceof Types.ObjectId ? order.buyerId : new Types.ObjectId(String(order.buyerId));
     const invoiceDate = order.updatedAt || order.createdAt || new Date();
     const provider = options.provider || order.metadata?.provider || order.paymentMethod || 'manual';
-    const invoiceNumber = options.providerInvoiceId || `INV-${orderId.toString().slice(-10).toUpperCase()}`;
+    const externalProviderInvoiceId = String(options.providerInvoiceId || '').trim() || undefined;
+    const providerInvoiceId = externalProviderInvoiceId || `order_${orderId.toString()}`;
+    const invoiceNumber = externalProviderInvoiceId || `INV-${orderId.toString().slice(-10).toUpperCase()}`;
 
     const payload: Record<string, any> = {
       creatorId,
@@ -1087,7 +1134,7 @@ export class SubscriptionService {
       orderId,
       ownerType: options.ownerType || BillingInvoiceOwnerType.PLATFORM_SUBSCRIPTION,
       provider,
-      providerInvoiceId: options.providerInvoiceId,
+      providerInvoiceId,
       providerSubscriptionId: options.providerSubscriptionId || order.metadata?.providerSubscriptionId,
       status: options.status || BillingInvoiceStatus.PAID,
       invoiceNumber,
@@ -1110,6 +1157,7 @@ export class SubscriptionService {
         contentId: order.contentId,
         paymentMethod: order.paymentMethod,
         providerCheckoutSessionId: order.metadata?.providerCheckoutSessionId || order.paymentId,
+        generatedProviderInvoiceId: !externalProviderInvoiceId,
       },
     };
 

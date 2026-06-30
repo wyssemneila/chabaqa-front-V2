@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
+import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 
 export interface LinkCheckoutSession {
   success: boolean;
@@ -27,16 +29,44 @@ export interface LinkPaymentMethod {
 @Injectable()
 export class StripePaymentService {
   private readonly stripe: Stripe;
+  private readonly mockMode: boolean;
   private cachedTndToUsdRate: number = 0.32; // Fallback rate
   private rateLastFetched: number = 0;
   private readonly RATE_CACHE_DURATION_MS = 1200000;
 
   constructor(private configService: ConfigService) {
-    const stripeKey = this.configService.get('STRIPE_SECRET_KEY');
-    if (!stripeKey) {
-      throw new Error('STRIPE_SECRET_KEY is not configured');
+    const stripeKey = String(this.configService.get('STRIPE_SECRET_KEY') || '').trim();
+    const hasUsableStripeKey = /^sk_(test|live)_/.test(stripeKey);
+    this.mockMode = !isStrictProductionRuntime() && (this.isEnvFlagEnabled('STRIPE_MOCK_MODE') || !hasUsableStripeKey);
+
+    if (!hasUsableStripeKey && !this.mockMode) {
+      throw new Error('STRIPE_SECRET_KEY must be a valid Stripe secret key');
     }
-    this.stripe = new Stripe(stripeKey);
+
+    if (this.mockMode) {
+      console.warn('[Stripe] Development mock mode enabled. Real Stripe API calls are skipped.');
+    }
+    this.stripe = this.mockMode ? (null as unknown as Stripe) : new Stripe(stripeKey);
+  }
+
+  get isMockMode(): boolean {
+    return this.mockMode;
+  }
+
+  private isEnvFlagEnabled(name: string): boolean {
+    return ['1', 'true', 'yes', 'on'].includes(
+      String(this.configService.get(name) || '').trim().toLowerCase(),
+    );
+  }
+
+  private createMockId(prefix: string): string {
+    return `${prefix}_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
+  }
+
+  private resolveMockCheckoutUrl(successUrl: string, sessionId: string): string {
+    const resolved = successUrl.replace('{CHECKOUT_SESSION_ID}', sessionId);
+    const separator = resolved.includes('?') ? '&' : '?';
+    return `${resolved}${separator}mockProvider=stripe`;
   }
 
   /**
@@ -91,6 +121,15 @@ export class StripePaymentService {
     }>;
   }): Promise<LinkCheckoutSession> {
     try {
+      if (this.mockMode) {
+        const sessionId = this.createMockId('cs_mock');
+        return {
+          success: true,
+          sessionId,
+          url: this.resolveMockCheckoutUrl(params.successUrl, sessionId),
+        };
+      }
+
       const inputCurrency = (params.currency || 'tnd').toLowerCase();
       let stripeCurrency = inputCurrency;
       let amountInStripeCurrency = params.amountDT;
@@ -165,6 +204,15 @@ export class StripePaymentService {
     trialPeriodDays?: number;
   }): Promise<LinkCheckoutSession> {
     try {
+      if (this.mockMode) {
+        const sessionId = this.createMockId('cs_mock_sub');
+        return {
+          success: true,
+          sessionId,
+          url: this.resolveMockCheckoutUrl(params.successUrl, sessionId),
+        };
+      }
+
       const session = await this.stripe.checkout.sessions.create({
         mode: 'subscription',
         line_items: [{
@@ -179,7 +227,6 @@ export class StripePaymentService {
           trial_period_days: params.trialPeriodDays,
           metadata: params.metadata || {},
         },
-        customer_creation: 'always',
       });
 
       return {
@@ -204,6 +251,13 @@ export class StripePaymentService {
     error?: string;
   }> {
     try {
+      if (this.mockMode) {
+        return {
+          success: false,
+          error: 'Stripe mock mode does not support retrieving checkout sessions',
+        };
+      }
+
       const session = await this.stripe.checkout.sessions.retrieve(sessionId, {
         expand: ['payment_intent', 'subscription'],
       });
@@ -241,6 +295,35 @@ export class StripePaymentService {
     error?: string;
   }> {
     try {
+      if (this.mockMode || String(sessionId || '').startsWith('cs_mock')) {
+        const now = new Date();
+        const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        return {
+          success: true,
+          status: 'complete',
+          checkoutStatus: 'complete',
+          paymentIntentStatus: 'succeeded',
+          paymentMethod: {
+            id: this.createMockId('pm_mock'),
+            type: 'stripe-link',
+            card: {
+              brand: 'visa',
+              last4: '4242',
+              exp_month: 12,
+              exp_year: now.getFullYear() + 2,
+            },
+          },
+          customerId: this.createMockId('cus_mock'),
+          subscriptionId: String(sessionId || '').startsWith('cs_mock_sub')
+            ? this.createMockId('sub_mock')
+            : undefined,
+          subscriptionStatus: String(sessionId || '').startsWith('cs_mock_sub') ? 'active' : undefined,
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
+          sessionMetadata: {},
+        };
+      }
+
       const session = await this.stripe.checkout.sessions.retrieve(sessionId, {
         expand: ['payment_intent', 'customer', 'subscription'],
       });
@@ -309,6 +392,13 @@ export class StripePaymentService {
     signature: string,
   ): Promise<{ success: boolean; event?: Stripe.Event; error?: string }> {
     try {
+      if (this.mockMode) {
+        return {
+          success: false,
+          error: 'Stripe mock mode does not process signed webhooks',
+        };
+      }
+
       const webhookSecret = this.configService.get('STRIPE_WEBHOOK_SECRET');
       if (!webhookSecret) {
         return {
@@ -343,6 +433,14 @@ export class StripePaymentService {
     error?: string;
   }> {
     try {
+      if (this.mockMode) {
+        const separator = returnUrl.includes('?') ? '&' : '?';
+        return {
+          success: true,
+          url: `${returnUrl}${separator}billingPortal=mock`,
+        };
+      }
+
       const session = await this.stripe.billingPortal.sessions.create({
         customer: customerId,
         return_url: returnUrl,
@@ -367,6 +465,10 @@ export class StripePaymentService {
     paymentIntentId: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      if (this.mockMode) {
+        return { success: true };
+      }
+
       await this.stripe.refunds.create({
         payment_intent: paymentIntentId,
       });
@@ -395,6 +497,13 @@ export class StripePaymentService {
     error?: string;
   }> {
     try {
+      if (this.mockMode) {
+        return {
+          success: true,
+          priceId: this.createMockId('price_mock'),
+        };
+      }
+
       const inputCurrency = (params.currency || 'tnd').toLowerCase();
       let stripeCurrency = inputCurrency;
       let amountInStripeCurrency = params.amountDT;
