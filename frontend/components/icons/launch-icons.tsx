@@ -1,40 +1,47 @@
-import type { IconType } from "react-icons"
 import {
-  FaBullhorn,
-  FaCalendarCheck,
-  FaChartLine,
-  FaCrown,
-  FaGraduationCap,
-  FaRegCreditCard,
-  FaUsers,
-} from "react-icons/fa6"
-import { HiOutlineSparkles } from "react-icons/hi2"
-import { PiChalkboardTeacherBold, PiPackageBold, PiPaletteBold, PiRocketLaunchBold, PiStorefrontBold } from "react-icons/pi"
-import { RiMoneyDollarCircleLine, RiShieldCheckLine } from "react-icons/ri"
-import { TbBrandDatabricks, TbChecklist, TbPhotoUp, TbProgressCheck } from "react-icons/tb"
+  Activity,
+  BadgeCheck,
+  Banknote,
+  BookOpen,
+  CalendarCheck,
+  CheckSquare,
+  CreditCard,
+  Crown,
+  GraduationCap,
+  ImageUp,
+  Megaphone,
+  Package,
+  Palette,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
+  Store,
+  Users,
+  type LucideIcon,
+} from "lucide-react"
 
-export type LaunchIcon = IconType
+export type LaunchIcon = LucideIcon
 
 export const launchIcons = {
-  activity: FaChartLine,
-  audience: FaUsers,
-  branding: TbBrandDatabricks,
-  challenge: FaCrown,
-  checklist: TbChecklist,
-  community: PiStorefrontBold,
-  cover: TbPhotoUp,
-  course: FaGraduationCap,
-  event: FaCalendarCheck,
-  launch: PiRocketLaunchBold,
-  payout: FaRegCreditCard,
-  post: FaBullhorn,
-  pricing: RiMoneyDollarCircleLine,
-  product: PiPackageBold,
-  protection: RiShieldCheckLine,
-  session: PiChalkboardTeacherBold,
-  style: PiPaletteBold,
-  success: TbProgressCheck,
-  sparkle: HiOutlineSparkles,
+  activity: Activity,
+  audience: Users,
+  branding: BadgeCheck,
+  challenge: Crown,
+  checklist: CheckSquare,
+  community: Store,
+  cover: ImageUp,
+  course: GraduationCap,
+  event: CalendarCheck,
+  launch: Rocket,
+  payout: CreditCard,
+  post: Megaphone,
+  pricing: Banknote,
+  product: Package,
+  protection: ShieldCheck,
+  session: BookOpen,
+  style: Palette,
+  success: BadgeCheck,
+  sparkle: Sparkles,
 } as const
 
 export type LaunchIconName = keyof typeof launchIcons

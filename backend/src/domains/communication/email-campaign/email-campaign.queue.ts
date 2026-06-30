@@ -19,10 +19,18 @@ export class EmailCampaignQueueService implements OnModuleDestroy {
   private client: any = null;
   private connectingPromise: Promise<any> | null = null;
 
+  private isDisabled(): boolean {
+    return process.env.NODE_ENV === 'test' || process.env.REDIS_ENABLED === 'false';
+  }
+
   async queueCampaignSend(
     payload: EmailCampaignSendJobPayload,
     scheduledAt?: Date,
   ): Promise<{ queued: true; jobId: string; delayMs: number }> {
+    if (this.isDisabled()) {
+      return { queued: true, jobId: this.getJobId(payload.campaignId), delayMs: 0 };
+    }
+
     const client = await this.getClient();
     const jobId = this.getJobId(payload.campaignId);
     const delayMs = Math.max(0, (scheduledAt?.getTime() || Date.now()) - Date.now());
@@ -43,6 +51,8 @@ export class EmailCampaignQueueService implements OnModuleDestroy {
   }
 
   async removeScheduledCampaignSend(campaignId: string): Promise<boolean> {
+    if (this.isDisabled()) return false;
+
     const client = await this.getClient();
     const removedScheduled = await client.zRem(REDIS_SCHEDULED_ZSET, campaignId);
     await client.lRem(REDIS_READY_LIST, 0, campaignId);
@@ -50,6 +60,8 @@ export class EmailCampaignQueueService implements OnModuleDestroy {
   }
 
   async moveDueScheduledToReady(nowMs: number = Date.now()): Promise<number> {
+    if (this.isDisabled()) return 0;
+
     const client = await this.getClient();
     const dueCampaignIds = await client.zRangeByScore(REDIS_SCHEDULED_ZSET, 0, nowMs);
     if (dueCampaignIds.length === 0) return 0;
@@ -62,6 +74,8 @@ export class EmailCampaignQueueService implements OnModuleDestroy {
   }
 
   async dequeueReadyJobs(maxCount = 10): Promise<EmailCampaignSendJobPayload[]> {
+    if (this.isDisabled()) return [];
+
     const client = await this.getClient();
     const jobs: EmailCampaignSendJobPayload[] = [];
 
@@ -94,6 +108,8 @@ export class EmailCampaignQueueService implements OnModuleDestroy {
   }
 
   async clearJob(campaignId: string): Promise<void> {
+    if (this.isDisabled()) return;
+
     const client = await this.getClient();
     await client.hDel(REDIS_PAYLOAD_HASH, campaignId);
   }

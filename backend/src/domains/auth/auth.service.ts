@@ -49,6 +49,8 @@ export interface UserAuthPayload {
 export interface UserRefreshPayload {
   accessToken: string;
   access_token: string;
+  refreshToken: string;
+  refresh_token: string;
   expires_in: number;
   rememberMe: boolean;
   user: any;
@@ -88,6 +90,52 @@ export class AuthService {
 
   private getOtpExpiryDate(): Date {
     return new Date(Date.now() + this.getOtpExpiryMinutes() * 60 * 1000);
+  }
+
+  private getLoginLockoutThreshold(): number {
+    const configured = Number(process.env.USER_LOGIN_LOCKOUT_THRESHOLD || 5);
+    return Number.isFinite(configured) && configured >= 3 ? configured : 5;
+  }
+
+  private getLoginLockoutMinutes(): number {
+    const configured = Number(process.env.USER_LOGIN_LOCKOUT_MINUTES || 15);
+    return Number.isFinite(configured) && configured >= 1 ? configured : 15;
+  }
+
+  private isUserLocked(user: UserDocument): boolean {
+    return Boolean(user.lockoutUntil && user.lockoutUntil.getTime() > Date.now());
+  }
+
+  private async recordFailedLogin(user: UserDocument): Promise<void> {
+    const threshold = this.getLoginLockoutThreshold();
+    const failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+    const update: Record<string, any> = { failedLoginAttempts };
+
+    if (failedLoginAttempts >= threshold) {
+      const lockoutUntil = new Date(Date.now() + this.getLoginLockoutMinutes() * 60 * 1000);
+      update.lockoutUntil = lockoutUntil;
+
+      this.emailService.sendGenericEmail({
+        to: user.email,
+        subject: 'Security alert: account temporarily locked',
+        text: `Your Chabaqa account was temporarily locked after repeated failed sign-in attempts. You can try again after ${lockoutUntil.toISOString()}.`,
+        html: `<p>Your Chabaqa account was temporarily locked after repeated failed sign-in attempts.</p><p>You can try again after <strong>${lockoutUntil.toISOString()}</strong>.</p>`,
+      }).catch((error) => {
+        this.logger.warn(`Failed to send account lockout email for ${user.email}: ${error?.message || error}`);
+      });
+    }
+
+    await this.userModel.findByIdAndUpdate(user._id, { $set: update }).exec();
+  }
+
+  private async recordSuccessfulLogin(userId: Types.ObjectId): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, {
+      $set: {
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+        lastLoginAt: new Date(),
+      },
+    }).exec();
   }
 
   private buildUserDto(user: UserDocument): any {
@@ -194,10 +242,17 @@ export class AuthService {
       throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
 
+    if (this.isUserLocked(user)) {
+      throw new UnauthorizedException('Compte temporairement verrouillé. Veuillez réessayer plus tard.');
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      await this.recordFailedLogin(user);
       throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
+
+    await this.recordSuccessfulLogin(user._id);
 
     return user as UserDocument;
   }
@@ -327,27 +382,20 @@ export class AuthService {
         throw new UnauthorizedException('Utilisateur non trouvé');
       }
 
-      const currentTime = Date.now();
       const rememberMe = !!payload?.rememberMe;
-      const accessExpiresIn = rememberMe ? '4h' : '2h';
       const accessExpiresInSeconds = rememberMe ? 4 * 60 * 60 : 2 * 60 * 60;
-      const newAccessToken = this.jwtService.sign(
-        {
-          sub: user._id,
-          email: user.email,
-          role: user.role,
-          rememberMe,
-          jti: `${user._id}-access-${currentTime}`,
-        },
-        {
-          expiresIn: accessExpiresIn,
-          secret: getJwtSecret(),
-        },
+      await this.tokenBlacklistService.revokeTokenFromJWT(
+        new Types.ObjectId(payload.sub),
+        payload,
+        'refresh',
       );
+      const tokens = this.generateTokens(user, rememberMe);
 
       return {
-        accessToken: newAccessToken,
-        access_token: newAccessToken,
+        accessToken: tokens.accessToken,
+        access_token: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        refresh_token: tokens.refreshToken,
         expires_in: accessExpiresInSeconds,
         rememberMe,
         user: this.buildUserDto(user),

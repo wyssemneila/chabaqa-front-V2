@@ -168,6 +168,14 @@ export class Post {
   })
   isPublished: boolean;
 
+  @Prop({
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'flagged', 'escalated'],
+    default: 'approved',
+    index: true,
+  })
+  moderationStatus?: string;
+
   /**
    * Nombre de likes du post
    */

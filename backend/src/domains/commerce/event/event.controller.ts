@@ -245,7 +245,7 @@ export class EventController {
     @Body('ticketType') ticketType: string,
     @Query('promoCode') promoCode: string | undefined,
     @Request() req
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; message: string; refund?: { status: string; orderId?: string; reason?: string } }> {
     const userId = req.user._id || req.user.userId || req.user.id;
     const result = await this.eventService.registerAttendee(eventId, ticketType, userId, promoCode);
     return { success: true, ...result };
@@ -484,4 +484,3 @@ export class EventController {
     return undefined;
   }
 }
-

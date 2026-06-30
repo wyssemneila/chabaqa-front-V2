@@ -5,12 +5,15 @@ import {
   HttpException,
   HttpStatus,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorResponseDto, ErrorDetail } from '@/shared/dto';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -45,21 +48,22 @@ export class HttpExceptionFilter implements ExceptionFilter {
               : String(detail?.message || ''),
           }));
         } else {
-          message = responseObj.message || exception.message;
+          message = status >= 500
+            ? 'Internal server error'
+            : responseObj.message || exception.message;
           code = responseObj.code || this.getErrorCode(status);
         }
       } else {
-        message = exception.message;
+        message = status >= 500 ? 'Internal server error' : exception.message;
         code = this.getErrorCode(status);
       }
     } else if (exception instanceof Error) {
-      message = exception.message;
+      message = 'Internal server error';
       code = 'INTERNAL_SERVER_ERROR';
     }
 
-    // Log error (use proper logger in production)
-    console.error(
-      `[${new Date().toISOString()}] ${request.method} ${request.url} - ${status}: ${message}`,
+    this.logger.error(
+      `${request.method} ${request.url} - ${status}: ${message}`,
       exception instanceof Error ? exception.stack : exception,
     );
 

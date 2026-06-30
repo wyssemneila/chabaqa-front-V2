@@ -11,6 +11,10 @@ export class SeedTunisianUsers implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    if (process.env.NODE_ENV === 'test' || process.env.SEED_TUNISIAN_USERS === 'false') {
+      return;
+    }
+
     // Check if seed users already exist
     const existingSeedUsers = await this.userModel.countDocuments({
       email: { $regex: '@email\\.tn$' }

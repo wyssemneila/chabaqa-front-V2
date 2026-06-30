@@ -64,6 +64,7 @@ export default function CreatorPayoutsPage() {
   const [payouts, setPayouts] = useState<PayoutRow[]>([])
   const [stats, setStats] = useState<any>({})
   const [balance, setBalance] = useState(0)
+  const [minimumPayout, setMinimumPayout] = useState(50)
   const [bank, setBank] = useState<TunisianBankCredentials | null>(null)
   const [bankConfigured, setBankConfigured] = useState(false)
   const [bankForm, setBankForm] = useState<TunisianBankCredentials>(emptyBankForm)
@@ -79,10 +80,11 @@ export default function CreatorPayoutsPage() {
     setLoading(true)
     setError('')
     try {
+      const scopedParams = selectedCommunityId ? { communityId: selectedCommunityId } : {}
       const [listResult, statsResult, balanceResult, bankResult] = await Promise.allSettled([
-        paymentsApi.getPayouts({ page: 1, limit: 100 }),
-        paymentsApi.getPayoutStats(),
-        paymentsApi.getAvailableBalance(),
+        paymentsApi.getPayouts({ page: 1, limit: 100, ...scopedParams }),
+        paymentsApi.getPayoutStats(scopedParams),
+        paymentsApi.getAvailableBalance(scopedParams),
         creatorAnalyticsApi.getBankCredentials(),
       ])
 
@@ -95,8 +97,10 @@ export default function CreatorPayoutsPage() {
       if (balanceResult.status === 'fulfilled') {
         const data = unwrapData(balanceResult.value)
         setBalance(Number(data?.availableBalance ?? data?.balance ?? data?.amount ?? 0))
+        setMinimumPayout(Number(data?.minimumPayoutAmount || 50))
       } else {
         setBalance(0)
+        setMinimumPayout(50)
       }
 
       if (bankResult.status === 'fulfilled') {
@@ -124,7 +128,7 @@ export default function CreatorPayoutsPage() {
 
   useEffect(() => {
     void loadPayouts()
-  }, [])
+  }, [selectedCommunityId])
 
   const totals = useMemo(() => {
     const paid = payouts.filter((payout) => ['paid', 'completed', 'processed'].includes(payout.status.toLowerCase()))
@@ -141,6 +145,14 @@ export default function CreatorPayoutsPage() {
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) return
     if (!selectedCommunityId) {
       setError('Select a community before requesting a payout.')
+      return
+    }
+    if (parsedAmount < minimumPayout) {
+      setError(`Minimum payout amount is ${minimumPayout} TND.`)
+      return
+    }
+    if (parsedAmount > balance) {
+      setError('Payout amount exceeds the available balance for the selected community.')
       return
     }
     if (!bankConfigured) {
@@ -204,12 +216,18 @@ export default function CreatorPayoutsPage() {
         <DashTopbar title="Payouts" subtitle="Available balance, payout requests, bank credentials, and payout history." />
 
         <main id="main-content" className="flex-1 p-6 lg:p-8 space-y-5">
+          <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-[13px] font-semibold text-indigo-900">
+            {selectedCommunityId
+              ? 'Showing balance, stats, and payout history for the selected community.'
+              : 'Select a community to request a payout and view community-specific balances.'}
+          </div>
+
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {[
               ['Available balance', money(balance), Wallet, 'text-emerald-600 bg-emerald-500/10'],
               ['Total paid out', money(totals.totalPaid), CheckCircle2, 'text-blue-600 bg-blue-500/10'],
               ['Pending payouts', money(totals.pendingAmount), AlertCircle, 'text-amber-600 bg-amber-500/10'],
-              ['Payout count', totals.payoutCount, Banknote, 'text-indigo-600 bg-indigo-500/10'],
+              ['Minimum payout', money(minimumPayout), Banknote, 'text-indigo-600 bg-indigo-500/10'],
             ].map(([label, value, Icon, tone]: any) => (
               <div key={label} className="rounded-2xl p-4 shadow-sm" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                 <div className="flex items-center justify-between gap-3">
@@ -379,7 +397,9 @@ export default function CreatorPayoutsPage() {
 
               <section className="rounded-2xl p-5 shadow-sm" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                 <h2 className="text-[16px] font-black" style={{ color: 'var(--t1)' }}>Request payout</h2>
-                <p className="mt-1 text-[13px]" style={{ color: 'var(--t3)' }}>Request a payout from the available balance.</p>
+                <p className="mt-1 text-[13px]" style={{ color: 'var(--t3)' }}>
+                  Request from the selected community balance. Minimum {money(minimumPayout)}.
+                </p>
                 <div className="mt-4 flex gap-2">
                   <input
                     value={amount}
@@ -392,7 +412,7 @@ export default function CreatorPayoutsPage() {
                   <button
                     type="button"
                     onClick={requestPayout}
-                    disabled={requesting}
+                    disabled={requesting || !selectedCommunityId || !bankConfigured || balance < minimumPayout}
                     className="h-11 rounded-xl px-4 text-[13px] font-black text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                     style={{ background: 'var(--p)' }}
                   >

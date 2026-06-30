@@ -5,7 +5,7 @@
     "explore": "Explore",
     "blog": "Blog",
     "login": "Log in",
-    "start": "Start for free"
+    "start": "Start trial"
   },
   "footer": {
     "tagline": "All-in-one community platform for creators, coaches, and educators in MENA.",
@@ -223,13 +223,13 @@
         "brand"
       ],
       "sub": "Create, engage, and monetize your audience with the all-in-one platform built for ambitious creators. Courses, communities, coaching — all in one place.",
-      "ctaPrimary": "Start Free — No card needed",
+      "ctaPrimary": "Start 7-day trial",
       "ctaSecondary": "Watch demo",
-      "proofText": "Joined by creators across MENA — free to start",
+      "proofText": "Joined by creators across MENA",
       "stats": [
         {
-          "val": "Free",
-          "label": "To Start"
+          "val": "7-day",
+          "label": "Trial"
         },
         {
           "val": "9",
@@ -281,7 +281,7 @@
       "headlineLine3": "business",
       "descriptionPrefix": "Create, engage, and monetize your audience with the platform built for",
       "descriptionHighlight": "ambitious creators",
-      "startFree": "Start Free",
+      "startFree": "Start Trial",
       "explore": "Explore",
       "timeline": {
         "community": {
@@ -330,7 +330,7 @@
         "No code required",
         "Built for MENA creators",
         "Arabic & French support",
-        "Free to start"
+        "7-day trial"
       ],
       "cta": "Get Started Today",
       "title": "What is Chabaqa?",
@@ -403,18 +403,18 @@
     },
     "pricing": {
       "eyebrow": "Transparent pricing",
-      "title": "Start free, scale when ready",
-      "sub": "Every plan includes a 7-day free trial. No hidden fees.",
+      "title": "Creator plans for every stage",
+      "sub": "Every plan includes a 7-day trial through secure checkout.",
       "monthly": "Monthly",
       "yearly": "Yearly",
-      "save": "Save 17%",
+      "save": "Save 20%",
       "period": {
-        "free": "forever · no card needed",
-        "monthly": "TND / month · 7-day free trial",
+        "free": "7-day trial",
+        "monthly": "TND / month",
         "yearly": "TND / month · billed yearly"
       },
-      "ctaFree": "Start for free",
-      "ctaTrial": "Start 7-day free trial",
+      "ctaFree": "Start trial",
+      "ctaTrial": "Start 7-day trial",
       "plans": [
         {
           "badge": "🌱 Starter",
@@ -425,9 +425,9 @@
             "1 Community (up to 100 members)",
             "Activate up to 3 Courses",
             "Digital Products enabled",
-            "2 GB Storage",
-            "Basic analytics",
-            "24/7 Support"
+            "5 GB storage",
+            "30-day analytics lookback",
+            "7.9% + 0.5 TND transaction fee"
           ]
         },
         {
@@ -436,13 +436,13 @@
           "desc": "For growing communities",
           "fee": "Transaction fee: 4.9%",
           "features": [
-            "Up to 3 Communities (10k members)",
-            "Unlimited Courses",
+            "1 Community (up to 500 members)",
+            "Unlimited active courses",
             "Challenges, Sessions & Events",
-            "Magic Reach automation (500/mo)",
+            "1,000 email recipients/month",
             "Member gamification",
             "Verified badge · 50 GB storage",
-            "24/7 Priority Support"
+            "4.9% + 0.5 TND transaction fee"
           ]
         },
         {
@@ -451,12 +451,12 @@
           "desc": "For professional creators",
           "fee": "Transaction fee: 2.9%",
           "features": [
-            "Unlimited Communities & Members",
-            "Unlimited automation",
+            "1 Community with unlimited members",
+            "15,000 email recipients/month",
             "Add up to 3 team admins",
-            "Custom domain name",
+            "Remove Chabaqa branding",
             "Featured badge + top listings",
-            "24/7 VIP Support"
+            "2.9% + 0.5 TND transaction fee"
           ]
         }
       ],
@@ -542,8 +542,8 @@
     },
     "appInstall": {
       "heading": "Ready to build your community?",
-      "sub": "Join creators across MENA turning their expertise into income. Free to start.",
-      "primary": "Start for free — no card needed",
+      "sub": "Join creators across MENA turning their expertise into income.",
+      "primary": "Start 7-day trial",
       "secondary": "Talk to the team",
       "bannerAlt": "Get Chabaqa App",
       "downloadAppStore": "Download on App Store",
@@ -559,8 +559,8 @@
           "a": "Chabaqa is the only all-in-one platform built specifically for creators in Tunisia and MENA. Courses, challenges, coaching, events — one dashboard, one payout, local support in Arabic and French."
         },
         {
-          "q": "Is Chabaqa free to start?",
-          "a": "Yes. The Starter plan is free with no credit card required. Every paid plan also includes a 7-day free trial."
+          "q": "How do I start with Chabaqa?",
+          "a": "Choose the plan that fits your stage and start the 7-day trial through secure checkout."
         },
         {
           "q": "What is the difference between Courses and Challenges?",
@@ -692,7 +692,7 @@
       "promoF2": "Sell courses",
       "promoF3": "Earn income",
       "promoF4": "Run challenges",
-      "promoCTA": "Start for free — no card needed",
+      "promoCTA": "Start 7-day trial",
       "promoSecondary": "Explore more creators",
       "promoF1Sub": "Build thriving communities around your expertise",
       "promoF2Sub": "Create and sell courses, challenges & digital products",
@@ -776,8 +776,8 @@
       "viewAll": "View All Posts",
       "aboutAuthor": "About the Author",
       "postCta": "Ready to Build Your Education Business?",
-      "postCtaSub": "Start creating courses, coaching sessions, and digital products on Chabaqa — free to start.",
-      "getStarted": "Get Started Free",
+      "postCtaSub": "Start creating courses, coaching sessions, and digital products on Chabaqa.",
+      "getStarted": "Get Started",
       "metaTitle": "Blog | Chabaqa",
       "metaDesc": "Practical guides on building communities, creating high-converting courses, and monetizing your expertise."
     }

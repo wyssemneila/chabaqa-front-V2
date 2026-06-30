@@ -94,6 +94,8 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @UseGuards(PublicThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 20 } } as any)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Refresh user access token',
@@ -109,6 +111,8 @@ export class AuthController {
     data: UserRefreshPayload;
     access_token: string;
     accessToken: string;
+    refresh_token: string;
+    refreshToken: string;
     expires_in: number;
     rememberMe: boolean;
     user: any;
@@ -126,9 +130,8 @@ export class AuthController {
     }
 
     const result = await this.authService.refreshToken(refreshToken);
-    if (result?.accessToken) {
-      CookieUtil.setAccessTokenCookie(res as any, result.accessToken, !!result.rememberMe);
-      CookieUtil.setCsrfTokenCookie(res as any);
+    if (result?.accessToken && result?.refreshToken) {
+      CookieUtil.setTokenCookies(res as any, result.accessToken, result.refreshToken, !!result.rememberMe);
     }
 
     return {
@@ -136,6 +139,8 @@ export class AuthController {
       data: result,
       access_token: result.access_token,
       accessToken: result.accessToken,
+      refresh_token: result.refresh_token,
+      refreshToken: result.refreshToken,
       expires_in: result.expires_in,
       rememberMe: result.rememberMe,
       user: result.user,
@@ -352,6 +357,8 @@ export class AuthController {
   }
 
   @Post('google/mobile')
+  @UseGuards(PublicThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 10 } } as any)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mobile Google Sign-In' })
   @ApiBody({ schema: { type: 'object', properties: { idToken: { type: 'string' } } } })
@@ -380,6 +387,8 @@ export class AuthController {
   }
 
   @Post('register/verify-otp')
+  @UseGuards(PublicThrottlerGuard)
+  @Throttle({ default: { ttl: 900000, limit: 5 } } as any)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify Registration OTP and Create Account' })
   @ApiBody({ type: VerifyEmailOtpDto })

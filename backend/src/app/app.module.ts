@@ -63,6 +63,7 @@ import { CommunityInvitationModule } from '@/domains/community/invitation/commun
 import { AffiliateModule } from '@/domains/community/affiliate/affiliate.module';
 import { CommunityAccessModule } from '@/domains/community/access/community-access.module';
 import { VideoModule } from '@/domains/shared/video/video.module';
+import { SearchModule } from '@/domains/search/search.module';
 
 // Import new admin schemas
 import { AdminUser, AdminUserSchema } from '@/domains/admin/schemas/admin-user.schema';
@@ -202,6 +203,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     AffiliateModule,
     CommunityAccessModule,
     VideoModule,
+    SearchModule,
   ],
   controllers: [AppController, UserController, TrackingController, PaymentController],
   providers: [

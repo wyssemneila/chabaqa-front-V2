@@ -1,6 +1,6 @@
 "use client";
 
-import { TbActivity } from "react-icons/tb";
+import { Activity } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
@@ -16,7 +16,7 @@ export function AiUsageMeter({ usage }: { usage?: any }) {
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <TbActivity className="h-4 w-4 text-primary" aria-hidden="true" />
+          <Activity className="h-4 w-4 text-primary" aria-hidden="true" />
           <h2 className="text-sm font-semibold">Usage & limits</h2>
         </div>
         <Badge variant="secondary" className="rounded-md">

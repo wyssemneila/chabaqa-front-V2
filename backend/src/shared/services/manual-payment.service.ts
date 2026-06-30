@@ -27,7 +27,7 @@ export class ManualPaymentService {
     /**
      * Get pending manual payments for a creator
      */
-    async getPendingPaymentsForCreator(creatorId: string) {
+    async getPendingPaymentsForCreator(creatorId: string, options?: { communityId?: string }) {
         // Ensure we are querying with a valid ObjectId if possible
         const query: any = {
             paymentMethod: 'manual',
@@ -44,6 +44,12 @@ export class ManualPaymentService {
             query.creatorId = creatorId;
         }
 
+        if (options?.communityId) {
+            query.communityId = Types.ObjectId.isValid(options.communityId)
+                ? new Types.ObjectId(options.communityId)
+                : options.communityId;
+        }
+
         return this.orderModel.find(query)
             .populate('buyerId', 'name email profile_picture')
             .sort({ createdAt: -1 })
@@ -56,6 +62,7 @@ export class ManualPaymentService {
             status?: string;
             page?: number;
             limit?: number;
+            communityId?: string;
         }
     ) {
         const page = Math.max(1, Number(options?.page || 1));
@@ -77,6 +84,12 @@ export class ManualPaymentService {
             }
         } catch (e) {
             query.creatorId = creatorId;
+        }
+
+        if (options?.communityId) {
+            query.communityId = Types.ObjectId.isValid(options.communityId)
+                ? new Types.ObjectId(options.communityId)
+                : options.communityId;
         }
 
         const [items, total] = await Promise.all([

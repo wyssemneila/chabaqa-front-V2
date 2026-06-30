@@ -1834,6 +1834,20 @@ export const adminApi = {
       return toPaginatedResult(response, subscriptions, filters, ['subscriptions']);
     },
 
+    getBillingAudit: async (filters: JsonObject = {}) => {
+      const response = await apiClient.get('/admin/financial/billing-audit', filters);
+      const payload = getResponseData(response);
+      const items = extractListCandidate<UnknownRecord>(payload, ['data', 'items']).map((item) => ({
+        ...item,
+        provider: asString(item.provider, 'unknown'),
+        status: asString(item.status, 'unknown'),
+      }));
+      return toPaginatedResult(response, items, filters, ['items']);
+    },
+
+    reviewManualPlatformSubscription: (orderId: string, action: 'approve' | 'reject') =>
+      apiClient.post(`/admin/financial/manual-platform-subscriptions/${orderId}/review`, { action }),
+
     getTransactions: async (filters: TransactionFilters) => {
       const response = await apiClient.get('/admin/financial/transactions', filters);
       const payload = getResponseData(response);

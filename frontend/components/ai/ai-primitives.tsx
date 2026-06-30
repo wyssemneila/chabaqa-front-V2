@@ -1,6 +1,6 @@
 "use client";
 
-import type { IconType } from "react-icons";
+import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,7 @@ export function AiTypeSelector<T extends string>({
   value,
   onChange,
 }: {
-  options: Array<{ value: T; label: string; icon: IconType }>;
+  options: Array<{ value: T; label: string; icon: LucideIcon }>;
   value: T;
   onChange: (value: T) => void;
 }) {
@@ -69,7 +69,7 @@ export function AiHeroStrip({
 }: {
   badge: string;
   title: string;
-  icon: IconType;
+  icon: LucideIcon;
 }) {
   return (
     <section className="overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -97,7 +97,7 @@ export function AiEmptyDraft({
 }: {
   title: string;
   description: string;
-  icon: IconType;
+  icon: LucideIcon;
 }) {
   return (
     <div className="flex min-h-[380px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-6 text-center">
@@ -117,4 +117,3 @@ export function AiCodeBlock({ children }: { children: string }) {
     </pre>
   );
 }
-

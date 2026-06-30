@@ -873,6 +873,7 @@ ChallengeSchema.index({ title: 1 });
 ChallengeSchema.index({ communityId: 1 });
 ChallengeSchema.index({ creatorId: 1 });
 ChallengeSchema.index({ isActive: 1 });
+ChallengeSchema.index({ status: 1 });
 ChallengeSchema.index({ startDate: 1 });
 ChallengeSchema.index({ endDate: 1 });
 ChallengeSchema.index({ category: 1 });

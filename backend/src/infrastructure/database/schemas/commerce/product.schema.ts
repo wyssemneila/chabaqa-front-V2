@@ -223,6 +223,14 @@ export class Product {
   })
   isPublished: boolean;
 
+  @Prop({
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'flagged', 'escalated'],
+    default: 'approved',
+    index: true,
+  })
+  moderationStatus?: string;
+
   /**
    * Inventaire du produit (pour les produits physiques)
    */

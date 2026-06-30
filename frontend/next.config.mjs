@@ -95,7 +95,6 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react'],
   },
   images: {
-    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -110,12 +109,6 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'api.chabaqa.io',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'http',
-        hostname: '51.254.132.77',
-        port: '3000',
         pathname: '/uploads/**',
       },
       {

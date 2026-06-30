@@ -28,6 +28,7 @@ interface CommunityHeroProps {
     priceType: string
     image?: string
     coverImage?: string
+    logo?: string
     verified: boolean
     tags: string[]
     isMember?: boolean
@@ -37,6 +38,7 @@ interface CommunityHeroProps {
   themeTokens?: CommunityThemeTokens
   contentWidthClass?: string
   headerStyle?: "default" | "centered" | "minimal"
+  heroLayout?: "centered" | "split" | "media-left" | "media-right"
   showStats?: boolean
 }
 
@@ -46,6 +48,7 @@ export function CommunityHero({
   themeTokens,
   contentWidthClass = "max-w-7xl",
   headerStyle = "default",
+  heroLayout = "split",
   showStats = true,
 }: CommunityHeroProps) {
   // Helpers moved inside client component
@@ -64,6 +67,7 @@ export function CommunityHero({
 
   const displayImage =
     heroContent?.customBanner || community.coverImage || community.image || "/placeholder.svg"
+  const displayLogo = community.logo || ""
   const creatorName = community.creator?.name || "Unknown Creator"
   const creatorAvatar = community.creator?.avatar
   const creatorInitial = creatorName.charAt(0).toUpperCase()
@@ -108,11 +112,14 @@ export function CommunityHero({
     }
   }
 
-  const isCentered = headerStyle === "centered"
+  const isCentered = headerStyle === "centered" || heroLayout === "centered"
   const isMinimal = headerStyle === "minimal"
+  const mediaFirst = heroLayout === "media-left"
   const primary = themeTokens?.primary || "#8e78fb"
   const secondary = themeTokens?.secondary || "#f48fb1"
   const gradient = themeTokens?.gradient || `linear-gradient(90deg, ${primary}, ${secondary})`
+  const radius = themeTokens?.radius || "12px"
+  const radiusLg = themeTokens?.radiusLg || "20px"
   const creatorCardBackground = themeTokens
     ? `linear-gradient(150deg, #ffffff 0%, ${themeTokens.softPrimary} 100%)`
     : "#ffffff"
@@ -142,10 +149,16 @@ export function CommunityHero({
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 items-start gap-6 sm:gap-8 lg:grid-cols-2 lg:gap-12">
+        <div
+          className={cn(
+            "grid grid-cols-1 items-start gap-6 sm:gap-8 lg:gap-12",
+            isCentered ? "mx-auto max-w-5xl" : "lg:grid-cols-2",
+          )}
+        >
           <div
             className={cn(
-              "order-2 flex flex-col justify-between space-y-3 sm:space-y-4 lg:order-1",
+              "flex flex-col justify-between space-y-3 sm:space-y-4",
+              isCentered ? "order-1" : mediaFirst ? "order-2" : "order-2 lg:order-1",
               isCentered && "items-center text-center",
             )}
           >
@@ -175,6 +188,24 @@ export function CommunityHero({
               )}
             </div>}
 
+            {displayLogo && (
+              <div className={cn("flex items-center gap-3", isCentered && "justify-center")}>
+                <div
+                  className="h-12 w-12 overflow-hidden border bg-white shadow-sm"
+                  style={{
+                    borderColor: themeTokens?.mutedBorder || undefined,
+                    borderRadius: radius,
+                  }}
+                >
+                  <img src={displayLogo} alt={`${community.name} logo`} className="h-full w-full object-cover" />
+                </div>
+                <div className={cn("min-w-0", isCentered ? "text-left" : "")}>
+                  <p className="truncate text-sm font-semibold text-gray-900">{community.name}</p>
+                  <p className="truncate text-xs text-gray-500">{community.category || "Community"}</p>
+                </div>
+              </div>
+            )}
+
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 leading-snug">
               {heroTitle}
             </h1>
@@ -190,6 +221,7 @@ export function CommunityHero({
                 style={{
                   borderColor: themeTokens?.mutedBorder || undefined,
                   background: creatorCardBackground,
+                  borderRadius: radius,
                 }}
               >
                 <div className="flex items-center gap-2 sm:gap-3">
@@ -234,6 +266,7 @@ export function CommunityHero({
                   className="p-2.5 sm:p-3 rounded-lg border bg-white hover:shadow-sm transition-all duration-300"
                   style={{
                     borderColor: themeTokens?.mutedBorder || undefined,
+                    borderRadius: radius,
                   }}
                 >
                   <div className="flex items-center gap-1.5">
@@ -256,6 +289,7 @@ export function CommunityHero({
                     background: themeTokens
                       ? `linear-gradient(165deg, #ffffff 0%, ${themeTokens.softSecondary} 100%)`
                       : "#ffffff",
+                    borderRadius: radius,
                   }}
                 >
                   <div className="flex items-center gap-1.5">
@@ -280,6 +314,7 @@ export function CommunityHero({
                 className="p-2.5 sm:p-3 rounded-lg border bg-white hover:shadow-sm transition-all duration-300"
                 style={{
                   borderColor: themeTokens?.mutedBorder || undefined,
+                  borderRadius: radius,
                 }}
               >
                 <div className="flex items-center gap-1.5">
@@ -352,6 +387,7 @@ export function CommunityHero({
                 style={{
                   backgroundImage: gradient,
                   color: themeTokens?.primaryText || "#fff",
+                  borderRadius: radius,
                 }}
               >
                 <span className="flex items-center justify-center gap-1.5">
@@ -365,12 +401,15 @@ export function CommunityHero({
           </div>
 
           {/* Community Image */}
-          <div className="relative order-1 lg:order-2">
+          <div className={cn("relative", isCentered ? "order-2" : mediaFirst ? "order-1" : "order-1 lg:order-2")}>
             <div
               className="absolute -inset-2 sm:-inset-4 rounded-2xl sm:rounded-3xl blur-2xl"
               style={{ backgroundImage: gradient, opacity: 0.18 }}
             />
-            <div className="relative aspect-[16/10] overflow-hidden rounded-xl border-2 border-white shadow-2xl sm:aspect-video sm:rounded-2xl sm:border-4">
+            <div
+              className="relative aspect-[16/10] overflow-hidden border-2 border-white shadow-2xl sm:aspect-video sm:border-4"
+              style={{ borderRadius: radiusLg }}
+            >
               <Image
                 src={displayImage}
                 alt={`${community.name} community cover`}

@@ -1,4 +1,5 @@
 import { Injectable, LoggerService as NestLoggerService } from '@nestjs/common';
+import { sanitizeLogValue, writeStructuredLog } from '@/shared/utils/log-sanitizer.util';
 
 /**
  * Production-optimized Logger Service
@@ -19,8 +20,7 @@ export class Logger implements NestLoggerService {
      */
     log(message: string, context?: string) {
         if (this.isDevelopment) {
-            const timestamp = new Date().toISOString();
-            console.log(`[${timestamp}] ${context ? `[${context}] ` : ''}${message}`);
+            writeStructuredLog('info', 'app_log', { context, message });
         }
     }
 
@@ -28,19 +28,14 @@ export class Logger implements NestLoggerService {
      * Log errors (always logged in all environments)
      */
     error(message: string, trace?: string, context?: string) {
-        const timestamp = new Date().toISOString();
-        console.error(`[${timestamp}] ${context ? `[${context}] ` : ''}ERROR: ${message}`);
-        if (trace) {
-            console.error(trace);
-        }
+        writeStructuredLog('error', 'app_error', { context, message, trace: sanitizeLogValue(trace) });
     }
 
     /**
      * Log warnings (always logged in all environments)
      */
     warn(message: string, context?: string) {
-        const timestamp = new Date().toISOString();
-        console.warn(`[${timestamp}] ${context ? `[${context}] ` : ''}WARN: ${message}`);
+        writeStructuredLog('warn', 'app_warn', { context, message });
     }
 
     /**
@@ -48,8 +43,7 @@ export class Logger implements NestLoggerService {
      */
     debug(message: string, context?: string) {
         if (this.isDevelopment) {
-            const timestamp = new Date().toISOString();
-            console.debug(`[${timestamp}] ${context ? `[${context}] ` : ''}DEBUG: ${message}`);
+            writeStructuredLog('debug', 'app_debug', { context, message });
         }
     }
 
@@ -58,8 +52,7 @@ export class Logger implements NestLoggerService {
      */
     verbose(message: string, context?: string) {
         if (this.isDevelopment) {
-            const timestamp = new Date().toISOString();
-            console.log(`[${timestamp}] ${context ? `[${context}] ` : ''}VERBOSE: ${message}`);
+            writeStructuredLog('info', 'app_verbose', { context, message });
         }
     }
 
@@ -68,8 +61,7 @@ export class Logger implements NestLoggerService {
      */
     http(method: string, url: string, statusCode?: number, origin?: string) {
         if (this.isDevelopment) {
-            const timestamp = new Date().toISOString();
-            console.log(`📥 [${timestamp}] ${method} ${url}${statusCode ? ` - ${statusCode}` : ''}${origin ? ` - Origin: ${origin}` : ''}`);
+            writeStructuredLog('info', 'http_request', { method, url, statusCode, origin });
         }
     }
 
@@ -77,7 +69,6 @@ export class Logger implements NestLoggerService {
      * Log critical startup information (always logged)
      */
     critical(message: string) {
-        const timestamp = new Date().toISOString();
-        console.log(`[${timestamp}] 🚀 ${message}`);
+        writeStructuredLog('info', 'startup', { message });
     }
 }

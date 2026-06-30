@@ -1,3 +1,5 @@
+import { apiClient, type ApiSuccessResponse } from "./client";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 const PUBLIC_PAGE_CONTENT_REVALIDATE_SECONDS = 60;
 
@@ -269,3 +271,40 @@ export interface Testimonial {
   visible: boolean;
   createdAt: string;
 }
+
+export type CommunityPageContentUpdate = Partial<Pick<
+  PageContent,
+  "hero" | "overview" | "benefits" | "testimonials" | "cta"
+>>;
+
+function unwrapPageContentResponse(response: any): PageContent {
+  return (response?.data || response) as PageContent;
+}
+
+export const communityPageContentApi = {
+  getForEditing: async (communityId: string): Promise<PageContent> => {
+    const response = await apiClient.get<ApiSuccessResponse<PageContent>>(
+      `/community-page-content/${encodeURIComponent(communityId)}`,
+    );
+    return unwrapPageContentResponse(response);
+  },
+
+  update: async (
+    communityId: string,
+    updates: CommunityPageContentUpdate,
+  ): Promise<PageContent> => {
+    const response = await apiClient.patch<ApiSuccessResponse<PageContent>>(
+      `/community-page-content/${encodeURIComponent(communityId)}`,
+      updates,
+    );
+    return unwrapPageContentResponse(response);
+  },
+
+  publish: async (communityId: string, isPublished: boolean): Promise<PageContent> => {
+    const response = await apiClient.post<ApiSuccessResponse<PageContent>>(
+      `/community-page-content/${encodeURIComponent(communityId)}/publish`,
+      { isPublished },
+    );
+    return unwrapPageContentResponse(response);
+  },
+};

@@ -16,6 +16,15 @@ export interface EffectiveLimits {
   sessionBookingsPerMonth: number;
 }
 
+export interface PlanFeatureGateDetails {
+  code: 'PLAN_FEATURE_REQUIRED';
+  feature: keyof PlanFeatures;
+  featureLabel: string;
+  currentPlan: PlanTier;
+  requiredPlan: PlanTier;
+  message: string;
+}
+
 /** Returns true when plan enforcement is active (production mode). */
 function isPlanEnforcementEnabled(): boolean {
   return process.env.PLAN_ENFORCEMENT_MODE === 'true';
@@ -229,11 +238,27 @@ export class PolicyService {
     creatorId: Types.ObjectId | string,
     feature: keyof PlanFeatures,
   ): Promise<string> {
+    const details = await this.buildFeatureGateDetails(creatorId, feature);
+    return details.message;
+  }
+
+  async buildFeatureGateDetails(
+    creatorId: Types.ObjectId | string,
+    feature: keyof PlanFeatures,
+  ): Promise<PlanFeatureGateDetails> {
     const currentTier = await this.getCurrentPlanTierForCreator(creatorId);
     const requiredTier = FEATURE_MINIMUM_PLAN[feature] || PlanTier.PRO;
     const featureLabel = FEATURE_LABELS[feature] || String(feature);
+    const message = `${featureLabel} is not included in your current ${PLAN_NAMES[currentTier] || currentTier} plan. Upgrade to ${PLAN_NAMES[requiredTier] || requiredTier} or higher to unlock this feature.`;
 
-    return `${featureLabel} is not included in your current ${PLAN_NAMES[currentTier] || currentTier} plan. Upgrade to ${PLAN_NAMES[requiredTier] || requiredTier} or higher to unlock this feature.`;
+    return {
+      code: 'PLAN_FEATURE_REQUIRED',
+      feature,
+      featureLabel,
+      currentPlan: currentTier,
+      requiredPlan: requiredTier,
+      message,
+    };
   }
 
   async buildLimitUpgradeMessage(

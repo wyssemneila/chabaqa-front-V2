@@ -3,14 +3,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { TbGauge, TbRobot, TbRocket, TbSparkles, TbWand } from "react-icons/tb";
+import { Bot, Gauge, Rocket, Sparkles, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
-  { href: "/creator/ai", label: "Overview", icon: TbGauge },
-  { href: "/creator/ai/staff", label: "AI Staff", icon: TbRobot },
-  { href: "/creator/ai/cofounder", label: "Cofounder", icon: TbRocket },
-  { href: "/creator/ai/create", label: "Create with AI", icon: TbWand },
+  { href: "/creator/ai", label: "Overview", icon: Gauge },
+  { href: "/creator/ai/staff", label: "AI Staff", icon: Bot },
+  { href: "/creator/ai/cofounder", label: "Cofounder", icon: Rocket },
+  { href: "/creator/ai/create", label: "Create with AI", icon: Wand2 },
 ];
 
 export function AiShellLayout({
@@ -29,7 +29,7 @@ export function AiShellLayout({
         <aside className="lg:sticky lg:top-20 lg:h-fit">
           <div className="mb-4 flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <TbSparkles className="h-4 w-4" aria-hidden="true" />
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
             </div>
             <div>
               <p className="text-sm font-semibold">Chabaqa AI</p>

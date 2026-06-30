@@ -18,12 +18,17 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
   private requestCount: number = 0;
   private errorCount: number = 0;
   private performanceMetrics: any[] = [];
+  private requestDurationBuckets = [50, 100, 250, 500, 1000, 2500, 5000, Number.POSITIVE_INFINITY];
+  private requestDurationCounts = new Map<number, number>();
+  private requestDurationSumMs = 0;
+  private requestDurationCount = 0;
 
   constructor(
     private health: HealthCheckService,
     @InjectConnection() private connection: Connection,
   ) {
     this.startTime = new Date();
+    this.requestDurationBuckets.forEach((bucket) => this.requestDurationCounts.set(bucket, 0));
   }
 
   async onModuleInit() {
@@ -94,6 +99,30 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
    */
   incrementErrorCount() {
     this.errorCount++;
+  }
+
+  recordRequestDuration(durationMs: number) {
+    if (!Number.isFinite(durationMs) || durationMs < 0) return;
+
+    this.requestDurationSumMs += durationMs;
+    this.requestDurationCount += 1;
+
+    for (const bucket of this.requestDurationBuckets) {
+      if (durationMs <= bucket) {
+        this.requestDurationCounts.set(bucket, (this.requestDurationCounts.get(bucket) || 0) + 1);
+      }
+    }
+  }
+
+  getRequestDurationMetrics() {
+    return {
+      buckets: this.requestDurationBuckets.map((bucket) => ({
+        le: Number.isFinite(bucket) ? bucket : '+Inf',
+        count: this.requestDurationCounts.get(bucket) || 0,
+      })),
+      count: this.requestDurationCount,
+      sumMs: this.requestDurationSumMs,
+    };
   }
 
   /**
@@ -251,6 +280,7 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
         requestCount: this.requestCount,
         errorCount: this.errorCount,
         errorRate: this.requestCount > 0 ? (this.errorCount / this.requestCount) * 100 : 0,
+        requestDuration: this.getRequestDurationMetrics(),
       },
       database: this.getDatabaseConnections(),
       performanceHistory: this.performanceMetrics.slice(-10), // Last 10 readings

@@ -1,6 +1,8 @@
 import { apiClient, ApiSuccessResponse } from './client';
 import type { DashboardAnalytics, RevenueAnalytics } from './types';
 
+type AnalyticsPayload = Record<string, unknown>;
+
 export interface AnalyticsParams {
   startDate?: string;
   endDate?: string;
@@ -20,22 +22,22 @@ export const analyticsApi = {
   },
 
   // Get members analytics
-  getMembers: async (params?: AnalyticsParams): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.get<ApiSuccessResponse<any>>('/analytics/members', params);
+  getMembers: async (params?: AnalyticsParams): Promise<ApiSuccessResponse<AnalyticsPayload>> => {
+    return apiClient.get<ApiSuccessResponse<AnalyticsPayload>>('/analytics/members', params);
   },
 
   // Get engagement analytics
-  getEngagement: async (params?: AnalyticsParams): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.get<ApiSuccessResponse<any>>('/analytics/engagement', params);
+  getEngagement: async (params?: AnalyticsParams): Promise<ApiSuccessResponse<AnalyticsPayload>> => {
+    return apiClient.get<ApiSuccessResponse<AnalyticsPayload>>('/analytics/engagement', params);
   },
 
   // Get course analytics
-  getCourseAnalytics: async (courseId: string, params?: AnalyticsParams): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.get<ApiSuccessResponse<any>>(`/analytics/courses/${courseId}`, params);
+  getCourseAnalytics: async (courseId: string, params?: AnalyticsParams): Promise<ApiSuccessResponse<AnalyticsPayload>> => {
+    return apiClient.get<ApiSuccessResponse<AnalyticsPayload>>(`/analytics/courses/${courseId}`, params);
   },
 
   // Get challenge analytics
-  getChallengeAnalytics: async (challengeId: string, params?: AnalyticsParams): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.get<ApiSuccessResponse<any>>(`/analytics/challenges/${challengeId}`, params);
+  getChallengeAnalytics: async (challengeId: string, params?: AnalyticsParams): Promise<ApiSuccessResponse<AnalyticsPayload>> => {
+    return apiClient.get<ApiSuccessResponse<AnalyticsPayload>>(`/analytics/challenges/${challengeId}`, params);
   },
 };

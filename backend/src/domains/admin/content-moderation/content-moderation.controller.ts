@@ -139,6 +139,14 @@ export class ContentModerationController {
     }
   }
 
+  @Post('ai-scan')
+  @RequireAdminRoles(AdminRole.CONTENT_MODERATOR, AdminRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Run AI moderation scan for pending content' })
+  async runAiScan(@Query('limit') limit?: string) {
+    const data = await this.contentModerationService.runAiModerationScan(Math.min(100, Math.max(1, Number(limit) || 50)));
+    return { success: true, message: 'AI moderation scan completed', data };
+  }
+
   @Get('analytics')
   @RequireAdminRoles(AdminRole.CONTENT_MODERATOR, AdminRole.SUPER_ADMIN, AdminRole.ANALYTICS_VIEWER)
   @ApiOperation({ 

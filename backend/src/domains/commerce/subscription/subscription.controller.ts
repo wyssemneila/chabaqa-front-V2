@@ -3,6 +3,8 @@ import { ApiBearerAuth, ApiOperation, ApiTags, ApiBody, ApiQuery, ApiResponse, A
 import { JwtAuthGuard } from '@/domains/auth/guards/jwt-auth.guard';
 import { SubscriptionService } from '@/domains/commerce/subscription/subscription.service';
 import { PlanTier } from '@/infrastructure/database/schemas/commerce/plan.schema';
+import { BillingInterval } from '@/infrastructure/database/schemas/commerce/subscription.schema';
+import { SubscriptionAddonType } from '@/infrastructure/database/schemas/commerce/subscription-addon.schema';
 import { 
   CreateSubscriptionDto, 
   UpdateSubscriptionDto, 
@@ -124,6 +126,58 @@ export class SubscriptionController {
   ): Promise<PaginatedResponseDto<SubscriptionResponseDto>> {
     const creatorId = req.user._id || req.user.sub;
     return this.subscriptionService.getAllSubscriptions(creatorId, query);
+  }
+
+  @Get('member-revenue')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get customer/member recurring subscriptions for the current creator' })
+  async getMemberRevenueSubscriptions(
+    @Request() req: any,
+    @Query() query: GetSubscriptionsQueryDto,
+  ): Promise<PaginatedResponseDto<any>> {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getCreatorMemberSubscriptions(creatorId, query);
+  }
+
+  @Get('add-ons/available')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get available creator subscription add-ons' })
+  async getAvailableAddons() {
+    return this.subscriptionService.getAvailableAddons();
+  }
+
+  @Get('add-ons')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get active add-ons for the current creator' })
+  async getMyAddons(@Request() req: any) {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getMyAddons(creatorId);
+  }
+
+  @Post('add-ons')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Activate an add-on for the current creator subscription' })
+  async purchaseAddon(
+    @Request() req: any,
+    @Body('type') type: SubscriptionAddonType,
+    @Body('quantity') quantity?: number,
+    @Body('billingInterval') billingInterval?: BillingInterval,
+  ) {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.purchaseAddon(creatorId, type, quantity, billingInterval);
+  }
+
+  @Delete('add-ons/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Cancel an active add-on' })
+  async cancelAddon(@Request() req: any, @Param('id') addonId: string) {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.cancelAddon(creatorId, addonId);
   }
 
   @Post('plans')
@@ -267,8 +321,9 @@ export class SubscriptionController {
   @ApiParam({ name: 'id', description: 'Invoice ID' })
   @ApiResponse({ status: 200, type: InvoiceDto })
   @ApiResponse({ status: 404, description: 'Invoice not found' })
-  async getInvoiceById(@Param('id') invoiceId: string): Promise<InvoiceDto> {
-    return this.subscriptionService.getInvoiceById(invoiceId);
+  async getInvoiceById(@Param('id') invoiceId: string, @Request() req: any): Promise<InvoiceDto> {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getInvoiceById(invoiceId, creatorId);
   }
 
   @Post('invoices')
@@ -315,5 +370,3 @@ export class SubscriptionController {
     return this.subscriptionService.getUsageSummary(creatorId, start, end);
   }
 }
-
-

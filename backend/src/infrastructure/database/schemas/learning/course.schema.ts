@@ -592,6 +592,14 @@ export class Cours {
   })
   isPublished: boolean;
 
+  @Prop({
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'flagged', 'escalated'],
+    default: 'approved',
+    index: true,
+  })
+  moderationStatus?: string;
+
   /**
    * Statut de validation utilisÃ© par le tableau de bord admin
    */

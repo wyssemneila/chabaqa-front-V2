@@ -142,3 +142,6 @@ export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);
 
 SubscriptionSchema.index({ creatorId: 1 });
 SubscriptionSchema.index({ subscriberId: 1 });
+SubscriptionSchema.index({ subscriberId: 1, plan: 1 });
+SubscriptionSchema.index({ providerSubscriptionId: 1 }, { sparse: true });
+SubscriptionSchema.index({ status: 1 });

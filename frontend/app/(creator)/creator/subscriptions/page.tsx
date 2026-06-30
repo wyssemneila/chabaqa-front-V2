@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { CreditCard, Download, RefreshCw, Search, TrendingUp, Users, XCircle } from 'lucide-react'
+import { CreditCard, RefreshCw, Search, TrendingUp, Users, XCircle } from 'lucide-react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
 import {
@@ -59,8 +59,8 @@ export default function CreatorSubscriptionsPage() {
     setError('')
     try {
       const [listResult, statsResult] = await Promise.allSettled([
-        subscriptionApi.getAllSubscriptions({ page: 1, limit: 100, status: status === 'all' ? undefined : status }),
-        subscriptionApi.getSubscriptionStats(),
+        subscriptionApi.getMemberRevenueSubscriptions({ page: 1, limit: 100, status: status === 'all' ? undefined : status }),
+        Promise.resolve(null),
       ])
 
       if (listResult.status === 'fulfilled') {
@@ -95,6 +95,9 @@ export default function CreatorSubscriptionsPage() {
       [
         subscription.id,
         subscription.creatorId,
+        (subscription as any).subscriberEmail,
+        (subscription as any).subscriberName,
+        (subscription as any).community?.name,
         subscription.plan,
         subscription.status,
         subscription.paymentBrand,
@@ -127,15 +130,15 @@ export default function CreatorSubscriptionsPage() {
     <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
       <DashSidebar />
       <div className="md:ml-[220px] flex-1 flex min-h-screen flex-col">
-        <DashTopbar title="Subscriptions" subtitle="Revenue subscriptions, trials, renewals, and billing status." />
+        <DashTopbar title="Member Subscriptions" subtitle="Recurring customer revenue records for your communities." />
 
         <main id="main-content" className="flex-1 p-6 lg:p-8 space-y-5">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {[
-              ['Monthly revenue', money(viewStats.monthlyRevenue), TrendingUp, 'text-emerald-600 bg-emerald-500/10'],
-              ['Active subscribers', viewStats.activeSubscribers, Users, 'text-blue-600 bg-blue-500/10'],
-              ['Trial subscribers', viewStats.trialSubscribers, CreditCard, 'text-indigo-600 bg-indigo-500/10'],
-              ['Canceled', viewStats.canceledSubscribers, XCircle, 'text-rose-600 bg-rose-500/10'],
+              ['Active MRR', money(viewStats.monthlyRevenue), TrendingUp, 'text-emerald-600 bg-emerald-500/10'],
+              ['Active members', viewStats.activeSubscribers, Users, 'text-blue-600 bg-blue-500/10'],
+              ['Trial members', viewStats.trialSubscribers, CreditCard, 'text-indigo-600 bg-indigo-500/10'],
+              ['Canceled members', viewStats.canceledSubscribers, XCircle, 'text-rose-600 bg-rose-500/10'],
             ].map(([label, value, Icon, tone]: any) => (
               <div key={label} className="rounded-2xl p-4 shadow-sm" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                 <div className="flex items-center justify-between gap-3">
@@ -155,7 +158,7 @@ export default function CreatorSubscriptionsPage() {
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search subscriptions"
+                placeholder="Search member, community, provider, status"
                 className="h-11 w-full rounded-xl pl-10 pr-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-500/15"
                 style={{ background: 'var(--bg)', border: '1px solid var(--bd)', color: 'var(--t1)' }}
               />
@@ -180,15 +183,6 @@ export default function CreatorSubscriptionsPage() {
               <RefreshCw className="h-4 w-4" />
               Refresh
             </button>
-            <button
-              type="button"
-              onClick={() => subscriptionApi.exportSubscriptions({ status: status === 'all' ? undefined : status })}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-[13px] font-black text-white transition-opacity hover:opacity-90"
-              style={{ background: 'var(--p)' }}
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </button>
           </div>
 
           {error && (
@@ -197,11 +191,11 @@ export default function CreatorSubscriptionsPage() {
 
           <div className="overflow-hidden rounded-2xl shadow-sm" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
             <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] gap-4 px-5 py-3 text-[11px] font-black uppercase tracking-wide" style={{ background: 'var(--bg)', borderBottom: '1px solid var(--bd)', color: 'var(--t3)' }}>
-              <span>Plan</span>
+              <span>Member</span>
               <span>Status</span>
               <span>Amount</span>
               <span>Period end</span>
-              <span>Payment</span>
+              <span>Community</span>
             </div>
             {loading ? (
               <div className="flex justify-center py-20">
@@ -209,24 +203,22 @@ export default function CreatorSubscriptionsPage() {
               </div>
             ) : filtered.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-[15px] font-black" style={{ color: 'var(--t1)' }}>No subscriptions found</p>
-                <p className="mt-2 text-[13px]" style={{ color: 'var(--t3)' }}>Subscriptions from the API will appear here.</p>
+                <p className="text-[15px] font-black" style={{ color: 'var(--t1)' }}>No member subscriptions found</p>
+                <p className="mt-2 text-[13px]" style={{ color: 'var(--t3)' }}>Recurring community memberships will appear after paid recurring checkout or manual approval.</p>
               </div>
             ) : (
               filtered.map((subscription) => (
                 <div key={subscription.id} className="grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] gap-4 px-5 py-4 text-[13px] last:border-b-0" style={{ borderBottom: '1px solid var(--bd)' }}>
                   <div>
-                    <p className="font-black capitalize" style={{ color: 'var(--t1)' }}>{subscription.plan}</p>
-                    <p className="mt-1 text-[12px]" style={{ color: 'var(--t3)' }}>{subscription.billingInterval || 'month'} billing</p>
+                    <p className="font-black" style={{ color: 'var(--t1)' }}>{(subscription as any).subscriberName || (subscription as any).subscriberEmail || 'Member'}</p>
+                    <p className="mt-1 text-[12px]" style={{ color: 'var(--t3)' }}>{subscription.billingInterval || 'month'} billing · {subscription.provider || 'provider pending'}</p>
                   </div>
                   <span className={`w-fit rounded-full border px-2.5 py-1 text-[11px] font-black capitalize ${statusClass[subscription.status] || statusClass.incomplete}`} style={subscription.status === SubscriptionStatus.INCOMPLETE ? { color: 'var(--t2)', background: 'var(--bg)' } : undefined}>
                     {subscription.status.replace('_', ' ')}
                   </span>
                   <p className="font-black tabular-nums" style={{ color: 'var(--t1)' }}>{money(subscription.amount, subscription.currency || 'TND')}</p>
                   <p className="font-semibold" style={{ color: 'var(--t2)' }}>{formatDate(subscription.currentPeriodEnd || subscription.nextBillingAt)}</p>
-                  <p className="font-semibold" style={{ color: 'var(--t2)' }}>
-                    {subscription.hasPaymentMethod ? `${subscription.paymentBrand || 'Card'} ${subscription.paymentLast4 ? `•••• ${subscription.paymentLast4}` : ''}` : 'No method'}
-                  </p>
+                  <p className="font-semibold" style={{ color: 'var(--t2)' }}>{(subscription as any).community?.name || '-'}</p>
                 </div>
               ))
             )}

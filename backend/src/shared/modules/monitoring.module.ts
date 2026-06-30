@@ -3,6 +3,7 @@ import { TerminusModule } from '@nestjs/terminus';
 import { MonitoringService } from '@/shared/services/monitoring.service';
 import { HealthController } from '@/shared/controllers/health.controller';
 import { MetricsController } from '@/shared/controllers/metrics.controller';
+import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
 
 @Global()
 @Module({
@@ -13,7 +14,7 @@ import { MetricsController } from '@/shared/controllers/metrics.controller';
     }),
   ],
   controllers: [HealthController, MetricsController],
-  providers: [MonitoringService],
-  exports: [MonitoringService],
+  providers: [MonitoringService, WebhookRetryService],
+  exports: [MonitoringService, WebhookRetryService],
 })
 export class MonitoringModule {}

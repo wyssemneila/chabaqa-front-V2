@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Lint
         run: npm run lint --if-present
 
@@ -53,6 +56,25 @@ jobs:
   backend:
     name: Backend - Lint, Test, Build
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     defaults:
       run:
         working-directory: backend
@@ -70,11 +92,28 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
       - name: Lint
         run: npm run lint --if-present
 
       - name: Unit tests
         run: npm test -- --passWithNoTests
+
+      - name: E2E tests
+        env:
+          NODE_ENV: test
+          PORT: 3000
+          HOST: 127.0.0.1
+          MONGO_URI: mongodb://127.0.0.1:27017/chabaqa_test
+          MONGODB_URI: mongodb://127.0.0.1:27017/chabaqa_test
+          JWT_SECRET: ci-jwt-secret-that-is-long-enough
+          JWT_REFRESH_SECRET: ci-refresh-secret-that-is-long-enough
+          REDIS_ENABLED: false
+          FRONTEND_URL: http://localhost:8083
+          SERVER_URL: http://localhost:3000/api
+        run: npm run test:e2e
 
       - name: Build
         run: npm run build

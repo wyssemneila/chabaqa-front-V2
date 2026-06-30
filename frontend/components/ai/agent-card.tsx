@@ -2,27 +2,27 @@
 
 import Link from "next/link";
 import {
-  TbHeadphones,
-  TbMessageCircleQuestion,
-  TbRobot,
-  TbSchool,
-  TbSpeakerphone,
-  TbTrophy,
-} from "react-icons/tb";
+  Bot,
+  GraduationCap,
+  Headphones,
+  Megaphone,
+  MessageCircleQuestion,
+  Trophy,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AiAgent } from "@/lib/api";
 
 const icons = {
-  concierge: TbRobot,
-  tutor: TbSchool,
-  challenge_coach: TbTrophy,
-  support: TbHeadphones,
-  sales: TbSpeakerphone,
+  concierge: Bot,
+  tutor: GraduationCap,
+  challenge_coach: Trophy,
+  support: Headphones,
+  sales: Megaphone,
 };
 
 export function AgentCard({ agent }: { agent: AiAgent }) {
-  const Icon = icons[agent.type] || TbMessageCircleQuestion;
+  const Icon = icons[agent.type] || MessageCircleQuestion;
   return (
     <article className="rounded-lg border border-gray-200 bg-white p-4 text-card-foreground shadow-sm transition hover:border-primary/40 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">

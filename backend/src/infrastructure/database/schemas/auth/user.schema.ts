@@ -74,6 +74,9 @@ export interface UserDocument extends Document {
   suspendedBy?: Types.ObjectId;
   adminNotes?: string;
   accountStatus: string;
+  failedLoginAttempts?: number;
+  lockoutUntil?: Date | null;
+  lastLoginAt?: Date | null;
 }
 
 /**
@@ -134,7 +137,8 @@ export class User {
    */
   @Prop({
     required: true,
-    minlength: 8
+    minlength: 8,
+    select: false,
   })
   password: string;
 
@@ -218,13 +222,16 @@ export class User {
     type: Object,
     required: false
   })
-  googleTokens?: {
-    access_token: string;
-    refresh_token: string;
-    scope: string;
-    token_type: string;
-    expiry_date: number;
-  };
+  googleTokens?: any;
+
+  @Prop({ default: 0 })
+  failedLoginAttempts?: number;
+
+  @Prop({ type: Date, default: null })
+  lockoutUntil?: Date | null;
+
+  @Prop({ type: Date, default: null })
+  lastLoginAt?: Date | null;
 
   /**
    * Date de création de l'utilisateur
@@ -438,6 +445,7 @@ UserSchema.index({ role: 1 });
 UserSchema.index({ createdAt: -1 });
 UserSchema.index({ createdCommunities: 1 });
 UserSchema.index({ joinedCommunities: 1 });
+UserSchema.index({ lockoutUntil: 1 });
 
 // Méthode toJSON personnalisée pour exclure le mot de passe
 UserSchema.methods.toJSON = function (): any {

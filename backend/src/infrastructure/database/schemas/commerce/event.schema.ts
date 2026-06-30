@@ -446,6 +446,14 @@ export class Event {
 
   @Prop({
     type: String,
+    enum: ['pending', 'approved', 'rejected', 'flagged', 'escalated'],
+    default: 'approved',
+    index: true,
+  })
+  moderationStatus?: string;
+
+  @Prop({
+    type: String,
     enum: ['pending', 'approved', 'rejected', 'suspended'],
     default: 'approved',
     index: true
@@ -495,6 +503,7 @@ EventSchema.index({ startDate: 1 });
 EventSchema.index({ category: 1 });
 EventSchema.index({ type: 1 });
 EventSchema.index({ isPublished: 1 });
+EventSchema.index({ startDate: 1, isPublished: 1 });
 
 // Pre-save hook pour générer l'ID
 EventSchema.pre('save', function(next) {
@@ -525,4 +534,3 @@ EventSchema.pre('save', function(next) {
 });
 
 export type EventDocument = Event & Document;
-
