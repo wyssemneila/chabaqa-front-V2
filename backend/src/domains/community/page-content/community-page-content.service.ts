@@ -45,6 +45,21 @@ export class CommunityPageContentService {
     private uploadService: UploadService,
   ) {}
 
+  private getCommunityCreatorId(community: CommunityDocument): string {
+    const creator = (community as any).createur || (community as any).creator;
+    if (!creator) return '';
+    if (creator instanceof Types.ObjectId) return creator.toString();
+    if (typeof creator === 'string') return creator;
+    if (creator._id) return creator._id.toString();
+    if (creator.id) return creator.id.toString();
+    if (typeof creator.toString === 'function') return creator.toString();
+    return '';
+  }
+
+  private isCommunityCreator(community: CommunityDocument, userId: string): boolean {
+    return this.getCommunityCreatorId(community) === userId;
+  }
+
   /**
    * Get page content for a community (public - only returns published content)
    * @param slug Community slug
@@ -88,7 +103,7 @@ export class CommunityPageContentService {
     }
 
     // Check if user is the creator
-    if (community.createur.toString() !== userId) {
+    if (!this.isCommunityCreator(community, userId)) {
       throw new ForbiddenException('Only the community creator can edit page content');
     }
 
@@ -116,7 +131,7 @@ export class CommunityPageContentService {
     }
 
     // Check if user is the creator
-    if (community.createur.toString() !== userId) {
+    if (!this.isCommunityCreator(community, userId)) {
       throw new ForbiddenException('Only the community creator can edit page content');
     }
 
@@ -167,7 +182,7 @@ export class CommunityPageContentService {
     }
 
     // Check if user is the creator
-    if (community.createur.toString() !== userId) {
+    if (!this.isCommunityCreator(community, userId)) {
       throw new ForbiddenException('Only the community creator can publish content');
     }
 
@@ -206,7 +221,7 @@ export class CommunityPageContentService {
     }
 
     // Check if user is the creator
-    if (community.createur.toString() !== userId) {
+    if (!this.isCommunityCreator(community, userId)) {
       throw new ForbiddenException('Only the community creator can add testimonials');
     }
 
@@ -271,7 +286,7 @@ export class CommunityPageContentService {
     }
 
     // Check if user is the creator
-    if (community.createur.toString() !== userId) {
+    if (!this.isCommunityCreator(community, userId)) {
       throw new ForbiddenException('Only the community creator can delete testimonials');
     }
 

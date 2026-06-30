@@ -2,6 +2,7 @@ import { Controller, Get, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { MonitoringService } from '@/shared/services/monitoring.service';
 import { SecurityService } from '@/shared/services/security.service';
+import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
 import { Response } from 'express';
 
 @ApiTags('Health & Monitoring')
@@ -10,6 +11,7 @@ export class MetricsController {
   constructor(
     private monitoringService: MonitoringService,
     private securityService: SecurityService,
+    private webhookRetryService: WebhookRetryService,
   ) {}
 
   @Get()
@@ -141,6 +143,12 @@ export class MetricsController {
     return metrics.performanceHistory;
   }
 
+  @Get('webhook-retries')
+  @ApiOperation({ summary: 'Get webhook retry queue stats' })
+  getWebhookRetries() {
+    return this.webhookRetryService.getStats();
+  }
+
   @Get('prometheus')
   @ApiOperation({
     summary: 'Get metrics in Prometheus format',
@@ -161,6 +169,7 @@ export class MetricsController {
   getPrometheusMetrics(@Res() res: Response): void {
     const metrics = this.monitoringService.getMetrics();
     const securityMetrics = this.securityService.getSecurityMetrics();
+    const webhookRetryMetrics = this.webhookRetryService.getStats();
 
     let output = `# Shabaka Application Metrics\n`;
 
@@ -195,6 +204,19 @@ export class MetricsController {
     output += `# TYPE shabaka_cpu_usage_percent gauge\n`;
     const cpuMetrics = this.monitoringService.getCPUUsage();
     output += `shabaka_cpu_usage_percent ${cpuMetrics.usage}\n\n`;
+
+    output += `# HELP shabaka_http_request_duration_ms HTTP request duration in milliseconds\n`;
+    output += `# TYPE shabaka_http_request_duration_ms histogram\n`;
+    const duration = metrics.application.requestDuration;
+    for (const bucket of duration.buckets) {
+      output += `shabaka_http_request_duration_ms_bucket{le="${bucket.le}"} ${bucket.count}\n`;
+    }
+    output += `shabaka_http_request_duration_ms_count ${duration.count}\n`;
+    output += `shabaka_http_request_duration_ms_sum ${duration.sumMs}\n\n`;
+
+    output += `# HELP shabaka_webhook_retry_queued Failed webhook jobs queued for retry\n`;
+    output += `# TYPE shabaka_webhook_retry_queued gauge\n`;
+    output += `shabaka_webhook_retry_queued ${webhookRetryMetrics.queued}\n\n`;
 
     // Security event metrics
     output += `# HELP shabaka_security_events_total Total number of security events\n`;

@@ -47,11 +47,17 @@ export function LiveSupportWidget() {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const socketRef = useRef<Socket | null>(null)
 
+  const [mounted, setMounted] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
+  const [viewport, setViewport] = useState({ width: 0, height: 0 })
   const dragControls = useDragControls()
 
   useEffect(() => {
-    const handleResize = () => setIsDesktop(window.innerWidth >= 1024)
+    const handleResize = () => {
+      setMounted(true)
+      setIsDesktop(window.innerWidth >= 1024)
+      setViewport({ width: window.innerWidth, height: window.innerHeight })
+    }
     handleResize()
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
@@ -217,7 +223,12 @@ export function LiveSupportWidget() {
     }
   }
 
-  if (!enabled || !isAuthenticated || !user || user.role === "admin") return null
+  if (!mounted || !enabled || !isAuthenticated || !user || user.role === "admin") return null
+
+  const dragConstraints =
+    isDesktop && viewport.width > 0 && viewport.height > 0
+      ? { left: 0, right: viewport.width - 100, top: -viewport.height + 100, bottom: 0 }
+      : undefined
 
   return (
     <motion.div 
@@ -225,7 +236,7 @@ export function LiveSupportWidget() {
       dragMomentum={false}
       dragListener={false}
       dragControls={dragControls}
-      dragConstraints={typeof window !== 'undefined' ? { left: 0, right: window.innerWidth - 100, top: -window.innerHeight + 100, bottom: 0 } : undefined}
+      dragConstraints={dragConstraints}
       className={cn(
         "fixed z-[120] flex items-end gap-3",
         isDesktop ? "flex-row" : "bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-4 flex-col-reverse sm:bottom-6 sm:left-6",

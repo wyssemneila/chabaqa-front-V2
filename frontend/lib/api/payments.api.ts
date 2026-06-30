@@ -27,6 +27,14 @@ export interface RequestPayoutData {
   itemsCount?: number;
 }
 
+export interface PayoutQueryParams extends PaginationParams {
+  communityId?: string;
+  status?: string;
+  method?: PayoutMethod;
+  startDate?: string;
+  endDate?: string;
+}
+
 // Payments API
 export const paymentsApi = {
   // Create payment intent
@@ -55,7 +63,7 @@ export const paymentsApi = {
   },
 
   // Get payouts
-  getPayouts: async (params?: PaginationParams): Promise<PaginatedResponse<any>> => {
+  getPayouts: async (params?: PayoutQueryParams): Promise<PaginatedResponse<any>> => {
     return apiClient.get<PaginatedResponse<any>>('/payouts', params);
   },
 
@@ -70,13 +78,13 @@ export const paymentsApi = {
   },
 
   // Get payout stats
-  getPayoutStats: async (): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.get<ApiSuccessResponse<any>>('/payouts/stats');
+  getPayoutStats: async (params?: Pick<PayoutQueryParams, 'communityId'>): Promise<ApiSuccessResponse<any>> => {
+    return apiClient.get<ApiSuccessResponse<any>>('/payouts/stats', params);
   },
 
   // Get available balance
-  getAvailableBalance: async (): Promise<ApiSuccessResponse<{ availableBalance: number }>> => {
-    return apiClient.get<ApiSuccessResponse<{ availableBalance: number }>>('/payouts/available-balance');
+  getAvailableBalance: async (params?: Pick<PayoutQueryParams, 'communityId'>): Promise<ApiSuccessResponse<{ availableBalance: number; minimumPayoutAmount?: number }>> => {
+    return apiClient.get<ApiSuccessResponse<{ availableBalance: number; minimumPayoutAmount?: number }>>('/payouts/available-balance', params);
   },
 
   // Process payout (admin)

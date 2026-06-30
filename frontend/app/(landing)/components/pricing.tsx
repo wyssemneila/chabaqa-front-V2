@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { usePathname } from 'next/navigation'
 import { localizeHref } from '@/lib/i18n/client'
-import { siteData } from '@/lib/data'
+import { PLANS, PLAN_TIERS, formatLimit, type PlanTier } from '@/lib/plans/plan-config'
 
 // Types
 interface ConfettiParticle {
@@ -41,19 +41,7 @@ export function Pricing() {
   const t = useTranslations('landing.pricing')
   const pathname = usePathname()
   const withLocale = useCallback((href: string) => localizeHref(pathname, href), [pathname])
-  
-  // Get plans from centralized data - memoized
-  const PLANS = useMemo(() => siteData.pricing.plans, [])
-  
-  // Get translations - memoized
-  const plansTranslations = useMemo(() => 
-    t.raw('plans') as { badge: string; name: string; desc: string; fee: string; features: string[] }[], 
-    [t]
-  )
-  const period = useMemo(() => 
-    t.raw('period') as { free: string; monthly: string; yearly: string }, 
-    [t]
-  )
+  const plans = useMemo(() => PLAN_TIERS.map((tier) => PLANS[tier]), [])
   
   const [yearly, setYearly] = useState(false)
   const [confetti, setConfetti] = useState<ConfettiParticle[]>([])
@@ -154,12 +142,34 @@ export function Pricing() {
     setYearly(isYearly)
 
     // Animate prices
-    PLANS.forEach((plan) => {
-      const oldPrice = yearly ? plan.prices.yearly : plan.prices.monthly
-      const newPrice = isYearly ? plan.prices.yearly : plan.prices.monthly
+    plans.forEach((plan) => {
+      const oldPrice = yearly ? plan.yearlyMonthlyPrice : plan.monthlyPrice
+      const newPrice = isYearly ? plan.yearlyMonthlyPrice : plan.monthlyPrice
       animatePrice(plan.name, oldPrice, newPrice)
     })
-  }, [yearly, animatePrice, PLANS])
+  }, [yearly, animatePrice, plans])
+
+  const getPlanFeatures = (tier: PlanTier): string[] => {
+    const plan = PLANS[tier]
+    const features = [
+      `${formatLimit(plan.limits.membersMax)} members`,
+      `${formatLimit(plan.limits.coursesActivationMax)} active courses`,
+      `${plan.limits.storageGB} GB storage`,
+      `${plan.limits.adminsMax} admin seat${plan.limits.adminsMax > 1 ? 's' : ''}`,
+      `${plan.transactionFee}% + ${plan.transactionFixedFee} TND transaction fee`,
+    ]
+
+    if (plan.features.challenges) features.push('Challenges')
+    if (plan.features.sessions) features.push(`${formatLimit(plan.limits.sessionBookingsPerMonth)} session bookings/month`)
+    if (plan.features.events) features.push('Events')
+    if (plan.features.gamification) features.push('Gamification')
+    if (plan.features.branding) features.push('Remove Chabaqa branding')
+
+    return features.slice(0, 7)
+  }
+
+  const checkoutHref = (tier: PlanTier) =>
+    withLocale(`/pricing?plan=${tier}&billing=${yearly ? 'yearly' : 'monthly'}`)
 
   return (
     <section className="py-24 px-6 md:px-10 bg-white relative" id="pricing" aria-label="Pricing plans">
@@ -198,14 +208,13 @@ export function Pricing() {
 
         {/* Cards */}
         <div className="grid md:grid-cols-3 gap-5 stagger items-center">
-          {PLANS.map((plan, i) => {
-            const tPlan = plansTranslations[i]
-            const displayPrice = animatingPrices[plan.name] ?? (yearly ? plan.prices.yearly : plan.prices.monthly)
-            const isFree = displayPrice === 0
-            const priceLabel = isFree ? '0' : `${displayPrice}`
-            const periodLabel = isFree ? period.free : yearly ? period.yearly : period.monthly
+          {plans.map((plan) => {
+            const displayPrice = animatingPrices[plan.name] ?? (yearly ? plan.yearlyMonthlyPrice : plan.monthlyPrice)
+            const priceLabel = `${displayPrice}`
+            const periodLabel = yearly ? `per month, billed ${plan.yearlyTotal} TND/year` : 'per month'
+            const features = getPlanFeatures(plan.tier)
 
-            if (plan.popular) {
+            if (plan.highlight) {
               return (
                 <div key={plan.name} className="relative md:-my-3 z-10" style={{ filter: 'drop-shadow(0 20px 48px rgba(142,120,251,.35))' }}>
                   {/* card */}
@@ -218,12 +227,12 @@ export function Pricing() {
                       className="inline-flex self-center mb-5 px-4 py-1 rounded-full text-[11px] font-black uppercase tracking-widest"
                       style={{ background: 'rgba(255,255,255,0.22)', color: '#fff', backdropFilter: 'blur(8px)' }}
                     >
-                      {tPlan.badge}
+                      Most popular
                     </div>
 
-                    <div className="text-2xl font-black text-white mb-1">{tPlan.name}</div>
+                    <div className="text-2xl font-black text-white mb-1">{plan.name}</div>
                     <div className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                      {tPlan.desc}
+                      Scale a growing paid community with advanced creator tools.
                     </div>
 
                     {/* Price */}
@@ -238,17 +247,17 @@ export function Pricing() {
                     </div>
                     {yearly && (
                       <div className="text-xs line-through mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                        {plan.prices.monthly} TND
+                        {plan.monthlyPrice} TND
                       </div>
                     )}
                     <div className="text-xs font-bold mb-6" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                      {tPlan.fee}
+                      7-day trial through secure checkout
                     </div>
 
                     <div className="w-full h-px mb-6" style={{ background: 'rgba(255,255,255,0.18)' }} />
 
                     <ul className="flex flex-col gap-3 mb-8 flex-1">
-                      {tPlan.features.map((f, idx) => (
+                      {features.map((f, idx) => (
                         <li key={`${plan.name}-feature-${idx}`} className="flex items-start gap-3 text-sm">
                           <div className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.25)' }}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" width="9" height="9" aria-hidden="true">
@@ -261,10 +270,10 @@ export function Pricing() {
                     </ul>
 
                     <a
-                      href={withLocale('/dashboard/create-community')}
+                      href={checkoutHref(plan.tier)}
                       className="flex items-center justify-center gap-2 w-full py-3 px-6 rounded-xl font-bold text-sm transition-all duration-200 bg-white text-[#8e78fb] hover:bg-opacity-90 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
                     >
-                      {plan.cta}
+                      Start secure checkout
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="12" height="12" className="sm:w-[14px] sm:h-[14px]" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12" />
                         <polyline points="12 5 19 12 12 19" />
@@ -282,24 +291,30 @@ export function Pricing() {
                 className="rounded-2xl p-7 flex flex-col bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(142,120,251,.13)]"
                 style={{ border: '1.5px solid #e8e4ff' }}
               >
-                <div className="inline-flex self-start text-xs font-bold px-3 py-1 rounded-full mb-5 bg-[#ede9ff] text-[#8e78fb]">{tPlan.badge}</div>
+                <div className="inline-flex self-start text-xs font-bold px-3 py-1 rounded-full mb-5 bg-[#ede9ff] text-[#8e78fb]">
+                  {plan.tier === 'starter' ? 'Starter' : 'Advanced'}
+                </div>
 
-                <div className="text-xl font-black text-gray-900 mb-1">{tPlan.name}</div>
-                <div className="text-sm text-gray-600 mb-6">{tPlan.desc}</div>
+                <div className="text-xl font-black text-gray-900 mb-1">{plan.name}</div>
+                <div className="text-sm text-gray-600 mb-6">
+                  {plan.tier === 'starter'
+                    ? 'Start selling courses and products with clear limits.'
+                    : 'Unlock premium branding and the lowest transaction fee.'}
+                </div>
 
                 {/* Price */}
                 <div className="flex items-end gap-1 mb-1">
-                  <span className="text-[46px] font-black leading-none text-gray-900 transition-all duration-300" aria-live="polite">{isFree ? t('ctaFree').split(' ')[0] : priceLabel}</span>
-                  {!isFree && <span className="text-sm mb-3 text-gray-600">TND</span>}
+                  <span className="text-[46px] font-black leading-none text-gray-900 transition-all duration-300" aria-live="polite">{priceLabel}</span>
+                  <span className="text-sm mb-3 text-gray-600">TND</span>
                 </div>
                 <div className="text-xs text-gray-600 mb-1">{periodLabel}</div>
-                {yearly && !isFree && <div className="text-xs line-through text-gray-600 mb-2">{plan.prices.monthly} TND</div>}
-                <div className="text-xs font-semibold text-[#8e78fb] mb-6">{tPlan.fee}</div>
+                {yearly && <div className="text-xs line-through text-gray-600 mb-2">{plan.monthlyPrice} TND</div>}
+                <div className="text-xs font-semibold text-[#8e78fb] mb-6">7-day trial through secure checkout</div>
 
                 <div className="w-full h-px bg-gray-200 mb-6" />
 
                 <ul className="flex flex-col gap-3 mb-8 flex-1">
-                  {tPlan.features.map((f, idx) => (
+                  {features.map((f, idx) => (
                     <li key={`${plan.name}-feature-${idx}`} className="flex items-start gap-3 text-sm">
                       <div className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center bg-[#ede9ff]">
                         <svg viewBox="0 0 24 24" fill="none" stroke="#8e78fb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" width="9" height="9" aria-hidden="true">
@@ -312,11 +327,11 @@ export function Pricing() {
                 </ul>
 
                 <a
-                  href={withLocale('/dashboard/create-community')}
+                  href={checkoutHref(plan.tier)}
                   className="flex items-center justify-center gap-2 w-full py-3 px-6 rounded-xl font-bold text-sm transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
                   style={{ background: '#ede9ff', color: '#8e78fb', border: '1.5px solid #c4b8fd' }}
                 >
-                  {plan.cta}
+                  Start secure checkout
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="12" height="12" aria-hidden="true">
                     <line x1="5" y1="12" x2="19" y2="12" />
                     <polyline points="12 5 19 12 12 19" />

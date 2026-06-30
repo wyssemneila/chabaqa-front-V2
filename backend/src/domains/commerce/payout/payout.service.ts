@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Payout, PayoutDocument, PayoutStatus, PayoutMethod } from '@/infrastructure/database/schemas/commerce/payout.schema';
@@ -44,6 +45,8 @@ interface CreatorBankDetails {
 
 @Injectable()
 export class PayoutService {
+  private readonly logger = new Logger(PayoutService.name);
+
   constructor(
     @InjectModel(Payout.name) private readonly payoutModel: Model<PayoutDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
@@ -95,6 +98,46 @@ export class PayoutService {
     }
 
     return normalized;
+  }
+
+  getMinimumPayoutAmount(): number {
+    const configured = Number(process.env.PAYOUT_MIN_AMOUNT_DT || process.env.AFFILIATE_MIN_PAYOUT_DT || 50);
+    return Number.isFinite(configured) && configured > 0 ? configured : 50;
+  }
+
+  private async getAvailableBalance(creatorId: string, communityId?: string): Promise<number> {
+    const earningsMatch: any = {
+      creatorId: new Types.ObjectId(creatorId),
+      status: 'paid',
+    };
+    if (communityId) {
+      earningsMatch.communityId = Types.ObjectId.isValid(communityId)
+        ? new Types.ObjectId(communityId)
+        : communityId;
+    }
+
+    const payoutMatch: any = {
+      creatorId: new Types.ObjectId(creatorId),
+      status: { $in: [PayoutStatus.COMPLETED, PayoutStatus.PENDING, PayoutStatus.SCHEDULED] },
+    };
+    if (communityId) {
+      payoutMatch.communityId = Types.ObjectId.isValid(communityId)
+        ? new Types.ObjectId(communityId)
+        : communityId;
+    }
+
+    const [earnings, payouts] = await Promise.all([
+      this.orderModel.aggregate([
+        { $match: earningsMatch },
+        { $group: { _id: null, total: { $sum: '$creatorNetDT' } } },
+      ]),
+      this.payoutModel.aggregate([
+        { $match: payoutMatch },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+    ]);
+
+    return Math.max(0, (earnings[0]?.total || 0) - (payouts[0]?.total || 0));
   }
 
   async getCreatorBankCredentials(creatorId: string): Promise<{
@@ -187,6 +230,16 @@ export class PayoutService {
       throw new BadRequestException('Payout amount must be greater than 0');
     }
 
+    const minimumPayout = this.getMinimumPayoutAmount();
+    if (amount < minimumPayout) {
+      throw new BadRequestException(`Minimum payout amount is ${minimumPayout} ${currency}`);
+    }
+
+    const availableBalance = await this.getAvailableBalance(creatorId, communityId);
+    if (amount > availableBalance) {
+      throw new BadRequestException('Payout amount exceeds available balance');
+    }
+
     let payoutMetadata = metadata ? { ...metadata } : {};
     if (method === PayoutMethod.BANK_TRANSFER) {
       const validBankDetails = this.ensureValidBankDetails((creator as any).bankDetails);
@@ -218,6 +271,27 @@ export class PayoutService {
     };
 
     return await this.payoutModel.create(payoutData);
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async releaseDueScheduledPayouts(): Promise<number> {
+    const result = await this.payoutModel.updateMany(
+      {
+        status: PayoutStatus.SCHEDULED,
+        scheduledFor: { $lte: new Date() },
+      },
+      {
+        $set: {
+          status: PayoutStatus.PENDING,
+          adminNotes: `Released from schedule on ${new Date().toISOString()}`,
+        },
+      },
+    ).exec();
+
+    if (result.modifiedCount > 0) {
+      this.logger.log(`Released ${result.modifiedCount} scheduled payout(s)`);
+    }
+    return result.modifiedCount || 0;
   }
 
   /**
@@ -426,24 +500,7 @@ export class PayoutService {
         : query.communityId;
     }
 
-    let totalEarningsResult = await this.orderModel.aggregate(totalEarningsPipeline);
-    if (query.communityId && totalEarningsResult.length === 0) {
-      // Fallback to all communities if community filter produced no earnings
-      totalEarningsResult = await this.orderModel.aggregate([
-        {
-          $match: {
-            creatorId: new Types.ObjectId(creatorId),
-            status: 'paid'
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$creatorNetDT' }
-          }
-        }
-      ]);
-    }
+    const totalEarningsResult = await this.orderModel.aggregate(totalEarningsPipeline);
 
     const totalEarnings = totalEarningsResult[0]?.total ?? 0;
 
@@ -458,21 +515,10 @@ export class PayoutService {
         : query.communityId;
     }
 
-    let payoutTotals = await this.payoutModel.aggregate([
+    const payoutTotals = await this.payoutModel.aggregate([
       { $match: payoutMatch },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    if (query.communityId && payoutTotals.length === 0) {
-      payoutTotals = await this.payoutModel.aggregate([
-        {
-          $match: {
-            creatorId: new Types.ObjectId(creatorId),
-            status: { $in: [PayoutStatus.COMPLETED, PayoutStatus.PENDING, PayoutStatus.SCHEDULED] }
-          }
-        },
-        { $group: { _id: null, total: { $sum: '$amount' } } }
-      ]);
-    }
     const totalPayouts = payoutTotals[0]?.total || 0;
 
     const availableBalance = Math.max(0, totalEarnings - totalPayouts);

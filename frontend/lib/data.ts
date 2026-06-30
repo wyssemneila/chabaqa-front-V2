@@ -874,69 +874,64 @@ export const siteData = {
   ],
   pricing: {
     title: "Choose Your Plan",
-    subtitle: "Start free and scale as you grow",
+    subtitle: "Every plan includes a 7-day trial through secure checkout",
     plans: [
       {
         name: "Starter",
         tier: "Starter",
-        prices: { monthly: 39, yearly: 390 },
+        prices: { monthly: 39, yearly: 372 },
         description: "Perfect for getting started",
-        trial: "7 days free",
+        trial: "7 days",
         features: [
           "1 Community (up to 100 members)",
           "Activate up to 3 Courses",
-          "Digital Products: Enabled (Sell/Downloadables)",
-          "2 GB Storage Included",
-          "Basic Insights - Members, Sales, Course Progress",
-          "24/7 Support",
-          "Transaction Fee: 7.9%"
+          "Digital products enabled",
+          "5 GB storage",
+          "30-day analytics lookback",
+          "Transaction fee: 7.9% + 0.5 TND"
         ],
-        cta: "Start 7-Day Free Trial",
+        cta: "Start 7-Day Trial",
         popular: false
       },
       {
         name: "Growth",
         tier: "Growth",
-        prices: { monthly: 99, yearly: 990 },
+        prices: { monthly: 99, yearly: 948 },
         description: "For growing communities",
-        trial: "7 days free",
+        trial: "7 days",
         features: [
-          "Up to 3 Communities (10,000 members total)",
-          "Unlimited Courses (no activation limit)",
-          "Courses, Challenges, 1-to-1 Sessions, Digital Products, Events & Online Meetings",
-          "Magic Reach: Email, WhatsApp & Message Automation (500/month)",
-          "Members Gamification (Points, Rewards, Rankings)",
-          "Full Advanced Insights - Sales, Growth, Engagement",
-          "24/7 Priority Support",
-          "Verified Badge for your Profile/Community",
+          "1 Community (up to 500 members)",
+          "Unlimited active courses",
+          "Courses, challenges, 1:1 sessions, products, and events",
+          "1,000 email recipients/month and 250 WhatsApp messages/month",
+          "Gamification",
+          "180-day analytics lookback",
+          "Verified badge",
           "50 GB Storage for Files, Videos & Resources",
-          "Occasional Promotion on our Social Media",
-          "Transaction Fee: 4.9%"
+          "Transaction fee: 4.9% + 0.5 TND"
         ],
-        cta: "Start 7-Day Free Trial",
+        cta: "Start 7-Day Trial",
         popular: true
       },
       {
         name: "Pro",
         tier: "Pro",
-        prices: { monthly: 159, yearly: 1590 },
+        prices: { monthly: 159, yearly: 1524 },
         description: "For professional creators",
-        trial: "7 days free",
+        trial: "7 days",
         features: [
-          "Unlimited Communities & Unlimited Members",
-          "Unlimited Courses (no restrictions)",
-          "Courses, Challenges, 1-to-1 Sessions, Digital Products, Events & Online Meetings",
-          "Magic Reach: Unlimited Email, WhatsApp & Message Automation",
-          "Team Power: Add up to 3 Admins",
-          "Branding: Custom URL with your own domain name",
-          "Recognition: Featured Badge + Community highlighted at top of listings",
-          "Members Gamification (Points, Rewards, Rankings)",
-          "Full Advanced Insights - Sales, Growth, Engagement",
-          "24/7 VIP Support",
-          "Occasional Promotion on our Social Media",
-          "Transaction Fee: 2.9%"
+          "1 Community with unlimited members",
+          "Unlimited active courses",
+          "Courses, challenges, 1:1 sessions, products, and events",
+          "15,000 email recipients/month and 1,000 WhatsApp messages/month",
+          "3 admin seats",
+          "Remove Chabaqa branding",
+          "Featured badge",
+          "300 GB storage",
+          "365-day analytics lookback",
+          "Transaction fee: 2.9% + 0.5 TND"
         ],
-        cta: "Start 7-Day Free Trial",
+        cta: "Start 7-Day Trial",
         popular: false
       }
     ]

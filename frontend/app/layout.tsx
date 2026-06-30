@@ -126,12 +126,13 @@ export default async function RootLayout({
         className={`${inter.variable} ${tajawal.variable} ${locale === "ar" ? "font-arabic" : "font-latin"}`}
         suppressHydrationWarning
       >
+          <a href="#main-content" className="skip-to-content">Skip to content</a>
           <LoadingScreen />
           <NextIntlClientProvider locale={locale} messages={messages}>
           <ReactQueryProvider>
             <ExtensionErrorGuard />
             <GlobalImageErrorHandler />
-            {children}
+            <div id="main-content">{children}</div>
             <PwaServiceWorker />
             <ArabicAutoTranslate />
             <Ga4ScriptGate />

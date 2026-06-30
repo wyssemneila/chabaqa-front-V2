@@ -221,8 +221,8 @@ export class AdminController {
     content: {
       'application/json': {
         example: {
-          access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-          refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          access_token: "redacted-access-token",
+          refresh_token: "redacted-refresh-token",
           requires2FA: false,
           admin: {
             _id: "64a1b2c3d4e5f6789abcdef0",
@@ -285,8 +285,8 @@ export class AdminController {
     content: {
       'application/json': {
         example: {
-          access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-          refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          access_token: "redacted-access-token",
+          refresh_token: "redacted-refresh-token",
           user: {
             _id: "64a1b2c3d4e5f6789abcdef0",
             name: "Admin User",
@@ -439,6 +439,7 @@ export class AdminController {
 
   // refresh token
   @Post('refresh')
+  @Throttle({ default: { ttl: 60000, limit: 20 } } as any)
   @HttpCode(HttpStatus.OK)
   async refreshToken(@Body() body: { refresh_token?: string }, @Req() req, @Res({ passthrough: true }) res: Response) {
     // Prefer the server-managed cookie to avoid stale localStorage/body tokens

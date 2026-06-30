@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ContentModerationController } from '@/domains/admin/content-moderation/content-moderation.controller';
 import { ContentModerationService } from '@/domains/admin/content-moderation/content-moderation.service';
+import { AiContentModerationService } from '@/domains/admin/content-moderation/ai-content-moderation.service';
 import { 
   ContentModerationQueue, 
   ContentModerationQueueSchema 
@@ -45,6 +46,7 @@ import { Product, ProductSchema } from '@/infrastructure/database/schemas/commer
   controllers: [ContentModerationController],
   providers: [
     ContentModerationService,
+    AiContentModerationService,
     // Note: AuditLogService and AdminNotificationService are provided by parent modules
   ],
   exports: [ContentModerationService]

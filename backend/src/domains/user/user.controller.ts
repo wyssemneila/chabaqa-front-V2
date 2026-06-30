@@ -404,6 +404,25 @@ export class UserController {
       }
     }
 
+    @Get('export-data')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth('JWT-auth')
+    @ApiOperation({
+      summary: 'Export Own Account Data',
+      description: 'Download the authenticated user personal data in JSON format.',
+      tags: ['Users']
+    })
+    async exportOwnData(@Res() response, @Request() req) {
+      const userId = req.user.sub || req.user._id;
+      const data = await this.userService.exportUserData(userId);
+      response.setHeader('Content-Type', 'application/json');
+      response.setHeader('Content-Disposition', `attachment; filename="chabaqa-user-export-${userId}.json"`);
+      return response.status(HttpStatus.OK).json({
+        success: true,
+        data,
+      });
+    }
+
     // Delete own account (authenticated user)
     @Delete('delete-account')
     @UseGuards(JwtAuthGuard)

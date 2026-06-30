@@ -40,6 +40,11 @@ export enum UsageMetricType {
   AUTOMATION_TRIGGERED = 'automation_triggered',
 }
 
+export enum SubscriptionAddonType {
+  STORAGE_50GB = 'storage_50gb',
+  ADMIN_SEAT = 'admin_seat',
+}
+
 // ============ INTERFACES & TYPES ============
 
 export interface PlanLimits {
@@ -179,6 +184,7 @@ export interface UsageSummary {
   adminsAdded: number;
   apiRequests?: number;
   emailsSent?: number;
+  whatsappMessagesSent?: number;
   automationsTriggered?: number;
   planLimits: PlanLimits;
   usagePercentages: {
@@ -188,6 +194,20 @@ export interface UsageSummary {
     storage: number;
     admins: number;
   };
+}
+
+export interface SubscriptionAddon {
+  _id?: string;
+  id?: string;
+  type: SubscriptionAddonType;
+  label: string;
+  quantity: number;
+  unitAmount: number;
+  currency: string;
+  billingInterval: BillingInterval;
+  status?: 'active' | 'canceled';
+  storageGBDelta?: number;
+  adminsDelta?: number;
 }
 
 // ============ API METHOD PAYLOADS ============
@@ -334,6 +354,26 @@ export const subscriptionApi = {
     return apiClient.get('/subscriptions/usage', params);
   },
 
+  async getAvailableAddons(): Promise<ApiSuccessResponse<SubscriptionAddon[]> | SubscriptionAddon[]> {
+    return apiClient.get('/subscriptions/add-ons/available');
+  },
+
+  async getMyAddons(): Promise<ApiSuccessResponse<SubscriptionAddon[]> | SubscriptionAddon[]> {
+    return apiClient.get('/subscriptions/add-ons');
+  },
+
+  async purchaseAddon(data: { type: SubscriptionAddonType; quantity?: number; billingInterval?: BillingInterval }): Promise<ApiSuccessResponse<SubscriptionAddon> | SubscriptionAddon> {
+    return apiClient.post('/subscriptions/add-ons', data);
+  },
+
+  async cancelAddon(addonId: string): Promise<ApiSuccessResponse<SubscriptionAddon> | SubscriptionAddon> {
+    return apiClient.delete(`/subscriptions/add-ons/${addonId}`);
+  },
+
+  async getMemberRevenueSubscriptions(params: GetAllSubscriptionsParams = {}): Promise<PaginatedResponse<CreatorSubscription>> {
+    return apiClient.get('/subscriptions/member-revenue', params);
+  },
+
   /**
    * Export subscriptions to CSV
    */
@@ -417,7 +457,18 @@ export const subscriptionApi = {
     return apiClient.post('/payment/stripe-link/init/subscription', { tier, interval });
   },
 
-  initKonnectPayment: async (tier: PlanTier): Promise<any> => {
-    return apiClient.post('/payment/konnect/init/subscription', { tier });
+  initKonnectPayment: async (tier: PlanTier, interval: 'month' | 'year' = 'month'): Promise<any> => {
+    return apiClient.post('/payment/konnect/init/subscription', { tier, interval });
+  },
+
+  initManualPayment: async (data: { tier: PlanTier; interval?: 'month' | 'year'; proof: File }): Promise<any> => {
+    return apiClient.uploadFile('/payment/manual/init/subscription', data.proof, 'proof', {
+      tier: data.tier,
+      interval: data.interval || 'month',
+    });
+  },
+
+  createStripeCustomerPortal: async (): Promise<ApiSuccessResponse<{ portalUrl: string }> | { portalUrl: string }> => {
+    return apiClient.post('/payment/stripe-link/customer-portal');
   },
 };

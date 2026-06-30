@@ -119,119 +119,80 @@ export class CommunitiesService {
     },
     visibilityScope: 'owner' | 'public' = 'owner',
   ) {
-    console.log('🔧 DEBUG - getCommunitiesByUser');
-    console.log(`   👤 User ID: ${userId}`);
-    console.log(`   📄 Page: ${options.page}, Limit: ${options.limit}, Type: ${options.type}, Scope: ${visibilityScope}`);
-
-    const skip = (options.page - 1) * options.limit;
-    let allCommunities: any[] = [];
-    let totalCount = 0;
+    const page = Math.max(1, Number(options.page) || 1);
+    const limit = Math.min(Math.max(Number(options.limit) || 12, 1), 100);
+    const skip = (page - 1) * limit;
     const isOwnerView = visibilityScope === 'owner';
+    const userObjectId = new Types.ObjectId(userId);
+    const visibilityFilter = isOwnerView ? {} : { isActive: true, isPrivate: false };
+    const query: any = { ...visibilityFilter };
 
-    // Get joined communities
-    if (isOwnerView && (options.type === 'joined' || options.type === 'all')) {
-      const joinedCommunities = await this.communityModel
-        .find({ members: new Types.ObjectId(userId) })
-        .populate('createur', 'name email profile_picture photo_profil')
-        .sort({ createdAt: -1 })
-        .exec();
-
-      const transformedJoined = await Promise.all(joinedCommunities.map(async (community) => {
-        const communityData = community as any;
-        // Determine user role in community
-        let role = 'member';
-        if (communityData.createur?._id?.toString() === userId) {
-          role = 'owner';
-        } else if (communityData.admins?.includes(userId)) {
-          role = 'admin';
-        } else if (communityData.moderators?.includes(userId)) {
-          role = 'moderator';
-        }
-
-        return this.withResolvedCommunityMedia(communityData, {
-          id: community._id.toString(),
-          slug: communityData.slug,
-          name: communityData.name || communityData.nom,
-          logo: this.uploadService.ensureAbsoluteUrl(communityData.logo || communityData.image),
-          coverImage: this.uploadService.ensureAbsoluteUrl(communityData.coverImage || communityData.cover || communityData.image),
-          shortDescription: communityData.shortDescription || communityData.description,
-          membersCount: communityData.members?.length || 0,
-          role,
-          type: 'joined',
-          joinedAt: communityData.createdAt, // Approximate join date
-          creator: {
-            name: communityData.createur?.name || 'Unknown',
-            avatar: this.uploadService.ensureAbsoluteUrl(communityData.createur?.profile_picture || communityData.createur?.photo_profil || 'https://placehold.co/64x64?text=MM')
-          }
-        });
-      }));
-
-      allCommunities = [...allCommunities, ...transformedJoined];
-    }
-
-    // Get created communities
-    if (options.type === 'created' || options.type === 'all') {
-      const createdCommunityQuery: any = { createur: new Types.ObjectId(userId) };
+    if (options.type === 'created') {
+      query.createur = userObjectId;
+    } else if (options.type === 'joined') {
       if (!isOwnerView) {
-        createdCommunityQuery.isActive = true;
-        createdCommunityQuery.isPrivate = false;
+        query._id = { $exists: false };
+      } else {
+        query.members = userObjectId;
+        query.createur = { $ne: userObjectId };
       }
-
-      const createdCommunities = await this.communityModel
-        .find(createdCommunityQuery)
-        .populate('createur', 'name email profile_picture photo_profil')
-        .sort({ createdAt: -1 })
-        .exec();
-
-      const transformedCreated = await Promise.all(createdCommunities.map(async (community) => {
-        const communityData = community as any;
-
-        return this.withResolvedCommunityMedia(communityData, {
-          id: community._id.toString(),
-          slug: communityData.slug,
-          name: communityData.name || communityData.nom,
-          logo: this.uploadService.ensureAbsoluteUrl(communityData.logo || communityData.image),
-          coverImage: this.uploadService.ensureAbsoluteUrl(communityData.coverImage || communityData.cover || communityData.image),
-          shortDescription: communityData.shortDescription || communityData.description,
-          membersCount: communityData.members?.length || 0,
-          role: 'owner',
-          type: 'created',
-          createdAt: community.createdAt,
-          creator: {
-            name: communityData.createur?.name || 'Unknown',
-            avatar: this.uploadService.ensureAbsoluteUrl(communityData.createur?.profile_picture || communityData.createur?.photo_profil || 'https://placehold.co/64x64?text=MM')
-          }
-        });
-      }));
-
-      allCommunities = [...allCommunities, ...transformedCreated];
+    } else {
+      query.$or = isOwnerView
+        ? [{ createur: userObjectId }, { members: userObjectId }]
+        : [{ createur: userObjectId }];
     }
 
-    // Remove duplicates (in case user is both creator and member)
-    const uniqueCommunities = allCommunities.filter((community, index, self) =>
-      index === self.findIndex(c => c.id === community.id)
-    );
+    const [communities, totalCount] = await Promise.all([
+      this.communityModel
+        .find(query)
+        .populate('createur', 'name email profile_picture photo_profil')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.communityModel.countDocuments(query).exec(),
+    ]);
 
-    // Sort by most recent activity
-    uniqueCommunities.sort((a, b) => {
-      const dateA = new Date(a.joinedAt || a.createdAt || 0);
-      const dateB = new Date(b.joinedAt || b.createdAt || 0);
-      return dateB.getTime() - dateA.getTime();
-    });
+    const paginatedCommunities = await Promise.all(communities.map(async (community) => {
+      const communityData = community as any;
+      const creatorId = String(communityData.createur?._id || communityData.createur || '');
+      const isCreator = creatorId === userId;
+      const admins = (communityData.admins || []).map((id: any) => String(id));
+      const moderators = (communityData.moderators || communityData.moderateurs || []).map((id: any) => String(id));
+      const role = isCreator
+        ? 'owner'
+        : admins.includes(userId)
+          ? 'admin'
+          : moderators.includes(userId)
+            ? 'moderator'
+            : 'member';
 
-    totalCount = uniqueCommunities.length;
-    const paginatedCommunities = uniqueCommunities.slice(skip, skip + options.limit);
-
-    console.log(`   📊 Total communities found: ${totalCount}`);
-    console.log(`   📄 Returning: ${paginatedCommunities.length} communities`);
+      return this.withResolvedCommunityMedia(communityData, {
+        id: community._id.toString(),
+        slug: communityData.slug,
+        name: communityData.name || communityData.nom,
+        logo: this.uploadService.ensureAbsoluteUrl(communityData.logo || communityData.image),
+        coverImage: this.uploadService.ensureAbsoluteUrl(communityData.coverImage || communityData.cover || communityData.image),
+        shortDescription: communityData.shortDescription || communityData.description,
+        membersCount: communityData.members?.length || 0,
+        role,
+        type: isCreator ? 'created' : 'joined',
+        createdAt: communityData.createdAt,
+        joinedAt: isCreator ? undefined : communityData.createdAt,
+        creator: {
+          name: communityData.createur?.name || 'Unknown',
+          avatar: this.uploadService.ensureAbsoluteUrl(communityData.createur?.profile_picture || communityData.createur?.photo_profil || 'https://placehold.co/64x64?text=MM')
+        }
+      });
+    }));
 
     return {
       communities: paginatedCommunities,
       pagination: {
-        page: options.page,
-        limit: options.limit,
+        page,
+        limit,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / options.limit)
+        totalPages: Math.ceil(totalCount / limit)
       }
     };
   }

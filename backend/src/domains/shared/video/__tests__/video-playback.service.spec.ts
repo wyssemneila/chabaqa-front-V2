@@ -18,7 +18,7 @@ function createMockSession(overrides: Partial<any> = {}) {
     userId: TEST_USER_ID,
     courseId: 'course-1',
     chapterId: 'chapter-1',
-    sessionToken: 'ps_1234_abcdef1234567890abcdef1234567890',
+    sessionToken: 'playback-session-token',
     videoStorageKey: 'video/test-video.mp4',
     streamType: 'mp4',
     status: PlaybackSessionStatus.ACTIVE,

@@ -39,6 +39,7 @@ import { Post, PostDocument } from '@/infrastructure/database/schemas/content/po
 import { Cours, CoursDocument } from '@/infrastructure/database/schemas/learning/course.schema';
 import { Event, EventDocument } from '@/infrastructure/database/schemas/commerce/event.schema';
 import { Product, ProductDocument } from '@/infrastructure/database/schemas/commerce/product.schema';
+import { AiContentModerationService } from '@/domains/admin/content-moderation/ai-content-moderation.service';
 
 @Injectable()
 export class ContentModerationService {
@@ -62,7 +63,72 @@ export class ContentModerationService {
     private readonly productModel: Model<ProductDocument>,
     private readonly auditLogService: AuditLogService,
     private readonly adminNotificationService: AdminNotificationService,
+    @Optional() private readonly aiContentModerationService?: AiContentModerationService,
   ) {}
+
+  async runAiModerationScan(limit = 50): Promise<{ scanned: number; flagged: number; approved: number }> {
+    const candidates = await Promise.all([
+      this.postModel.find({ moderationStatus: { $in: ['pending', 'flagged'] } }).limit(limit).lean().exec()
+        .then((items) => items.map((item) => ({ type: ContentType.POST, item, title: item.title, body: item.content, creatorId: item.authorId, communityId: item.communityId }))),
+      this.courseModel.find({ moderationStatus: { $in: ['pending', 'flagged'] } }).limit(limit).lean().exec()
+        .then((items) => items.map((item) => ({ type: ContentType.COURSE, item, title: (item as any).titre, body: (item as any).description, creatorId: (item as any).creatorId, communityId: (item as any).communityId }))),
+      this.eventModel.find({ moderationStatus: { $in: ['pending', 'flagged'] } }).limit(limit).lean().exec()
+        .then((items) => items.map((item) => ({ type: ContentType.EVENT, item, title: item.title, body: item.description, creatorId: item.creatorId, communityId: item.communityId }))),
+      this.productModel.find({ moderationStatus: { $in: ['pending', 'flagged'] } }).limit(limit).lean().exec()
+        .then((items) => items.map((item) => ({ type: ContentType.PRODUCT, item, title: item.title, body: item.description, creatorId: item.creatorId, communityId: item.communityId }))),
+    ]);
+
+    let scanned = 0;
+    let flagged = 0;
+    let approved = 0;
+
+    for (const candidate of candidates.flat().slice(0, limit)) {
+      const contentId = new Types.ObjectId(String((candidate.item as any)._id));
+      const result = await (this.aiContentModerationService || new AiContentModerationService()).analyze({
+        title: candidate.title,
+        body: candidate.body,
+        type: candidate.type,
+      });
+      const creatorObjectId = this.toObjectIdOrUndefined(candidate.creatorId);
+      if (!creatorObjectId) continue;
+      scanned++;
+      if (result.status === 'flagged') flagged++;
+      else approved++;
+
+      await this.contentModerationModel.updateOne(
+        { contentId, contentType: candidate.type },
+        {
+          $set: {
+            contentId,
+            contentType: candidate.type,
+            creatorId: creatorObjectId,
+            communityId: this.toObjectIdOrUndefined(candidate.communityId),
+            status: result.status === 'flagged' ? ModerationStatus.FLAGGED : ModerationStatus.APPROVED,
+            priority: result.score >= 90 ? ModerationPriority.URGENT : result.score >= 70 ? ModerationPriority.HIGH : ModerationPriority.NORMAL,
+            autoModerationScore: result.score,
+            autoModerationFlags: result,
+            requiresManualReview: result.status === 'flagged',
+            submittedAt: new Date(),
+            contentSnapshot: { title: candidate.title, body: String(candidate.body || '').slice(0, 1000) },
+          },
+          $addToSet: { tags: { $each: result.reasons } },
+        },
+        { upsert: true },
+      ).exec();
+
+      await this.handleContentModerationDecision({
+        contentId,
+        contentType: candidate.type,
+      } as ContentModerationQueueDocument, result.status === 'flagged' ? ModerationStatus.FLAGGED : ModerationStatus.APPROVED);
+    }
+
+    return { scanned, flagged, approved };
+  }
+
+  private toObjectIdOrUndefined(value: unknown): Types.ObjectId | undefined {
+    const raw = String(value || '');
+    return Types.ObjectId.isValid(raw) ? new Types.ObjectId(raw) : undefined;
+  }
 
   /**
    * Get moderation queue with filtering and pagination
@@ -677,113 +743,75 @@ export class ContentModerationService {
    * Handle post moderation - update post visibility/status
    */
   private async handlePostModeration(contentId: Types.ObjectId, action: ModerationStatus): Promise<void> {
-    const post = await this.postModel.findById(contentId).exec();
-    
-    if (!post) {
+    const update = this.buildModerationContentUpdate(action);
+    const result = await this.postModel.updateOne({ _id: contentId }, { $set: update }).exec();
+
+    if (!result.matchedCount) {
       this.logger.warn(`Post ${contentId} not found for moderation`);
       return;
     }
 
-    switch (action) {
-      case ModerationStatus.APPROVED:
-        // Post is approved - it's already visible, just log the approval
-        this.logger.log(`Post ${contentId} approved and remains visible`);
-        break;
-      case ModerationStatus.REJECTED:
-        // For posts, we could soft delete or mark as hidden
-        // Since there's no status field, we'll log the rejection
-        this.logger.log(`Post ${contentId} rejected - should be hidden from users`);
-        // In a full implementation, you might want to:
-        // await this.postModel.updateOne({ _id: contentId }, { $set: { isVisible: false } });
-        break;
-      case ModerationStatus.FLAGGED:
-        this.logger.log(`Post ${contentId} flagged for review`);
-        break;
-      case ModerationStatus.ESCALATED:
-        this.logger.log(`Post ${contentId} escalated to senior moderator`);
-        break;
-    }
+    this.logger.log(`Post ${contentId} moderation state updated: ${JSON.stringify(update)}`);
   }
 
   /**
    * Handle course moderation
    */
   private async handleCourseModeration(contentId: Types.ObjectId, action: ModerationStatus): Promise<void> {
-    const course = await this.courseModel.findById(contentId).exec();
-    
-    if (!course) {
+    const update = this.buildModerationContentUpdate(action);
+    const result = await this.courseModel.updateOne({ _id: contentId }, { $set: update }).exec();
+
+    if (!result.matchedCount) {
       this.logger.warn(`Course ${contentId} not found for moderation`);
       return;
     }
 
-    switch (action) {
-      case ModerationStatus.APPROVED:
-        this.logger.log(`Course ${contentId} approved`);
-        break;
-      case ModerationStatus.REJECTED:
-        this.logger.log(`Course ${contentId} rejected - should be unpublished`);
-        break;
-      case ModerationStatus.FLAGGED:
-        this.logger.log(`Course ${contentId} flagged for review`);
-        break;
-      case ModerationStatus.ESCALATED:
-        this.logger.log(`Course ${contentId} escalated`);
-        break;
-    }
+    this.logger.log(`Course ${contentId} moderation state updated: ${JSON.stringify(update)}`);
   }
 
   /**
    * Handle event moderation
    */
   private async handleEventModeration(contentId: Types.ObjectId, action: ModerationStatus): Promise<void> {
-    const event = await this.eventModel.findById(contentId).exec();
-    
-    if (!event) {
+    const update = this.buildModerationContentUpdate(action);
+    const result = await this.eventModel.updateOne({ _id: contentId }, { $set: update }).exec();
+
+    if (!result.matchedCount) {
       this.logger.warn(`Event ${contentId} not found for moderation`);
       return;
     }
 
-    switch (action) {
-      case ModerationStatus.APPROVED:
-        this.logger.log(`Event ${contentId} approved`);
-        break;
-      case ModerationStatus.REJECTED:
-        this.logger.log(`Event ${contentId} rejected - should be unpublished`);
-        break;
-      case ModerationStatus.FLAGGED:
-        this.logger.log(`Event ${contentId} flagged for review`);
-        break;
-      case ModerationStatus.ESCALATED:
-        this.logger.log(`Event ${contentId} escalated`);
-        break;
-    }
+    this.logger.log(`Event ${contentId} moderation state updated: ${JSON.stringify(update)}`);
   }
 
   /**
    * Handle product moderation
    */
   private async handleProductModeration(contentId: Types.ObjectId, action: ModerationStatus): Promise<void> {
-    const product = await this.productModel.findById(contentId).exec();
-    
-    if (!product) {
+    const update = this.buildModerationContentUpdate(action);
+    const result = await this.productModel.updateOne({ _id: contentId }, { $set: update }).exec();
+
+    if (!result.matchedCount) {
       this.logger.warn(`Product ${contentId} not found for moderation`);
       return;
     }
 
-    switch (action) {
-      case ModerationStatus.APPROVED:
-        this.logger.log(`Product ${contentId} approved`);
-        break;
-      case ModerationStatus.REJECTED:
-        this.logger.log(`Product ${contentId} rejected - should be unpublished`);
-        break;
-      case ModerationStatus.FLAGGED:
-        this.logger.log(`Product ${contentId} flagged for review`);
-        break;
-      case ModerationStatus.ESCALATED:
-        this.logger.log(`Product ${contentId} escalated`);
-        break;
-    }
+    this.logger.log(`Product ${contentId} moderation state updated: ${JSON.stringify(update)}`);
+  }
+
+  private buildModerationContentUpdate(action: ModerationStatus): Record<string, any> {
+    const moderationStatus = action.toLowerCase();
+    const isVisible = action === ModerationStatus.APPROVED;
+
+    return {
+      moderationStatus,
+      isPublished: isVisible,
+      approvalStatus: action === ModerationStatus.APPROVED
+        ? 'approved'
+        : action === ModerationStatus.REJECTED
+          ? 'rejected'
+          : 'suspended',
+    };
   }
 
   private async sendModerationNotifications(item: ContentModerationQueueDocument, action: ModerationStatus): Promise<void> {

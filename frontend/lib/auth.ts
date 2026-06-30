@@ -2,27 +2,7 @@
 
 import { authApi } from "@/lib/api"
 import type { User } from "@/lib/api/types"
-import { tokenManager } from "@/lib/token-manager"
-
-export async function authenticatedFetch(
-  url: string,
-  options: RequestInit = {}
-): Promise<Response> {
-  const token = tokenManager.getAccessToken()
-  
-  const headers = new Headers(options.headers || {})
-  
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`)
-  }
-  
-  headers.set("Content-Type", "application/json")
-
-  return fetch(url, {
-    ...options,
-    headers,
-  })
-}
+export { authenticatedFetch } from "@/lib/authenticated-fetch"
 
 export const getProfile = async (): Promise<User | null> => {
   try {

@@ -56,6 +56,7 @@ import {
   PlatformFeesAnalyticsDto,
   FinancialHealthDto,
 } from '@/domains/admin/financial-management/dto/financial-analytics.dto';
+import { SubscriptionService } from '@/domains/commerce/subscription/subscription.service';
 
 @Injectable()
 export class FinancialManagementService {
@@ -74,6 +75,7 @@ export class FinancialManagementService {
     private planModel: Model<PlanDocument>,
     @InjectModel(Order.name)
     private orderModel: Model<OrderDocument>,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   /**
@@ -210,6 +212,82 @@ export class FinancialManagementService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async getBillingAudit(filters: {
+    provider?: string;
+    eventType?: string;
+    status?: string;
+    creatorId?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = Math.max(1, Number(filters.page || 1));
+    const limit = Math.min(100, Math.max(1, Number(filters.limit || 25)));
+    const orderQuery: any = {};
+    if (filters.creatorId && Types.ObjectId.isValid(filters.creatorId)) {
+      orderQuery.creatorId = new Types.ObjectId(filters.creatorId);
+    }
+    if (filters.status && filters.status !== 'all') {
+      orderQuery.status = filters.status;
+    }
+    if (filters.provider && filters.provider !== 'all') {
+      orderQuery.$or = [
+        { paymentMethod: filters.provider },
+        { 'metadata.provider': filters.provider },
+      ];
+    }
+    if (filters.startDate || filters.endDate) {
+      orderQuery.createdAt = {};
+      if (filters.startDate) orderQuery.createdAt.$gte = new Date(filters.startDate);
+      if (filters.endDate) orderQuery.createdAt.$lte = new Date(filters.endDate);
+    }
+
+    const [orders, total] = await Promise.all([
+      this.orderModel
+        .find(orderQuery)
+        .populate('buyerId', 'name email username')
+        .populate('creatorId', 'name email username')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.orderModel.countDocuments(orderQuery),
+    ]);
+
+    return {
+      data: orders.map((order: any) => ({
+        id: String(order._id),
+        orderId: String(order._id),
+        contentType: order.contentType,
+        contentId: order.contentId,
+        status: order.status,
+        provider: order.metadata?.provider || order.paymentMethod || 'unknown',
+        paymentMethod: order.paymentMethod,
+        paymentId: order.paymentId,
+        providerCheckoutSessionId: order.metadata?.providerCheckoutSessionId,
+        providerSubscriptionId: order.metadata?.providerSubscriptionId,
+        amount: order.amountDT,
+        currency: order.metadata?.currency || 'TND',
+        proofUrl: order.paymentProof,
+        buyer: order.buyerId,
+        creator: order.creatorId,
+        metadata: order.metadata || {},
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async reviewManualPlatformSubscription(orderId: string, adminId: string, action: 'approve' | 'reject') {
+    return this.subscriptionService.reviewManualPlatformSubscriptionOrder(orderId, adminId, action);
   }
 
   /**

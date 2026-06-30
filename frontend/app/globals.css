@@ -10,6 +10,28 @@
   }
 }
 
+.skip-to-content {
+  position: fixed;
+  inset-block-start: 0.75rem;
+  inset-inline-start: 0.75rem;
+  z-index: 9999;
+  transform: translateY(-200%);
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
+  transition: transform 160ms ease;
+}
+
+.skip-to-content:focus {
+  transform: translateY(0);
+  outline: 3px solid #67e8f9;
+  outline-offset: 3px;
+}
+
 
 @layer base {
   :root {

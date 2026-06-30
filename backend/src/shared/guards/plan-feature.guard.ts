@@ -58,9 +58,12 @@ export class PlanFeatureGuard implements CanActivate {
     for (const feature of features) {
       const allowed = await this.policyService.canUseFeature(creatorId, feature);
       if (!allowed) {
-        throw new ForbiddenException(
-          await this.policyService.buildFeatureUpgradeMessage(creatorId, feature),
-        );
+        const details = await this.policyService.buildFeatureGateDetails(creatorId, feature);
+        throw new ForbiddenException({
+          ...details,
+          error: 'Plan feature unavailable',
+          statusCode: 403,
+        });
       }
     }
 

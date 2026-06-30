@@ -59,7 +59,10 @@ describe('AuthController token compatibility', () => {
     authServiceMock.refreshToken.mockResolvedValue({
       accessToken: 'new-access-token',
       access_token: 'new-access-token',
+      refreshToken: 'new-refresh-token',
+      refresh_token: 'new-refresh-token',
       expires_in: 7200,
+      rememberMe: false,
       user: { _id: 'user-1', role: 'user' },
     });
 
@@ -70,10 +73,15 @@ describe('AuthController token compatibility', () => {
     );
 
     expect(authServiceMock.refreshToken).toHaveBeenCalledWith('legacy-refresh-token');
-    expect(response.cookie).toHaveBeenCalledTimes(2);
+    expect(response.cookie).toHaveBeenCalledTimes(3);
     expect(response.cookie).toHaveBeenCalledWith(
       CookieUtil.COOKIE_NAMES.ACCESS_TOKEN,
       'new-access-token',
+      expect.any(Object),
+    );
+    expect(response.cookie).toHaveBeenCalledWith(
+      CookieUtil.COOKIE_NAMES.REFRESH_TOKEN,
+      'new-refresh-token',
       expect.any(Object),
     );
     expect(response.cookie).toHaveBeenCalledWith(
@@ -86,6 +94,8 @@ describe('AuthController token compatibility', () => {
         success: true,
         access_token: 'new-access-token',
         accessToken: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        refreshToken: 'new-refresh-token',
       }),
     );
   });

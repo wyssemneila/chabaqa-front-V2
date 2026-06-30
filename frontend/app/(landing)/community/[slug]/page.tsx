@@ -56,16 +56,41 @@ interface CommunityDetailsPageProps {
 export async function generateMetadata({ params }: CommunityDetailsPageProps): Promise<Metadata> {
   const { slug: rawSlug } = await params
   const slug = decodeURIComponent(rawSlug || "").trim()
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
   const readableSlug = slug.replace(/[-_]+/g, " ").trim()
-  const normalizedName = readableSlug
+  let normalizedName = readableSlug
     ? readableSlug
         .split(" ")
         .filter(Boolean)
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ")
     : "Community"
-  const title = `${normalizedName} Community`
-  const description = `Join ${normalizedName} on Chabaqa to access premium content, sessions, events, and creator resources.`
+  let title = `${normalizedName} Community`
+  let description = `Join ${normalizedName} on Chabaqa to access premium content, sessions, events, and creator resources.`
+
+  try {
+    const response = await fetch(`${apiBase}/community-aff-crea-join/${encodeURIComponent(slug)}`, {
+      method: "GET",
+      cache: "force-cache",
+      next: {
+        revalidate: PUBLIC_COMMUNITY_DATA_REVALIDATE_SECONDS,
+      },
+    })
+    if (response.ok) {
+      const json = await response.json()
+      const community = json?.data || json
+      normalizedName = String(community?.name || normalizedName)
+      const settings = normalizeCommunitySettings(community?.settings, normalizedName)
+      title = settings.metaTitle.trim() || `${normalizedName} Community`
+      description =
+        settings.metaDescription.trim() ||
+        normalizeDisplayText(community?.description) ||
+        description
+    }
+  } catch {
+    // Metadata falls back to the slug-derived copy when the optional fetch fails.
+  }
+
   const communityPath = `/community/${encodeURIComponent(slug)}`
 
   return {
@@ -256,6 +281,45 @@ async function fetchLatestCommunityPosts(
   } catch {
     return []
   }
+}
+
+function getEmbeddableVideoUrl(value: string): string {
+  const raw = value.trim()
+  if (!raw) return ""
+
+  try {
+    const url = new URL(raw)
+    if (url.hostname.includes("youtube.com")) {
+      const id = url.searchParams.get("v")
+      return id ? `https://www.youtube.com/embed/${id}` : raw
+    }
+    if (url.hostname.includes("youtu.be")) {
+      const id = url.pathname.replace(/^\/+/, "")
+      return id ? `https://www.youtube.com/embed/${id}` : raw
+    }
+    if (url.hostname.includes("vimeo.com")) {
+      const id = url.pathname.split("/").filter(Boolean)[0]
+      return id ? `https://player.vimeo.com/video/${id}` : raw
+    }
+  } catch {
+    return raw
+  }
+
+  return raw
+}
+
+function isIframeVideoUrl(value: string): boolean {
+  return /youtube\.com\/embed|player\.vimeo\.com\/video/i.test(value)
+}
+
+function normalizeExternalHref(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+}
+
+function socialLabel(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 type CommunityRatingsSnapshot = {
@@ -454,6 +518,10 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
     rating,
     ratingCount,
     // Normalize main image/cover
+    logo: resolveImageUrl(
+      (community as any).logo || (community as any).logoUrl || normalizedSettings.logo,
+      apiBaseForImages,
+    ),
     coverImage: resolveImageUrl(
       (community as any).coverImage || (community as any).banner || (community as any).image || (community as any).logo,
       apiBaseForImages,
@@ -553,6 +621,18 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
     (Boolean(testimonialsContent) || !hasCustomContent)
   const shouldRenderCTA = Boolean(ctaContent) || !hasCustomContent
   const shouldRenderPosts = normalizedSettings.showPosts
+  const socialEntries = Object.entries(normalizedSettings.socialLinks)
+    .filter(([, value]) => typeof value === "string" && value.trim() !== "")
+    .map(([key, value]) => [key, normalizeExternalHref(value)] as const)
+  const galleryImages = normalizedSettings.gallery
+    .map((item) => resolveImageUrl(item, apiBaseForImages))
+    .filter(Boolean)
+  const videoUrl = getEmbeddableVideoUrl(normalizedSettings.videoUrl)
+  const customSections = normalizedSettings.customSections.filter((section) => {
+    const title = typeof section.title === "string" ? section.title.trim() : ""
+    const content = typeof section.content === "string" ? section.content.trim() : ""
+    return section.visible !== false && (title || content)
+  })
 
   const overviewTitle = overviewContent?.title || "Community Overview"
   const overviewSubtitle =
@@ -562,24 +642,13 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
     <div
       className="min-h-screen"
       style={{
-        background: `linear-gradient(180deg, ${themeTokens.softPrimary} 0%, #ffffff 22%, #ffffff 100%)`,
+        background: themeTokens.pageBackground,
+        backgroundAttachment: normalizedSettings.enableParallax ? "fixed" : undefined,
+        backgroundSize: normalizedSettings.backgroundStyle === "image" ? "cover" : undefined,
+        fontFamily: themeTokens.fontFamily,
       }}
     >
       <main className="relative isolate overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 -z-10">
-          <div
-            className="absolute -top-28 left-[-8%] h-80 w-80 rounded-full blur-3xl"
-            style={{ backgroundColor: themeTokens.softPrimary, opacity: 0.4 }}
-          />
-          <div
-            className="absolute top-[24%] right-[-10%] h-96 w-96 rounded-full blur-3xl"
-            style={{ backgroundColor: themeTokens.softSecondary, opacity: 0.35 }}
-          />
-          <div
-            className="absolute bottom-[12%] left-[18%] h-72 w-72 rounded-full blur-3xl"
-            style={{ backgroundColor: themeTokens.softPrimary, opacity: 0.26 }}
-          />
-        </div>
         {normalizedSettings.showHero && (
           <CommunityHero
             community={{
@@ -590,6 +659,7 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
             themeTokens={themeTokens}
             contentWidthClass={contentWidthClass}
             headerStyle={normalizedSettings.headerStyle}
+            heroLayout={normalizedSettings.heroLayout}
             showStats={normalizedSettings.showStats}
           />
         )}
@@ -614,11 +684,155 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
           contentWidthClass={contentWidthClass}
         />
 
+        {(socialEntries.length > 0 || galleryImages.length > 0 || videoUrl) && (
+          <section className={cn("mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12", contentWidthClass)}>
+            <div
+              className="overflow-hidden border bg-white p-5 shadow-sm sm:p-7 lg:p-8"
+              style={{
+                borderColor: themeTokens.mutedBorder,
+                borderRadius: themeTokens.radiusLg,
+              }}
+            >
+              <div className="mb-6 max-w-2xl">
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+                  Community media
+                </h2>
+                <p className="mt-2 text-sm text-gray-600">
+                  Explore the videos, images, and public links shared by this community.
+                </p>
+              </div>
+
+              {socialEntries.length > 0 && (
+                <div className="mb-6 flex flex-wrap gap-2">
+                  {socialEntries.map(([key, href]) => (
+                    <a
+                      key={key}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-md border bg-white px-3 py-2 text-sm font-medium transition hover:shadow-sm"
+                      style={{
+                        borderColor: themeTokens.mutedBorder,
+                        color: themeTokens.primary,
+                        borderRadius: themeTokens.radius,
+                      }}
+                    >
+                      {socialLabel(key)}
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                {videoUrl && (
+                  <div className="overflow-hidden border bg-gray-50" style={{ borderColor: themeTokens.mutedBorder, borderRadius: themeTokens.radius }}>
+                    {isIframeVideoUrl(videoUrl) ? (
+                      <iframe
+                        src={videoUrl}
+                        title={`${communityData.name} video`}
+                        className="aspect-video w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video src={videoUrl} className="aspect-video w-full bg-black" controls />
+                    )}
+                  </div>
+                )}
+
+                {galleryImages.slice(0, 6).map((image, index) => (
+                  <div
+                    key={`${image}-${index}`}
+                    className="aspect-video overflow-hidden border bg-gray-50"
+                    style={{ borderColor: themeTokens.mutedBorder, borderRadius: themeTokens.radius }}
+                  >
+                    <img
+                      src={image}
+                      alt={`${communityData.name} gallery image ${index + 1}`}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {customSections.length > 0 && (
+          <section className={cn("mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12", contentWidthClass)}>
+            <div className="grid gap-4 md:grid-cols-2">
+              {customSections.map((section, index) => {
+                const title = String(section.title || `Section ${index + 1}`)
+                const content = String(section.content || "")
+                const type = String(section.type || "text").toLowerCase()
+                const href = type === "link" ? normalizeExternalHref(content) : ""
+                const mediaUrl = type === "image" ? resolveImageUrl(content, apiBaseForImages) : getEmbeddableVideoUrl(content)
+
+                return (
+                  <article
+                    key={String(section.id || `${title}-${index}`)}
+                    className="overflow-hidden border bg-white p-5 shadow-sm"
+                    style={{
+                      borderColor: themeTokens.mutedBorder,
+                      borderRadius: themeTokens.radiusLg,
+                    }}
+                  >
+                    <h2 className="text-xl font-bold tracking-tight text-gray-900">{title}</h2>
+                    {type === "image" && mediaUrl ? (
+                      <img
+                        src={mediaUrl}
+                        alt={title}
+                        className="mt-4 aspect-video w-full object-cover"
+                        style={{ borderRadius: themeTokens.radius }}
+                        loading="lazy"
+                      />
+                    ) : type === "video" && mediaUrl ? (
+                      <div className="mt-4 overflow-hidden border bg-gray-50" style={{ borderColor: themeTokens.mutedBorder, borderRadius: themeTokens.radius }}>
+                        {isIframeVideoUrl(mediaUrl) ? (
+                          <iframe
+                            src={mediaUrl}
+                            title={title}
+                            className="aspect-video w-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        ) : (
+                          <video src={mediaUrl} className="aspect-video w-full bg-black" controls />
+                        )}
+                      </div>
+                    ) : type === "link" && href ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-4 inline-flex rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
+                        style={{
+                          background: themeTokens.gradient,
+                          color: themeTokens.primaryText,
+                          borderRadius: themeTokens.radius,
+                        }}
+                      >
+                        Open link
+                      </a>
+                    ) : (
+                      <p className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-600">{content}</p>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
         {shouldRenderOverview && (
         <section className={cn("mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12", contentWidthClass)}>
           <div
             className="overflow-hidden rounded-3xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8"
-            style={{ backgroundColor: themeTokens.softPrimary }}
+            style={{
+              background: themeTokens.surfaceBackground,
+              borderRadius: themeTokens.radiusLg,
+            }}
           >
             <div className="text-center max-w-3xl mx-auto mb-12">
                 <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900">
@@ -673,6 +887,7 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
                     style={{
                       borderColor: themeTokens.mutedBorder,
                       background: `linear-gradient(165deg, #ffffff 0%, ${themeTokens.softPrimary} 100%)`,
+                      borderRadius: themeTokens.radius,
                     }}
                   >
                     <h3 className="font-semibold text-gray-900 line-clamp-2">{post.title}</h3>
@@ -691,7 +906,11 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
             ) : (
               <div
                 className="rounded-xl border border-dashed p-8 text-center text-gray-500"
-                style={{ borderColor: themeTokens.mutedBorder, backgroundColor: themeTokens.softPrimary }}
+                style={{
+                  borderColor: themeTokens.mutedBorder,
+                  backgroundColor: themeTokens.softPrimary,
+                  borderRadius: themeTokens.radius,
+                }}
               >
                 No posts yet.
               </div>

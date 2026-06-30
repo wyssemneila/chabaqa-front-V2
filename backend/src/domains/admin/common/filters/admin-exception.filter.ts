@@ -110,20 +110,24 @@ export class AdminExceptionFilter implements ExceptionFilter {
         // Handle custom error responses
         else if (responseObj.code) {
           code = responseObj.code;
-          message = responseObj.message || exception.message;
+          message = status >= 500
+            ? 'Internal server error'
+            : responseObj.message || exception.message;
           details = responseObj.details || [];
         }
         // Handle standard HTTP exceptions
         else {
-          message = responseObj.message || exception.message;
+          message = status >= 500
+            ? 'Internal server error'
+            : responseObj.message || exception.message;
           code = this.getErrorCode(exception);
         }
       } else {
-        message = exception.message;
+        message = status >= 500 ? 'Internal server error' : exception.message;
         code = this.getErrorCode(exception);
       }
     } else if (exception instanceof Error) {
-      message = exception.message;
+      message = 'Internal server error';
       code = 'INTERNAL_SERVER_ERROR';
       
       // Log stack trace for internal errors

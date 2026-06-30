@@ -37,6 +37,10 @@ export class CommunityPageContentController {
     private readonly pageContentService: CommunityPageContentService
   ) {}
 
+  private getRequestUserId(req): string {
+    return String(req?.user?.id || req?.user?._id || req?.user?.sub || '');
+  }
+
   /**
    * Get page content for editing (creator only)
    */
@@ -67,7 +71,7 @@ export class CommunityPageContentController {
     @Param('communityId') communityId: string,
     @Request() req
   ) {
-    const userId = req.user.id;
+    const userId = this.getRequestUserId(req);
     return await this.pageContentService.getContentForEditing(communityId, userId);
   }
 
@@ -118,7 +122,7 @@ export class CommunityPageContentController {
     @Body() updateDto: UpdateCommunityPageContentDto,
     @Request() req
   ) {
-    const userId = req.user.id;
+    const userId = this.getRequestUserId(req);
     const result = await this.pageContentService.updateContent(
       communityId, 
       userId, 
@@ -173,7 +177,7 @@ export class CommunityPageContentController {
     @Body() publishDto: PublishContentDto,
     @Request() req
   ) {
-    const userId = req.user.id;
+    const userId = this.getRequestUserId(req);
     return await this.pageContentService.publishContent(
       communityId, 
       userId, 
@@ -233,7 +237,7 @@ export class CommunityPageContentController {
     @Body() testimonialDto: AddTestimonialDto,
     @Request() req
   ) {
-    const userId = req.user.id;
+    const userId = this.getRequestUserId(req);
     return await this.pageContentService.addTestimonial(
       communityId, 
       userId, 
@@ -284,7 +288,7 @@ export class CommunityPageContentController {
     @Param('testimonialId') testimonialId: string,
     @Request() req
   ) {
-    const userId = req.user.id;
+    const userId = this.getRequestUserId(req);
     return await this.pageContentService.deleteTestimonial(
       communityId, 
       userId, 

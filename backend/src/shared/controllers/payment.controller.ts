@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Query, Get, BadRequestException, UnauthorizedException, ForbiddenException, InternalServerErrorException, Req, UseGuards, UseInterceptors, UploadedFile, Param, Logger } from '@nestjs/common';
+import { Controller, Post, Body, Query, Get, BadRequestException, UnauthorizedException, ForbiddenException, InternalServerErrorException, Req, UseGuards, UseInterceptors, UploadedFile, Param, Logger, Optional } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -43,6 +43,7 @@ import {
 import { AffiliateAttributionService } from '@/domains/community/affiliate/affiliate-attribution.service';
 import { AffiliateCommissionService } from '@/domains/community/affiliate/affiliate-commission.service';
 import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
+import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
 
 const manualProofStorage = diskStorage({
   destination: (req, file, cb) => {
@@ -127,6 +128,7 @@ export class PaymentController {
     @InjectModel(Plan.name) private planModel: Model<PlanDocument>,
     private readonly affiliateAttributionService: AffiliateAttributionService,
     private readonly affiliateCommissionService: AffiliateCommissionService,
+    @Optional() private readonly webhookRetryService?: WebhookRetryService,
   ) { }
 
   private isEnvFlagEnabled(name: string, defaultValue = false): boolean {
@@ -157,6 +159,28 @@ export class PaymentController {
     return String(raw || '').toLowerCase() === BillingInterval.YEAR
       ? BillingInterval.YEAR
       : BillingInterval.MONTH;
+  }
+
+  private getCommunityPriceType(community: CommunityDocument): string {
+    return String(
+      (community as any)?.pricing?.priceType ||
+      (community as any)?.priceType ||
+      'free',
+    ).toLowerCase();
+  }
+
+  private getCommunityRecurringMetadata(community: CommunityDocument, amount: number): Record<string, any> {
+    const priceType = this.getCommunityPriceType(community);
+    const recurringInterval = String((community as any)?.pricing?.recurringInterval || (priceType === 'yearly' ? 'year' : 'month')).toLowerCase();
+    const isRecurring = priceType === 'monthly' || priceType === 'yearly' || Boolean((community as any)?.pricing?.isRecurring);
+    return {
+      priceType,
+      isRecurring,
+      recurringInterval,
+      billingInterval: recurringInterval === 'year' ? BillingInterval.YEAR : BillingInterval.MONTH,
+      amount,
+      currency: (community as any)?.pricing?.currency || (community as any)?.currency || 'TND',
+    };
   }
 
   private normalizeStripeSubscriptionStatus(raw?: string): SubscriptionStatus {
@@ -398,9 +422,9 @@ export class PaymentController {
           creatorId = (event as any).creatorId;
         }
       } else if (contentType === TrackableContentType.PRODUCT) {
-        const product = await this.productModel.findById(contentId).select('name communityId creatorId').lean();
+        const product = await this.productModel.findById(contentId).select('title name communityId creatorId').lean();
         if (product) {
-          contentTitle = (product as any).name;
+          contentTitle = (product as any).title || (product as any).name;
           communityId = (product as any).communityId;
           creatorId = (product as any).creatorId;
         }
@@ -443,58 +467,89 @@ export class PaymentController {
   }
 
   private async enrichManualOrdersForDashboard(orders: any[]) {
-    const items = await Promise.all(
-      (orders || []).map(async (order) => {
+    const inputOrders = orders || [];
+    const idsByType = new Map<string, Set<string>>();
+    const addId = (type: string, id: any) => {
+      const value = id ? String(id) : '';
+      if (!value || !Types.ObjectId.isValid(value)) return;
+      if (!idsByType.has(type)) idsByType.set(type, new Set());
+      idsByType.get(type)!.add(value);
+    };
+
+    for (const order of inputOrders) {
+      addId(String((order as any)?.contentType || ''), (order as any)?.contentId);
+    }
+
+    const toObjectIds = (values: Set<string> | undefined) => Array.from(values || []).map((id) => new Types.ObjectId(id));
+    const [courses, challenges, sessions, products, events, communitiesByContent] = await Promise.all([
+      this.coursModel.find({ _id: { $in: toObjectIds(idsByType.get(TrackableContentType.COURSE)) } }).select('titre communityId').lean(),
+      this.challengeModel.find({ _id: { $in: toObjectIds(idsByType.get(TrackableContentType.CHALLENGE)) } }).select('title titre name communityId').lean(),
+      this.sessionModel.find({ _id: { $in: toObjectIds(idsByType.get(TrackableContentType.SESSION)) } }).select('title name communityId').lean(),
+      this.productModel.find({ _id: { $in: toObjectIds(idsByType.get(TrackableContentType.PRODUCT)) } }).select('title name communityId').lean(),
+      this.eventModel.find({ _id: { $in: toObjectIds(idsByType.get(TrackableContentType.EVENT)) } }).select('title name communityId').lean(),
+      this.communityModel.find({ _id: { $in: toObjectIds(idsByType.get(TrackableContentType.COMMUNITY)) } }).select('name slug').lean(),
+    ]);
+
+    const byId = (items: any[]) => new Map(items.map((item) => [String(item._id), item]));
+    const lookupByType: Record<string, Map<string, any>> = {
+      [TrackableContentType.COURSE]: byId(courses),
+      [TrackableContentType.CHALLENGE]: byId(challenges),
+      [TrackableContentType.SESSION]: byId(sessions),
+      [TrackableContentType.PRODUCT]: byId(products),
+      [TrackableContentType.EVENT]: byId(events),
+      [TrackableContentType.COMMUNITY]: byId(communitiesByContent),
+    };
+
+    const communityIds = new Set<string>();
+    for (const order of inputOrders) {
+      const explicit = (order as any)?.communityId ? String((order as any).communityId) : '';
+      if (Types.ObjectId.isValid(explicit)) communityIds.add(explicit);
+
+      const content = lookupByType[String((order as any)?.contentType || '')]?.get(String((order as any)?.contentId || ''));
+      const contentCommunityId = content?.communityId ? String(content.communityId) : '';
+      if (Types.ObjectId.isValid(contentCommunityId)) communityIds.add(contentCommunityId);
+    }
+    const communities = await this.communityModel
+      .find({ _id: { $in: Array.from(communityIds).map((id) => new Types.ObjectId(id)) } })
+      .select('name slug')
+      .lean();
+    const communityById = byId(communities);
+
+    const items = inputOrders.map((order) => {
         const contentType = (order as any)?.contentType;
         const contentId = (order as any)?.contentId;
 
         let contentTitle: string | null = null;
         let contentCommunityId: string | null = null;
 
-        try {
-          if (contentType === TrackableContentType.COURSE) {
-            const course = await this.coursModel.findById(contentId).select('titre communityId').lean();
-            contentTitle = (course as any)?.titre || null;
-            contentCommunityId = (course as any)?.communityId ? String((course as any)?.communityId) : null;
-          } else if (contentType === TrackableContentType.CHALLENGE) {
-            const challenge = await this.challengeModel.findById(contentId).select('title titre name communityId').lean();
-            contentTitle = (challenge as any)?.title || (challenge as any)?.titre || (challenge as any)?.name || null;
-            contentCommunityId = (challenge as any)?.communityId ? String((challenge as any)?.communityId) : null;
-          } else if (contentType === TrackableContentType.SESSION) {
-            const session = await this.sessionModel.findById(contentId).select('title name communityId').lean();
-            contentTitle = (session as any)?.title || (session as any)?.name || null;
-            contentCommunityId = (session as any)?.communityId ? String((session as any)?.communityId) : null;
-          } else if (contentType === TrackableContentType.PRODUCT) {
-            const product = await this.productModel.findById(contentId).select('title name communityId').lean();
-            contentTitle = (product as any)?.title || (product as any)?.name || null;
-            contentCommunityId = (product as any)?.communityId ? String((product as any)?.communityId) : null;
-          } else if (contentType === TrackableContentType.EVENT) {
-            const event = await this.eventModel.findById(contentId).select('title name communityId').lean();
-            contentTitle = (event as any)?.title || (event as any)?.name || null;
-            contentCommunityId = (event as any)?.communityId ? String((event as any)?.communityId) : null;
-          } else if (contentType === TrackableContentType.COMMUNITY) {
-            const community = await this.communityModel.findById(contentId).select('name slug').lean();
-            contentTitle = (community as any)?.name || null;
-            contentCommunityId = contentId ? String(contentId) : null;
-          }
-        } catch {
-          // ignore lookup errors; keep best-effort enrichment
+        const content = lookupByType[String(contentType || '')]?.get(String(contentId || ''));
+        if (contentType === TrackableContentType.COURSE) {
+          contentTitle = content?.titre || null;
+        } else if (contentType === TrackableContentType.CHALLENGE) {
+          contentTitle = content?.title || content?.titre || content?.name || null;
+        } else if (
+          contentType === TrackableContentType.SESSION ||
+          contentType === TrackableContentType.PRODUCT ||
+          contentType === TrackableContentType.EVENT
+        ) {
+          contentTitle = content?.title || content?.name || null;
+        } else if (contentType === TrackableContentType.COMMUNITY) {
+          contentTitle = content?.name || null;
         }
+        contentCommunityId = contentType === TrackableContentType.COMMUNITY
+          ? (contentId ? String(contentId) : null)
+          : (content?.communityId ? String(content.communityId) : null);
 
         let communityInfo: any = null;
         const communityId = contentCommunityId || (order as any)?.communityId?.toString?.() || (order as any)?.communityId;
         if (communityId) {
-          try {
-            const comm = await this.communityModel.findById(communityId).select('name slug').lean();
-            if (comm) {
-              communityInfo = {
-                _id: String((comm as any)._id),
-                name: (comm as any).name,
-                slug: (comm as any).slug,
-              };
-            }
-          } catch {
-            communityInfo = null;
+          const comm = communityById.get(String(communityId));
+          if (comm) {
+            communityInfo = {
+              _id: String((comm as any)._id),
+              name: (comm as any).name,
+              slug: (comm as any).slug,
+            };
           }
         }
 
@@ -503,8 +558,7 @@ export class PaymentController {
           contentTitle,
           community: communityInfo,
         };
-      }),
-    );
+      });
 
     return items;
   }
@@ -612,7 +666,11 @@ export class PaymentController {
     }
 
     const breakdown = await this.feeService.calculateForAmount(amount, community.createur.toString());
-    const metadata: Record<string, any> = {};
+    const recurringMetadata = this.getCommunityRecurringMetadata(community, amount);
+    const metadata: Record<string, any> = {
+      ...recurringMetadata,
+      provider: 'flouci',
+    };
     if (validatedInviteCode) {
       metadata.inviteCode = validatedInviteCode;
     }
@@ -644,6 +702,8 @@ export class PaymentController {
         userId,
         contentType: 'community',
         contentId: communityId,
+        ...recurringMetadata,
+        provider: 'flouci',
         ...(validatedInviteCode ? { inviteCode: validatedInviteCode } : {}),
       },
     });
@@ -786,19 +846,108 @@ export class PaymentController {
     };
   }
 
+  @Post('order/:orderId/refund')
+  @ApiOperation({ summary: 'Request/process a full refund for a paid Stripe order' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async refundOrder(
+    @Param('orderId') orderId: string,
+    @Body() body: { reason?: string } = {},
+    @Req() req: any,
+  ) {
+    const userId = (req.user?._id || req.user?.sub || '').toString();
+    if (!Types.ObjectId.isValid(orderId)) {
+      throw new BadRequestException('Invalid orderId');
+    }
+
+    const order = await this.orderModel.findById(orderId).exec();
+    if (!order) {
+      throw new BadRequestException('Order not found');
+    }
+
+    const isBuyer = String((order as any).buyerId || '') === userId;
+    const isCreator = String((order as any).creatorId || '') === userId;
+    const isAdmin = Boolean(req.user?.isAdmin || req.user?.role === 'admin');
+    if (!isBuyer && !isCreator && !isAdmin) {
+      throw new ForbiddenException('You are not allowed to refund this order');
+    }
+
+    if ((order as any).status !== 'paid') {
+      throw new BadRequestException('Only paid orders can be refunded');
+    }
+
+    const paymentId = String((order as any).paymentId || '');
+    if (!paymentId) {
+      throw new BadRequestException('Order has no provider payment id to refund');
+    }
+
+    const provider = String((order as any).paymentMethod || 'stripe').toLowerCase();
+    if (provider && provider !== 'stripe' && provider !== 'stripe-link') {
+      throw new BadRequestException('Automatic refunds are currently supported for Stripe orders only');
+    }
+
+    const reason = String(body?.reason || 'refund_requested').slice(0, 300);
+    const previousStatus = (order as any).status;
+    const refund = await this.stripe.refundPayment(paymentId);
+    if (!refund.success) {
+      await this.auditPaymentEvent({
+        orderId,
+        eventType: 'refund_failed',
+        provider: 'stripe',
+        paymentMethod: (order as any).paymentMethod,
+        previousStatus,
+        nextStatus: previousStatus,
+        reason,
+        error: refund.error,
+      });
+      throw new BadRequestException(refund.error || 'Refund failed');
+    }
+
+    (order as any).status = 'refunded';
+    (order as any).metadata = {
+      ...((order as any).metadata || {}),
+      refund: {
+        reason,
+        requestedBy: userId,
+        refundedAt: new Date().toISOString(),
+      },
+    };
+    await order.save();
+
+    await this.affiliateCommissionService.onOrderRefunded(orderId).catch((error) => {
+      this.logger.warn(`Affiliate refund reversal failed for order ${orderId}: ${error?.message || error}`);
+    });
+    await this.auditPaymentEvent({
+      orderId,
+      eventType: 'refund_completed',
+      provider: 'stripe',
+      paymentMethod: (order as any).paymentMethod,
+      previousStatus,
+      nextStatus: 'refunded',
+      reason,
+    });
+
+    return {
+      success: true,
+      data: { orderId, status: 'refunded' },
+    };
+  }
+
   @Post('init/subscription')
   @ApiOperation({ summary: 'Initier un paiement Flouci pour une souscription' })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   async initSubscription(
     @Req() req: any,
-    @Body('tier') tier: string
+    @Body('tier') tier: string,
+    @Body('interval') interval: 'month' | 'year' = 'month',
   ) {
     this.assertPaymentProviderEnabled('flouci');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const plan = await this.planModel.findOne({ tier, isActive: true });
     if (!plan) throw new BadRequestException('Plan introuvable');
-    const amount = (plan as any).priceMonthlyDT || (plan as any).priceDT || 0;
+    const billingInterval = this.normalizeBillingInterval(interval);
+    const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);
     if (amount <= 0) throw new BadRequestException('Montant invalide');
 
     const breakdown = await this.feeService.calculateForAmount(amount, userId);
@@ -813,11 +962,23 @@ export class PaymentController {
       platformFeeDT: breakdown.platformFeeDT,
       creatorNetDT: breakdown.creatorNetDT,
       status: 'pending',
+      metadata: this.buildPendingFulfillmentMetadata({
+        tier,
+        billingInterval,
+        provider: 'flouci',
+        amount,
+        currency: 'TND',
+      }),
     });
 
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=subscription&tier=${tier}`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=subscription&tier=${tier}`;
-    const init = await this.flouci.initPayment({ amountTND: amount, successUrl, failUrl, metadata: { userId, contentType: 'subscription', tier } });
+    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=subscription&tier=${tier}&provider=flouci`;
+    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=subscription&tier=${tier}&provider=flouci`;
+    const init = await this.flouci.initPayment({
+      amountTND: amount,
+      successUrl,
+      failUrl,
+      metadata: { userId, contentType: 'subscription', tier, billingInterval, amount, currency: 'TND' },
+    });
     if (!init.success) throw new BadRequestException(init.error);
     pendingOrder.paymentId = init.paymentId; await pendingOrder.save();
     return { link: init.link, paymentId: init.paymentId, qrCode: init.qrCode };
@@ -850,7 +1011,12 @@ export class PaymentController {
       if (!equal) throw new UnauthorizedException('Signature invalide');
     }
 
-    return this.verify(paymentId);
+    try {
+      return await this.verify(paymentId);
+    } catch (error) {
+      this.webhookRetryService?.enqueue('flouci', { paymentId, body }, error);
+      throw error;
+    }
   }
 
   @Post('init/course')
@@ -1149,8 +1315,11 @@ export class PaymentController {
     }
 
     const breakdown = await this.feeService.calculateForAmount(amount, community.createur.toString());
+    const recurringMetadata = this.getCommunityRecurringMetadata(community, amount);
     const metadata: Record<string, any> = {
       channel,
+      ...recurringMetadata,
+      provider: 'stripe',
       ...(Object.keys(clientContext).length > 0 ? { clientContext } : {}),
       ...this.resolveAffiliateAttribution(req),
     };
@@ -1182,31 +1351,65 @@ export class PaymentController {
     console.log('[Stripe Init] Generated Success URL:', successUrl);
 
     const user = await this.userModel.findById(userId).select('email name');
-    const session = await this.stripe.createLinkCheckoutSession({
-      amountDT: amount,
-      successUrl,
-      cancelUrl: failUrl,
-      customerEmail: user?.email,
-      metadata: {
-        userId,
-        contentType: 'community',
-        contentId: communityId,
-        orderId: pendingOrder._id.toString(),
-        channel,
-        ...(Object.keys(clientContext).length > 0 ? { clientContext: JSON.stringify(clientContext) } : {}),
-        ...(validatedInviteCode ? { inviteCode: validatedInviteCode } : {}),
-      },
-      lineItems: [{
-        name: `Join ${community.name}`,
-        description: `Community membership for ${community.name}`,
-        amount: amount,
-        quantity: 1
-      }]
-    });
+    const stripeMetadata = {
+      userId,
+      contentType: 'community',
+      contentId: communityId,
+      orderId: pendingOrder._id.toString(),
+      channel,
+      ...recurringMetadata,
+      provider: 'stripe',
+      ...(Object.keys(clientContext).length > 0 ? { clientContext: JSON.stringify(clientContext) } : {}),
+      ...(validatedInviteCode ? { inviteCode: validatedInviteCode } : {}),
+    };
+    let session: any;
+    if (recurringMetadata.isRecurring) {
+      const priceResult = await this.stripe.createPrice({
+        amountDT: amount,
+        interval: recurringMetadata.billingInterval,
+        currency: recurringMetadata.currency,
+        productName: `${community.name} membership`,
+        productDescription: `Recurring community membership for ${community.name}`,
+      });
+      if (!priceResult.success) throw new BadRequestException(priceResult.error);
+      session = await this.stripe.createLinkSubscriptionSession({
+        priceId: priceResult.priceId!,
+        successUrl,
+        cancelUrl: failUrl,
+        customerEmail: user?.email,
+        metadata: {
+          ...stripeMetadata,
+          providerPriceId: priceResult.priceId!,
+        },
+        trialPeriodDays: Number((community as any)?.pricing?.freeTrialDays || 0) || undefined,
+      });
+      pendingOrder.metadata = {
+        ...(pendingOrder.metadata || {}),
+        providerPriceId: priceResult.priceId!,
+      };
+    } else {
+      session = await this.stripe.createLinkCheckoutSession({
+        amountDT: amount,
+        successUrl,
+        cancelUrl: failUrl,
+        customerEmail: user?.email,
+        metadata: stripeMetadata,
+        lineItems: [{
+          name: `Join ${community.name}`,
+          description: `Community membership for ${community.name}`,
+          amount: amount,
+          quantity: 1
+        }]
+      });
+    }
 
     if (!session.success) throw new BadRequestException(session.error);
 
     pendingOrder.paymentId = session.sessionId;
+    pendingOrder.metadata = {
+      ...(pendingOrder.metadata || {}),
+      providerCheckoutSessionId: session.sessionId,
+    };
     await pendingOrder.save();
 
     return this.buildStripeInitResponse({
@@ -2164,6 +2367,15 @@ export class PaymentController {
           await userUpdateQuery.exec();
 
           await this.notifyCommunityCreatorMemberJoined(community, order.buyerId);
+          await this.subscriptionService.recordCommunityMemberSubscriptionFromOrder(order, {
+            provider: stripeSessionMetadata?.provider || order.metadata?.provider || order.paymentMethod,
+            providerCustomerId: stripePaymentDetails?.customerId,
+            providerSubscriptionId: stripePaymentDetails?.subscriptionId,
+            providerCheckoutSessionId: stripePaymentDetails?.sessionId || order.metadata?.providerCheckoutSessionId || order.paymentId,
+            currentPeriodStart: stripePaymentDetails?.currentPeriodStart,
+            currentPeriodEnd: stripePaymentDetails?.currentPeriodEnd,
+            cancelAtPeriodEnd: stripePaymentDetails?.cancelAtPeriodEnd,
+          }, session);
         }
         break;
 
@@ -2190,6 +2402,11 @@ export class PaymentController {
           hasPaymentMethod: true,
           cancelAtPeriodEnd: stripePaymentDetails?.cancelAtPeriodEnd,
         });
+        await this.subscriptionService.recordInvoiceForOrder(order, {
+          provider: stripeSessionMetadata?.provider || order.metadata?.provider || order.paymentMethod || 'stripe',
+          providerSubscriptionId: stripePaymentDetails?.subscriptionId || order.metadata?.providerSubscriptionId,
+          providerInvoiceId: order.metadata?.providerInvoiceId,
+        }, session);
         break;
 
       case TrackableContentType.COURSE:
@@ -2598,84 +2815,92 @@ export class PaymentController {
       return { received: true, duplicate: true };
     }
 
-    // Handle different event types
-    switch (stripeEvent.type) {
-      case 'checkout.session.completed':
-      case 'checkout.session.async_payment_succeeded':
-        const stripeSession = stripeEvent.data.object as any;
-        const isSubscriptionCheckout = stripeSession.mode === 'subscription' || stripeSession.metadata?.contentType === 'subscription';
-        if (stripeSession.payment_status === 'paid' || (isSubscriptionCheckout && stripeSession.status === 'complete')) {
-          // Process successful payment or completed subscription checkout
-          let order: any = await this.orderModel.findOne({ paymentId: stripeSession.id });
-          if (order) {
-            let didCompleteFulfillment = false;
-            await this.runWithOptionalTransaction(async (dbSession) => {
-              const claim = await this.paymentFulfillmentService.claimForProcessing(
-                order._id.toString(),
-                'stripe',
-                dbSession,
-              );
-              if (!claim.order) {
-                return;
-              }
-
-              order = claim.order;
-              if (claim.state !== 'claimed') {
-                return;
-              }
-
-              try {
-                const stripeSubscription = typeof stripeSession.subscription === 'object' ? stripeSession.subscription : null;
-                await this.grantAccess(order, dbSession, stripeSession.metadata, {
-                  sessionId: stripeSession.id,
-                  customerId: typeof stripeSession.customer === 'string' ? stripeSession.customer : stripeSession.customer?.id,
-                  subscriptionId: typeof stripeSession.subscription === 'string' ? stripeSession.subscription : stripeSession.subscription?.id,
-                  subscriptionStatus: stripeSubscription?.status,
-                  currentPeriodStart: stripeSubscription?.current_period_start ? new Date(stripeSubscription.current_period_start * 1000) : undefined,
-                  currentPeriodEnd: stripeSubscription?.current_period_end ? new Date(stripeSubscription.current_period_end * 1000) : undefined,
-                  trialEndsAt: stripeSubscription?.trial_end ? new Date(stripeSubscription.trial_end * 1000) : undefined,
-                  cancelAtPeriodEnd: stripeSubscription?.cancel_at_period_end,
-                });
-                order = await this.paymentFulfillmentService.markCompleted(order, dbSession);
-                didCompleteFulfillment = true;
-              } catch (error: any) {
-                if (order.contentType === TrackableContentType.SESSION && this.isMissingScheduledAtError(error)) {
-                  order = await this.paymentFulfillmentService.markRequiresBooking(order, dbSession, {
-                    contentId: order.metadata?.contentId || stripeSession?.metadata?.contentId || order.contentId,
-                  });
+    try {
+      // Handle different event types
+      switch (stripeEvent.type) {
+        case 'checkout.session.completed':
+        case 'checkout.session.async_payment_succeeded':
+          const stripeSession = stripeEvent.data.object as any;
+          const isSubscriptionCheckout = stripeSession.mode === 'subscription' || stripeSession.metadata?.contentType === 'subscription';
+          if (stripeSession.payment_status === 'paid' || (isSubscriptionCheckout && stripeSession.status === 'complete')) {
+            // Process successful payment or completed subscription checkout
+            let order: any = await this.orderModel.findOne({ paymentId: stripeSession.id });
+            if (order) {
+              let didCompleteFulfillment = false;
+              await this.runWithOptionalTransaction(async (dbSession) => {
+                const claim = await this.paymentFulfillmentService.claimForProcessing(
+                  order._id.toString(),
+                  'stripe',
+                  dbSession,
+                );
+                if (!claim.order) {
                   return;
                 }
 
-                await this.paymentFulfillmentService.markFailed(order, error, dbSession);
-                throw error;
-              }
-            });
+                order = claim.order;
+                if (claim.state !== 'claimed') {
+                  return;
+                }
 
-            if (didCompleteFulfillment) {
-              await this.incrementProductSalesFromOrder(order);
-              await this.affiliateCommissionService.onOrderPaid(order).catch((e) => this.logger.error(`Affiliate onOrderPaid failed: ${e?.message}`));
+                try {
+                  const stripeSubscription = typeof stripeSession.subscription === 'object' ? stripeSession.subscription : null;
+                  await this.grantAccess(order, dbSession, stripeSession.metadata, {
+                    sessionId: stripeSession.id,
+                    customerId: typeof stripeSession.customer === 'string' ? stripeSession.customer : stripeSession.customer?.id,
+                    subscriptionId: typeof stripeSession.subscription === 'string' ? stripeSession.subscription : stripeSession.subscription?.id,
+                    subscriptionStatus: stripeSubscription?.status,
+                    currentPeriodStart: stripeSubscription?.current_period_start ? new Date(stripeSubscription.current_period_start * 1000) : undefined,
+                    currentPeriodEnd: stripeSubscription?.current_period_end ? new Date(stripeSubscription.current_period_end * 1000) : undefined,
+                    trialEndsAt: stripeSubscription?.trial_end ? new Date(stripeSubscription.trial_end * 1000) : undefined,
+                    cancelAtPeriodEnd: stripeSubscription?.cancel_at_period_end,
+                  });
+                  order = await this.paymentFulfillmentService.markCompleted(order, dbSession);
+                  didCompleteFulfillment = true;
+                } catch (error: any) {
+                  if (order.contentType === TrackableContentType.SESSION && this.isMissingScheduledAtError(error)) {
+                    order = await this.paymentFulfillmentService.markRequiresBooking(order, dbSession, {
+                      contentId: order.metadata?.contentId || stripeSession?.metadata?.contentId || order.contentId,
+                    });
+                    return;
+                  }
+
+                  await this.paymentFulfillmentService.markFailed(order, error, dbSession);
+                  throw error;
+                }
+              });
+
+              if (didCompleteFulfillment) {
+                await this.incrementProductSalesFromOrder(order);
+                await this.affiliateCommissionService.onOrderPaid(order).catch((e) => this.logger.error(`Affiliate onOrderPaid failed: ${e?.message}`));
+              }
             }
           }
-        }
-        break;
+          break;
 
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated':
-      case 'customer.subscription.deleted':
-      case 'customer.subscription.trial_will_end':
-      case 'invoice.payment_succeeded':
-      case 'invoice.payment_failed':
-      case 'payment_method.attached':
-      case 'payment_method.detached':
-        await this.subscriptionService.handleWebhook({
-          id: stripeEvent.id,
-          object: stripeEvent.object,
-          type: stripeEvent.type,
-          data: stripeEvent.data,
-          created: stripeEvent.created ? new Date(stripeEvent.created * 1000).toISOString() : undefined,
-          livemode: stripeEvent.livemode,
-        });
-        break;
+        case 'customer.subscription.created':
+        case 'customer.subscription.updated':
+        case 'customer.subscription.deleted':
+        case 'customer.subscription.trial_will_end':
+        case 'invoice.payment_succeeded':
+        case 'invoice.payment_failed':
+        case 'payment_method.attached':
+        case 'payment_method.detached':
+          await this.subscriptionService.handleWebhook({
+            id: stripeEvent.id,
+            object: stripeEvent.object,
+            type: stripeEvent.type,
+            data: stripeEvent.data,
+            created: stripeEvent.created ? new Date(stripeEvent.created * 1000).toISOString() : undefined,
+            livemode: stripeEvent.livemode,
+          });
+          break;
+      }
+    } catch (error) {
+      this.webhookRetryService?.enqueue('stripe', {
+        eventId: stripeEvent.id,
+        eventType: stripeEvent.type,
+      }, error);
+      throw error;
     }
 
     await this.markWebhookEventProcessed('stripe', stripeEvent.id, stripeEvent.type);
@@ -2858,6 +3083,85 @@ export class PaymentController {
 
   // ==================== MANUAL PAYMENT ENDPOINTS ====================
 
+  @Post('manual/init/subscription')
+  @ApiOperation({ summary: 'Submit manual transfer proof for a creator platform subscription' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
+  async initManualSubscriptionPayment(
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('tier') tier: string,
+    @Body('interval') interval: 'month' | 'year' = 'month',
+  ) {
+    this.assertPaymentProviderEnabled('manual');
+    if (!file) throw new BadRequestException('Payment proof file is required');
+
+    const userId = (req.user?._id || req.user?.sub || '').toString();
+    const plan = await this.planModel.findOne({ tier, isActive: true });
+    if (!plan) throw new BadRequestException('Plan not found');
+    const billingInterval = this.normalizeBillingInterval(interval);
+    const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);
+    if (amount <= 0) throw new BadRequestException('Invalid amount');
+
+    const existing = await this.orderModel.findOne({
+      buyerId: new Types.ObjectId(userId),
+      creatorId: new Types.ObjectId(userId),
+      paymentMethod: 'manual',
+      contentType: TrackableContentType.SUBSCRIPTION,
+      status: 'pending_verification',
+    }).select('_id').lean();
+    if (existing) {
+      throw new BadRequestException('A platform subscription proof is already pending review');
+    }
+
+    const uploadResult = await this.uploadService.processUploadedFile(file, file.filename, {
+      userId,
+      purpose: MediaPurpose.MANUAL_PAYMENT_PROOF,
+      entityType: TrackableContentType.SUBSCRIPTION,
+      entityId: tier,
+    });
+
+    const order = await this.orderModel.create({
+      buyerId: new Types.ObjectId(userId),
+      creatorId: new Types.ObjectId(userId),
+      contentType: TrackableContentType.SUBSCRIPTION,
+      contentId: tier,
+      amountDT: amount,
+      platformPercent: 0,
+      platformFixedDT: 0,
+      platformFeeDT: 0,
+      creatorNetDT: amount,
+      status: 'pending_verification',
+      paymentMethod: 'manual',
+      paymentProof: uploadResult.url,
+      metadata: {
+        provider: 'manual',
+        tier,
+        billingInterval,
+        amount,
+        currency: 'TND',
+        fulfillmentStatus: 'pending',
+        fulfillmentUpdatedAt: new Date().toISOString(),
+      },
+    });
+
+    await this.auditPaymentEvent({
+      orderId: order._id?.toString?.(),
+      eventType: 'manual_platform_subscription_submitted',
+      provider: 'manual',
+      paymentMethod: 'manual',
+      nextStatus: order.status,
+      metadata: { tier, billingInterval, amount },
+    });
+
+    return {
+      success: true,
+      message: 'Subscription payment proof submitted for admin review',
+      orderId: order._id,
+    };
+  }
+
   @Post('manual/init/community')
   @ApiOperation({ summary: 'Initiate manual payment (transfer) for community membership' })
   @ApiQuery({ name: 'promoCode', required: false })
@@ -2896,6 +3200,7 @@ export class PaymentController {
     }
 
     const breakdown = await this.feeService.calculateForAmount(amount, community.createur.toString());
+    const recurringMetadata = this.getCommunityRecurringMetadata(community, amount);
     // Use the filename already assigned by Multer to avoid URL/file mismatch
     const uploadResult = await this.uploadService.processUploadedFile(file, file.filename, {
       userId,
@@ -2921,6 +3226,8 @@ export class PaymentController {
       paymentMethod: 'manual',
       paymentProof: uploadResult.url,
       metadata: {
+        ...recurringMetadata,
+        provider: 'manual',
         ...(validatedInviteCode ? { inviteCode: validatedInviteCode } : {}),
       },
     });
@@ -3385,11 +3692,12 @@ export class PaymentController {
 
   @Get('manual/pending')
   @ApiOperation({ summary: 'Get pending manual payments for the logged-in creator' })
+  @ApiQuery({ name: 'communityId', required: false, description: 'Filter by community' })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  async getPendingManualPayments(@Req() req: any) {
+  async getPendingManualPayments(@Req() req: any, @Query('communityId') communityId?: string) {
     const userId = (req.user?._id || req.user?.sub || '').toString();
-    const payments = await this.manualPaymentService.getPendingPaymentsForCreator(userId);
+    const payments = await this.manualPaymentService.getPendingPaymentsForCreator(userId, { communityId });
     const enriched = await this.enrichManualOrdersForDashboard(payments as any);
     return { success: true, data: enriched };
   }
@@ -3399,6 +3707,7 @@ export class PaymentController {
   @ApiQuery({ name: 'status', required: false, description: 'Filter by order status (or "all")' })
   @ApiQuery({ name: 'page', required: false, description: 'Page number (1-based)' })
   @ApiQuery({ name: 'limit', required: false, description: 'Page size (max 100)' })
+  @ApiQuery({ name: 'communityId', required: false, description: 'Filter by community' })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   async getManualPaymentsHistory(
@@ -3406,12 +3715,14 @@ export class PaymentController {
     @Query('status') status?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('communityId') communityId?: string,
   ) {
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const result = await this.manualPaymentService.getManualPaymentsHistoryForCreator(userId, {
       status,
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
+      communityId,
     });
     const enriched = await this.enrichManualOrdersForDashboard(result.items as any);
     return { success: true, data: enriched, meta: result.meta };
@@ -3443,6 +3754,9 @@ export class PaymentController {
       });
       if (!pendingOrder) {
         throw new BadRequestException('Order not found or access denied');
+      }
+      if (pendingOrder.contentType === TrackableContentType.SUBSCRIPTION) {
+        throw new BadRequestException('Platform subscription manual proofs must be reviewed by an admin');
       }
 
       if (action === 'approve' && pendingOrder.contentType === TrackableContentType.COMMUNITY) {
@@ -3607,7 +3921,8 @@ export class PaymentController {
     }
 
     const breakdown = await this.feeService.calculateForAmount(amount, community.createur.toString());
-    const metadata: Record<string, any> = { provider: 'konnect' };
+    const recurringMetadata = this.getCommunityRecurringMetadata(community, amount);
+    const metadata: Record<string, any> = { provider: 'konnect', ...recurringMetadata };
     if (validatedInviteCode) metadata.inviteCode = validatedInviteCode;
 
     const pendingOrder = await this.orderModel.create({
@@ -4040,12 +4355,14 @@ export class PaymentController {
   async initKonnectSubscription(
     @Req() req: any,
     @Body('tier') tier: string,
+    @Body('interval') interval: 'month' | 'year' = 'month',
   ) {
     this.assertPaymentProviderEnabled('konnect');
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const plan = await this.planModel.findOne({ tier, isActive: true });
     if (!plan) throw new BadRequestException('Plan introuvable');
-    const amount = (plan as any).priceMonthlyDT || (plan as any).priceDT || 0;
+    const billingInterval = this.normalizeBillingInterval(interval);
+    const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);
     if (amount <= 0) throw new BadRequestException('Montant invalide');
 
     const breakdown = await this.feeService.calculateForAmount(amount, userId);
@@ -4060,7 +4377,13 @@ export class PaymentController {
       platformFeeDT: breakdown.platformFeeDT,
       creatorNetDT: breakdown.creatorNetDT,
       status: 'pending',
-      metadata: this.buildPendingFulfillmentMetadata({ provider: 'konnect' }),
+      metadata: this.buildPendingFulfillmentMetadata({
+        provider: 'konnect',
+        tier,
+        billingInterval,
+        amount,
+        currency: 'TND',
+      }),
     });
 
     const user = await this.userModel.findById(userId).select('email name firstName lastName');

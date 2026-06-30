@@ -1,3 +1,4 @@
+import '@/tracing';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '@/app/app.module';
 import { BadRequestException, ValidationPipe, ValidationError } from '@nestjs/common';
@@ -9,7 +10,7 @@ import { AbsoluteUploadsUrlInterceptor } from '@/shared/interceptors/absolute-up
 import { UploadService } from '@/domains/shared/upload/upload.service';
 import { MonitoringService } from '@/shared/services/monitoring.service';
 import os from 'os';
-import { webcrypto } from 'node:crypto';
+import { randomUUID, webcrypto } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
 import {
@@ -23,11 +24,22 @@ import { csrfProtectionMiddleware } from '@/shared/middleware/csrf-protection.mi
 import { SecurityMiddleware } from '@/shared/middleware/security.middleware';
 import { resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
 import { S3StorageAdapter } from '@/domains/content/media/storage/s3-storage.adapter';
+import { writeStructuredLog } from '@/shared/utils/log-sanitizer.util';
+import { RedisIoAdapter } from '@/infrastructure/realtime/redis-io.adapter';
 
 // Compatibility for Node < 20 where globalThis.crypto may be undefined.
 if (!globalThis.crypto) {
   (globalThis as any).crypto = webcrypto;
 }
+
+process.on('unhandledRejection', (reason) => {
+  writeStructuredLog('error', 'unhandled_rejection', { reason });
+});
+
+process.on('uncaughtException', (error) => {
+  writeStructuredLog('error', 'uncaught_exception', { message: error.message, stack: error.stack });
+  process.exitCode = 1;
+});
 
 const getLocalNetworkIp = (): string => {
   const networkInterfaces = os.networkInterfaces();
@@ -47,6 +59,11 @@ async function bootstrap() {
   validateStartupEnv();
 
   const app = await NestFactory.create(AppModule);
+  app.enableShutdownHooks();
+  const redisIoAdapter = new RedisIoAdapter(app);
+  if (await redisIoAdapter.connectToRedis()) {
+    app.useWebSocketAdapter(redisIoAdapter);
+  }
   const expressApp = app.getHttpAdapter().getInstance();
   const monitoringService = app.get(MonitoringService);
   const securityMiddleware = app.get(SecurityMiddleware);
@@ -65,6 +82,10 @@ async function bootstrap() {
   // and /payments/* -> /payment/* after Nest's global prefix handling.
   // Keep this during migration to avoid breaking older frontend clients.
   app.use((req: any, res: any, next: any) => {
+    const requestId = req.headers['x-request-id'] || randomUUID();
+    req.requestId = String(requestId);
+    res.setHeader('X-Request-Id', req.requestId);
+
     if (typeof req.url === 'string') {
       if (req.url === '/api/payments') {
         req.url = '/api/payment';
@@ -175,9 +196,6 @@ async function bootstrap() {
     whitelist: true,
     forbidNonWhitelisted: true,
     transform: true,
-    transformOptions: {
-      enableImplicitConversion: true,
-    },
     exceptionFactory: (errors) => {
       const flattenValidationErrors = (
         validationErrors: ValidationError[],
@@ -206,7 +224,7 @@ async function bootstrap() {
       };
 
       const formattedErrors = flattenValidationErrors(errors);
-      console.error('❌ Validation Error:', JSON.stringify(formattedErrors, null, 2));
+      writeStructuredLog('warn', 'validation_failed', { details: formattedErrors });
       return new BadRequestException({
         code: 'VALIDATION_FAILED',
         message: 'Validation failed',
@@ -254,7 +272,7 @@ async function bootstrap() {
   });
 
   if (!isProduction) {
-    console.log(`🌐 CORS Mode: ${isProduction ? 'PRODUCTION (restrictif)' : 'DEVELOPMENT (permissif)'}`);
+    writeStructuredLog('info', 'cors_mode', { mode: isProduction ? 'production' : 'development' });
   }
 
   app.enableCors({
@@ -278,19 +296,20 @@ async function bootstrap() {
       'Cache-Control',
       'Pragma'
     ],
-    exposedHeaders: ['Authorization', 'X-CSRF-Token', 'Content-Length'],
+    exposedHeaders: ['Authorization', 'X-CSRF-Token', 'Content-Length', 'X-Request-Id'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
     maxAge: 86400, // 24 hours
   });
 
   if (!isProduction) {
-    console.log(`✅ CORS enabled with allowlist: ${allowedOrigins.join(', ')}`);
+    writeStructuredLog('info', 'cors_enabled', { allowedOrigins });
   }
 
   // Always record request/error counters for Prometheus metrics.
   app.use((req, res, next) => {
     const url = req.originalUrl || req.url;
+    const startedAt = process.hrtime.bigint();
 
     res.on('finish', () => {
       if (url.startsWith('/api/health')) {
@@ -298,6 +317,7 @@ async function bootstrap() {
       }
 
       monitoringService.incrementRequestCount();
+      monitoringService.recordRequestDuration(Number(process.hrtime.bigint() - startedAt) / 1_000_000);
       if (res.statusCode >= 500) {
         monitoringService.incrementErrorCount();
       }
@@ -321,13 +341,20 @@ async function bootstrap() {
 
         const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
         const status = res.statusCode;
-        const icon = status >= 500 ? '❌' : status >= 400 ? '⚠️' : '✅';
         const contentLength = res.getHeader('content-length') || '-';
         const ip = req.ip || req.socket?.remoteAddress || '-';
 
-        console.log(
-          `${icon} [HTTP] ${startedIso} ${req.method} ${url} ${status} ${elapsedMs.toFixed(1)}ms size=${contentLength} ip=${ip}`,
-        );
+        writeStructuredLog(status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info', 'http_access', {
+          requestId: (req as any).requestId,
+          startedAt: startedIso,
+          method: req.method,
+          url,
+          status,
+          elapsedMs: Number(elapsedMs.toFixed(1)),
+          size: contentLength,
+          ip,
+          userId: (req as any).user?._id || (req as any).user?.sub,
+        });
       });
 
       next();
@@ -339,7 +366,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   const localIP = getLocalNetworkIp();
 
-  const swaggerEnabled = isSwaggerEnabled();
+  const swaggerEnabled = !isProduction && isSwaggerEnabled();
   if (swaggerEnabled) {
     const config = new DocumentBuilder()
       .setTitle('Shabaka API')
@@ -619,7 +646,7 @@ async function bootstrap() {
       ].join('\n')
     });
   } else {
-    console.log('🔒 Swagger UI is disabled (set ENABLE_SWAGGER=true to enable in production).');
+    writeStructuredLog('info', 'swagger_disabled', { reason: 'disabled_by_environment' });
   }
 
   const host = process.env.HOST || (isProduction ? '127.0.0.1' : '0.0.0.0');
@@ -628,47 +655,38 @@ async function bootstrap() {
   const baseUrl = `http://${localIP}:${port}`;
 
   if (isProduction) {
-    // Minimal production logging
-    console.log(`🚀 Chabaqa API Server started on port ${port}`);
-    console.log(`🌐 Base URL: ${baseUrl}`);
-    console.log(`📚 API Docs: ${baseUrl}/api/docs`);
-    console.log(`🌐 Environment: production\n`);
+    writeStructuredLog('info', 'server_started', {
+      port,
+      host,
+      baseUrl,
+      environment: 'production',
+      swaggerEnabled,
+    });
   } else {
-    // Detailed development logging
-    // Get local network IP address
-    console.log('\n╔════════════════════════════════════════════════════════════════╗');
-    console.log('║          🚀 CHABAQA BACKEND SERVER STARTED                    ║');
-    console.log('╚════════════════════════════════════════════════════════════════╝\n');
-
-    console.log(`📍 Port: ${port}`);
-    console.log(`🌐 Binding: 0.0.0.0 (all network interfaces)`);
-    console.log(`🌐 Detected IP: ${localIP}\n`);
-
-    console.log(`🌐 Base URL (LAN): ${baseUrl}`);
-
-    console.log('📋 AVAILABLE ENDPOINTS:\n');
-    console.log(`   💻 Web Browser (localhost):`);
-    console.log(`      → http://localhost:${port}/api/docs`);
-    console.log(`      → http://localhost:${port}/api/auth/register\n`);
-
-    console.log(`   📱 Mobile App (network IP):`);
-    console.log(`      → http://${localIP}:${port}/api/docs`);
-    console.log(`      → http://${localIP}:${port}/api/auth/register\n`);
-
-    console.log(`   🤖 Android Emulator:`);
-    console.log(`      → http://10.0.2.2:${port}/api/docs`);
-    console.log(`      → http://10.0.2.2:${port}/api/auth/register\n`);
-
-    console.log('🔧 MOBILE APP CONFIGURATION:\n');
-    console.log(`   Update mobile/.env with ONE of these:`);
-    console.log(`   ✓ EXPO_PUBLIC_API_URL=http://${localIP}:${port}`);
-    console.log(`   ✓ EXPO_PUBLIC_API_URL=http://10.0.2.2:${port} (Android emulator)`);
-    console.log(`   ✓ EXPO_PUBLIC_API_URL=http://localhost:${port} (iOS simulator)\n`);
-
-    console.log('✅ CORS: Enabled (accepting all origins in development)');
-    console.log('✅ Request Logging: Enabled');
-    console.log('✅ MongoDB: Connected');
-    console.log('\n🎯 Backend ready to accept mobile connections!\n');
+    writeStructuredLog('info', 'server_started', {
+      port,
+      host,
+      localIP,
+      baseUrl,
+      environment: 'development',
+      endpoints: {
+        localhostDocs: `http://localhost:${port}/api/docs`,
+        localhostRegister: `http://localhost:${port}/api/auth/register`,
+        lanDocs: `http://${localIP}:${port}/api/docs`,
+        lanRegister: `http://${localIP}:${port}/api/auth/register`,
+        androidDocs: `http://10.0.2.2:${port}/api/docs`,
+        androidRegister: `http://10.0.2.2:${port}/api/auth/register`,
+      },
+      mobileEnvExamples: [
+        `EXPO_PUBLIC_API_URL=http://${localIP}:${port}`,
+        `EXPO_PUBLIC_API_URL=http://10.0.2.2:${port}`,
+        `EXPO_PUBLIC_API_URL=http://localhost:${port}`,
+      ],
+      corsEnabled: true,
+      requestLoggingEnabled: enableAccessLog,
+      mongoConnected: true,
+      swaggerEnabled,
+    });
   }
 }
 bootstrap();

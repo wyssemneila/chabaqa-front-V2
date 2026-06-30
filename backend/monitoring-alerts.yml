@@ -1,0 +1,24 @@
+groups:
+  - name: chabaqa-critical
+    rules:
+      - alert: ChabaqaHighErrorRate
+        expr: shabaka_error_rate > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Backend error rate above 5%
+      - alert: ChabaqaHighWebhookRetryQueue
+        expr: shabaka_webhook_retry_queued > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Webhook retry queue is growing
+      - alert: ChabaqaHighLatency
+        expr: histogram_quantile(0.99, shabaka_http_request_duration_ms_bucket) > 2000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: P99 HTTP latency above 2 seconds

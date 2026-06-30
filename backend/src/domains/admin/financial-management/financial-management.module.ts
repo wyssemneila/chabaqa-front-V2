@@ -11,6 +11,7 @@ import { Community, CommunitySchema } from '@/infrastructure/database/schemas/co
 import { User, UserSchema } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Plan, PlanSchema } from '@/infrastructure/database/schemas/commerce/plan.schema';
 import { Order, OrderSchema } from '@/infrastructure/database/schemas/commerce/order.schema';
+import { SubscriptionModule } from '@/domains/commerce/subscription/subscription.module';
 
 // Import admin common services
 import { AuditLogService } from '@/domains/admin/common/services/audit-log.service';
@@ -19,6 +20,7 @@ import { AdminRolesGuard } from '@/domains/admin/common/guards/admin-roles.guard
 
 @Module({
   imports: [
+    SubscriptionModule,
     MongooseModule.forFeature([
       { name: Subscription.name, schema: SubscriptionSchema },
       { name: WalletTransaction.name, schema: WalletTransactionSchema },

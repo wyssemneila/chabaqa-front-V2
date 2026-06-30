@@ -117,7 +117,7 @@ export class CaptchaController {
       example1: {
         summary: 'Basic verification',
         value: {
-          token: 'abc123def456...',
+          token: 'captcha-token',
           answer: '12'
         }
       }

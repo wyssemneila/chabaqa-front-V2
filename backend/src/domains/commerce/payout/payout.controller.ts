@@ -119,12 +119,13 @@ export class PayoutController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get available balance for the current creator' })
   @ApiQuery({ name: 'communityId', required: false, type: 'string', description: 'Filter by community' })
-  async getAvailableBalance(@Request() req: any, @Query('communityId') communityId?: string): Promise<{ availableBalance: number }> {
+  async getAvailableBalance(@Request() req: any, @Query('communityId') communityId?: string): Promise<{ availableBalance: number; minimumPayoutAmount: number }> {
     const creatorId = req.user._id || req.user.sub;
     
     const result = await this.payoutService.getPayoutsByCreator(creatorId, { communityId });
     return {
-      availableBalance: result.availableBalance
+      availableBalance: result.availableBalance,
+      minimumPayoutAmount: this.payoutService.getMinimumPayoutAmount(),
     };
   }
 

@@ -47,7 +47,7 @@ const PieChart = dynamic(
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Coins, TrendingUp, Users, CreditCard, Download, Calendar } from "lucide-react"
+import { Coins, TrendingUp, Users, CreditCard, Download, Calendar, FileSearch } from "lucide-react"
 import { toast } from "sonner"
 
 interface RevenueMetrics {
@@ -356,7 +356,7 @@ export default function FinancialDashboardPage() {
       </ChartCard>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Button
           variant="outline"
           className="h-auto py-4"
@@ -385,6 +385,16 @@ export default function FinancialDashboardPage() {
           <div className="text-center w-full">
             <Users className="h-6 w-6 mx-auto mb-2" />
             <div className="font-semibold">Manage Payouts</div>
+          </div>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-auto py-4"
+          onClick={() => router.push('/admin/financial/billing-audit')}
+        >
+          <div className="text-center w-full">
+            <FileSearch className="h-6 w-6 mx-auto mb-2" />
+            <div className="font-semibold">Billing Audit</div>
           </div>
         </Button>
       </div>

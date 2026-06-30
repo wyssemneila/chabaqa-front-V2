@@ -11,6 +11,7 @@ export function Footer() {
   const t = useTranslations("footer")
   const pathname = usePathname()
   const withLocale = (href: string) => localizeHref(pathname, href)
+  const isArabic = pathname === "/ar" || pathname.startsWith("/ar/")
 
   const openCookiePreferences = () => {
     if (typeof window === "undefined") return
@@ -39,7 +40,7 @@ export function Footer() {
               className="inline-block mb-4"
             >
               <Image
-                src="/Logos/PNG/frensh1.png"
+                src={isArabic ? "/Logos/PNG/arabic.png" : "/Logos/PNG/frensh1.png"}
                 alt="Chabaqa"
                 width={140}
                 height={36}

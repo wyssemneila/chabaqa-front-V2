@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException, UnauthorizedException } from '
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User, UserDocument } from '@/infrastructure/database/schemas/auth/user.schema';
+import { decryptFieldValue, encryptFieldValue } from '@/shared/utils/field-encryption.util';
 import { Session, SessionDocument } from '@/infrastructure/database/schemas/commerce/session.schema';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
@@ -54,6 +55,14 @@ export class GoogleCalendarService {
       this.calendarClientSecret,
       this.oauthRedirectUri
     );
+  }
+
+  private encryptGoogleTokens(tokens: any): any {
+    return encryptFieldValue(tokens);
+  }
+
+  private decryptGoogleTokens(value: any): any | null {
+    return decryptFieldValue(value);
   }
 
   private classifyGoogleError(error: any): GoogleCalendarFailureDetails {
@@ -164,13 +173,13 @@ export class GoogleCalendarService {
 
       // Save tokens to user document
       const updateResult = await this.userModel.findByIdAndUpdate(userId, {
-        googleTokens: {
+        googleTokens: this.encryptGoogleTokens({
           access_token: tokens.access_token!,
           refresh_token: tokens.refresh_token!,
           scope: tokens.scope!,
           token_type: tokens.token_type!,
           expiry_date: tokens.expiry_date!
-        }
+        })
       }, { new: true });
 
       this.logger.log(`[handleCallback] Google Calendar connected for user ${userId}, update result: ${!!updateResult}`);
@@ -186,11 +195,12 @@ export class GoogleCalendarService {
    */
   async hasValidAccess(userId: string): Promise<boolean> {
     const user = await this.userModel.findById(userId).select('googleTokens');
-    if (!user?.googleTokens) return false;
+    const googleTokens = this.decryptGoogleTokens(user?.googleTokens);
+    if (!googleTokens) return false;
 
     // Check if token is expired
     const now = Date.now();
-    if (user.googleTokens.expiry_date && now >= user.googleTokens.expiry_date) {
+    if (googleTokens.expiry_date && now >= googleTokens.expiry_date) {
       // Try to refresh the token
       return await this.refreshUserToken(userId);
     }
@@ -204,22 +214,23 @@ export class GoogleCalendarService {
   private async refreshUserToken(userId: string): Promise<boolean> {
     try {
       const user = await this.userModel.findById(userId).select('googleTokens');
-      if (!user?.googleTokens?.refresh_token) return false;
+      const googleTokens = this.decryptGoogleTokens(user?.googleTokens);
+      if (!googleTokens?.refresh_token) return false;
 
       this.oauth2Client.setCredentials({
-        refresh_token: user.googleTokens.refresh_token
+        refresh_token: googleTokens.refresh_token
       });
 
       const { credentials } = await this.oauth2Client.refreshAccessToken();
       
       // Update user with new tokens
       await this.userModel.findByIdAndUpdate(userId, {
-        googleTokens: {
-          ...user.googleTokens,
+        googleTokens: this.encryptGoogleTokens({
+          ...googleTokens,
           access_token: credentials.access_token!,
-          refresh_token: credentials.refresh_token || user.googleTokens.refresh_token,
+          refresh_token: credentials.refresh_token || googleTokens.refresh_token,
           expiry_date: credentials.expiry_date!
-        }
+        })
       });
 
       return true;
@@ -250,14 +261,15 @@ export class GoogleCalendarService {
 
       // Get creator's tokens
       const creator = await this.userModel.findById(creatorId).select('googleTokens email');
-      if (!creator?.googleTokens) {
+      const googleTokens = this.decryptGoogleTokens(creator?.googleTokens);
+      if (!creator || !googleTokens) {
         throw new UnauthorizedException('Google Calendar not connected');
       }
 
       // Set up OAuth client with creator's tokens
       this.oauth2Client.setCredentials({
-        access_token: creator.googleTokens.access_token,
-        refresh_token: creator.googleTokens.refresh_token
+        access_token: googleTokens.access_token,
+        refresh_token: googleTokens.refresh_token
       });
 
       const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
@@ -342,7 +354,7 @@ export class GoogleCalendarService {
   async getConnectionStatus(userId: string): Promise<{ connected: boolean; hasValidAccess: boolean }> {
     this.logger.debug(`[getConnectionStatus] Checking status for user: ${userId}`);
     const user = await this.userModel.findById(userId).select('googleTokens');
-    const connected = !!user?.googleTokens;
+    const connected = !!this.decryptGoogleTokens(user?.googleTokens);
     this.logger.debug(`[getConnectionStatus] User found: ${!!user}, connected: ${connected}`);
     const hasValidAccess = connected ? await this.hasValidAccess(userId) : false;
     this.logger.debug(`[getConnectionStatus] hasValidAccess: ${hasValidAccess}`);

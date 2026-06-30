@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -125,6 +126,38 @@ export class FinancialManagementController {
   })
   async getSubscriptions(@Query() filters: SubscriptionFiltersDto) {
     return await this.financialManagementService.getSubscriptions(filters);
+  }
+
+  @Get('billing-audit')
+  @RequireAdminRoles(AdminRole.SUPER_ADMIN, AdminRole.FINANCIAL_MANAGER)
+  @ApiOperation({
+    summary: 'Get billing provider audit trail',
+    description:
+      'Trace checkout orders, provider IDs, webhook-visible metadata, statuses, and manual proof links for billing support.',
+  })
+  async getBillingAudit(@Query() filters: any) {
+    return await this.financialManagementService.getBillingAudit(filters);
+  }
+
+  @Post('manual-platform-subscriptions/:orderId/review')
+  @RequireAdminRoles(AdminRole.SUPER_ADMIN, AdminRole.FINANCIAL_MANAGER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Approve or reject a manual platform subscription proof',
+  })
+  async reviewManualPlatformSubscription(
+    @Param('orderId') orderId: string,
+    @Body('action') action: 'approve' | 'reject',
+    @Req() req,
+  ) {
+    if (!['approve', 'reject'].includes(action)) {
+      throw new BadRequestException('Invalid action. Must be "approve" or "reject"');
+    }
+    return await this.financialManagementService.reviewManualPlatformSubscription(
+      orderId,
+      req.user.sub,
+      action,
+    );
   }
 
   @Get('transactions')

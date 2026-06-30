@@ -9,6 +9,7 @@ export enum UsageMetricType {
   ADMINS_ADDED = 'admins_added',
   API_REQUESTS = 'api_requests',
   EMAIL_SENT = 'email_sent',
+  WHATSAPP_SENT = 'whatsapp_sent',
   AUTOMATION_TRIGGERED = 'automation_triggered'
 }
 
@@ -41,7 +42,7 @@ export class UsageTrackingDto {
   @IsString()
   subscriptionId: string;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Resource ID related to usage',
     example: 'comm_1234567890'
   })
@@ -121,7 +122,7 @@ export class UsageSummaryDto {
   @IsNumber()
   adminsAdded: number;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'API requests made',
     example: 10000
   })
@@ -137,7 +138,15 @@ export class UsageSummaryDto {
   @IsNumber()
   emailsSent?: number;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
+    description: 'WhatsApp messages sent',
+    example: 100
+  })
+  @IsOptional()
+  @IsNumber()
+  whatsappMessagesSent?: number;
+
+  @ApiPropertyOptional({
     description: 'Automations triggered',
     example: 25
   })
@@ -155,6 +164,10 @@ export class UsageSummaryDto {
     coursesActivationMax: number;
     storageGB: number;
     adminsMax: number;
+    emailCampaignRecipientsPerMonth?: number;
+    whatsappMessagesPerMonth?: number;
+    analyticsLookbackDays?: number;
+    sessionBookingsPerMonth?: number;
   };
 
   @ApiProperty({ 

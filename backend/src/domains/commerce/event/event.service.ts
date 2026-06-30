@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, HttpException, HttpStatus, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
@@ -17,6 +17,7 @@ import { UploadService } from '@/domains/shared/upload/upload.service';
 import { ContentTrackingService } from '@/shared/services/content-tracking.service';
 import { TrackableContentType } from '@/infrastructure/database/schemas/learning/content-tracking.schema';
 import { EmailService } from '@/shared/services/email.service';
+import { StripePaymentService } from '@/shared/services/stripe-payment.service';
 
 @Injectable()
 export class EventService {
@@ -33,6 +34,7 @@ export class EventService {
     private readonly uploadService: UploadService,
     private readonly trackingService: ContentTrackingService,
     private readonly emailService: EmailService,
+    @Optional() private readonly stripePaymentService?: StripePaymentService,
   ) {}
 
   /**
@@ -1176,7 +1178,7 @@ export class EventService {
   /**
    * Désinscrire un utilisateur d'un événement
    */
-  async unregisterAttendee(eventId: string, userId: string): Promise<{ message: string }> {
+  async unregisterAttendee(eventId: string, userId: string): Promise<{ message: string; refund?: { status: string; orderId?: string; reason?: string } }> {
     const event = await this.findEventByIdentifier(eventId);
     if (!event) {
       throw new NotFoundException('Événement non trouvé');
@@ -1205,14 +1207,61 @@ export class EventService {
       ticket.sold -= 1;
     }
 
+    const refund = await this.refundEventTicketIfEligible(event, userId);
+
     event.attendees.splice(attendeeIndex, 1);
     await event.save();
     await this.invalidateEventCaches(event.id || event._id?.toString());
 
-    // TODO: Handle refund logic for paid tickets if needed
-    // This would require checking if there was a payment and processing a refund
+    return { message: 'Désinscription réussie', refund };
+  }
 
-    return { message: 'Désinscription réussie' };
+  private async refundEventTicketIfEligible(
+    event: EventDocument,
+    userId: string,
+  ): Promise<{ status: string; orderId?: string; reason?: string }> {
+    const order = await this.orderModel.findOne({
+      buyerId: new Types.ObjectId(userId),
+      contentType: TrackableContentType.EVENT,
+      contentId: event._id.toString(),
+      status: 'paid',
+    }).sort({ createdAt: -1 }).exec();
+
+    if (!order) return { status: 'not_applicable', reason: 'No paid order found' };
+    if (!order.paymentId || order.paymentMethod !== 'stripe') {
+      order.status = 'pending_verification';
+      order.metadata = {
+        ...(order.metadata || {}),
+        refundRequestedAt: new Date().toISOString(),
+        refundReason: 'event_attendee_unregister_non_stripe',
+      };
+      await order.save();
+      return { status: 'manual_review_required', orderId: order._id.toString(), reason: 'Non-Stripe or missing payment id' };
+    }
+
+    if (!this.stripePaymentService) {
+      return { status: 'manual_review_required', orderId: order._id.toString(), reason: 'Stripe refund service unavailable' };
+    }
+
+    const result = await this.stripePaymentService.refundPayment(order.paymentId);
+    if (!result.success) {
+      order.metadata = {
+        ...(order.metadata || {}),
+        refundFailedAt: new Date().toISOString(),
+        refundError: result.error,
+      };
+      await order.save();
+      return { status: 'failed', orderId: order._id.toString(), reason: result.error };
+    }
+
+    order.status = 'refunded';
+    order.metadata = {
+      ...(order.metadata || {}),
+      refundedAt: new Date().toISOString(),
+      refundReason: 'event_attendee_unregister',
+    };
+    await order.save();
+    return { status: 'refunded', orderId: order._id.toString() };
   }
 
   /**

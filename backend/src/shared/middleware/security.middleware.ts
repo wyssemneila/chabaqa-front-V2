@@ -83,7 +83,6 @@ export class SecurityMiddleware implements NestMiddleware {
 
     // Remove server information
     res.removeHeader('X-Powered-By');
-    res.setHeader('Server', 'Shabaka-Server');
 
     // HSTS (HTTP Strict Transport Security) - only in production
     if (process.env.NODE_ENV === 'production') {

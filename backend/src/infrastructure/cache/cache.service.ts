@@ -261,6 +261,11 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
    */
   async increment(key: string, amount = 1): Promise<number | undefined> {
     try {
+      if (await this.ensureRedisConnected()) {
+        const result = await this.redisClient!.incrBy(key, amount);
+        return Number(result);
+      }
+
       const current = (await this.get<number>(key)) || 0;
       const newValue = current + amount;
       await this.set(key, newValue);

@@ -90,6 +90,76 @@ export class UserService {
     }
   }
 
+  async exportUserData(userId: string): Promise<Record<string, any>> {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid user id');
+    }
+
+    const userObjectId = new Types.ObjectId(userId);
+    const connection = this.userModel.db as Connection;
+    const model = <T = any>(name: string) => this.getModelIfRegistered<T>(connection, name);
+
+    const user = await this.userModel
+      .findById(userObjectId)
+      .select('-password -googleTokens -bankDetails -adminNotes')
+      .lean();
+
+    if (!user) {
+      throw new NotFoundException(`User #${userId} not found`);
+    }
+
+    const findMany = async (modelName: string, query: Record<string, any>) => {
+      const registeredModel = model(modelName);
+      return registeredModel ? registeredModel.find(query).lean().exec() : [];
+    };
+
+    const [
+      communitiesCreated,
+      communitiesJoined,
+      posts,
+      ordersAsBuyer,
+      ordersAsCreator,
+      enrollments,
+      walletTransactions,
+      payouts,
+      notifications,
+      messages,
+      feedback,
+      achievements,
+    ] = await Promise.all([
+      findMany('Community', { createur: userObjectId }),
+      findMany('Community', { members: userObjectId }),
+      findMany('Post', { authorId: userObjectId }),
+      findMany('Order', { buyerId: userObjectId }),
+      findMany('Order', { creatorId: userObjectId }),
+      findMany('CourseEnrollment', { userId: userObjectId }),
+      findMany('WalletTransaction', { userId: userObjectId }),
+      findMany('Payout', { creatorId: userObjectId }),
+      findMany('Notification', { recipient: userObjectId }),
+      findMany('Message', { senderId: userObjectId }),
+      findMany('Feedback', { userId: userObjectId }),
+      findMany('UserAchievement', { userId: userObjectId }),
+    ]);
+
+    return {
+      exportedAt: new Date().toISOString(),
+      user,
+      communities: {
+        created: communitiesCreated,
+        joined: communitiesJoined,
+      },
+      content: { posts, feedback },
+      commerce: {
+        ordersAsBuyer,
+        ordersAsCreator,
+        walletTransactions,
+        payouts,
+      },
+      learning: { enrollments, achievements },
+      communication: { notifications, messages },
+    };
+  }
+
   private normalizeHandleCandidates(handle: string): {
     raw: string;
     slug: string;

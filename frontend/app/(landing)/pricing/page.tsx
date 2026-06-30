@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +11,6 @@ import {
   PLAN_TIERS,
   type PlanTier,
   formatLimit,
-  ADD_ONS,
 } from '@/lib/plans/plan-config';
 import {
   Check,
@@ -23,7 +23,6 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { subscriptionApi, PlanTier as ApiPlanTier } from '@/lib/api/subscription.api';
-import { useToast } from '@/components/ui/use-toast';
 import { PaymentProviderModal } from '@/components/payment-provider-modal';
 import { usePaymentProviderModal } from '@/lib/hooks/use-payment-provider-modal';
 
@@ -43,6 +42,12 @@ const PLAN_COLORS: Record<PlanTier, string> = {
   pro: 'border-purple-300',
 };
 
+const API_TIER_BY_PLAN: Record<PlanTier, ApiPlanTier> = {
+  starter: ApiPlanTier.STARTER,
+  growth: ApiPlanTier.GROWTH,
+  pro: ApiPlanTier.PRO,
+};
+
 // ── Feature comparison rows ────────────────────────────────────────
 
 interface ComparisonRow {
@@ -56,11 +61,8 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { label: 'Total members', category: 'Platform Limits', values: { starter: '100', growth: '500', pro: 'Unlimited' } },
   { label: 'Team / admin seats', values: { starter: '1', growth: '2', pro: '3' } },
   { label: 'Communities', values: { starter: '1', growth: '1', pro: '1' } },
-  { label: 'Custom domain', values: { starter: false, growth: false, pro: true } },
   { label: 'Verified badge', values: { starter: false, growth: true, pro: true } },
   { label: 'Featured badge', values: { starter: false, growth: false, pro: true } },
-  { label: 'Priority support (24/7)', values: { starter: false, growth: false, pro: true } },
-  { label: 'Social media promo', values: { starter: false, growth: true, pro: true } },
 
   // Content Limits
   { label: 'Active courses', category: 'Content', values: { starter: '3', growth: 'Unlimited', pro: 'Unlimited' } },
@@ -71,15 +73,13 @@ const COMPARISON_ROWS: ComparisonRow[] = [
   { label: 'Storage', values: { starter: '5 GB', growth: '50 GB', pro: '300 GB' } },
 
   // Growth & Automation
-  { label: 'Email campaigns (recipients/mo)', category: 'Growth & Automation', values: { starter: '—', growth: '1,000', pro: '15,000' } },
-  { label: 'WhatsApp messages/mo', values: { starter: '—', growth: '250', pro: '1,000' } },
+  { label: 'Email campaigns (recipients/mo)', category: 'Growth & Automation', values: { starter: '-', growth: '1,000', pro: '15,000' } },
+  { label: 'WhatsApp messages/mo', values: { starter: '-', growth: '250', pro: '1,000' } },
   { label: 'Remove Chabaqa branding', values: { starter: false, growth: false, pro: true } },
   { label: 'Gamification (points / badges)', values: { starter: false, growth: true, pro: true } },
 
   // Analytics
-  { label: 'Analytics tier', category: 'Analytics', values: { starter: 'Basic', growth: 'Advanced', pro: 'Advanced + Exports' } },
-  { label: 'Lookback window', values: { starter: '30 days', growth: '180 days', pro: '365 days' } },
-  { label: 'CSV export', values: { starter: false, growth: false, pro: true } },
+  { label: 'Analytics lookback window', category: 'Analytics', values: { starter: '30 days', growth: '180 days', pro: '365 days' } },
 
   // Transaction Fees
   { label: 'Platform transaction fee', category: 'Transaction Fees', values: { starter: '7.9%', growth: '4.9%', pro: '2.9%' } },
@@ -90,7 +90,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
 const FAQS = [
   {
     q: 'Is there a free trial?',
-    a: 'Yes! All plans include a 7-day free trial. No credit card required to start.',
+    a: 'Yes. All plans include a 7-day trial. Checkout is handled securely by the selected payment provider.',
   },
   {
     q: 'Can I switch plans later?',
@@ -102,7 +102,7 @@ const FAQS = [
   },
   {
     q: 'What happens if I go over my plan limits?',
-    a: "We'll notify you when you're approaching limits. You can upgrade your plan or purchase add-ons for extra storage or admin seats.",
+    a: "We'll notify you when you're approaching limits. You can upgrade your plan for higher allowances.",
   },
   {
     q: 'Can I cancel my subscription?',
@@ -114,30 +114,67 @@ const FAQS = [
   },
 ];
 
+export default function PricingPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-background">
+          <section className="mx-auto flex min-h-[60vh] max-w-4xl items-center justify-center px-4 text-center">
+            <p className="text-sm font-medium text-muted-foreground">Loading pricing...</p>
+          </section>
+        </main>
+      }
+    >
+      <PricingPageContent />
+    </Suspense>
+  );
+}
+
 // ── Page Component ─────────────────────────────────────────────────
 
-export default function PricingPage() {
+function PricingPageContent() {
+  const searchParams = useSearchParams();
   const [billing, setBilling] = useState<Billing>('yearly');
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [pendingTier, setPendingTier] = useState<ApiPlanTier | null>(null);
-  const { toast } = useToast();
-
-  const tierMap: Record<PlanTier, ApiPlanTier> = {
-    starter: ApiPlanTier.STARTER,
-    growth: ApiPlanTier.GROWTH,
-    pro: ApiPlanTier.PRO,
-  };
+  const [selectedTier, setSelectedTier] = useState<PlanTier | null>(null);
 
   const paymentModal = usePaymentProviderModal({
     initStripe: () => subscriptionApi.initStripePayment(pendingTier!, billing === 'yearly' ? 'year' : 'month'),
-    initKonnect: () => (subscriptionApi as any).initKonnectPayment(pendingTier!),
-    onError: () => { window.location.href = `/auth/register?billing=${billing}` },
+    initKonnect: () => subscriptionApi.initKonnectPayment(pendingTier!, billing === 'yearly' ? 'year' : 'month'),
+    onError: () => {
+      const params = new URLSearchParams({ billing });
+      if (selectedTier) params.set('plan', selectedTier);
+      params.set('redirect', `/pricing?plan=${selectedTier || 'growth'}&billing=${billing}`);
+      window.location.href = `/signup?${params.toString()}`;
+    },
   });
 
+  useEffect(() => {
+    const planParam = searchParams.get('plan')?.toLowerCase();
+    const billingParam = searchParams.get('billing')?.toLowerCase();
+
+    if (billingParam === 'monthly' || billingParam === 'yearly') {
+      setBilling(billingParam);
+    }
+
+    if (planParam && PLAN_TIERS.includes(planParam as PlanTier)) {
+      const tier = planParam as PlanTier;
+      setSelectedTier(tier);
+      setPendingTier(API_TIER_BY_PLAN[tier]);
+    }
+  }, [searchParams]);
+
   const handleGetStarted = (tier: PlanTier) => {
-    setPendingTier(tierMap[tier]);
+    setSelectedTier(tier);
+    setPendingTier(API_TIER_BY_PLAN[tier]);
     paymentModal.open();
   };
+
+  const checkoutDescription = useMemo(() => {
+    if (!selectedTier) return 'Choose Stripe or Konnect to start your 7-day trial through secure checkout.';
+    return `Start the ${PLANS[selectedTier].name} 7-day trial through secure checkout.`;
+  }, [selectedTier]);
 
   return (
     <>
@@ -145,6 +182,8 @@ export default function PricingPage() {
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        title={selectedTier ? `Start ${PLANS[selectedTier].name}` : 'Choose Payment Method'}
+        description={checkoutDescription}
       />
     <main className="min-h-screen bg-background">
       {/* Hero */}
@@ -158,7 +197,7 @@ export default function PricingPage() {
             Choose Your Plan
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Start with a 7-day free trial. Scale as you grow. All prices in Tunisian Dinar (TND).
+            Start with a 7-day trial through secure checkout. Scale as you grow. All prices are in Tunisian Dinar (TND).
           </p>
         </div>
       </section>
@@ -194,11 +233,12 @@ export default function PricingPage() {
             const Icon = PLAN_ICONS[tier];
             const price = billing === 'yearly' ? plan.yearlyMonthlyPrice : plan.monthlyPrice;
             const isPopular = plan.highlight;
+            const isSelected = selectedTier === tier;
 
             return (
               <Card
                 key={tier}
-                className={`relative flex flex-col transition-shadow hover:shadow-lg ${PLAN_COLORS[tier]} ${isPopular ? 'scale-[1.02] shadow-md' : ''}`}
+                className={`relative flex flex-col transition-shadow hover:shadow-lg ${PLAN_COLORS[tier]} ${isPopular ? 'scale-[1.02] shadow-md' : ''} ${isSelected ? 'ring-2 ring-primary shadow-lg' : ''}`}
               >
                 {isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -216,7 +256,7 @@ export default function PricingPage() {
                   </div>
                   {billing === 'yearly' && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Billed {plan.yearlyTotal} TND/year · Save {plan.monthlyPrice * 12 - plan.yearlyTotal} TND
+                      Billed {plan.yearlyTotal} TND/year. Save {plan.monthlyPrice * 12 - plan.yearlyTotal} TND
                     </p>
                   )}
                   {billing === 'monthly' && (
@@ -225,8 +265,11 @@ export default function PricingPage() {
                     </p>
                   )}
                   <p className="text-sm text-green-600 font-medium mt-2">
-                    7-day free trial included
+                    7-day trial included at checkout
                   </p>
+                  {isSelected && (
+                    <Badge variant="secondary" className="mt-3 w-fit">Selected from your last action</Badge>
+                  )}
                 </CardHeader>
                 <CardContent className="flex flex-col flex-1 gap-4">
                   <ul className="space-y-2.5 flex-1 text-sm">
@@ -293,7 +336,7 @@ export default function PricingPage() {
                     size="lg"
                     onClick={() => handleGetStarted(tier)}
                   >
-                    Start Free Trial
+                    Start secure checkout
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </CardContent>
@@ -321,16 +364,16 @@ export default function PricingPage() {
               </tr>
             </thead>
             <tbody>
-              {COMPARISON_ROWS.map((row, i) => (
-                <>
+              {COMPARISON_ROWS.map((row) => (
+                <Fragment key={`${row.category || 'row'}-${row.label}`}>
                   {row.category && (
-                    <tr key={`cat-${i}`} className="bg-muted/20">
+                    <tr className="bg-muted/20">
                       <td colSpan={4} className="py-2 px-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">
                         {row.category}
                       </td>
                     </tr>
                   )}
-                  <tr key={i} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
+                  <tr className="border-b last:border-0 hover:bg-muted/10 transition-colors">
                     <td className="py-2.5 px-4 text-muted-foreground">{row.label}</td>
                     {PLAN_TIERS.map((tier) => {
                       const val = row.values[tier];
@@ -349,45 +392,10 @@ export default function PricingPage() {
                       );
                     })}
                   </tr>
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
-        </div>
-      </section>
-
-      {/* Add-ons */}
-      <section className="bg-muted/30 py-16">
-        <div className="mx-auto max-w-4xl px-4">
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-2">Need More?</h2>
-          <p className="text-muted-foreground text-center mb-10">Flexible add-ons for when you need extra capacity</p>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Extra Admin Seat</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{ADD_ONS.extraAdminSeat.priceTND} TND<span className="text-sm font-normal text-muted-foreground">/month</span></p>
-                <p className="text-sm text-muted-foreground mt-1">Per additional seat beyond your plan allowance</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Extra Storage</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1.5">
-                  {(Object.entries(ADD_ONS.extraStorage) as [PlanTier, { priceTND: number; per100GB: boolean }][]).map(([tier, info]) => (
-                    <div key={tier} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground capitalize">{tier}:</span>
-                      <span className="font-medium">{info.priceTND} TND / 100 GB / month</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </section>
 
@@ -426,11 +434,11 @@ export default function PricingPage() {
         <div className="mx-auto max-w-2xl px-4">
           <h2 className="text-2xl sm:text-3xl font-bold mb-3">Ready to grow your community?</h2>
           <p className="text-muted-foreground mb-6">
-            Start your 7-day free trial today. No credit card required.
+            Start your 7-day trial through secure checkout and keep your billing details in one place.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button size="lg" onClick={() => handleGetStarted('growth')}>
-              Start Free Trial
+              Start secure checkout
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Button size="lg" variant="outline" asChild>

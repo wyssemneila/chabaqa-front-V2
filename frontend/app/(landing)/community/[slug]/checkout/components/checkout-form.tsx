@@ -6,7 +6,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, CheckCircle, Tag, Users, Star, Loader2, ShieldCheck, Percent } from "lucide-react"
+import { ArrowLeft, CheckCircle, Tag, Users, Star, Loader2, ShieldCheck, Percent, Upload } from "lucide-react"
 import { communitiesApi } from "@/lib/api"
 import type { CommunityThemeTokens } from "@/lib/community-theme"
 import { PaymentProviderModal } from "@/components/payment-provider-modal"
@@ -34,6 +34,9 @@ export function CheckoutForm({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [alreadyMember, setAlreadyMember] = useState(false)
+  const [manualProof, setManualProof] = useState<File | null>(null)
+  const [manualSubmitting, setManualSubmitting] = useState(false)
+  const [manualSubmitted, setManualSubmitted] = useState(false)
 
   const pricing = community as any
   const normalizedInviteCode = typeof inviteCode === "string" ? inviteCode.trim() : ""
@@ -87,15 +90,11 @@ export function CheckoutForm({
     )
   }, [pricing])
 
-  const platformFee = useMemo(() => {
-    return Math.round(basePrice * 0.05 * 100) / 100
-  }, [basePrice])
-
   const discountAmount = 0
 
   const total = useMemo(() => {
-    return Math.max(basePrice + platformFee - discountAmount, 0)
-  }, [basePrice, platformFee])
+    return Math.max(basePrice - discountAmount, 0)
+  }, [basePrice])
 
   const formatCurrency = (amount: number) => {
     try {
@@ -220,6 +219,42 @@ export function CheckoutForm({
     router.push(`/community/${community.slug}`)
   }
 
+  const handleManualProofSubmit = async () => {
+    if (!manualProof || manualSubmitting) return
+    if (!community?.id) {
+      setError("Missing community information")
+      return
+    }
+    if (isPrivateCommunity && !normalizedInviteCode) {
+      setError("This private community requires a valid invitation link.")
+      return
+    }
+
+    setManualSubmitting(true)
+    setError(null)
+    try {
+      await (communitiesApi as any).initManualPayment({
+        communityId: community.id,
+        proof: manualProof,
+        promoCode: promoCode || undefined,
+        inviteCode: normalizedInviteCode || undefined,
+      })
+      setManualSubmitted(true)
+      setManualProof(null)
+    } catch (err: any) {
+      const msg = String(err?.message || '').toLowerCase()
+      if (msg.includes("authentication") || msg.includes("unauthorized") || msg.includes("login")) {
+        const returnPath = `${window.location.pathname}${window.location.search || ""}`
+        const returnUrl = encodeURIComponent(returnPath)
+        router.push(`/signin?redirect=${returnUrl}&returnUrl=${returnUrl}`)
+        return
+      }
+      setError(err?.message || "Failed to submit manual payment proof.")
+    } finally {
+      setManualSubmitting(false)
+    }
+  }
+
   return (
     <>
       <PaymentProviderModal
@@ -316,7 +351,7 @@ export function CheckoutForm({
             <ul className="list-disc list-inside text-gray-600 text-sm space-y-1">
               <li>Access to members-only discussions and events</li>
               <li>Exclusive content, resources, and templates</li>
-              <li>Priority support and feedback from the community</li>
+              <li>Creator feedback from the community</li>
               <li>Early access to new features and challenges</li>
             </ul>
           </div>
@@ -335,12 +370,9 @@ export function CheckoutForm({
                 <p className="text-sm text-gray-500">Membership price</p>
                 <p className="text-2xl font-bold text-gray-900">{formatCurrency(basePrice)}</p>
               </div>
-              <Badge
-                className="bg-chabaqa-primary/10 border flex items-center gap-1"
-                style={{ color: primary, borderColor: mutedBorder || undefined }}
-              >
+              <Badge className="bg-chabaqa-primary/10 border flex items-center gap-1" style={{ color: primary, borderColor: mutedBorder || undefined }}>
                 <Percent className="w-3 h-3" />
-                No hidden fees
+                Backend-verified total
               </Badge>
             </div>
 
@@ -374,13 +406,12 @@ export function CheckoutForm({
                 <span>{formatCurrency(basePrice)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Platform fee</span>
-                <span>{formatCurrency(platformFee)}</span>
-              </div>
-              <div className="flex items-center justify-between">
                 <span>Promo discount</span>
                 <span className="text-emerald-600">-{formatCurrency(discountAmount)}</span>
               </div>
+              <p className="rounded-lg bg-gray-50 p-2 text-xs text-gray-500">
+                Creator transaction fees are calculated by the backend from the creator plan and are not added as a separate buyer fee here.
+              </p>
               <div className="border-t border-dashed border-gray-200 pt-3 mt-2 flex items-center justify-between font-semibold">
                 <span>Total due today</span>
                 <span>{formatCurrency(total)}</span>
@@ -394,6 +425,33 @@ export function CheckoutForm({
                   Instant Access
                 </p>
                 <p className="mt-1 opacity-90">Pay securely with your credit/debit card and get instant access to the community.</p>
+              </div>
+            )}
+
+            {basePrice > 0 && !success && (
+              <div className="mb-6 rounded-lg border border-dashed border-gray-300 bg-white p-4">
+                <p className="text-sm font-semibold text-gray-900">Manual transfer proof</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">
+                  Upload a bank transfer proof for creator review. Access starts after approval.
+                </p>
+                <div className="mt-3 flex flex-col gap-2">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={(event) => setManualProof(event.target.files?.[0] || null)}
+                    className="block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-gray-700"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleManualProofSubmit}
+                    disabled={!manualProof || manualSubmitting || manualSubmitted}
+                    className="h-11 w-full justify-center gap-2"
+                  >
+                    {manualSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    {manualSubmitted ? 'Proof submitted' : 'Submit proof for review'}
+                  </Button>
+                </div>
               </div>
             )}
 
