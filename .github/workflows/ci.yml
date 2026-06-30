@@ -111,6 +111,8 @@ jobs:
           MONGODB_URI: mongodb://127.0.0.1:27017/chabaqa_test
           JWT_SECRET: ci-jwt-secret-that-is-long-enough
           JWT_REFRESH_SECRET: ci-refresh-secret-that-is-long-enough
+          GOOGLE_AUTH_CLIENT_ID: ci-google-client-id
+          GOOGLE_AUTH_CLIENT_SECRET: ci-google-client-secret
           REDIS_ENABLED: false
           FRONTEND_URL: http://localhost:8083
           SERVER_URL: http://localhost:3000/api
