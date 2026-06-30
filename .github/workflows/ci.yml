@@ -113,6 +113,8 @@ jobs:
           JWT_REFRESH_SECRET: ci-refresh-secret-that-is-long-enough
           GOOGLE_AUTH_CLIENT_ID: ci-google-client-id
           GOOGLE_AUTH_CLIENT_SECRET: ci-google-client-secret
+          STRIPE_SECRET_KEY: ci-stripe-secret-key
+          STRIPE_WEBHOOK_SECRET: ci-stripe-webhook-secret
           REDIS_ENABLED: false
           FRONTEND_URL: http://localhost:8083
           SERVER_URL: http://localhost:3000/api
