@@ -107,6 +107,15 @@ export interface CreatorSubscription {
   providerSubscriptionId?: string;
   providerCheckoutSessionId?: string;
   providerPriceId?: string;
+  communitiesMax?: number;
+  membersMax?: number;
+  coursesActivationMax?: number;
+  storageGB?: number;
+  adminsMax?: number;
+  emailCampaignRecipientsPerMonth?: number;
+  whatsappMessagesPerMonth?: number;
+  analyticsLookbackDays?: number;
+  sessionBookingsPerMonth?: number;
   createdAt: string;
   updatedAt: string;
 }

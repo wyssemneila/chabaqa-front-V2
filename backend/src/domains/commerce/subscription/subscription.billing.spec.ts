@@ -125,6 +125,38 @@ describe('SubscriptionService billing records', () => {
     );
   });
 
+  it('uses a stable order-scoped provider invoice id for checkout-only invoices', async () => {
+    const { service, models } = buildService();
+    const order = {
+      _id: objectId(),
+      buyerId: objectId(),
+      creatorId: objectId(),
+      contentType: 'subscription',
+      contentId: 'pro',
+      amountDT: 159,
+      paymentMethod: 'stripe',
+      paymentId: 'cs_test_checkout_only',
+      metadata: { tier: 'pro', billingInterval: 'month', currency: 'TND' },
+      createdAt: new Date('2026-06-01T00:00:00Z'),
+    };
+
+    await service.recordInvoiceForOrder(order, { provider: 'stripe' });
+
+    expect(models.invoiceModel.updateOne).toHaveBeenCalledWith(
+      { orderId: order._id },
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          providerInvoiceId: `order_${order._id.toString()}`,
+          invoiceNumber: `INV-${order._id.toString().slice(-10).toUpperCase()}`,
+          metadata: expect.objectContaining({
+            generatedProviderInvoiceId: true,
+          }),
+        }),
+      }),
+      { upsert: true, session: null },
+    );
+  });
+
   it('creates community member subscription records only for recurring community orders', async () => {
     const { service, models } = buildService();
     const order = {
