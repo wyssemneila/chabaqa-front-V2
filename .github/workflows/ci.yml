@@ -104,6 +104,7 @@ jobs:
       - name: E2E tests
         env:
           NODE_ENV: test
+          NODE_OPTIONS: --max-old-space-size=4096
           PORT: 3000
           HOST: 127.0.0.1
           MONGO_URI: mongodb://127.0.0.1:27017/chabaqa_test
