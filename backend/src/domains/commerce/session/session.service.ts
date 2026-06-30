@@ -58,6 +58,20 @@ export class SessionService {
     return this.communityModel.findOne({ id: communityId });
   }
 
+  private async resolveSessionDocument(sessionId: string): Promise<SessionDocument> {
+    let session: SessionDocument | null = null;
+    if (Types.ObjectId.isValid(sessionId)) {
+      session = await this.sessionModel.findById(sessionId);
+    }
+    if (!session) {
+      session = await this.sessionModel.findOne({ id: sessionId });
+    }
+    if (!session) {
+      throw new NotFoundException('Session non trouvée');
+    }
+    return session;
+  }
+
   private normalizeOptionalString(value?: string): string | undefined {
     if (typeof value !== 'string') return undefined;
     const trimmed = value.trim();
@@ -310,6 +324,7 @@ export class SessionService {
 
           return {
             id: session.id,
+            mongoId: session._id?.toString?.(),
             title: sessionData.title || sessionData.name,
             description: sessionData.description,
             thumbnail: sessionData.thumbnail || sessionData.image || 'https://placehold.co/400x300?text=Session',
@@ -361,6 +376,7 @@ export class SessionService {
 
           return {
             id: session.id,
+            mongoId: session._id?.toString?.(),
             title: sessionData.title || sessionData.name,
             description: sessionData.description,
             thumbnail: sessionData.thumbnail || sessionData.image || 'https://placehold.co/400x300?text=Session',
@@ -560,14 +576,8 @@ export class SessionService {
    * Récupérer une session par son ID
    */
   async findOne(id: string): Promise<SessionResponseDto> {
-    const session = await this.sessionModel
-      .findOne({ id })
-      .populate('creatorId', 'name email profile_picture photo_profil')
-      .exec();
-
-    if (!session) {
-      throw new NotFoundException('Session non trouvée');
-    }
+    const session = await this.resolveSessionDocument(id);
+    await session.populate('creatorId', 'name email profile_picture photo_profil');
 
     // Look up community by _id (convert string to ObjectId if needed)
     let community;
@@ -613,10 +623,7 @@ export class SessionService {
    * Mettre à jour une session
    */
   async update(id: string, updateSessionDto: UpdateSessionDto, userId: string): Promise<SessionResponseDto> {
-    const session = await this.sessionModel.findOne({ id });
-    if (!session) {
-      throw new NotFoundException('Session non trouvée');
-    }
+    const session = await this.resolveSessionDocument(id);
 
     // Normalize user IDs for comparison
     const sessionCreatorId = session.creatorId.toString();
@@ -662,10 +669,7 @@ export class SessionService {
    * Supprimer une session
    */
   async remove(id: string, userId: string): Promise<void> {
-    const session = await this.sessionModel.findOne({ id });
-    if (!session) {
-      throw new NotFoundException('Session non trouvée');
-    }
+    const session = await this.resolveSessionDocument(id);
 
     // DISABLED FOR TESTING - Creator check
     // Vérifier que l'utilisateur est le créateur de la session
@@ -673,7 +677,7 @@ export class SessionService {
     //   throw new ForbiddenException('Seul le créateur de la session peut la supprimer');
     // }
 
-    await this.sessionModel.deleteOne({ id });
+    await this.sessionModel.deleteOne({ _id: session._id });
     await this.invalidateSessionCaches(session.creatorId.toString());
   }
 
@@ -1687,10 +1691,7 @@ export class SessionService {
    * Définir les heures de disponibilité pour une session
    */
   async setAvailableHours(sessionId: string, setAvailableHoursDto: SetAvailableHoursDto, userId: string): Promise<AvailableHoursResponseDto> {
-    const session = await this.sessionModel.findOne({ id: sessionId });
-    if (!session) {
-      throw new NotFoundException('Session non trouvée');
-    }
+    const session = await this.resolveSessionDocument(sessionId);
 
     // DISABLED FOR TESTING - TODO: Re-enable before production
     // Vérifier que l'utilisateur est le créateur de la session
@@ -1723,10 +1724,7 @@ export class SessionService {
    * Générer les créneaux disponibles pour une session
    */
   async generateAvailableSlots(sessionId: string, generateSlotsDto: GenerateSlotsDto, userId: string): Promise<AvailableSlotsResponseDto> {
-    const session = await this.sessionModel.findOne({ id: sessionId });
-    if (!session) {
-      throw new NotFoundException('Session non trouvée');
-    }
+    const session = await this.resolveSessionDocument(sessionId);
 
     // DISABLED FOR TESTING - TODO: Re-enable before production
     // Vérifier que l'utilisateur est le créateur de la session
@@ -1749,10 +1747,7 @@ export class SessionService {
    * Obtenir les heures de disponibilité d'une session
    */
   async getAvailableHours(sessionId: string, userId: string): Promise<AvailableHoursResponseDto> {
-    const session = await this.sessionModel.findOne({ id: sessionId });
-    if (!session) {
-      throw new NotFoundException('Session non trouvée');
-    }
+    const session = await this.resolveSessionDocument(sessionId);
 
     // DISABLED FOR TESTING - TODO: Re-enable before production
     // Vérifier que l'utilisateur est le créateur de la session
@@ -1767,10 +1762,7 @@ export class SessionService {
    * Obtenir les créneaux disponibles pour une session
    */
   async getAvailableSlots(sessionId: string, getAvailableSlotsDto?: GetAvailableSlotsDto): Promise<AvailableSlotsResponseDto> {
-    const session = await this.sessionModel.findOne({ id: sessionId });
-    if (!session) {
-      throw new NotFoundException('Session non trouvée');
-    }
+    const session = await this.resolveSessionDocument(sessionId);
 
     console.log(`[getAvailableSlots] Session ${sessionId}:`, {
       autoGenerateSlots: session.autoGenerateSlots,
@@ -1816,10 +1808,7 @@ export class SessionService {
    * Réserver un créneau spécifique
    */
   async bookSlot(sessionId: string, bookSlotDto: BookSlotDto, userId: string): Promise<SessionResponseDto> {
-    const session = await this.sessionModel.findOne({ id: sessionId });
-    if (!session) {
-      throw new NotFoundException('Session non trouvée');
-    }
+    const session = await this.resolveSessionDocument(sessionId);
 
     // Vérifier que la session est active
     if (!session.isActive) {
@@ -1934,10 +1923,7 @@ export class SessionService {
    * Annuler un créneau réservé
    */
   async cancelSlot(sessionId: string, slotId: string, userId: string): Promise<SessionResponseDto> {
-    const session = await this.sessionModel.findOne({ id: sessionId });
-    if (!session) {
-      throw new NotFoundException('Session non trouvée');
-    }
+    const session = await this.resolveSessionDocument(sessionId);
 
     const slot = session.getSlot(slotId);
     if (!slot) {
@@ -2025,6 +2011,7 @@ export class SessionService {
 
     return {
       id: session.id,
+      mongoId: session._id?.toString?.(),
       title: session.title,
       description: session.description,
       thumbnail: this.normalizeOptionalString((session as any).thumbnail),

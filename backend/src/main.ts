@@ -10,6 +10,8 @@ import { UploadService } from '@/domains/shared/upload/upload.service';
 import { MonitoringService } from '@/shared/services/monitoring.service';
 import os from 'os';
 import { webcrypto } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { extname, isAbsolute, relative, resolve } from 'node:path';
 import {
   getAllowedCorsOrigins,
   isCorsOriginAllowed,
@@ -19,6 +21,8 @@ import {
 import { validateStartupEnv } from '@/shared/utils/startup-env.validation';
 import { csrfProtectionMiddleware } from '@/shared/middleware/csrf-protection.middleware';
 import { SecurityMiddleware } from '@/shared/middleware/security.middleware';
+import { resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
+import { S3StorageAdapter } from '@/domains/content/media/storage/s3-storage.adapter';
 
 // Compatibility for Node < 20 where globalThis.crypto may be undefined.
 if (!globalThis.crypto) {
@@ -46,6 +50,8 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
   const monitoringService = app.get(MonitoringService);
   const securityMiddleware = app.get(SecurityMiddleware);
+  const s3StorageAdapter = app.get(S3StorageAdapter, { strict: false });
+  const storageReadPreference = (process.env.MEDIA_STORAGE_READ_PREFERENCE || process.env.MEDIA_STORAGE_DRIVER || 'disk').toLowerCase();
   expressApp.disable('x-powered-by');
 
   const trustProxy = process.env.TRUST_PROXY;
@@ -77,6 +83,81 @@ async function bootstrap() {
 
   app.use(express.static('public'));
   // app.use('/uploads', cors(), express.static('uploads')); // Handled by ServeStaticModule in AppModule
+  const streamUploadFromObjectStorage = async (storageKey: string, res: any): Promise<boolean> => {
+    try {
+      const object = await s3StorageAdapter.getObjectStream(storageKey);
+      const extension = extname(storageKey).toLowerCase();
+      const fallbackContentType =
+        extension === '.jpg' || extension === '.jpeg' ? 'image/jpeg' :
+        extension === '.png' ? 'image/png' :
+        extension === '.gif' ? 'image/gif' :
+        extension === '.webp' ? 'image/webp' :
+        extension === '.svg' ? 'image/svg+xml' :
+        extension === '.mp4' ? 'video/mp4' :
+        extension === '.webm' ? 'video/webm' :
+        extension === '.mov' ? 'video/quicktime' :
+        extension === '.mp3' ? 'audio/mpeg' :
+        extension === '.wav' ? 'audio/wav' :
+        extension === '.pdf' ? 'application/pdf' :
+        'application/octet-stream';
+      res.setHeader('Content-Type', object.contentType || fallbackContentType);
+      if (object.contentLength) res.setHeader('Content-Length', String(object.contentLength));
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+      object.stream.pipe(res);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  app.use('/uploads', async (req: any, res: any, next: any) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      next();
+      return;
+    }
+
+    let storageKey = '';
+    try {
+      storageKey = decodeURIComponent(String(req.path || '').replace(/^\/+/, ''));
+    } catch {
+      storageKey = String(req.path || '').replace(/^\/+/, '');
+    }
+    if (!storageKey || storageKey.includes('\0')) {
+      next();
+      return;
+    }
+
+    const uploadsRoot = resolve(resolveUploadsRoot());
+    const filePath = resolve(uploadsRoot, storageKey);
+    const relativePath = relative(uploadsRoot, filePath);
+    if (!relativePath || relativePath.startsWith('..') || isAbsolute(relativePath)) {
+      next();
+      return;
+    }
+
+    if (storageReadPreference === 's3' && await streamUploadFromObjectStorage(storageKey, res)) {
+      return;
+    }
+
+    if (existsSync(filePath)) {
+      next();
+      return;
+    }
+
+    if (await streamUploadFromObjectStorage(storageKey, res)) {
+      return;
+    }
+
+    if (storageKey.startsWith('image/')) {
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      res.redirect(302, '/placeholder.svg');
+      return;
+    }
+
+    next();
+  });
 
 
   const jsonBodyLimit = process.env.JSON_BODY_LIMIT || '2mb';

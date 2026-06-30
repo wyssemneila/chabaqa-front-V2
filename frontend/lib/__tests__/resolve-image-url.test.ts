@@ -14,4 +14,10 @@ describe("resolveImageUrl", () => {
       "/banners-community/community-1-email-marketing.png",
     )
   })
+
+  it("does not turn synthetic media keys into broken upload requests", () => {
+    expect(resolveImageUrl("typed-settings-logo-ai-founders-circle-tunisia")).toBeUndefined()
+    expect(resolveImageUrl("typed-image-community-cover")).toBeUndefined()
+    expect(resolveImageUrl("https://chabaqa.io/uploads/image/typed-settings-logo-ai-founders-circle-tunisia")).toBeUndefined()
+  })
 })

@@ -30,6 +30,20 @@ export interface OpenWaMessageResponse {
   raw?: any;
 }
 
+export interface OpenWaHealthResponse {
+  enabled: boolean;
+  reachable: boolean;
+  authenticated: boolean;
+  status?: number;
+  message?: string;
+}
+
+export interface OpenWaWebhookPayload {
+  url: string;
+  secret?: string;
+  events?: string[];
+}
+
 export interface OpenWaMediaPayload {
   chatId: string;
   mediaUrl: string;
@@ -43,13 +57,17 @@ export class OpenWaClientService {
   private readonly client: AxiosInstance;
 
   constructor() {
-    const baseURL = (process.env.OPENWA_BASE_URL || 'http://localhost:2785/api').replace(/\/+$/, '');
+    const baseURL = (
+      process.env.OPENWA_BASE_URL || 'http://localhost:2785/api'
+    ).replace(/\/+$/, '');
     const timeout = Number(process.env.OPENWA_REQUEST_TIMEOUT_MS || 15_000);
     this.client = axios.create({ baseURL, timeout });
   }
 
   isEnabled(): boolean {
-    return String(process.env.WHATSAPP_ENABLED || 'false').toLowerCase() === 'true';
+    return (
+      String(process.env.WHATSAPP_ENABLED || 'false').toLowerCase() === 'true'
+    );
   }
 
   normalizePhoneToChatId(phoneE164: string): string {
@@ -69,11 +87,19 @@ export class OpenWaClientService {
   }
 
   async startSession(sessionId: string): Promise<OpenWaSessionResponse> {
-    return this.request<OpenWaSessionResponse>({
-      method: 'POST',
-      url: `/sessions/${encodeURIComponent(sessionId)}/start`,
-      timeout: Number(process.env.OPENWA_SESSION_START_TIMEOUT_MS || 120_000),
-    });
+    try {
+      return await this.request<OpenWaSessionResponse>({
+        method: 'POST',
+        url: `/sessions/${encodeURIComponent(sessionId)}/start`,
+        timeout: Number(process.env.OPENWA_SESSION_START_TIMEOUT_MS || 120_000),
+      });
+    } catch (error: any) {
+      const message = String(error?.message || '').toLowerCase();
+      if (message.includes('session is already started')) {
+        return this.getSession(sessionId);
+      }
+      throw error;
+    }
   }
 
   async stopSession(sessionId: string): Promise<OpenWaSessionResponse> {
@@ -97,7 +123,10 @@ export class OpenWaClientService {
     });
   }
 
-  async requestPairingCode(sessionId: string, phoneNumber: string): Promise<{ pairingCode?: string; code?: string }> {
+  async requestPairingCode(
+    sessionId: string,
+    phoneNumber: string,
+  ): Promise<{ pairingCode?: string; code?: string }> {
     return this.request<{ pairingCode?: string; code?: string }>({
       method: 'POST',
       url: `/sessions/${encodeURIComponent(sessionId)}/pairing-code`,
@@ -105,7 +134,11 @@ export class OpenWaClientService {
     });
   }
 
-  async sendText(sessionId: string, chatId: string, text: string): Promise<OpenWaMessageResponse> {
+  async sendText(
+    sessionId: string,
+    chatId: string,
+    text: string,
+  ): Promise<OpenWaMessageResponse> {
     const response = await this.request<any>({
       method: 'POST',
       url: `/sessions/${encodeURIComponent(sessionId)}/messages/send-text`,
@@ -127,12 +160,63 @@ export class OpenWaClientService {
     return this.normalizeMessageResponse(response);
   }
 
-  async createWebhook(sessionId: string, url: string, secret: string): Promise<any> {
+  async createWebhook(
+    sessionId: string,
+    webhook: OpenWaWebhookPayload,
+  ): Promise<any> {
     return this.request<any>({
       method: 'POST',
       url: `/sessions/${encodeURIComponent(sessionId)}/webhooks`,
-      data: { url, secret },
+      data: {
+        url: webhook.url,
+        secret: webhook.secret,
+        events: webhook.events || [
+          'message.received',
+          'message.sent',
+          'message.ack',
+          'message.failed',
+          'session.status',
+          'session.authenticated',
+          'session.disconnected',
+        ],
+      },
     });
+  }
+
+  async health(): Promise<OpenWaHealthResponse> {
+    if (!this.isEnabled()) {
+      return {
+        enabled: false,
+        reachable: false,
+        authenticated: false,
+        message: 'WhatsApp integration is disabled',
+      };
+    }
+    const apiKey = String(process.env.OPENWA_API_KEY || '').trim();
+    if (!apiKey) {
+      return {
+        enabled: true,
+        reachable: false,
+        authenticated: false,
+        message: 'OpenWA API key is not configured',
+      };
+    }
+    try {
+      await this.request<any>({ method: 'GET', url: '/sessions' });
+      return { enabled: true, reachable: true, authenticated: true };
+    } catch (error: any) {
+      const message = String(error?.message || 'OpenWA health check failed');
+      return {
+        enabled: true,
+        reachable:
+          !message.toLowerCase().includes('network') &&
+          !message.toLowerCase().includes('econnrefused'),
+        authenticated:
+          !message.toLowerCase().includes('401') &&
+          !message.toLowerCase().includes('403'),
+        message,
+      };
+    }
   }
 
   private normalizeMessageResponse(response: any): OpenWaMessageResponse {
@@ -166,13 +250,29 @@ export class OpenWaClientService {
       return response.data;
     } catch (error: any) {
       const status = error?.response?.status;
-      const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        error?.message ||
-        'OpenWA request failed';
-      this.logger.warn(`OpenWA ${config.method || 'GET'} ${config.url} failed (${status || 'no-status'}): ${message}`);
+      const message = this.extractErrorMessage(error);
+      this.logger.warn(
+        `OpenWA ${config.method || 'GET'} ${config.url} failed (${status || 'no-status'}): ${message}`,
+      );
       throw new BadGatewayException(`OpenWA request failed: ${message}`);
     }
+  }
+
+  private extractErrorMessage(error: any): string {
+    const data = error?.response?.data;
+    const message = data?.message || data?.error || error?.message;
+    if (Array.isArray(message)) {
+      return message.join('; ');
+    }
+    if (message && typeof message === 'object') {
+      return JSON.stringify(message);
+    }
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+    if (data && typeof data === 'object') {
+      return JSON.stringify(data);
+    }
+    return 'OpenWA request failed';
   }
 }

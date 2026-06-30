@@ -258,7 +258,7 @@ export default function SessionsPage() {
                   style={{ background:'var(--white)', color:'var(--t1)', border:'1.5px solid var(--bd)' }}>
                   <Users className="w-4 h-4" /> {t.bookingList}
                 </Link>
-                <Link href="/creator/sessions/create"
+                <Link href="/creator/sessions/new"
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90"
                   style={{ background:'var(--p)', boxShadow:'0 4px 14px rgba(142,120,251,.4)' }}>
                   <Plus className="w-4 h-4" /> {t.createSession}
@@ -344,7 +344,7 @@ export default function SessionsPage() {
                   </div>
                   <h3 className="text-[16px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>{t.noSessions}</h3>
                   <p className="text-[13px] mb-6 max-w-xs" style={{ color:'var(--t2)' }}>{t.noSessionsDesc}</p>
-                  <Link href="/creator/sessions/create"
+                  <Link href="/creator/sessions/new"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-bold text-white hover:opacity-90"
                     style={{ background:'var(--p)', boxShadow:'0 4px 14px rgba(142,120,251,.35)' }}>
                     <Plus className="w-4 h-4" /> {t.createFirst}

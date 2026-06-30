@@ -27,6 +27,7 @@ export default function ChallengeCard({ challenge }: ChallengeCardProps) {
   const { toast } = useToast()
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
+  const challengeId = challenge.mongoId || challenge._id || challenge.id
 
   // Ensure dates are Date objects
   const startDate = challenge.startDate instanceof Date ? challenge.startDate : new Date(challenge.startDate)
@@ -57,7 +58,7 @@ export default function ChallengeCard({ challenge }: ChallengeCardProps) {
 
     setIsDeleting(true)
     try {
-      await api.challenges.delete(challenge.id)
+      await api.challenges.delete(challengeId)
       toast({
         title: "Challenge deleted",
         description: "The challenge has been successfully deleted.",
@@ -104,7 +105,7 @@ export default function ChallengeCard({ challenge }: ChallengeCardProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link href={`/creator/challenges/${challenge.id}/manage`}>
+                  <Link href={`/creator/challenges/${challengeId}/manage`}>
                     <Eye className="mr-2 h-4 w-4" /> View Challenge
                   </Link>
                 </DropdownMenuItem>
@@ -187,12 +188,12 @@ export default function ChallengeCard({ challenge }: ChallengeCardProps) {
           </div>
           <div className="flex items-center space-x-2">
             <Button size="sm" variant="outline" asChild>
-              <Link href={`/creator/challenges/${challenge.id}/manage?tab=analytics`}>
+              <Link href={`/creator/challenges/${challengeId}/manage?tab=analytics`}>
                 <TrendingUp className="h-4 w-4 mr-1" /> Analytics
               </Link>
             </Button>
             <Button size="sm" asChild>
-              <Link href={`/creator/challenges/${challenge.id}/manage`}>
+              <Link href={`/creator/challenges/${challengeId}/manage`}>
                 <Edit className="h-4 w-4 mr-1" /> Manage
               </Link>
             </Button>

@@ -79,6 +79,26 @@ export interface EventListParams extends PaginationParams {
   search?: string;
 }
 
+export const normalizeEventResponse = (response: any): any => {
+  if (!response) return response;
+  if (response?.event) return response.event;
+  if (response?.data?.event) return response.data.event;
+  if (response?.data?.data?.event) return response.data.data.event;
+  if (response?.data?.data) return response.data.data;
+  if (response?.data) return response.data;
+  return response;
+};
+
+export const normalizeEventListResponse = (response: any): any[] => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.events)) return response.events;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.events)) return response.data.events;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  if (Array.isArray(response?.data?.data?.events)) return response.data.data.events;
+  return [];
+};
+
 // Events API
 export const eventsApi = {
   // Get all events
@@ -90,18 +110,18 @@ export const eventsApi = {
   },
 
   // Create event
-  create: async (data: CreateEventData): Promise<ApiSuccessResponse<Event>> => {
-    return apiClient.post<ApiSuccessResponse<Event>>('/events', data);
+  create: async (data: CreateEventData): Promise<any> => {
+    return apiClient.post<any>('/events', data);
   },
 
   // Get event by ID
-  getById: async (id: string): Promise<ApiSuccessResponse<Event>> => {
-    return apiClient.get<ApiSuccessResponse<Event>>(`/events/${id}`);
+  getById: async (id: string): Promise<any> => {
+    return apiClient.get<any>(`/events/${id}`);
   },
 
   // Update event
-  update: async (id: string, data: UpdateEventData): Promise<ApiSuccessResponse<Event>> => {
-    return apiClient.patch<ApiSuccessResponse<Event>>(`/events/${id}`, data);
+  update: async (id: string, data: UpdateEventData): Promise<any> => {
+    return apiClient.patch<any>(`/events/${id}`, data);
   },
 
   // Delete event

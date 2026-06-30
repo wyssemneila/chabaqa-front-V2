@@ -93,6 +93,21 @@ describe('authMiddleware admin routing', () => {
     expect(response.headers.get('location')).toBe('http://localhost:8080/ar/signin')
   })
 
+  it('allows third-party video embeds on the localized landing page', async () => {
+    const response = await authMiddleware(makeRequest('/en'))
+
+    expect(response.headers.get('location')).toBeNull()
+    expect(response.headers.get('x-middleware-rewrite')).toBe('http://localhost:8080/')
+    expect(response.headers.get('Cross-Origin-Embedder-Policy')).toBe('unsafe-none')
+  })
+
+  it('keeps cross-origin embedder isolation on non-landing pages', async () => {
+    const response = await authMiddleware(makeRequest('/en/explore'))
+
+    expect(response.headers.get('location')).toBeNull()
+    expect(response.headers.get('Cross-Origin-Embedder-Policy')).toBe('credentialless')
+  })
+
   it('allows authenticated users to access /en/profile', async () => {
     const userToken = await createToken('user')
     const response = await authMiddleware(

@@ -1,6 +1,6 @@
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
-import { CreateSessionForm } from '@/components/sessions/create-session-form'
+import { SessionCreationContainer } from '../new/components/session-creation-container'
 
 export default function CreateSessionPage() {
   return (
@@ -17,7 +17,7 @@ export default function CreateSessionPage() {
         <div className="md:ml-[220px] flex-1 flex flex-col h-screen overflow-hidden">
           <DashTopbar title="Create Session" subtitle="New 1-on-1 coaching session" />
           <main id="main-content" className="flex-1 flex flex-col overflow-hidden" style={{ animation: 'dashFadeUp .4s ease both' }}>
-            <CreateSessionForm />
+            <SessionCreationContainer />
           </main>
         </div>
       </div>

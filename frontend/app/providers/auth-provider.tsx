@@ -9,7 +9,7 @@ import { io, Socket } from "socket.io-client"
 import { resolveSocketBaseUrl } from "@/lib/socket-url"
 import { localizeHref } from "@/lib/i18n/client"
 import { syncAccessTokenCookie } from "@/lib/cookie-sync"
-import { refreshBrowserAccessToken } from "@/lib/auth-refresh"
+import { hasBrowserRefreshSession, refreshBrowserAccessToken } from "@/lib/auth-refresh"
 
 export interface User {
   _id: string
@@ -113,7 +113,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
       let token = localStorage.getItem('accessToken') || localStorage.getItem('access_token')
-      if (!token) {
+      const hasStoredUser = Boolean(localStorage.getItem('user'))
+      if (!token && hasBrowserRefreshSession()) {
+        token = await refreshBrowserAccessToken(apiBase, { skipWhenNoSessionHint: true })
+      } else if (!token && hasStoredUser) {
         token = await refreshBrowserAccessToken(apiBase)
       }
       setToken(token)

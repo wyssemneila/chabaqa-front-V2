@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { resolveImageUrl } from "@/lib/resolve-image-url"
 
 interface EventSpeakersTabProps {
   event: Event
@@ -50,13 +51,21 @@ const toSpeakerForm = (speaker: any): SpeakerFormState => ({
 })
 
 const isValidUrl = (value?: string) => {
-  if (!value) return true
+  const raw = value?.trim()
+  if (!raw) return true
+  if (resolveImageUrl(raw)) return true
+  if (raw.startsWith("/uploads/") || raw.startsWith("/storage/") || raw.startsWith("/images/")) return true
   try {
-    new URL(value)
+    new URL(raw)
     return true
   } catch {
     return false
   }
+}
+
+const normalizeSpeakerPhoto = (value?: string) => {
+  const raw = value?.trim() || ""
+  return resolveImageUrl(raw) || raw
 }
 
 const nextId = () => `speaker_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -96,7 +105,7 @@ export default function EventSpeakersTab({ event, onUpdateEvent }: EventSpeakers
         name: newSpeaker.name.trim(),
         title: newSpeaker.title.trim(),
         bio: newSpeaker.bio.trim(),
-        photo: newSpeaker.photo.trim(),
+        photo: normalizeSpeakerPhoto(newSpeaker.photo),
       },
     ])
 
@@ -126,7 +135,7 @@ export default function EventSpeakersTab({ event, onUpdateEvent }: EventSpeakers
             name: editingSpeaker.name.trim(),
             title: editingSpeaker.title.trim(),
             bio: editingSpeaker.bio.trim(),
-            photo: editingSpeaker.photo.trim(),
+            photo: normalizeSpeakerPhoto(editingSpeaker.photo),
           }
         : speaker,
     )
@@ -213,8 +222,8 @@ export default function EventSpeakersTab({ event, onUpdateEvent }: EventSpeakers
           {speakers.map((speaker) => (
             <div key={speaker.id} className="flex items-center space-x-4 p-4 border rounded-lg">
               <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-                {speaker.photo ? (
-                  <Image src={speaker.photo} alt={speaker.name} width={64} height={64} className="rounded-full" />
+                {normalizeSpeakerPhoto(speaker.photo) ? (
+                  <Image src={normalizeSpeakerPhoto(speaker.photo)} alt={speaker.name} width={64} height={64} className="rounded-full" />
                 ) : (
                   <Mic className="h-6 w-6 text-gray-500" />
                 )}

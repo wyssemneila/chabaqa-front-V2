@@ -13,6 +13,7 @@ import { CreatorAdvancedSection } from "@/components/creator-dashboard/create-fl
 import { useCallback, useRef, useState } from "react"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { resolveImageUrl } from "@/lib/resolve-image-url"
 
 interface BasicInfoStepProps {
   formData: {
@@ -70,7 +71,7 @@ export function BasicInfoStep({ formData, setFormData, validationErrors = {} }: 
       const uploaded = (res as any)?.data || res
       const url = uploaded?.url || uploaded?.data?.url
       if (!url) throw new Error('Upload did not return a URL')
-      setFormData((prev: any) => ({ ...prev, thumbnail: url }))
+      setFormData((prev: any) => ({ ...prev, thumbnail: resolveImageUrl(url) || url }))
       toast({ title: 'Thumbnail uploaded', description: file.name })
     } catch (e: any) {
       toast({ title: 'Upload failed', description: e?.message || 'Try again later.', variant: 'destructive' as any })
@@ -87,6 +88,7 @@ export function BasicInfoStep({ formData, setFormData, validationErrors = {} }: 
 
   const onPick = useCallback(() => fileInputRef.current?.click(), [])
   const getError = (key: string) => validationErrors[key]
+  const thumbnailPreview = resolveImageUrl(formData.thumbnail) || formData.thumbnail
 
   return (
     <EnhancedCard>
@@ -248,7 +250,7 @@ export function BasicInfoStep({ formData, setFormData, validationErrors = {} }: 
           >
             {formData.thumbnail ? (
               <div className="relative w-full aspect-video">
-                <img src={formData.thumbnail} alt="Challenge thumbnail" className="w-full h-full object-cover" />
+                <img src={thumbnailPreview} alt="Challenge thumbnail" className="w-full h-full object-cover" />
               </div>
             ) : (
               <div className="p-8">

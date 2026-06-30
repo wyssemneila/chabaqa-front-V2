@@ -15,9 +15,10 @@ export function About() {
         <div className="reveal-left">
           <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-[0_8px_40px_rgba(142,120,251,.12)] aspect-video bg-white">
             <iframe
-              src="https://www.youtube.com/embed/t_IUPjKppN8?autoplay=0&rel=0&modestbranding=1"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              src="https://www.youtube-nocookie.com/embed/t_IUPjKppN8?autoplay=0&rel=0&modestbranding=1&playsinline=1"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
               title="What is Chabaqa?"
               loading="lazy"
               className="w-full h-full"

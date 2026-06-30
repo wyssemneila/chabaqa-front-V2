@@ -13,7 +13,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Event {
-  id: string; title: string; description: string; category: string
+  id: string; mongoId?: string; publicId?: string; title: string; description: string; category: string
   format: 'online' | 'offline' | 'hybrid'
   startDate: string; startTime: string; endDate: string; endTime: string
   coverPreview: string; status: 'draft' | 'published'
@@ -86,7 +86,7 @@ export default function EventsPage() {
               <p className="text-[13px] font-semibold" style={{ color:'var(--t3)' }}>
                 {events.length} {lang==='ar'?'فعالية':'event'}{events.length!==1&&lang==='en'?'s':''}
               </p>
-              <button onClick={() => router.push('/creator/events/create')}
+              <button onClick={() => router.push('/creator/events/new')}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[13px] font-bold text-white
                            cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ background:'var(--p)' }}>
@@ -116,7 +116,7 @@ export default function EventsPage() {
                 </div>
                 <p className="text-[15px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>{T.empty}</p>
                 <p className="text-[13px] mb-6" style={{ color:'var(--t3)' }}>{T.emptyDesc}</p>
-                <button onClick={() => router.push('/creator/events/create')}
+                <button onClick={() => router.push('/creator/events/new')}
                   className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white
                              cursor-pointer hover:opacity-90 transition-opacity"
                   style={{ background:'var(--p)' }}>
@@ -127,6 +127,7 @@ export default function EventsPage() {
               /* Events grid */
               <div className="grid grid-cols-1 gap-4 max-w-4xl">
                 {events.map((ev, i) => {
+                  const eventId = ev.mongoId || ev.id
                   const FormatIcon = FORMAT_ICON[ev.format]
                   const fmtColor   = FORMAT_COLOR[ev.format]
                   const stStatus   = STATUS_STYLE[ev.status]
@@ -171,13 +172,13 @@ export default function EventsPage() {
 
                           {/* Actions */}
                           <div className="flex gap-1 shrink-0">
-                            <button onClick={() => router.push(`/creator/events/${ev.id}`)}
+                            <button onClick={() => router.push(`/creator/events/${eventId}`)}
                               aria-label="Edit event"
                               className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity"
                               style={{ background:'var(--bg)', color:'var(--t3)' }}>
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => deleteEvent(ev.id)}
+                            <button onClick={() => deleteEvent(eventId)}
                               aria-label="Delete event"
                               className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity"
                               style={{ background:'rgba(239,68,68,.08)', color:'#ef4444' }}>

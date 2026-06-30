@@ -110,4 +110,27 @@ describe('AuthController token compatibility', () => {
       message: 'Déconnexion réussie.',
     });
   });
+
+  it('does not revoke tokens when signout is requested by Next prefetch', async () => {
+    const controller = new AuthController(authServiceMock as any);
+    const response = {
+      status: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+      redirect: jest.fn(),
+    };
+
+    await controller.signout(
+      {
+        query: { _rsc: 'prefetch-id' },
+        headers: {},
+        cookies: { accessToken: 'access-token', refreshToken: 'refresh-token' },
+      } as any,
+      response as any,
+    );
+
+    expect(authServiceMock.logout).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(204);
+    expect(response.send).toHaveBeenCalled();
+    expect(response.redirect).not.toHaveBeenCalled();
+  });
 });

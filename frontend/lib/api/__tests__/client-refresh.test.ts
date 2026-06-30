@@ -54,6 +54,71 @@ describe('browser auth token refresh', () => {
     }))
   })
 
+  it('skips speculative refresh when there is no browser session hint', async () => {
+    document.cookie = 'accessToken=; Path=/; Max-Age=0'
+    document.cookie = 'refreshToken=; Path=/; Max-Age=0'
+    document.cookie = 'refresh_token=; Path=/; Max-Age=0'
+
+    await expect(
+      refreshBrowserAccessToken('https://chabaqa.io/api', { skipWhenNoSessionHint: true }),
+    ).resolves.toBeNull()
+
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it('issues a CSRF cookie before refreshing when the browser has none', async () => {
+    document.cookie = 'chabaqa_csrf=; Path=/; Max-Age=0'
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ success: true, data: { csrfToken: 'csrf-token' } }))
+      .mockResolvedValueOnce(jsonResponse({
+        success: true,
+        data: {
+          accessToken: 'fresh-access-token',
+        },
+      }))
+
+    await expect(refreshBrowserAccessToken('https://chabaqa.io/api')).resolves.toBe('fresh-access-token')
+
+    expect(global.fetch).toHaveBeenNthCalledWith(1, 'https://chabaqa.io/api/auth/csrf', expect.objectContaining({
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+    }))
+    expect(global.fetch).toHaveBeenNthCalledWith(2, 'https://chabaqa.io/api/auth/refresh', expect.objectContaining({
+      method: 'POST',
+      credentials: 'include',
+    }))
+  })
+
+  it('refreshes CSRF and retries once when refresh is forbidden', async () => {
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(jsonResponse({ success: false, message: 'CSRF token is missing or invalid' }, 403))
+      .mockResolvedValueOnce(jsonResponse({ success: true, data: { csrfToken: 'new-csrf-token' } }))
+      .mockResolvedValueOnce(jsonResponse({
+        success: true,
+        data: {
+          accessToken: 'fresh-access-token',
+        },
+      }))
+
+    await expect(refreshBrowserAccessToken('https://chabaqa.io/api')).resolves.toBe('fresh-access-token')
+
+    expect(global.fetch).toHaveBeenNthCalledWith(1, 'https://chabaqa.io/api/auth/refresh', expect.objectContaining({
+      method: 'POST',
+      headers: expect.objectContaining({
+        'X-CSRF-Token': 'csrf-token',
+      }),
+    }))
+    expect(global.fetch).toHaveBeenNthCalledWith(2, 'https://chabaqa.io/api/auth/csrf', expect.objectContaining({
+      method: 'GET',
+      credentials: 'include',
+    }))
+    expect(global.fetch).toHaveBeenNthCalledWith(3, 'https://chabaqa.io/api/auth/refresh', expect.objectContaining({
+      method: 'POST',
+      credentials: 'include',
+    }))
+  })
+
   it('retries a 401 request with the refreshed bearer token', async () => {
     localStorage.setItem('accessToken', 'expired-access-token')
     ;(global.fetch as jest.Mock)

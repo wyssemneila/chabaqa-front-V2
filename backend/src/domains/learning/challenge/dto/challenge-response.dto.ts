@@ -187,6 +187,9 @@ export class ChallengeResponseDto {
   @ApiProperty({ description: 'ID du défi', example: 'challenge_123' })
   id: string;
 
+  @ApiPropertyOptional({ description: 'MongoDB ID du défi', example: '507f1f77bcf86cd799439011' })
+  mongoId?: string;
+
   @ApiProperty({ description: 'Titre du défi', example: '30-Day Coding Challenge' })
   title: string;
 

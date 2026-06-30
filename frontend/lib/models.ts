@@ -84,6 +84,7 @@ export interface Community {
 
 export interface Course {
   mongoId?: string
+  publicId?: string
   id: string
   titre?: string
   title?: string
@@ -383,6 +384,8 @@ export interface EventSession {
 
 export interface Event {
   id: string
+  mongoId?: string
+  publicId?: string
   title: string
   description: string
   image?: string

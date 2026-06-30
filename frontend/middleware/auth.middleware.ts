@@ -69,6 +69,8 @@ const scriptSrcDirective = [
   "script-src 'self' 'unsafe-inline'",
   process.env.NODE_ENV !== 'production' ? "'unsafe-eval'" : '',
   'blob:',
+  'https://www.youtube.com',
+  'https://s.ytimg.com',
 ].filter(Boolean).join(' ')
 const SECURITY_HEADERS: Array<[string, string]> = [
   ['X-Content-Type-Options', 'nosniff'],
@@ -88,6 +90,8 @@ const SECURITY_HEADERS: Array<[string, string]> = [
       "form-action 'self'",
       [
         "img-src 'self' data: blob:",
+        'https://chabaqa.io',
+        'https://www.chabaqa.io',
         'https://api.chabaqa.io',
         'http://51.254.132.77:3000',
         'http://localhost:3000',
@@ -98,6 +102,10 @@ const SECURITY_HEADERS: Array<[string, string]> = [
         'https://ui-avatars.com',
         'https://placehold.co',
         'https://images.unsplash.com',
+        'https://img.youtube.com',
+        'https://i.ytimg.com',
+        'https://yt3.ggpht.com',
+        'https://yt3.googleusercontent.com',
       ].join(' '),
       "font-src 'self' data:",
       scriptSrcDirective,
@@ -105,7 +113,12 @@ const SECURITY_HEADERS: Array<[string, string]> = [
       [
         "connect-src 'self'",
         apiOrigin,
+        'https://chabaqa.io',
+        'wss://chabaqa.io',
+        'https://www.chabaqa.io',
+        'wss://www.chabaqa.io',
         'https://api.chabaqa.io',
+        'wss://api.chabaqa.io',
         'http://localhost:3000',
         'http://localhost:3001',
         'http://localhost:3100',
@@ -125,7 +138,18 @@ const SECURITY_HEADERS: Array<[string, string]> = [
         'ws://192.168.56.1:8082',
       ].join(' '),
       [
+        "frame-src 'self'",
+        'https://www.youtube.com',
+        'https://www.youtube-nocookie.com',
+        'https://youtube.com',
+        'https://player.vimeo.com',
+        'https://js.stripe.com',
+        'https://hooks.stripe.com',
+      ].join(' '),
+      [
         "media-src 'self' data: blob:",
+        'https://chabaqa.io',
+        'https://www.chabaqa.io',
         'https://api.chabaqa.io',
         'http://51.254.132.77:3000',
         'http://localhost:3000',
@@ -143,9 +167,16 @@ const CREATOR_ROUTES = [
   '/creator',
 ]
 
-function applySecurityHeaders(response: NextResponse): NextResponse {
+function allowsThirdPartyEmbeds(path: string): boolean {
+  return path === '/'
+}
+
+function applySecurityHeaders(response: NextResponse, path = ''): NextResponse {
   for (const [key, value] of SECURITY_HEADERS) {
     response.headers.set(key, value)
+  }
+  if (allowsThirdPartyEmbeds(path)) {
+    response.headers.set('Cross-Origin-Embedder-Policy', 'unsafe-none')
   }
   response.headers.delete('X-Powered-By')
 
@@ -308,7 +339,7 @@ export async function authMiddleware(request: NextRequest) {
     pathname.startsWith('/favicon.ico') ||
     pathname.includes('.')
   ) {
-    return applySecurityHeaders(NextResponse.next())
+    return applySecurityHeaders(NextResponse.next(), pathname)
   }
 
   if (!hasLocalePrefix && !isInternalLocaleRewrite) {
@@ -318,7 +349,7 @@ export async function authMiddleware(request: NextRequest) {
   }
 
   if (!hasLocalePrefix && isInternalLocaleRewrite) {
-    const response = applySecurityHeaders(NextResponse.next())
+    const response = applySecurityHeaders(NextResponse.next(), pathname)
     const rewrittenLocale = request.headers.get('x-app-locale') || DEFAULT_LOCALE
     response.cookies.set(LOCALE_COOKIE, rewrittenLocale, localeCookieOptions)
     return response
@@ -332,7 +363,7 @@ export async function authMiddleware(request: NextRequest) {
     requestHeaders.set('x-app-locale', locale)
     requestHeaders.set(LOCALE_REWRITE_HEADER, '1')
 
-    const response = applySecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }))
+    const response = applySecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }), normalizedPath)
     response.cookies.set(LOCALE_COOKIE, locale, localeCookieOptions)
     return response
   }

@@ -47,9 +47,33 @@ export class ImportWhatsappContactDto {
   @IsString({ each: true })
   tags?: string[];
 
-  @ApiPropertyOptional({ default: true })
+  @ApiPropertyOptional({
+    default: true,
+    description: 'Must be true to mark this contact as opted in.',
+  })
   @IsOptional()
+  @IsBoolean()
   optIn?: boolean;
+
+  @ApiPropertyOptional({ example: 'manual_import' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  consentSource?: string;
+
+  @ApiPropertyOptional({
+    example: 'Customer opted in during checkout on 2026-06-22.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  consentProof?: string;
+
+  @ApiPropertyOptional({ example: 'admin_attestation' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  consentMethod?: string;
 }
 
 export class ImportWhatsappContactsDto {
@@ -91,12 +115,17 @@ export class CreateWhatsappCampaignDto {
   @IsMongoId()
   communityId: string;
 
-  @ApiPropertyOptional({ enum: WhatsappMessageType, default: WhatsappMessageType.TEXT })
+  @ApiPropertyOptional({
+    enum: WhatsappMessageType,
+    default: WhatsappMessageType.TEXT,
+  })
   @IsOptional()
   @IsEnum(WhatsappMessageType)
   messageType?: WhatsappMessageType;
 
-  @ApiProperty({ example: 'Our new course is live. Reply if you need help joining.' })
+  @ApiProperty({
+    example: 'Our new course is live. Reply if you need help joining.',
+  })
   @IsString()
   @IsNotEmpty()
   @MaxLength(4096)
@@ -118,7 +147,10 @@ export class CreateWhatsappCampaignDto {
   @IsString()
   mediaUrl?: string;
 
-  @ApiPropertyOptional({ enum: WhatsappAudienceType, default: WhatsappAudienceType.ALL_MEMBERS })
+  @ApiPropertyOptional({
+    enum: WhatsappAudienceType,
+    default: WhatsappAudienceType.ALL_MEMBERS,
+  })
   @IsOptional()
   @IsEnum(WhatsappAudienceType)
   targetAudience?: WhatsappAudienceType;
@@ -238,7 +270,10 @@ export class CreateWhatsappAutomationDto {
   @MaxLength(4096)
   body: string;
 
-  @ApiPropertyOptional({ enum: WhatsappMessageType, default: WhatsappMessageType.TEXT })
+  @ApiPropertyOptional({
+    enum: WhatsappMessageType,
+    default: WhatsappMessageType.TEXT,
+  })
   @IsOptional()
   @IsEnum(WhatsappMessageType)
   messageType?: WhatsappMessageType;

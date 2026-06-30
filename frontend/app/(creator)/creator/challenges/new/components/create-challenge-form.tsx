@@ -8,7 +8,7 @@ import { TimelinePricingStep } from "./timeline-pricing-step"
 import { ChallengeStepsStep } from "./challenge-steps-step"
 import { ReviewPublishStep } from "./review-publish-step"
 import { ChallengeNavigation } from "./challenge-navigation"
-import { challengesApi, type CreateChallengeData } from "@/lib/api/challenges.api"
+import { challengesApi, normalizeChallengeResponse, type CreateChallengeData } from "@/lib/api/challenges.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { extractApiError } from "@/lib/api/error-parser"
@@ -345,7 +345,7 @@ export function CreateChallengeForm() {
       setIsSubmitting(true)
 
       const res = await challengesApi.create(payload)
-      const created = (res as any)?.data || res
+      const created = normalizeChallengeResponse(res)
       const shouldPublish = Boolean(options?.publish ?? formData.isPublished)
       const statusMessage = shouldPublish
         ? 'Challenge published successfully!' 
@@ -355,7 +355,7 @@ export function CreateChallengeForm() {
         description: statusMessage 
       })
       draftStorage.clearDraft()
-      const id = created?.id || created?._id || created?.challenge?.id || created?.challenge?._id
+      const id = created?.mongoId || created?._id || created?.id
       if (id) router.push(`/creator/challenges/${id}/manage`)
       else router.push('/creator/challenges')
     } catch (e: any) {

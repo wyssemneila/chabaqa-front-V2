@@ -1,6 +1,6 @@
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
-import { CreateChallengeForm } from '@/components/challenges/create-challenge-form'
+import { CreateChallengeForm } from '../new/components/create-challenge-form'
 
 export default function CreateChallengePage() {
   return (

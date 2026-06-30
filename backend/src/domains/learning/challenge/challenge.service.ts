@@ -324,6 +324,7 @@ export class ChallengeService {
 
         return {
           id: challenge.id,
+          mongoId: challenge._id?.toString?.(),
           title: challenge.title,
           description: challenge.description,
           thumbnail: challenge.thumbnail || 'https://placehold.co/400x300?text=Challenge',
@@ -361,6 +362,7 @@ export class ChallengeService {
 
       const transformedCreated = createdChallenges.map(challenge => ({
         id: challenge.id,
+        mongoId: challenge._id?.toString?.(),
         title: challenge.title,
         description: challenge.description,
         thumbnail: challenge.thumbnail || 'https://placehold.co/400x300?text=Challenge',
@@ -1993,6 +1995,7 @@ export class ChallengeService {
 
     return {
       id: challenge.id,
+      mongoId: challenge._id?.toString?.(),
       title: challenge.title,
       description: challenge.description,
       communityId: challenge.communityId,

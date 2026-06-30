@@ -1,6 +1,6 @@
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
-import { CreateEventForm } from '@/components/events/create-event-form'
+import { EventCreationContainer } from './components/event-creation-container'
 
 export default function CreateEventPage() {
   return (
@@ -17,7 +17,7 @@ export default function CreateEventPage() {
         <div className="md:ml-[220px] flex-1 flex flex-col h-screen overflow-hidden">
           <DashTopbar title="Create Event" subtitle="New event for your community" />
           <main id="main-content" className="flex-1 flex flex-col overflow-hidden" style={{ animation:'dashFadeUp .4s ease both' }}>
-            <CreateEventForm />
+            <EventCreationContainer />
           </main>
         </div>
       </div>

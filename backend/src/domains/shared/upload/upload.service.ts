@@ -23,6 +23,7 @@ import {
   validateUploadSignature,
 } from '@/domains/shared/upload/upload-security.policy';
 import { MalwareScannerService, MalwareScanResult } from '@/shared/services/malware-scanner.service';
+import { S3StorageAdapter } from '@/domains/content/media/storage/s3-storage.adapter';
 
 export enum FileType {
   IMAGE = 'image',
@@ -55,6 +56,8 @@ export class UploadService {
   private readonly uploadPath = getConfiguredUploadPath();
   private readonly uploadsRoot = resolveUploadsRoot();
   private readonly baseUrl = (process.env.MEDIA_PUBLIC_BASE_URL || process.env.SERVER_URL || 'https://api.chabaqa.io').replace(/\/+$/, '');
+  private readonly mirrorToS3 = process.env.MEDIA_STORAGE_MIRROR_S3 === 'true' || process.env.MEDIA_STORAGE_DRIVER === 's3';
+  private readonly requireS3Mirror = process.env.MEDIA_STORAGE_REQUIRE_S3 === 'true';
   private readonly storageUsageMap = new Map<string, number>(); // legacy in-memory (fallback)
 
   // Configuration des types de fichiers autorisés
@@ -80,6 +83,7 @@ export class UploadService {
     @InjectModel(MediaAsset.name) private mediaAssetModel: Model<MediaAssetDocument>,
     private readonly policyService: PolicyService,
     private readonly malwareScanner: MalwareScannerService,
+    private readonly s3StorageAdapter: S3StorageAdapter,
   ) {
     this.ensureUploadDirectories();
   }
@@ -293,6 +297,7 @@ export class UploadService {
       }
       const url = this.generateFileUrl(filename, fileType);
       const mediaRecord = await this.registerMediaAsset(file, filename, fileType, url, context, scanResult);
+      await this.mirrorFileToObjectStorage(file, mediaRecord.storageKey);
 
       return {
         assetId: mediaRecord.assetId,
@@ -321,6 +326,18 @@ export class UploadService {
       await fsPromises.unlink(filePath);
     } catch {
       // Best effort cleanup only.
+    }
+  }
+
+  private async mirrorFileToObjectStorage(file: Express.Multer.File, storageKey: string): Promise<void> {
+    if (!this.mirrorToS3 || !file?.path) return;
+    try {
+      await this.s3StorageAdapter.putFile(storageKey, file.path, file.mimetype);
+    } catch (error) {
+      console.error(`[UploadService] Failed to mirror upload to object storage: ${storageKey}`, error);
+      if (this.requireS3Mirror) {
+        throw error;
+      }
     }
   }
 
@@ -353,7 +370,7 @@ export class UploadService {
     publicUrl: string,
     context?: UploadContext,
     scanResult?: MalwareScanResult,
-  ): Promise<{ assetId: string; url: string }> {
+  ): Promise<{ assetId: string; url: string; storageKey: string }> {
     const uploadsRoot = resolve(join(process.cwd(), this.uploadPath));
     const filePath = resolve(file.path || join(this.getDestinationPath(fileType), filename));
     const storageKey = filePath.startsWith(uploadsRoot)
@@ -389,6 +406,7 @@ export class UploadService {
     return {
       assetId: String(created._id),
       url: created.url,
+      storageKey,
     };
   }
 

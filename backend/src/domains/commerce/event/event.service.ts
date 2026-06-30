@@ -1365,6 +1365,7 @@ export class EventService {
 
     return {
       id: event.id || (event as any)?._id?.toString() || '',
+      mongoId: (event as any)?._id?.toString() || undefined,
       title: event.title,
       description: event.description,
       startDate: event.startDate?.toISOString() || new Date().toISOString(),

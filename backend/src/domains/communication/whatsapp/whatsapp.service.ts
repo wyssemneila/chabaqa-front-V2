@@ -41,9 +41,7 @@ import {
   WhatsappContactDocument,
   WhatsappContactSource,
 } from '@/infrastructure/database/schemas/communication/whatsapp-contact.schema';
-import {
-  WhatsappSessionStatus,
-} from '@/infrastructure/database/schemas/communication/whatsapp-session.schema';
+import { WhatsappSessionStatus } from '@/infrastructure/database/schemas/communication/whatsapp-session.schema';
 import {
   WhatsappWebhookEvent,
   WhatsappWebhookEventDocument,
@@ -70,12 +68,26 @@ export class WhatsappService {
     private readonly policyService: PolicyService,
   ) {}
 
-  async importContacts(communityId: string, dto: ImportWhatsappContactsDto): Promise<{ contacts: WhatsappContactDocument[] }> {
+  async importContacts(
+    communityId: string,
+    dto: ImportWhatsappContactsDto,
+  ): Promise<{ contacts: WhatsappContactDocument[] }> {
     const contacts: WhatsappContactDocument[] = [];
     for (const input of dto.contacts) {
       const phoneE164 = this.normalizeE164(input.phoneE164);
       const waChatId = this.openWaClient.normalizePhoneToChatId(phoneE164);
-      const consentStatus = input.optIn === false ? WhatsappConsentStatus.UNKNOWN : WhatsappConsentStatus.OPTED_IN;
+      const consentStatus =
+        input.optIn === true
+          ? WhatsappConsentStatus.OPTED_IN
+          : WhatsappConsentStatus.UNKNOWN;
+      if (
+        consentStatus === WhatsappConsentStatus.OPTED_IN &&
+        !String(input.consentProof || '').trim()
+      ) {
+        throw new BadRequestException(
+          'Consent proof is required for opted-in WhatsApp imports',
+        );
+      }
       const update: Record<string, any> = {
         communityId: new Types.ObjectId(communityId),
         name: input.name,
@@ -83,22 +95,33 @@ export class WhatsappService {
         waChatId,
         source: WhatsappContactSource.IMPORT,
         consentStatus,
+        consentSource: input.consentSource || 'manual_import',
+        consentProof: input.consentProof,
+        consentMethod: input.consentMethod || 'admin_attestation',
         tags: input.tags || [],
       };
       if (input.userId) update.userId = new Types.ObjectId(input.userId);
-      if (consentStatus === WhatsappConsentStatus.OPTED_IN) update.consentCapturedAt = new Date();
+      if (consentStatus === WhatsappConsentStatus.OPTED_IN) {
+        update.consentCapturedAt = new Date();
+        update.optOutAt = undefined;
+        update.optOutReason = undefined;
+      }
 
-      const contact = await this.contactModel.findOneAndUpdate(
-        { communityId: new Types.ObjectId(communityId), phoneE164 },
-        { $set: update },
-        { new: true, upsert: true, setDefaultsOnInsert: true },
-      ).exec();
+      const contact = await this.contactModel
+        .findOneAndUpdate(
+          { communityId: new Types.ObjectId(communityId), phoneE164 },
+          { $set: update },
+          { new: true, upsert: true, setDefaultsOnInsert: true },
+        )
+        .exec();
       contacts.push(contact);
     }
     return { contacts };
   }
 
-  async listContacts(communityId: string): Promise<{ contacts: WhatsappContactDocument[] }> {
+  async listContacts(
+    communityId: string,
+  ): Promise<{ contacts: WhatsappContactDocument[] }> {
     const contacts = await this.contactModel
       .find({ communityId: new Types.ObjectId(communityId) })
       .sort({ createdAt: -1 })
@@ -107,12 +130,26 @@ export class WhatsappService {
     return { contacts };
   }
 
-  async optOutContact(communityId: string, contactId: string): Promise<WhatsappContactDocument> {
-    const contact = await this.contactModel.findOneAndUpdate(
-      { _id: new Types.ObjectId(contactId), communityId: new Types.ObjectId(communityId) },
-      { $set: { consentStatus: WhatsappConsentStatus.OPTED_OUT } },
-      { new: true },
-    ).exec();
+  async optOutContact(
+    communityId: string,
+    contactId: string,
+  ): Promise<WhatsappContactDocument> {
+    const contact = await this.contactModel
+      .findOneAndUpdate(
+        {
+          _id: new Types.ObjectId(contactId),
+          communityId: new Types.ObjectId(communityId),
+        },
+        {
+          $set: {
+            consentStatus: WhatsappConsentStatus.OPTED_OUT,
+            optOutAt: new Date(),
+            optOutReason: 'manual_admin',
+          },
+        },
+        { new: true },
+      )
+      .exec();
     if (!contact) throw new NotFoundException('WhatsApp contact not found');
     return contact;
   }
@@ -124,8 +161,14 @@ export class WhatsappService {
     customAudienceIds: string[] = [],
     limit = 100,
   ) {
-    const preview = await this.audienceService.preview(communityId, targetAudience, customAudienceIds, limit);
-    const remainingQuota = await this.getRemainingWhatsappQuotaForCreator(creatorId);
+    const preview = await this.audienceService.preview(
+      communityId,
+      targetAudience,
+      customAudienceIds,
+      limit,
+    );
+    const remainingQuota =
+      await this.getRemainingWhatsappQuotaForCreator(creatorId);
     return {
       ...preview,
       remainingQuota,
@@ -133,9 +176,17 @@ export class WhatsappService {
     };
   }
 
-  async createCampaign(creatorId: string, dto: CreateWhatsappCampaignDto): Promise<WhatsappCampaignDocument> {
-    const targetAudience = dto.targetAudience || WhatsappAudienceType.ALL_MEMBERS;
-    const recipients = await this.audienceService.buildRecipients(dto.communityId, targetAudience, dto.customAudienceIds || []);
+  async createCampaign(
+    creatorId: string,
+    dto: CreateWhatsappCampaignDto,
+  ): Promise<WhatsappCampaignDocument> {
+    const targetAudience =
+      dto.targetAudience || WhatsappAudienceType.ALL_MEMBERS;
+    const recipients = await this.audienceService.buildRecipients(
+      dto.communityId,
+      targetAudience,
+      dto.customAudienceIds || [],
+    );
     await this.validateWhatsappQuota(creatorId, recipients.length);
 
     const scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : undefined;
@@ -149,8 +200,12 @@ export class WhatsappService {
       mediaAssetId: dto.mediaAssetId,
       mediaUrl: dto.mediaUrl,
       targetAudience,
-      customAudienceIds: (dto.customAudienceIds || []).map((id) => new Types.ObjectId(id)),
-      status: scheduledAt ? WhatsappCampaignStatus.SCHEDULED : WhatsappCampaignStatus.DRAFT,
+      customAudienceIds: (dto.customAudienceIds || []).map(
+        (id) => new Types.ObjectId(id),
+      ),
+      status: scheduledAt
+        ? WhatsappCampaignStatus.SCHEDULED
+        : WhatsappCampaignStatus.DRAFT,
       scheduledAt,
       recipients,
       totalRecipients: recipients.length,
@@ -160,7 +215,12 @@ export class WhatsappService {
     const saved = await campaign.save();
     if (scheduledAt) {
       await this.queueService.queueCampaignSend(
-        { campaignId: String(saved._id), requestedBy: creatorId, trigger: 'scheduled', attempt: 0 },
+        {
+          campaignId: String(saved._id),
+          requestedBy: creatorId,
+          trigger: 'scheduled',
+          attempt: 0,
+        },
         scheduledAt,
       );
     }
@@ -171,7 +231,12 @@ export class WhatsappService {
     creatorId: string,
     communityId: string,
     query: WhatsappCampaignQueryDto,
-  ): Promise<{ campaigns: WhatsappCampaignDocument[]; total: number; page: number; limit: number }> {
+  ): Promise<{
+    campaigns: WhatsappCampaignDocument[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const page = Number(query.page || 1);
     const limit = Number(query.limit || 20);
     const filter: Record<string, any> = {
@@ -180,44 +245,79 @@ export class WhatsappService {
     };
     if (query.status) filter.status = query.status;
     const [campaigns, total] = await Promise.all([
-      this.campaignModel.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).exec(),
+      this.campaignModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .exec(),
       this.campaignModel.countDocuments(filter),
     ]);
     return { campaigns, total, page, limit };
   }
 
-  async getCampaign(campaignId: string, creatorId: string): Promise<WhatsappCampaignDocument> {
-    const campaign = await this.campaignModel.findOne({
-      _id: new Types.ObjectId(campaignId),
-      creatorId: new Types.ObjectId(creatorId),
-    }).exec();
+  async getCampaign(
+    campaignId: string,
+    creatorId: string,
+  ): Promise<WhatsappCampaignDocument> {
+    const campaign = await this.campaignModel
+      .findOne({
+        _id: new Types.ObjectId(campaignId),
+        creatorId: new Types.ObjectId(creatorId),
+      })
+      .exec();
     if (!campaign) throw new NotFoundException('WhatsApp campaign not found');
     return campaign;
   }
 
-  async updateCampaign(campaignId: string, creatorId: string, dto: UpdateWhatsappCampaignDto): Promise<WhatsappCampaignDocument> {
+  async updateCampaign(
+    campaignId: string,
+    creatorId: string,
+    dto: UpdateWhatsappCampaignDto,
+  ): Promise<WhatsappCampaignDocument> {
     const campaign = await this.getCampaign(campaignId, creatorId);
-    if (![WhatsappCampaignStatus.DRAFT, WhatsappCampaignStatus.SCHEDULED].includes(campaign.status)) {
-      throw new BadRequestException('Only draft or scheduled campaigns can be updated');
+    if (
+      ![
+        WhatsappCampaignStatus.DRAFT,
+        WhatsappCampaignStatus.SCHEDULED,
+      ].includes(campaign.status)
+    ) {
+      throw new BadRequestException(
+        'Only draft or scheduled campaigns can be updated',
+      );
     }
 
     Object.assign(campaign, {
       ...(dto.title !== undefined ? { title: dto.title } : {}),
-      ...(dto.messageType !== undefined ? { messageType: dto.messageType } : {}),
+      ...(dto.messageType !== undefined
+        ? { messageType: dto.messageType }
+        : {}),
       ...(dto.body !== undefined ? { body: dto.body } : {}),
       ...(dto.caption !== undefined ? { caption: dto.caption } : {}),
-      ...(dto.mediaAssetId !== undefined ? { mediaAssetId: dto.mediaAssetId } : {}),
+      ...(dto.mediaAssetId !== undefined
+        ? { mediaAssetId: dto.mediaAssetId }
+        : {}),
       ...(dto.mediaUrl !== undefined ? { mediaUrl: dto.mediaUrl } : {}),
-      ...(dto.targetAudience !== undefined ? { targetAudience: dto.targetAudience } : {}),
-      ...(dto.templateData !== undefined ? { templateData: dto.templateData } : {}),
+      ...(dto.targetAudience !== undefined
+        ? { targetAudience: dto.targetAudience }
+        : {}),
+      ...(dto.templateData !== undefined
+        ? { templateData: dto.templateData }
+        : {}),
     });
 
     if (dto.customAudienceIds) {
-      campaign.customAudienceIds = dto.customAudienceIds.map((id) => new Types.ObjectId(id));
+      campaign.customAudienceIds = dto.customAudienceIds.map(
+        (id) => new Types.ObjectId(id),
+      );
     }
     if (dto.scheduledAt !== undefined) {
-      campaign.scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : undefined;
-      campaign.status = campaign.scheduledAt ? WhatsappCampaignStatus.SCHEDULED : WhatsappCampaignStatus.DRAFT;
+      campaign.scheduledAt = dto.scheduledAt
+        ? new Date(dto.scheduledAt)
+        : undefined;
+      campaign.status = campaign.scheduledAt
+        ? WhatsappCampaignStatus.SCHEDULED
+        : WhatsappCampaignStatus.DRAFT;
     }
 
     campaign.recipients = await this.audienceService.buildRecipients(
@@ -229,41 +329,85 @@ export class WhatsappService {
     return campaign.save();
   }
 
-  async deleteCampaign(campaignId: string, creatorId: string): Promise<{ deleted: true }> {
+  async deleteCampaign(
+    campaignId: string,
+    creatorId: string,
+  ): Promise<{ deleted: true }> {
     const campaign = await this.getCampaign(campaignId, creatorId);
     if (campaign.status === WhatsappCampaignStatus.SENDING) {
-      throw new BadRequestException('Cannot delete a campaign while it is sending');
+      throw new BadRequestException(
+        'Cannot delete a campaign while it is sending',
+      );
     }
-    await this.queueService.removeScheduledCampaignSend(campaignId).catch(() => undefined);
+    await this.queueService
+      .removeScheduledCampaignSend(campaignId)
+      .catch(() => undefined);
     await campaign.deleteOne();
     return { deleted: true };
   }
 
-  async sendCampaign(campaignId: string, requestedBy: string): Promise<{ message: string; campaignId: string; queued: true }> {
+  async sendCampaign(
+    campaignId: string,
+    requestedBy: string,
+  ): Promise<{ message: string; campaignId: string; queued: true }> {
     const campaign = await this.getCampaign(campaignId, requestedBy);
     if (campaign.status === WhatsappCampaignStatus.SENDING) {
       throw new BadRequestException('Campaign is already sending');
     }
     await this.sessionService.requireReadySession(String(campaign.communityId));
-    await this.validateWhatsappQuota(String(campaign.creatorId), campaign.totalRecipients);
-    await this.validateDailySessionLimit(String(campaign.communityId), campaign.totalRecipients);
+    await this.validateWhatsappQuota(
+      String(campaign.creatorId),
+      campaign.totalRecipients,
+    );
+    const remainingDailySends = await this.getRemainingDailySessionSends(
+      String(campaign.communityId),
+    );
+    if (remainingDailySends <= 0) {
+      throw new ForbiddenException(
+        'Daily WhatsApp session send limit reached. Try again tomorrow.',
+      );
+    }
     campaign.status = WhatsappCampaignStatus.SENDING;
+    campaign.startedAt = campaign.startedAt || new Date();
     await campaign.save();
-    await this.queueService.queueCampaignSend({ campaignId, requestedBy, trigger: 'manual', attempt: 0 });
-    return { message: 'WhatsApp campaign queued for sending', campaignId, queued: true };
+    await this.queueService.queueCampaignSend({
+      campaignId,
+      requestedBy,
+      trigger: 'manual',
+      attempt: 0,
+    });
+    return {
+      message: 'WhatsApp campaign queued for sending',
+      campaignId,
+      queued: true,
+    };
   }
 
   async cancelCampaign(campaignId: string, creatorId: string): Promise<void> {
     const campaign = await this.getCampaign(campaignId, creatorId);
-    if (![WhatsappCampaignStatus.SCHEDULED, WhatsappCampaignStatus.SENDING].includes(campaign.status)) {
-      throw new BadRequestException('Only scheduled or sending campaigns can be cancelled');
+    if (
+      ![
+        WhatsappCampaignStatus.SCHEDULED,
+        WhatsappCampaignStatus.SENDING,
+      ].includes(campaign.status)
+    ) {
+      throw new BadRequestException(
+        'Only scheduled or sending campaigns can be cancelled',
+      );
     }
-    await this.queueService.removeScheduledCampaignSend(campaignId).catch(() => undefined);
+    await this.queueService
+      .removeScheduledCampaignSend(campaignId)
+      .catch(() => undefined);
     campaign.status = WhatsappCampaignStatus.CANCELLED;
+    campaign.cancelledAt = new Date();
     await campaign.save();
   }
 
-  async duplicateCampaign(campaignId: string, creatorId: string, title?: string): Promise<WhatsappCampaignDocument> {
+  async duplicateCampaign(
+    campaignId: string,
+    creatorId: string,
+    title?: string,
+  ): Promise<WhatsappCampaignDocument> {
     const campaign = await this.getCampaign(campaignId, creatorId);
     return new this.campaignModel({
       title: title || `${campaign.title} Copy`,
@@ -291,12 +435,18 @@ export class WhatsappService {
     }).save();
   }
 
-  async getCampaignRecipients(campaignId: string, creatorId: string, query: { page?: number; limit?: number; status?: string }) {
+  async getCampaignRecipients(
+    campaignId: string,
+    creatorId: string,
+    query: { page?: number; limit?: number; status?: string },
+  ) {
     const campaign = await this.getCampaign(campaignId, creatorId);
     const page = Number(query.page || 1);
     const limit = Number(query.limit || 50);
     const filtered = query.status
-      ? campaign.recipients.filter((recipient) => recipient.status === query.status)
+      ? campaign.recipients.filter(
+          (recipient) => recipient.status === query.status,
+        )
       : campaign.recipients;
     return {
       recipients: filtered.slice((page - 1) * limit, page * limit),
@@ -341,11 +491,17 @@ export class WhatsappService {
     };
   }
 
-  async renderPreview(dto: RenderWhatsappPreviewDto): Promise<{ body: string }> {
+  async renderPreview(
+    dto: RenderWhatsappPreviewDto,
+  ): Promise<{ body: string }> {
     return { body: this.renderTemplate(dto.body, dto.mergeData || {}) };
   }
 
-  async sendTestMessage(communityId: string, phoneE164: string, body: string): Promise<any> {
+  async sendTestMessage(
+    communityId: string,
+    phoneE164: string,
+    body: string,
+  ): Promise<any> {
     const session = await this.sessionService.requireReadySession(communityId);
     const normalizedPhone = this.normalizeE164(phoneE164);
     const messageBody = String(body || '').trim();
@@ -353,12 +509,22 @@ export class WhatsappService {
       throw new BadRequestException('WhatsApp test message body is required');
     }
     const chatId = this.openWaClient.normalizePhoneToChatId(normalizedPhone);
-    return this.openWaClient.sendText(session.openwaSessionId!, chatId, messageBody);
+    return this.openWaClient.sendText(
+      session.openwaSessionId!,
+      chatId,
+      messageBody,
+    );
   }
 
-  async listAutomations(creatorId: string, communityId: string): Promise<{ automations: WhatsappAutomationDocument[] }> {
+  async listAutomations(
+    creatorId: string,
+    communityId: string,
+  ): Promise<{ automations: WhatsappAutomationDocument[] }> {
     const automations = await this.automationModel
-      .find({ creatorId: new Types.ObjectId(creatorId), communityId: new Types.ObjectId(communityId) })
+      .find({
+        creatorId: new Types.ObjectId(creatorId),
+        communityId: new Types.ObjectId(communityId),
+      })
       .sort({ createdAt: -1 })
       .exec();
     return { automations };
@@ -389,102 +555,253 @@ export class WhatsappService {
     automationId: string,
     dto: UpdateWhatsappAutomationDto,
   ): Promise<WhatsappAutomationDocument> {
-    const automation = await this.automationModel.findOne({
-      _id: new Types.ObjectId(automationId),
-      creatorId: new Types.ObjectId(creatorId),
-      communityId: new Types.ObjectId(communityId),
-    }).exec();
-    if (!automation) throw new NotFoundException('WhatsApp automation not found');
+    const automation = await this.automationModel
+      .findOne({
+        _id: new Types.ObjectId(automationId),
+        creatorId: new Types.ObjectId(creatorId),
+        communityId: new Types.ObjectId(communityId),
+      })
+      .exec();
+    if (!automation)
+      throw new NotFoundException('WhatsApp automation not found');
 
     Object.assign(automation, {
       ...(dto.name !== undefined ? { name: dto.name } : {}),
       ...(dto.trigger !== undefined ? { trigger: dto.trigger } : {}),
       ...(dto.delayHours !== undefined ? { delayHours: dto.delayHours } : {}),
-      ...(dto.messageType !== undefined ? { messageType: dto.messageType } : {}),
+      ...(dto.messageType !== undefined
+        ? { messageType: dto.messageType }
+        : {}),
       ...(dto.body !== undefined ? { body: dto.body } : {}),
       ...(dto.caption !== undefined ? { caption: dto.caption } : {}),
-      ...(dto.mediaAssetId !== undefined ? { mediaAssetId: dto.mediaAssetId } : {}),
+      ...(dto.mediaAssetId !== undefined
+        ? { mediaAssetId: dto.mediaAssetId }
+        : {}),
       ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
     });
     return automation.save();
   }
 
-  async deleteAutomation(creatorId: string, communityId: string, automationId: string): Promise<{ deleted: true }> {
-    const result = await this.automationModel.deleteOne({
-      _id: new Types.ObjectId(automationId),
-      creatorId: new Types.ObjectId(creatorId),
-      communityId: new Types.ObjectId(communityId),
-    }).exec();
-    if (result.deletedCount === 0) throw new NotFoundException('WhatsApp automation not found');
+  async deleteAutomation(
+    creatorId: string,
+    communityId: string,
+    automationId: string,
+  ): Promise<{ deleted: true }> {
+    const result = await this.automationModel
+      .deleteOne({
+        _id: new Types.ObjectId(automationId),
+        creatorId: new Types.ObjectId(creatorId),
+        communityId: new Types.ObjectId(communityId),
+      })
+      .exec();
+    if (result.deletedCount === 0)
+      throw new NotFoundException('WhatsApp automation not found');
     return { deleted: true };
   }
 
-  async executeSendCampaignJob(job: WhatsappCampaignSendJobPayload): Promise<void> {
+  async executeSendCampaignJob(
+    job: WhatsappCampaignSendJobPayload,
+  ): Promise<void> {
     const campaign = await this.campaignModel.findById(job.campaignId).exec();
     if (!campaign) throw new NotFoundException('WhatsApp campaign not found');
     if (campaign.status === WhatsappCampaignStatus.CANCELLED) return;
 
-    const session = await this.sessionService.requireReadySession(String(campaign.communityId));
-    const intervalMs = Math.max(250, Number(process.env.WHATSAPP_SEND_INTERVAL_MS || 1500));
-    const remainingDailySends = await this.getRemainingDailySessionSends(String(campaign.communityId));
+    const session = await this.sessionService.requireReadySession(
+      String(campaign.communityId),
+    );
+    const intervalMs = Math.max(
+      250,
+      Number(process.env.WHATSAPP_SEND_INTERVAL_MS || 1500),
+    );
+    const remainingDailySends = await this.getRemainingDailySessionSends(
+      String(campaign.communityId),
+    );
     let sent = 0;
     let failed = 0;
     let skipped = 0;
+    let processed = 0;
+
+    await this.campaignModel.updateOne(
+      { _id: campaign._id, status: { $ne: WhatsappCampaignStatus.CANCELLED } },
+      {
+        $set: {
+          status: WhatsappCampaignStatus.SENDING,
+          startedAt: campaign.startedAt || new Date(),
+        },
+      },
+    );
 
     for (const recipient of campaign.recipients as any[]) {
-      if (![WhatsappRecipientStatus.PENDING, WhatsappRecipientStatus.QUEUED].includes(recipient.status)) continue;
-      if (sent >= remainingDailySends) {
+      if (
+        ![
+          WhatsappRecipientStatus.PENDING,
+          WhatsappRecipientStatus.QUEUED,
+        ].includes(recipient.status)
+      ) {
+        continue;
+      }
+
+      if (processed % 5 === 0) {
+        const latest = await this.campaignModel
+          .findById(campaign._id)
+          .select('status')
+          .lean();
+        if (latest?.status === WhatsappCampaignStatus.CANCELLED) return;
+      }
+      processed += 1;
+
+      const contactId = new Types.ObjectId(String(recipient.contactId));
+      const contact = await this.contactModel
+        .findOne({
+          _id: contactId,
+          communityId: campaign.communityId,
+        })
+        .select('consentStatus')
+        .lean();
+      if (
+        !contact ||
+        contact.consentStatus !== WhatsappConsentStatus.OPTED_IN
+      ) {
+        await this.updateRecipientStatus(campaign._id, contactId, {
+          status: WhatsappRecipientStatus.SKIPPED,
+          errorMessage: 'Contact is not opted in',
+        });
         recipient.status = WhatsappRecipientStatus.SKIPPED;
-        recipient.errorMessage = 'Daily WhatsApp session send limit reached';
         skipped += 1;
         continue;
       }
-      recipient.status = WhatsappRecipientStatus.QUEUED;
-      const text = this.renderTemplate(campaign.body, {
-        ...(campaign.templateData || {}),
-        ...(recipient.mergeData || {}),
-      });
+
+      if (sent >= remainingDailySends) {
+        await this.updateRecipientStatus(campaign._id, contactId, {
+          status: WhatsappRecipientStatus.SKIPPED,
+          errorMessage: 'Daily WhatsApp session send limit reached',
+        });
+        recipient.status = WhatsappRecipientStatus.SKIPPED;
+        skipped += 1;
+        continue;
+      }
+
+      const text = this.appendOptOutFooter(
+        this.renderTemplate(campaign.body, {
+          ...(campaign.templateData || {}),
+          ...(recipient.mergeData || {}),
+        }),
+      );
       recipient.personalizedBody = text;
+
+      await this.updateRecipientStatus(campaign._id, contactId, {
+        status: WhatsappRecipientStatus.QUEUED,
+        personalizedBody: text,
+        errorMessage: undefined,
+      });
+
       try {
-        const response = campaign.messageType === WhatsappMessageType.TEXT
-          ? await this.openWaClient.sendText(session.openwaSessionId!, recipient.waChatId, text)
-          : await this.openWaClient.sendMedia(session.openwaSessionId!, campaign.messageType as any, {
-              chatId: recipient.waChatId,
-              mediaUrl: campaign.mediaUrl || '',
-              caption: campaign.caption || text,
-            });
+        const response =
+          campaign.messageType === WhatsappMessageType.TEXT
+            ? await this.openWaClient.sendText(
+                session.openwaSessionId!,
+                recipient.waChatId,
+                text,
+              )
+            : await this.openWaClient.sendMedia(
+                session.openwaSessionId!,
+                campaign.messageType as any,
+                {
+                  chatId: recipient.waChatId,
+                  mediaUrl: campaign.mediaUrl || '',
+                  caption: campaign.caption || text,
+                },
+              );
+        const openwaMessageId = response.messageId || response.id;
+        await this.updateRecipientStatus(
+          campaign._id,
+          contactId,
+          {
+            status: WhatsappRecipientStatus.SENT,
+            openwaMessageId,
+            sentAt: new Date(),
+            errorMessage: undefined,
+          },
+          { sentCount: 1 },
+        );
+        await this.contactModel.updateOne(
+          { _id: contactId },
+          {
+            $set: {
+              lastMessageAt: new Date(),
+              lastOutboundMessageAt: new Date(),
+            },
+          },
+        );
         recipient.status = WhatsappRecipientStatus.SENT;
-        recipient.openwaMessageId = response.messageId || response.id;
-        recipient.sentAt = new Date();
         sent += 1;
         await this.sleep(intervalMs);
       } catch (error: any) {
+        await this.updateRecipientStatus(
+          campaign._id,
+          contactId,
+          {
+            status: WhatsappRecipientStatus.FAILED,
+            errorMessage: error?.message || 'Failed to send WhatsApp message',
+          },
+          { failedCount: 1 },
+        );
         recipient.status = WhatsappRecipientStatus.FAILED;
-        recipient.errorMessage = error?.message || 'Failed to send WhatsApp message';
         failed += 1;
       }
     }
 
-    campaign.sentCount += sent;
-    campaign.failedCount += failed;
-    campaign.status = failed > 0 && sent === 0 && skipped === 0 ? WhatsappCampaignStatus.FAILED : WhatsappCampaignStatus.SENT;
-    campaign.sentAt = new Date();
-    await campaign.save();
-  }
-
-  async markCampaignSendFailed(campaignId: string, errorMessage: string): Promise<void> {
+    const terminalStatus =
+      failed > 0 && sent === 0 && skipped === 0
+        ? WhatsappCampaignStatus.FAILED
+        : WhatsappCampaignStatus.SENT;
     await this.campaignModel.updateOne(
-      { _id: new Types.ObjectId(campaignId) },
-      { $set: { status: WhatsappCampaignStatus.FAILED }, $inc: { failedCount: 1 }, $push: { errorMessages: errorMessage } },
+      { _id: campaign._id, status: { $ne: WhatsappCampaignStatus.CANCELLED } },
+      {
+        $set: {
+          status: terminalStatus,
+          sentAt: new Date(),
+          completedAt: new Date(),
+          lastProcessedAt: new Date(),
+        },
+      },
     );
   }
 
-  async handleOpenWaWebhook(payload: OpenWaWebhookDto, secretHeader?: string): Promise<{ processed: boolean }> {
+  async markCampaignSendFailed(
+    campaignId: string,
+    errorMessage: string,
+  ): Promise<void> {
+    await this.campaignModel.updateOne(
+      { _id: new Types.ObjectId(campaignId) },
+      {
+        $set: { status: WhatsappCampaignStatus.FAILED },
+        $inc: { failedCount: 1 },
+        $push: { errorMessages: errorMessage },
+      },
+    );
+  }
+
+  async handleOpenWaWebhook(
+    payload: OpenWaWebhookDto,
+    secretHeader?: string,
+  ): Promise<{ processed: boolean }> {
     this.verifyWebhookSecret(secretHeader);
-    const eventType = payload.event || payload.type || payload.data?.event || payload.data?.type || 'unknown';
+    const eventType =
+      payload.event ||
+      payload.type ||
+      payload.data?.event ||
+      payload.data?.type ||
+      'unknown';
     const sessionId = payload.sessionId || payload.data?.sessionId;
-    const messageId = payload.messageId || payload.id || payload.data?.messageId || payload.data?.id;
-    const idempotencyKey = payload.id || this.buildWebhookIdempotencyKey(eventType, sessionId, messageId, payload);
+    const messageId =
+      payload.messageId ||
+      payload.id ||
+      payload.data?.messageId ||
+      payload.data?.id;
+    const idempotencyKey =
+      payload.id ||
+      this.buildWebhookIdempotencyKey(eventType, sessionId, messageId, payload);
 
     try {
       await new this.webhookEventModel({
@@ -503,23 +820,43 @@ export class WhatsappService {
     return { processed: true };
   }
 
-  private async applyWebhookEvent(eventType: string, sessionId?: string, messageId?: string, payload?: any): Promise<void> {
+  private async applyWebhookEvent(
+    eventType: string,
+    sessionId?: string,
+    messageId?: string,
+    payload?: any,
+  ): Promise<void> {
     const normalized = eventType.toLowerCase();
     if (['session.ready', 'ready', 'authenticated'].includes(normalized)) {
-      await this.sessionService.markFromWebhook(sessionId, WhatsappSessionStatus.READY);
+      await this.sessionService.markFromWebhook(
+        sessionId,
+        WhatsappSessionStatus.READY,
+      );
       return;
     }
     if (['session.disconnected', 'disconnected'].includes(normalized)) {
-      await this.sessionService.markFromWebhook(sessionId, WhatsappSessionStatus.DISCONNECTED, payload?.data?.reason);
+      await this.sessionService.markFromWebhook(
+        sessionId,
+        WhatsappSessionStatus.DISCONNECTED,
+        payload?.data?.reason,
+      );
       return;
     }
+
+    if (this.isInboundMessageEvent(normalized, payload)) {
+      await this.handleInboundMessage(sessionId, messageId, payload);
+      return;
+    }
+
     if (!messageId) return;
 
-    const status =
-      normalized.includes('read') ? WhatsappRecipientStatus.READ :
-      normalized.includes('delivered') ? WhatsappRecipientStatus.DELIVERED :
-      normalized.includes('reply') || normalized.includes('message') ? WhatsappRecipientStatus.REPLIED :
-      null;
+    const status = normalized.includes('read')
+      ? WhatsappRecipientStatus.READ
+      : normalized.includes('delivered')
+        ? WhatsappRecipientStatus.DELIVERED
+        : normalized.includes('reply') || normalized.includes('message')
+          ? WhatsappRecipientStatus.REPLIED
+          : null;
     if (!status) return;
 
     const set: Record<string, any> = { 'recipients.$.status': status };
@@ -541,33 +878,248 @@ export class WhatsappService {
     );
   }
 
-  private async validateWhatsappQuota(creatorId: string, recipientCount: number): Promise<void> {
+  private async updateRecipientStatus(
+    campaignId: Types.ObjectId,
+    contactId: Types.ObjectId,
+    set: Record<string, any>,
+    inc: Record<string, number> = {},
+  ): Promise<void> {
+    const $set: Record<string, any> = { lastProcessedAt: new Date() };
+    const $unset: Record<string, ''> = {};
+    for (const [key, value] of Object.entries(set)) {
+      const path = key.includes('.') ? key : `recipients.$.${key}`;
+      if (value === undefined) {
+        $unset[path] = '';
+      } else {
+        $set[path] = value;
+      }
+    }
+    await this.campaignModel.updateOne(
+      { _id: campaignId, 'recipients.contactId': contactId },
+      {
+        $set,
+        ...(Object.keys($unset).length ? { $unset } : {}),
+        ...(Object.keys(inc).length ? { $inc: inc } : {}),
+      },
+    );
+  }
+
+  private appendOptOutFooter(body: string): string {
+    if (
+      String(
+        process.env.WHATSAPP_APPEND_OPT_OUT_FOOTER || 'true',
+      ).toLowerCase() === 'false'
+    ) {
+      return body;
+    }
+    const footer = 'Reply STOP to unsubscribe.';
+    if (body.toLowerCase().includes('reply stop')) return body;
+    return `${body.trim()}\n\n${footer}`.trim();
+  }
+
+  private isInboundMessageEvent(eventType: string, payload?: any): boolean {
+    const direction = String(
+      payload?.direction ||
+        payload?.data?.direction ||
+        payload?.fromMe ||
+        payload?.data?.fromMe ||
+        '',
+    ).toLowerCase();
+    if (
+      direction === 'true' ||
+      direction === 'outbound' ||
+      direction === 'from_me'
+    )
+      return false;
+    return (
+      eventType.includes('received') ||
+      eventType.includes('incoming') ||
+      eventType.includes('reply') ||
+      eventType === 'message' ||
+      eventType === 'message.received'
+    );
+  }
+
+  private async handleInboundMessage(
+    sessionId?: string,
+    messageId?: string,
+    payload?: any,
+  ): Promise<void> {
+    const chatId = this.extractWebhookChatId(payload);
+    if (!chatId) return;
+    const text = this.extractWebhookText(payload);
+    const session = sessionId
+      ? await this.sessionService.getSessionByOpenWaId(sessionId)
+      : null;
+    const communityFilter = session?.communityId
+      ? { communityId: session.communityId }
+      : {};
+    const contact = await this.contactModel
+      .findOne({ ...communityFilter, waChatId: chatId })
+      .exec();
+    if (!contact) return;
+
+    const now = new Date();
+    await this.contactModel.updateOne(
+      { _id: contact._id },
+      { $set: { lastMessageAt: now, lastInboundMessageAt: now } },
+    );
+
+    if (this.isOptOutText(text)) {
+      await this.contactModel.updateOne(
+        { _id: contact._id },
+        {
+          $set: {
+            consentStatus: WhatsappConsentStatus.OPTED_OUT,
+            optOutAt: now,
+            optOutReason: `inbound_keyword:${text.slice(0, 40)}`,
+          },
+        },
+      );
+      await this.campaignModel.updateMany(
+        {
+          communityId: contact.communityId,
+          'recipients.contactId': contact._id,
+          'recipients.status': {
+            $in: [
+              WhatsappRecipientStatus.PENDING,
+              WhatsappRecipientStatus.QUEUED,
+            ],
+          },
+        },
+        {
+          $set: {
+            'recipients.$[recipient].status': WhatsappRecipientStatus.SKIPPED,
+            'recipients.$[recipient].errorMessage':
+              'Contact opted out by inbound message',
+          },
+        },
+        {
+          arrayFilters: [
+            {
+              'recipient.contactId': contact._id,
+              'recipient.status': {
+                $in: [
+                  WhatsappRecipientStatus.PENDING,
+                  WhatsappRecipientStatus.QUEUED,
+                ],
+              },
+            },
+          ],
+        },
+      );
+      return;
+    }
+
+    await this.campaignModel.updateOne(
+      {
+        communityId: contact.communityId,
+        'recipients.contactId': contact._id,
+        'recipients.status': {
+          $in: [
+            WhatsappRecipientStatus.SENT,
+            WhatsappRecipientStatus.DELIVERED,
+            WhatsappRecipientStatus.READ,
+          ],
+        },
+      },
+      {
+        $set: {
+          'recipients.$.status': WhatsappRecipientStatus.REPLIED,
+          'recipients.$.repliedAt': now,
+          ...(messageId ? { 'recipients.$.replyMessageId': messageId } : {}),
+        },
+        $inc: { repliedCount: 1 },
+      },
+    );
+  }
+
+  private extractWebhookChatId(payload?: any): string | undefined {
+    const candidate =
+      payload?.chatId ||
+      payload?.from ||
+      payload?.author ||
+      payload?.data?.chatId ||
+      payload?.data?.from ||
+      payload?.data?.author ||
+      payload?.data?.message?.from;
+    if (!candidate) return undefined;
+    const raw = String(candidate);
+    if (raw.includes('@')) return raw;
+    const digits = raw.replace(/\D/g, '');
+    return digits ? `${digits}@c.us` : undefined;
+  }
+
+  private extractWebhookText(payload?: any): string {
+    return String(
+      payload?.text ||
+        payload?.body ||
+        payload?.message ||
+        payload?.data?.text ||
+        payload?.data?.body ||
+        payload?.data?.message ||
+        payload?.data?.message?.body ||
+        '',
+    ).trim();
+  }
+
+  private isOptOutText(text: string): boolean {
+    const normalized = text.trim().toLowerCase();
+    return [
+      'stop',
+      'stop all',
+      'unsubscribe',
+      'cancel',
+      'remove',
+      'لا',
+      'توقف',
+    ].includes(normalized);
+  }
+
+  private async validateWhatsappQuota(
+    creatorId: string,
+    recipientCount: number,
+  ): Promise<void> {
     const enforcementOn = process.env.PLAN_ENFORCEMENT_MODE === 'true';
     if (!enforcementOn) return;
 
-    const limits = await this.policyService.getEffectiveLimitsForCreator(creatorId);
+    const limits =
+      await this.policyService.getEffectiveLimitsForCreator(creatorId);
     const used = await this.getUsedThisMonth(creatorId);
-    if (limits.whatsappMessagesPerMonth <= 0 || used + recipientCount > limits.whatsappMessagesPerMonth) {
+    if (
+      limits.whatsappMessagesPerMonth <= 0 ||
+      used + recipientCount > limits.whatsappMessagesPerMonth
+    ) {
       throw new ForbiddenException(
         `WhatsApp quota exceeded. Used ${used}/${limits.whatsappMessagesPerMonth} messages this month.`,
       );
     }
   }
 
-  private async validateDailySessionLimit(communityId: string, recipientCount: number): Promise<void> {
+  private async validateDailySessionLimit(
+    communityId: string,
+    recipientCount: number,
+  ): Promise<void> {
     const remaining = await this.getRemainingDailySessionSends(communityId);
     if (recipientCount > remaining) {
-      throw new ForbiddenException(`Daily WhatsApp session send limit exceeded. Remaining today: ${remaining}.`);
+      throw new ForbiddenException(
+        `Daily WhatsApp session send limit exceeded. Remaining today: ${remaining}.`,
+      );
     }
   }
 
-  private async getRemainingWhatsappQuotaForCreator(creatorId: string): Promise<number> {
-    const limits = await this.policyService.getEffectiveLimitsForCreator(creatorId);
+  private async getRemainingWhatsappQuotaForCreator(
+    creatorId: string,
+  ): Promise<number> {
+    const limits =
+      await this.policyService.getEffectiveLimitsForCreator(creatorId);
     const used = await this.getUsedThisMonth(creatorId);
     return Math.max(0, limits.whatsappMessagesPerMonth - used);
   }
 
-  private async getRemainingDailySessionSends(communityId: string): Promise<number> {
+  private async getRemainingDailySessionSends(
+    communityId: string,
+  ): Promise<number> {
     const limit = Number(process.env.WHATSAPP_DAILY_SESSION_SEND_LIMIT || 200);
     if (!Number.isFinite(limit) || limit <= 0) return Number.MAX_SAFE_INTEGER;
 
@@ -578,7 +1130,9 @@ export class WhatsappService {
         $match: {
           communityId: new Types.ObjectId(communityId),
           sentAt: { $gte: dayStart },
-          status: { $in: [WhatsappCampaignStatus.SENT, WhatsappCampaignStatus.SENDING] },
+          status: {
+            $in: [WhatsappCampaignStatus.SENT, WhatsappCampaignStatus.SENDING],
+          },
         },
       },
       { $group: { _id: null, total: { $sum: '$sentCount' } } },
@@ -595,7 +1149,13 @@ export class WhatsappService {
         $match: {
           creatorId: new Types.ObjectId(creatorId),
           createdAt: { $gte: monthStart },
-          status: { $in: [WhatsappCampaignStatus.SENDING, WhatsappCampaignStatus.SENT, WhatsappCampaignStatus.SCHEDULED] },
+          status: {
+            $in: [
+              WhatsappCampaignStatus.SENDING,
+              WhatsappCampaignStatus.SENT,
+              WhatsappCampaignStatus.SCHEDULED,
+            ],
+          },
         },
       },
       { $group: { _id: null, total: { $sum: '$totalRecipients' } } },
@@ -604,16 +1164,23 @@ export class WhatsappService {
   }
 
   private renderTemplate(template: string, data: Record<string, any>): string {
-    return String(template || '').replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key) => {
-      const value = key.split('.').reduce((acc: any, part: string) => acc?.[part], data);
-      return value === undefined || value === null ? '' : String(value);
-    });
+    return String(template || '').replace(
+      /\{\{\s*([\w.]+)\s*\}\}/g,
+      (_match, key) => {
+        const value = key
+          .split('.')
+          .reduce((acc: any, part: string) => acc?.[part], data);
+        return value === undefined || value === null ? '' : String(value);
+      },
+    );
   }
 
   private normalizeE164(phone: string): string {
     const trimmed = String(phone || '').trim();
     if (!trimmed.startsWith('+')) {
-      throw new BadRequestException('Phone number must be in E.164 format, e.g. +21650123456');
+      throw new BadRequestException(
+        'Phone number must be in E.164 format, e.g. +21650123456',
+      );
     }
     return `+${trimmed.replace(/\D/g, '')}`;
   }
@@ -629,7 +1196,12 @@ export class WhatsappService {
     }
   }
 
-  private buildWebhookIdempotencyKey(eventType: string, sessionId?: string, messageId?: string, payload?: any): string {
+  private buildWebhookIdempotencyKey(
+    eventType: string,
+    sessionId?: string,
+    messageId?: string,
+    payload?: any,
+  ): string {
     return createHash('sha256')
       .update(JSON.stringify({ eventType, sessionId, messageId, payload }))
       .digest('hex');

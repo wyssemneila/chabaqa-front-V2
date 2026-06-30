@@ -8,6 +8,8 @@ const scriptSrcDirective = [
   "script-src 'self' 'unsafe-inline'",
   isDevelopment ? "'unsafe-eval'" : '',
   'blob:',
+  'https://www.youtube.com',
+  'https://s.ytimg.com',
 ].filter(Boolean).join(' ')
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -17,6 +19,8 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   [
     "img-src 'self' data: blob:",
+    'https://chabaqa.io',
+    'https://www.chabaqa.io',
     'https://api.chabaqa.io',
     'http://51.254.132.77:3000',
     'http://localhost:3000',
@@ -27,6 +31,10 @@ const contentSecurityPolicy = [
     'https://ui-avatars.com',
     'https://placehold.co',
     'https://images.unsplash.com',
+    'https://img.youtube.com',
+    'https://i.ytimg.com',
+    'https://yt3.ggpht.com',
+    'https://yt3.googleusercontent.com',
   ].join(' '),
   "font-src 'self' data:",
   scriptSrcDirective,
@@ -34,7 +42,12 @@ const contentSecurityPolicy = [
   [
     "connect-src 'self'",
     apiOrigin,
+    'https://chabaqa.io',
+    'wss://chabaqa.io',
+    'https://www.chabaqa.io',
+    'wss://www.chabaqa.io',
     'https://api.chabaqa.io',
+    'wss://api.chabaqa.io',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3100',
@@ -48,7 +61,18 @@ const contentSecurityPolicy = [
     'ws://192.168.56.1:8082',
   ].join(' '),
   [
+    "frame-src 'self'",
+    'https://www.youtube.com',
+    'https://www.youtube-nocookie.com',
+    'https://youtube.com',
+    'https://player.vimeo.com',
+    'https://js.stripe.com',
+    'https://hooks.stripe.com',
+  ].join(' '),
+  [
     "media-src 'self' data: blob:",
+    'https://chabaqa.io',
+    'https://www.chabaqa.io',
     'https://api.chabaqa.io',
     'http://51.254.132.77:3000',
     'http://localhost:3000',
@@ -73,6 +97,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'chabaqa.io',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.chabaqa.io',
+        pathname: '/uploads/**',
+      },
       {
         protocol: 'https',
         hostname: 'api.chabaqa.io',
@@ -129,6 +163,22 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.youtube.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'yt3.ggpht.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'yt3.googleusercontent.com',
       },
     ],
   },

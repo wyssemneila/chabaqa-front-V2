@@ -8,7 +8,7 @@ import { PricingDetailsStep } from "./pricing-details-step"
 import { CourseContentStep } from "./course-content-step"
 import { ReviewPublishStep } from "./review-publish-step"
 import { NavigationButtons } from "./navigation-buttons"
-import { apiClient } from "@/lib/api"
+import { coursesApi, normalizeCourseResponse } from "@/lib/api/courses.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { getCreatorVideoUrlError, normalizeVideoUrl } from "@/lib/utils/video-source"
@@ -521,6 +521,8 @@ export function CourseCreationContainer() {
             const normalizedChapterTitle = c.title?.trim() || `Chapitre ${jdx + 1}`
             const normalizedChapterContent = c.content?.trim() || (!options?.publish ? formData.description.trim() : "")
             const normalizedChapterVideoUrl = normalizeVideoUrl(c.videoUrl)
+            const chapterPrice = c.price !== undefined && c.price !== "" ? Number(c.price) : prixNum
+            const isPaidChapter = !c.isPreview && chapterPrice > 0
             console.log(`      📄 Chapter ${jdx + 1}: "${c.title}"`)
             console.log(`         🎬 Video URL: "${c.videoUrl || '(empty)'}"`)
 
@@ -528,10 +530,8 @@ export function CourseCreationContainer() {
               titre: normalizedChapterTitle,
               description: normalizedChapterContent,
               videoUrl: normalizedChapterVideoUrl || undefined,
-              isPaid: !c.isPreview,
-              prix: !c.isPreview
-                ? (c.price !== undefined && c.price !== "" ? Number(c.price) : (prixNum || 0))
-                : 0,
+              isPaid: isPaidChapter,
+              prix: isPaidChapter ? chapterPrice : 0,
               ordre: c.order || (jdx + 1),
               duree: typeof c.duration === 'number' && c.duration > 0 ? `${c.duration}` : undefined,
               notes: c.notes || undefined,
@@ -569,11 +569,11 @@ export function CourseCreationContainer() {
 
       console.log('📤 [COURSE SUBMIT] Final payload:', JSON.stringify(payload, null, 2))
 
-      const res = await apiClient.post<any>(`/cours/create-cours`, payload)
-      const created = res?.data?.cours || res?.cours || res?.data || res
+      const res = await coursesApi.create(payload)
+      const created = normalizeCourseResponse(res)
       toast({ title: 'Course created', description: payload.titre })
       draftStorage.clearDraft()
-      const id = created?._id || created?.id
+      const id = created?.mongoId || created?._id || created?.id
       if (id) router.push(`/creator/courses/${id}/manage`)
       else router.push('/creator/courses')
     } catch (e: any) {

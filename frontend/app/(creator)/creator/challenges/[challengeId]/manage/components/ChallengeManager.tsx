@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
 import { extractApiError } from "@/lib/api/error-parser"
-import { challengesApi } from "@/lib/api/challenges.api"
+import { challengesApi, normalizeChallengeResponse } from "@/lib/api/challenges.api"
+import { PageState } from "@/components/creator-dashboard/page-state"
 import {
   mapBackendErrorsToCreatorFields,
   validateManageDetails,
@@ -81,6 +82,7 @@ interface ChallengeParticipant {
 interface Challenge {
   id: string
   mongoId?: string
+  publicId?: string
   title: string
   description: string
   communityId: string
@@ -190,8 +192,7 @@ export default function ChallengeManager({ challengeId }: { challengeId: string 
       }))
 
   const extractChallengePayload = useCallback((response: any): any => {
-    const primary = response?.data ?? response
-    return primary?.challenge ?? primary?.data ?? primary
+    return normalizeChallengeResponse(response)
   }, [])
 
   const normalizeChallenge = useCallback((rawData: any): Challenge => {
@@ -199,9 +200,13 @@ export default function ChallengeManager({ challengeId }: { challengeId: string 
     const resourcesSource = rawData?.resources || []
     const participantsSource = rawData?.participants || []
 
+    const resolvedMongoId = String(rawData?.mongoId || rawData?._id || rawData?.id || "")
+    const resolvedPublicId = rawData?.id && rawData.id !== resolvedMongoId ? String(rawData.id) : undefined
+
     return {
-      id: rawData?.id || rawData?._id,
-      mongoId: rawData?._id || rawData?.mongoId,
+      id: resolvedMongoId,
+      mongoId: resolvedMongoId,
+      publicId: resolvedPublicId,
       title: rawData?.title || "",
       description: rawData?.description || "",
       communityId: rawData?.communityId || "",
@@ -279,7 +284,7 @@ export default function ChallengeManager({ challengeId }: { challengeId: string 
 
   const fetchChallenge = useCallback(async () => {
     try {
-      const response = await apiClient.get<any>(`/challenges/${challengeId}`)
+      const response = await challengesApi.getById(challengeId)
       const data = extractChallengePayload(response)
       applyChallengeState(data)
     } catch (error) {
@@ -743,20 +748,21 @@ export default function ChallengeManager({ challengeId }: { challengeId: string 
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <PageState variant="loading" compact />
   }
 
   if (!challenge) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">Challenge not found</p>
-      </div>
+      <PageState
+        variant="empty"
+        title="Challenge not found"
+        description="This challenge could not be loaded from your creator dashboard."
+        actions={[{ label: "Back to challenges", onClick: () => router.push("/creator/challenges") }]}
+      />
     )
   }
+
+  const resolvedChallengeId = String(challenge.mongoId || challenge.id)
 
   return (
     <div className="space-y-8 p-5">
@@ -819,7 +825,7 @@ export default function ChallengeManager({ challengeId }: { challengeId: string 
         <TabsContent value="participants" className="space-y-6">
           <ChallengeParticipantsTab
             participants={challenge.participants || []}
-            challengeId={challengeId}
+            challengeId={resolvedChallengeId}
             onSubmissionReviewed={fetchChallenge}
           />
         </TabsContent>
@@ -862,7 +868,7 @@ export default function ChallengeManager({ challengeId }: { challengeId: string 
             </p>
           )}
           <ChallengeSettingsTab
-            challengeId={challengeId}
+            challengeId={resolvedChallengeId}
             formData={formData}
             onInputChange={handleInputChange}
             onDeleteChallenge={handleDeleteChallenge}

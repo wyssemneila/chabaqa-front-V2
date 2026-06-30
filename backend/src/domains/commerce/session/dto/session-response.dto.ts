@@ -92,6 +92,9 @@ export class SessionResponseDto {
   @ApiProperty({ description: 'ID de la session', example: 'session_123' })
   id: string;
 
+  @ApiPropertyOptional({ description: 'MongoDB ID de la session', example: '507f1f77bcf86cd799439011' })
+  mongoId?: string;
+
   @ApiProperty({ description: 'Titre de la session', example: '1-on-1 Code Review Session' })
   title: string;
 

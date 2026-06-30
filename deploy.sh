@@ -7,6 +7,11 @@ COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-chabaqa}"
 MONGO_DATABASE="${MONGO_DATABASE:-chabaqa_local}"
 DEPLOY_BACKUP_DIR="${DEPLOY_BACKUP_DIR:-${PROJECT_DIR}/.deploy-backups}"
 DEPLOY_USER="${DEPLOY_USER:-ubuntu}"
+NGINX_SOURCE="${NGINX_SOURCE:-${PROJECT_DIR}/nginx/chabaqa-cloudflare.conf}"
+NGINX_TARGET="${NGINX_TARGET:-/etc/nginx/sites-available/chabaqa}"
+APP_SERVICES=(chabaqa-backend chabaqa-frontend)
+INFRA_SERVICES=(mongo redis clamav openwa-api)
+MONITORING_SERVICES=(blackbox-exporter prometheus grafana node-exporter cadvisor)
 export COMPOSE_PROJECT_NAME
 
 echo "[deploy] project=${PROJECT_DIR} branch=${BRANCH} compose_project=${COMPOSE_PROJECT_NAME}"
@@ -16,16 +21,20 @@ cd "$PROJECT_DIR"
 # Git may block operations with a dubious ownership error.
 git config --global --add safe.directory "$PROJECT_DIR" || true
 
-echo "[deploy] syncing git branch"
+if [ "${SKIP_GIT_SYNC:-false}" = "true" ]; then
+  echo "[deploy] SKIP_GIT_SYNC=true; using current working tree"
+else
+  echo "[deploy] syncing git branch"
 
-if [ -n "${GIT_AUTH_TOKEN:-}" ] && [ -n "${GIT_REPO:-}" ]; then
-  GIT_AUTH_USER="${GIT_AUTH_USER:-x-access-token}"
-  git remote set-url origin "https://${GIT_AUTH_USER}:${GIT_AUTH_TOKEN}@github.com/${GIT_REPO}.git"
+  if [ -n "${GIT_AUTH_TOKEN:-}" ] && [ -n "${GIT_REPO:-}" ]; then
+    GIT_AUTH_USER="${GIT_AUTH_USER:-x-access-token}"
+    git remote set-url origin "https://${GIT_AUTH_USER}:${GIT_AUTH_TOKEN}@github.com/${GIT_REPO}.git"
+  fi
+
+  git fetch --all --prune
+  git checkout "$BRANCH"
+  git reset --hard "origin/$BRANCH"
 fi
-
-git fetch --all --prune
-git checkout "$BRANCH"
-git reset --hard "origin/$BRANCH"
 
 echo "[deploy] validating docker compose"
 docker compose config >/dev/null
@@ -139,6 +148,34 @@ docker compose build --pull
 cleanup_legacy_pm2_apps() {
   local removed=0
   local app
+  local legacy_pids
+
+  if [ "$(id -u)" -eq 0 ] && command -v systemctl >/dev/null 2>&1; then
+    for unit in chabaqa-monitor.timer chabaqa-monitor.service; do
+      if systemctl list-unit-files "${unit}" >/dev/null 2>&1 || systemctl list-units --all "${unit}" >/dev/null 2>&1; then
+        echo "[deploy] disabling legacy PM2 monitor unit: ${unit}"
+        systemctl disable --now "${unit}" >/dev/null 2>&1 || true
+      fi
+    done
+
+    if systemctl list-unit-files pm2-"${DEPLOY_USER}".service >/dev/null 2>&1; then
+      echo "[deploy] disabling legacy PM2 startup service: pm2-${DEPLOY_USER}.service"
+      systemctl disable --now pm2-"${DEPLOY_USER}".service >/dev/null 2>&1 || true
+    fi
+  fi
+
+  if [ -d "/root/.pm2" ]; then
+    printf '[]' > "/root/.pm2/dump.pm2" || true
+    printf '[]' > "/root/.pm2/dump.pm2.bak" || true
+  fi
+
+  if [ "$(id -u)" -eq 0 ] && [ -d "/home/${DEPLOY_USER}/.pm2" ]; then
+    printf '[]' > "/home/${DEPLOY_USER}/.pm2/dump.pm2" || true
+    printf '[]' > "/home/${DEPLOY_USER}/.pm2/dump.pm2.bak" || true
+    chown "${DEPLOY_USER}:${DEPLOY_USER}" \
+      "/home/${DEPLOY_USER}/.pm2/dump.pm2" \
+      "/home/${DEPLOY_USER}/.pm2/dump.pm2.bak" 2>/dev/null || true
+  fi
 
   if command -v pm2 >/dev/null 2>&1; then
     for app in chabaqa-backend chabaqa-frontend; do
@@ -151,7 +188,16 @@ cleanup_legacy_pm2_apps() {
 
     if [ "${removed}" = "1" ]; then
       pm2 save --force || true
-      pm2 kill || true
+    fi
+
+    if [ "$(id -u)" -eq 0 ]; then
+      pm2 delete all >/dev/null 2>&1 || true
+      pm2 save --force >/dev/null 2>&1 || true
+      pm2 kill >/dev/null 2>&1 || true
+      if [ -d "/root/.pm2" ]; then
+        printf '[]' > "/root/.pm2/dump.pm2" || true
+        printf '[]' > "/root/.pm2/dump.pm2.bak" || true
+      fi
     fi
   fi
 
@@ -167,8 +213,31 @@ cleanup_legacy_pm2_apps() {
 
     if [ "${removed}" = "1" ]; then
       sudo -u "${DEPLOY_USER}" pm2 save --force || true
-      sudo -u "${DEPLOY_USER}" pm2 kill || true
     fi
+
+    sudo -u "${DEPLOY_USER}" pm2 delete all >/dev/null 2>&1 || true
+    sudo -u "${DEPLOY_USER}" pm2 save --force >/dev/null 2>&1 || true
+    sudo -u "${DEPLOY_USER}" pm2 kill >/dev/null 2>&1 || true
+
+    if [ -d "/home/${DEPLOY_USER}/.pm2" ]; then
+      printf '[]' > "/home/${DEPLOY_USER}/.pm2/dump.pm2" || true
+      printf '[]' > "/home/${DEPLOY_USER}/.pm2/dump.pm2.bak" || true
+      chown "${DEPLOY_USER}:${DEPLOY_USER}" "/home/${DEPLOY_USER}/.pm2/dump.pm2" || true
+      chown "${DEPLOY_USER}:${DEPLOY_USER}" "/home/${DEPLOY_USER}/.pm2/dump.pm2.bak" || true
+    fi
+  fi
+
+  legacy_pids="$(
+    ps -eo pid,args \
+      | awk '/PM2 v|\/home\/ubuntu\/chabaqa\/(backend|frontend)/ && !/awk/ {print $1}' \
+      | xargs 2>/dev/null || true
+  )"
+
+  if [ -n "${legacy_pids}" ]; then
+    echo "[deploy] killing remaining legacy PM2/Node processes: ${legacy_pids}"
+    kill ${legacy_pids} >/dev/null 2>&1 || true
+    sleep 2
+    kill -9 ${legacy_pids} >/dev/null 2>&1 || true
   fi
 }
 
@@ -223,6 +292,36 @@ free_host_port() {
 cleanup_legacy_pm2_apps
 free_host_port 3000
 free_host_port 8083
+free_host_port 8081
+free_host_port 9090
+free_host_port 9115
+free_host_port 9100
+free_host_port 8088
+free_host_port 3001
+
+install_nginx_config() {
+  if [ ! -f "${NGINX_SOURCE}" ]; then
+    echo "[deploy] nginx source missing: ${NGINX_SOURCE}"
+    return
+  fi
+
+  if ! command -v nginx >/dev/null 2>&1; then
+    echo "[deploy] nginx is not installed on host; skipping host nginx reload"
+    return
+  fi
+
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "[deploy] not running as root; skipping host nginx install/reload"
+    return
+  fi
+
+  echo "[deploy] installing nginx config ${NGINX_SOURCE} -> ${NGINX_TARGET}"
+  cp "${NGINX_SOURCE}" "${NGINX_TARGET}"
+  ln -sf "${NGINX_TARGET}" /etc/nginx/sites-enabled/chabaqa
+  rm -f /etc/nginx/sites-enabled/default
+  nginx -t
+  systemctl reload nginx
+}
 
 dump_container_diagnostics() {
   local name="$1"
@@ -270,7 +369,7 @@ wait_for_container() {
 }
 
 echo "[deploy] ensuring infrastructure services"
-docker compose up -d --no-recreate mongo redis clamav
+docker compose up -d --no-recreate "${INFRA_SERVICES[@]}"
 wait_for_container chabaqa-mongo 120
 wait_for_container chabaqa-redis 120
 if ! wait_for_container chabaqa-clamav 60; then
@@ -285,6 +384,12 @@ wait_for_container chabaqa-backend 180
 echo "[deploy] recreating frontend"
 docker compose up -d --force-recreate --remove-orphans chabaqa-frontend
 wait_for_container chabaqa-frontend 120
+
+echo "[deploy] ensuring monitoring services"
+docker compose up -d --no-recreate "${MONITORING_SERVICES[@]}"
+wait_for_container chabaqa-cadvisor 90
+
+install_nginx_config
 
 echo "[deploy] waiting for services"
 sleep 15
@@ -322,7 +427,22 @@ assert_http_status "http://127.0.0.1:8083/logo_chabaqa.png" "200" "frontend logo
 assert_http_status "http://127.0.0.1:8083/Logos/PNG/frensh1.png" "200" "frontend header logo asset"
 assert_http_status "http://127.0.0.1:8083/banners-community/community-1-email-marketing.png" "200" "frontend image fallback asset"
 assert_http_status "http://127.0.0.1:8083/placeholder-user.jpg" "200" "frontend avatar fallback asset"
+assert_http_status "http://127.0.0.1:9090/-/ready" "200" "prometheus readiness"
+assert_http_status "http://127.0.0.1:9115/-/healthy" "200" "blackbox exporter health"
+assert_http_status "http://127.0.0.1:9100/metrics" "200" "node exporter metrics"
+assert_http_status "http://127.0.0.1:8088/healthz" "200" "cadvisor health"
+
+GRAFANA_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:3001/api/health || true)"
+if [ "${GRAFANA_STATUS}" != "200" ]; then
+  echo "[deploy] grafana health failed: ${GRAFANA_STATUS}"
+  docker logs chabaqa-grafana --tail 120 || true
+  exit 1
+fi
+
+"${PROJECT_DIR}/scripts/verify-production.sh"
+"${PROJECT_DIR}/scripts/smoke-production.sh"
 
 echo "[deploy] success"
 echo "[deploy] frontend: https://chabaqa.io"
 echo "[deploy] backend : https://chabaqa.io/api"
+echo "[deploy] monitoring: prometheus=http://127.0.0.1:9090 grafana=http://127.0.0.1:3001"

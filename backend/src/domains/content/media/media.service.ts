@@ -31,6 +31,7 @@ export class MediaService {
   private readonly privateEnforcement = process.env.MEDIA_PRIVATE_ENFORCEMENT === 'true';
   private readonly tokenSecret = getMediaPrivateTokenSecret();
   private readonly presignedEnabled = process.env.MEDIA_PRESIGNED_ENABLED === 'true';
+  private readonly storageReadPreference = (process.env.MEDIA_STORAGE_READ_PREFERENCE || process.env.MEDIA_STORAGE_DRIVER || 'disk').toLowerCase();
 
   constructor(
     @InjectModel(MediaAsset.name) private readonly mediaModel: Model<MediaAssetDocument>,
@@ -225,6 +226,28 @@ export class MediaService {
       throw new NotFoundException('Media asset not found');
     }
 
+    const extension = extname(asset.storageKey).toLowerCase();
+    const inlineSafeExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp3', '.wav', '.ogg', '.aac', '.flac', '.mp4', '.mov', '.webm']);
+    res.setHeader('Content-Type', asset.mimeType || 'application/octet-stream');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    if (!inlineSafeExtensions.has(extension)) {
+      const filename = basename(asset.storageKey).replace(/["\r\n]/g, '_') || 'download';
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    }
+
+    if (this.storageReadPreference === 's3') {
+      try {
+        const object = await this.s3StorageAdapter.getObjectStream(asset.storageKey);
+        if (object.contentType) res.setHeader('Content-Type', object.contentType);
+        if (object.contentLength) res.setHeader('Content-Length', String(object.contentLength));
+        return object.stream.pipe(res);
+      } catch {
+        // Fall through to disk so rollback and partial migrations keep working.
+      }
+    }
+
     const uploadsRoot = resolve(this.uploadsRoot);
     const filePath = resolve(uploadsRoot, asset.storageKey);
     const relativePath = relative(uploadsRoot, filePath);
@@ -232,19 +255,16 @@ export class MediaService {
       throw new BadRequestException('Invalid media storage path');
     }
     if (!existsSync(filePath)) {
-      throw new NotFoundException('Media file missing from storage');
+      try {
+        const object = await this.s3StorageAdapter.getObjectStream(asset.storageKey);
+        if (object.contentType) res.setHeader('Content-Type', object.contentType);
+        if (object.contentLength) res.setHeader('Content-Length', String(object.contentLength));
+        return object.stream.pipe(res);
+      } catch {
+        throw new NotFoundException('Media file missing from storage');
+      }
     }
 
-    const extension = extname(filePath).toLowerCase();
-    const inlineSafeExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp3', '.wav', '.ogg', '.aac', '.flac', '.mp4', '.mov', '.webm']);
-    res.setHeader('Content-Type', asset.mimeType || 'application/octet-stream');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
-    if (!inlineSafeExtensions.has(extension)) {
-      const filename = basename(filePath).replace(/["\r\n]/g, '_') || 'download';
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    }
     return createReadStream(filePath).pipe(res);
   }
 

@@ -5,13 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
 import { Loader2, AlertCircle } from 'lucide-react'
-import { eventsApi } from '@/lib/api/events.api'
+import { eventsApi, normalizeEventResponse } from '@/lib/api/events.api'
 import ManageEventClient from './components/ManageEventClient'
-
-function unwrapEvent(response: any) {
-  const payload = response?.data?.event ?? response?.data?.data ?? response?.data ?? response
-  return payload?.event ?? payload
-}
 
 export default function ManageEventPage() {
   const params = useParams<{ eventId?: string; id?: string }>()
@@ -36,11 +31,13 @@ export default function ManageEventPage() {
       setError('')
       try {
         const response = await eventsApi.getById(eventId)
-        const nextEvent = unwrapEvent(response)
+        const nextEvent = normalizeEventResponse(response)
         if (!nextEvent?.id && !nextEvent?._id) {
           throw new Error('Event was not found.')
         }
-        if (!cancelled) setEvent({ ...nextEvent, id: nextEvent.id || nextEvent._id })
+        const resolvedMongoId = String(nextEvent?.mongoId || nextEvent?._id || nextEvent?.id || '')
+        const publicId = nextEvent?.id && nextEvent.id !== resolvedMongoId ? nextEvent.id : nextEvent?.publicId
+        if (!cancelled) setEvent({ ...nextEvent, id: resolvedMongoId, mongoId: resolvedMongoId, publicId })
       } catch (err: any) {
         if (!cancelled) {
           setError(err?.message || 'Failed to load event.')

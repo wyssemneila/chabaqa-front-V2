@@ -2,7 +2,6 @@
 set -euo pipefail
 
 PROJECT_DIR="${PROJECT_DIR:-/home/ubuntu/chabaqa}"
-DEPLOY_USER="${DEPLOY_USER:-ubuntu}"
 DOMAIN="${DOMAIN:-https://chabaqa.io}"
 NGINX_SOURCE="${PROJECT_DIR}/nginx/chabaqa-cloudflare.conf"
 NGINX_TARGET="${NGINX_TARGET:-/etc/nginx/sites-available/chabaqa}"
@@ -12,64 +11,101 @@ fail() {
   exit 1
 }
 
-pm2_user_json() {
-  sudo -u "${DEPLOY_USER}" pm2 jlist 2>/dev/null || echo "[]"
-}
+assert_no_pm2_chabaqa_apps() {
+  if systemctl is-active --quiet pm2-ubuntu.service 2>/dev/null; then
+    fail "pm2-ubuntu.service is still active"
+  fi
 
-root_pm2_json() {
-  if [ "$(id -u)" -eq 0 ]; then
-    pm2 jlist 2>/dev/null || echo "[]"
-  else
-    echo "[]"
+  if systemctl is-enabled --quiet pm2-ubuntu.service 2>/dev/null; then
+    fail "pm2-ubuntu.service is still enabled"
+  fi
+
+  if systemctl is-active --quiet chabaqa-monitor.timer 2>/dev/null; then
+    fail "legacy chabaqa-monitor.timer is still active"
+  fi
+
+  if systemctl is-enabled --quiet chabaqa-monitor.timer 2>/dev/null; then
+    fail "legacy chabaqa-monitor.timer is still enabled"
+  fi
+
+  if ss -ltnp "( sport = :8081 )" | awk 'NR>1 {found=1} END {exit found ? 0 : 1}'; then
+    fail "legacy PM2 frontend port 8081 is still listening"
+  fi
+
+  if ps -eo args | awk '/\/home\/ubuntu\/chabaqa\/(backend|frontend)/ && !/awk/ {found=1} END {exit found ? 0 : 1}'; then
+    fail "legacy Chabaqa PM2 node processes are still running"
   fi
 }
 
-assert_http_ok() {
-  local url="$1"
-  local label="$2"
+assert_container_running() {
+  local container="$1"
   local status
-  status="$(curl -k -sS -o /dev/null -w "%{http_code}" "${url}" || true)"
+  status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${container}" 2>/dev/null || true)"
   case "${status}" in
-    200|204|301|302|307|308) ;;
-    *) fail "${label} returned ${status}: ${url}" ;;
+    healthy|running) ;;
+    *) fail "container ${container} is not running/healthy (status=${status:-missing})" ;;
   esac
 }
 
 assert_port() {
   local port="$1"
-  local app="$2"
-  local owner_pid
-  owner_pid="$(ss -ltnp "( sport = :${port} )" | awk -F'pid=' 'NR>1 {split($2,a,","); print a[1]; exit}')"
-  [ -n "${owner_pid}" ] || fail "port ${port} is not listening"
-
-  if ! sudo -u "${DEPLOY_USER}" pm2 pid "${app}" | grep -q "${owner_pid}"; then
-    local owner_user owner_cmd
-    owner_user="$(ps -o user= -p "${owner_pid}" | awk '{print $1}')"
-    owner_cmd="$(ps -o args= -p "${owner_pid}")"
-    if [ "${owner_user}" != "${DEPLOY_USER}" ] || ! printf '%s' "${owner_cmd}" | grep -q 'PM2'; then
-      fail "port ${port} pid ${owner_pid} is not owned by ${DEPLOY_USER} PM2 app ${app}"
-    fi
-  fi
+  local expected_process="$2"
+  local line
+  line="$(ss -ltnp "( sport = :${port} )" | awk 'NR>1 {print; exit}')"
+  [ -n "${line}" ] || fail "port ${port} is not listening"
+  printf '%s' "${line}" | grep -q "${expected_process}" || fail "port ${port} is not owned by ${expected_process}: ${line}"
 }
 
-if ! id -u "${DEPLOY_USER}" >/dev/null 2>&1; then
-  fail "deploy user ${DEPLOY_USER} does not exist"
-fi
+assert_http_ok() {
+  local url="$1"
+  local label="$2"
+  local allowed="${3:-200,204,301,302,307,308}"
+  local status
+  status="$(curl -k -sS -o /dev/null -w "%{http_code}" "${url}" || true)"
+  case ",${allowed}," in
+    *",${status},"*) ;;
+    *) fail "${label} returned ${status}: ${url}" ;;
+  esac
+}
 
-if root_pm2_json | grep -q '"name":"chabaqa-\(backend\|frontend\)"'; then
-  fail "root PM2 still has Chabaqa apps; delete them before deploy success"
-fi
+cd "${PROJECT_DIR}"
 
-pm2_user_json | grep -q '"name":"chabaqa-backend"' || fail "${DEPLOY_USER} PM2 missing chabaqa-backend"
-pm2_user_json | grep -q '"name":"chabaqa-frontend"' || fail "${DEPLOY_USER} PM2 missing chabaqa-frontend"
+assert_no_pm2_chabaqa_apps
 
-assert_port 3000 chabaqa-backend
-assert_port 8081 chabaqa-frontend
+for container in \
+  chabaqa-mongo \
+  chabaqa-redis \
+  chabaqa-backend \
+  chabaqa-frontend \
+  chabaqa-blackbox-exporter \
+  chabaqa-prometheus \
+  chabaqa-grafana \
+  chabaqa-node-exporter \
+  chabaqa-cadvisor
+do
+  assert_container_running "${container}"
+done
+
+assert_port 3000 docker-proxy
+assert_port 8083 docker-proxy
+assert_port 9090 docker-proxy
+assert_port 9115 docker-proxy
+assert_port 9100 docker-proxy
+assert_port 8088 docker-proxy
+assert_port 3001 docker-proxy
+
+assert_http_ok "http://127.0.0.1:3000/api/health/ping" "backend local health" "200"
+assert_http_ok "http://127.0.0.1:8083/" "frontend local health" "200,307,308"
+assert_http_ok "http://127.0.0.1:9090/-/ready" "prometheus readiness" "200"
+assert_http_ok "http://127.0.0.1:9115/-/healthy" "blackbox exporter health" "200"
+assert_http_ok "http://127.0.0.1:9100/metrics" "node exporter metrics" "200"
+assert_http_ok "http://127.0.0.1:8088/healthz" "cadvisor health" "200"
+assert_http_ok "http://127.0.0.1:3001/api/health" "grafana health" "200"
 
 assert_http_ok "${DOMAIN}/" "frontend"
 assert_http_ok "${DOMAIN}/api" "backend api"
-assert_http_ok "${DOMAIN}/Logos/PNG/frensh1.png" "frontend header logo asset"
-assert_http_ok "${DOMAIN}/banners-community/community-3-fitness.png" "frontend community fallback asset"
+assert_http_ok "${DOMAIN}/Logos/PNG/frensh1.png" "frontend header logo asset" "200"
+assert_http_ok "${DOMAIN}/banners-community/community-3-fitness.png" "frontend community fallback asset" "200"
 
 if [ -f "${NGINX_SOURCE}" ] && [ -f "${NGINX_TARGET}" ]; then
   diff -q "${NGINX_SOURCE}" "${NGINX_TARGET}" >/dev/null || fail "nginx target differs from repo source"

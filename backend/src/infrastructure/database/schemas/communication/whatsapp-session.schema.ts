@@ -54,10 +54,20 @@ export class WhatsappSession {
   lastSyncedAt?: Date;
 
   @Prop()
+  connectedAt?: Date;
+
+  @Prop()
+  lastWebhookRegisteredAt?: Date;
+
+  @Prop()
+  lastHealthCheckAt?: Date;
+
+  @Prop()
   lastError?: string;
 }
 
-export const WhatsappSessionSchema = SchemaFactory.createForClass(WhatsappSession);
+export const WhatsappSessionSchema =
+  SchemaFactory.createForClass(WhatsappSession);
 
 WhatsappSessionSchema.index({ communityId: 1 }, { unique: true });
 WhatsappSessionSchema.index({ creatorId: 1 });

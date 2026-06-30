@@ -53,14 +53,45 @@ export class WhatsappContact {
   @Prop()
   consentCapturedAt?: Date;
 
+  @Prop({ trim: true, maxlength: 120 })
+  consentSource?: string;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  consentProof?: string;
+
+  @Prop({ trim: true, maxlength: 80 })
+  consentMethod?: string;
+
+  @Prop({ trim: true, maxlength: 80 })
+  consentIp?: string;
+
+  @Prop({ trim: true, maxlength: 240 })
+  consentUserAgent?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  consentCapturedBy?: Types.ObjectId;
+
+  @Prop()
+  optOutAt?: Date;
+
+  @Prop({ trim: true, maxlength: 240 })
+  optOutReason?: string;
+
   @Prop()
   lastMessageAt?: Date;
+
+  @Prop()
+  lastInboundMessageAt?: Date;
+
+  @Prop()
+  lastOutboundMessageAt?: Date;
 
   @Prop({ type: [String], default: [] })
   tags: string[];
 }
 
-export const WhatsappContactSchema = SchemaFactory.createForClass(WhatsappContact);
+export const WhatsappContactSchema =
+  SchemaFactory.createForClass(WhatsappContact);
 
 WhatsappContactSchema.index({ communityId: 1, phoneE164: 1 }, { unique: true });
 WhatsappContactSchema.index({ communityId: 1, consentStatus: 1 });

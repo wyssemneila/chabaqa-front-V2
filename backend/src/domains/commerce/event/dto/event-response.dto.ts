@@ -200,6 +200,12 @@ export class EventResponseDto {
   })
   id: string;
 
+  @ApiPropertyOptional({
+    description: 'ID MongoDB de l\'événement utilisé par le dashboard créateur',
+    example: '507f1f77bcf86cd799439011'
+  })
+  mongoId?: string;
+
   @ApiProperty({
     description: 'Titre de l\'événement',
     example: 'Tech Conference 2023'

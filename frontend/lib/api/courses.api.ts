@@ -4,15 +4,28 @@ import type { Course, CourseSection, CourseChapter, CourseEnrollment } from './t
 import { getDeviceInfo } from '@/lib/utils/device';
 
 export interface CreateCourseData {
-  title: string;
-  slug: string;
+  title?: string;
+  slug?: string;
+  titre?: string;
   description: string;
-  communityId: string;
+  communityId?: string;
+  communitySlug?: string;
   thumbnail?: string;
-  price: number;
-  priceType: 'free' | 'paid';
-  level: 'beginner' | 'intermediate' | 'advanced';
-  duration: number;
+  price?: number;
+  prix?: number;
+  priceType?: 'free' | 'paid';
+  level?: 'beginner' | 'intermediate' | 'advanced';
+  niveau?: string;
+  duration?: number;
+  duree?: string;
+  isPaid?: boolean;
+  devise?: string;
+  currency?: string;
+  category?: string;
+  isPublished?: boolean;
+  learningObjectives?: string[];
+  requirements?: string[];
+  sections?: any[];
 }
 
 export interface UpdateCourseData extends Partial<CreateCourseData> {
@@ -48,6 +61,32 @@ export interface CreateChapterData {
   notes?: string;
 }
 
+export const normalizeCourseResponse = (response: any): any => {
+  if (!response) return response;
+  if (response?.cours) return response.cours;
+  if (response?.data?.cours) return response.data.cours;
+  if (response?.data?.data?.cours) return response.data.data.cours;
+  if (response?.course) return response.course;
+  if (response?.data?.course) return response.data.course;
+  if (response?.data?.data?.course) return response.data.data.course;
+  if (response?.data?.data) return response.data.data;
+  if (response?.data) return response.data;
+  return response;
+};
+
+export const normalizeCourseListResponse = (response: any): any[] => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.cours)) return response.cours;
+  if (Array.isArray(response?.courses)) return response.courses;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.cours)) return response.data.cours;
+  if (Array.isArray(response?.data?.courses)) return response.data.courses;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  if (Array.isArray(response?.data?.data?.cours)) return response.data.data.cours;
+  if (Array.isArray(response?.data?.data?.courses)) return response.data.data.courses;
+  return [];
+};
+
 // Courses API
 export const coursesApi = {
   // Get all courses
@@ -59,8 +98,8 @@ export const coursesApi = {
   },
 
   // Create course
-  create: async (data: CreateCourseData): Promise<ApiSuccessResponse<Course>> => {
-    return apiClient.post<ApiSuccessResponse<Course>>('/cours/create-cours', data);
+  create: async (data: CreateCourseData): Promise<any> => {
+    return apiClient.post<any>('/cours/create-cours', data);
   },
 
   // Get course by ID
@@ -152,6 +191,11 @@ export const coursesApi = {
   // Get user enrolled courses
   getMyCourses: async (params?: PaginationParams): Promise<any> => {
     return apiClient.get('/cours/user/mes-cours', params);
+  },
+
+  // Get courses created by the authenticated creator
+  getCreated: async (params?: PaginationParams & { communityId?: string }): Promise<any> => {
+    return apiClient.get('/cours/user/created', params);
   },
 
   // Get user progress for all courses
@@ -283,7 +327,7 @@ export const coursesApi = {
 
   // Get courses by user (creator)
   getByCreator: async (userId: string, params?: { page?: number; limit?: number; published?: boolean }): Promise<any> => {
-    return apiClient.get(`/cours/by-user/${userId}`, params);
+    return apiClient.get(`/cours/by-user/${userId}`, { ...(params || {}), type: 'created' });
   },
 
   // =========================================================================
@@ -362,7 +406,11 @@ export const coursesApi = {
   },
 
   // Update thumbnail (file upload)
-  updateThumbnail: async (courseId: string, file: File): Promise<any> => {
-    return apiClient.put(`/cours/${courseId}/thumbnail`, { thumbnailUrl: 'TEMP_URL_NEED_UPLOAD_SERVICE' }); // TODO: Fix upload integration
+  updateThumbnailUrl: async (courseId: string, thumbnailUrl: string): Promise<any> => {
+    return apiClient.put(`/cours/${courseId}/thumbnail`, { thumbnailUrl });
+  },
+
+  updateThumbnail: async (courseId: string, thumbnailUrl: string): Promise<any> => {
+    return apiClient.put(`/cours/${courseId}/thumbnail`, { thumbnailUrl });
   },
 };

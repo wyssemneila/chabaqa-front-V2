@@ -100,6 +100,32 @@ describe("creator content create models", () => {
     })
   })
 
+  it("keeps non-preview chapters free when the course price is free", () => {
+    const payload = buildCourseCreatePayload({
+      ...creatorContentMinimalValues.course,
+      price: 0,
+      sections: [
+        {
+          title: "Basics",
+          chapters: [
+            { title: "Intro", content: "Welcome", isPreview: true },
+            { title: "Second lesson", content: "Keep learning", isPreview: false },
+          ],
+        },
+      ],
+    })
+
+    expect(payload).toMatchObject({
+      prix: 0,
+      isPaid: false,
+    })
+    expect(payload.sections[0].chapitres[1]).toMatchObject({
+      titre: "Second lesson",
+      isPaid: false,
+      prix: 0,
+    })
+  })
+
   it("builds payloads from explicit values without mutating validation behavior", () => {
     expect(buildChallengeCreatePayload(creatorContentMinimalValues.challenge).communitySlug).toBe("motion-school")
     expect(buildProductCreatePayload(creatorContentMinimalValues.product).communityId).toBe("community-id")
@@ -112,4 +138,3 @@ describe("creator content create models", () => {
     expect(buildCommunityCreatePayload(creatorContentMinimalValues.community).socialLinks.website).toBe("https://example.com")
   })
 })
-
