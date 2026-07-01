@@ -26,9 +26,16 @@ export interface LinkPaymentMethod {
   };
 }
 
+type StripeClient = InstanceType<typeof Stripe>;
+type StripeCheckoutSession = Awaited<ReturnType<StripeClient['checkout']['sessions']['retrieve']>>;
+type StripePaymentIntent = Awaited<ReturnType<StripeClient['paymentIntents']['retrieve']>>;
+type StripeCustomer = Awaited<ReturnType<StripeClient['customers']['retrieve']>>;
+type StripeSubscription = Awaited<ReturnType<StripeClient['subscriptions']['retrieve']>>;
+type StripeWebhookEvent = ReturnType<StripeClient['webhooks']['constructEvent']>;
+
 @Injectable()
 export class StripePaymentService {
-  private readonly stripe: Stripe;
+  private readonly stripe: StripeClient;
   private readonly mockMode: boolean;
   private cachedTndToUsdRate: number = 0.32; // Fallback rate
   private rateLastFetched: number = 0;
@@ -46,7 +53,7 @@ export class StripePaymentService {
     if (this.mockMode) {
       console.warn('[Stripe] Development mock mode enabled. Real Stripe API calls are skipped.');
     }
-    this.stripe = this.mockMode ? (null as unknown as Stripe) : new Stripe(stripeKey);
+    this.stripe = this.mockMode ? (null as unknown as StripeClient) : new Stripe(stripeKey);
   }
 
   get isMockMode(): boolean {
@@ -247,7 +254,7 @@ export class StripePaymentService {
    */
   async getCheckoutSession(sessionId: string): Promise<{
     success: boolean;
-    session?: Stripe.Checkout.Session;
+    session?: StripeCheckoutSession;
     error?: string;
   }> {
     try {
@@ -328,9 +335,9 @@ export class StripePaymentService {
         expand: ['payment_intent', 'customer', 'subscription'],
       });
 
-      const paymentIntent = session.payment_intent as Stripe.PaymentIntent | null;
-      const customer = session.customer as Stripe.Customer | string | null;
-      const subscription = session.subscription as Stripe.Subscription | string | null;
+      const paymentIntent = session.payment_intent as StripePaymentIntent | null;
+      const customer = session.customer as StripeCustomer | string | null;
+      const subscription = session.subscription as StripeSubscription | string | null;
       const subscriptionObject = (typeof subscription === 'object' ? subscription : null) as any;
 
       let paymentMethod: LinkPaymentMethod | undefined;
@@ -390,7 +397,7 @@ export class StripePaymentService {
   async createWebhookEvent(
     body: Buffer,
     signature: string,
-  ): Promise<{ success: boolean; event?: Stripe.Event; error?: string }> {
+  ): Promise<{ success: boolean; event?: StripeWebhookEvent; error?: string }> {
     try {
       if (this.mockMode) {
         return {

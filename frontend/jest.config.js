@@ -31,6 +31,7 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: {
+        rootDir: '.',
         jsx: 'react',
         esModuleInterop: true,
         allowSyntheticDefaultImports: true,
