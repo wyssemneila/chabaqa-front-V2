@@ -1,8 +1,7 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { extname, join, relative, resolve } from 'path';
 import { createReadStream, existsSync, mkdirSync, promises as fsPromises } from 'fs';
-import { createHash } from 'crypto';
-import { v4 as uuidv4 } from 'uuid';
+import { createHash, randomUUID } from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { StorageUsage, StorageUsageDocument } from '@/infrastructure/database/schemas/shared/storage-usage.schema';
@@ -215,7 +214,7 @@ export class UploadService {
    */
   generateFilename(originalName: string): string {
     const extension = extname(originalName);
-    const uuid = uuidv4();
+    const uuid = randomUUID();
     const timestamp = Date.now();
     return `${timestamp}-${uuid}${extension}`;
   }
