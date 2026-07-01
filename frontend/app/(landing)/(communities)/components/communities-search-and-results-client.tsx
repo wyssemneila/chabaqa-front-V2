@@ -14,9 +14,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react"
-import { communitiesData } from "@/lib/data-communities"
 import { CommunityCard } from "@/app/(landing)/(communities)/components/community-card"
-import { Explore } from "@/lib/data-communities"
+import type { Explore } from "@/lib/explore-types"
 import { useTranslations } from "next-intl"
 
 type ItemType = "community" | "course" | "challenge" | "product" | "oneToOne" | "event"
@@ -53,6 +52,15 @@ export function CommunitiesSearchAndResultsClient({ communities }: CommunitiesSe
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(12)
+  const categories = useMemo(() => ["All", ...Array.from(new Set(communities.map(item => item.category).filter(Boolean)))], [communities])
+  const sortOptions = useMemo(() => [
+    { value: "popular", label: t("sort.popular") },
+    { value: "newest", label: t("sort.newest") },
+    { value: "members", label: t("sort.members") },
+    { value: "rating", label: t("sort.rating") },
+    { value: "price-low", label: t("sort.priceLow") },
+    { value: "price-high", label: t("sort.priceHigh") },
+  ], [t])
 
   // SWAPPED: Now these are the quick filter badges with gradient colors
   const typeQuickFilters: { key: ItemType; label: string; color: string }[] = [
@@ -275,7 +283,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
               onChange={(e) => handleFilterChange("category", e.target.value)}
               className="h-7 sm:h-9 px-1 sm:px-2 bg-white border border-gray-300 rounded-md text-[10px] sm:text-sm min-w-[80px] sm:min-w-[110px]"
             >
-              {communitiesData.categories.slice(0, 6).map((category) => (
+              {categories.slice(0, 6).map((category) => (
                 <option key={category} value={category}>
                   {category === "All" ? t("all") : category.split(" ")[0]}
                 </option>
@@ -310,7 +318,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
               onChange={(e) => handleFilterChange("sortBy", e.target.value)}
               className="h-7 sm:h-9 px-1 sm:px-2 bg-white border border-gray-300 rounded-md text-[10px] sm:text-sm min-w-[80px] sm:min-w-[100px]"
             >
-              {communitiesData.sortOptions.map((option) => (
+              {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.value === "popular"
                     ? t("sort.popular")

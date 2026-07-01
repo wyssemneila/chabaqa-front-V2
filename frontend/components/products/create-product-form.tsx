@@ -11,6 +11,8 @@ import {
 } from "lucide-react"
 import { Input }    from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
+import { productsApi } from "@/lib/api/products.api"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const uid  = () => Math.random().toString(36).slice(2, 9)
@@ -793,6 +795,7 @@ function SuccessScreen() {
 // ════════════════════════════════════════════════════════════════════════════════
 export function CreateProductForm() {
   const router = useRouter()
+  const { selectedCommunityId } = useCreatorCommunity()
   const [wizardStep,   setWizardStep]   = useState(1)
   const [error,        setError]        = useState("")
   const [success,      setSuccess]      = useState(false)
@@ -843,18 +846,38 @@ export function CreateProductForm() {
   const submit = async () => {
     setSubmitting(true); setError("")
     try {
-      setSubmitStatus("Uploading files…");   await new Promise(r=>setTimeout(r,500))
-      setSubmitStatus("Saving product…");    await new Promise(r=>setTimeout(r,400))
-      setSubmitStatus("Publishing…");        await new Promise(r=>setTimeout(r,300))
+      if (!selectedCommunityId) throw new Error("Select a community before creating a product.")
 
-      const products:any[] = JSON.parse(localStorage.getItem("chabaqa_products")??"[]")
-      products.unshift({
-        id:`prd_${Date.now()}`,
-        ...data,
-        files: data.files.map(f => ({ id:f.id, name:f.name, description:f.description, size:f.size, ext:f.ext })),
-        createdAt: new Date().toISOString(),
+      setSubmitStatus("Saving product…")
+      const created = await productsApi.create({
+        communityId: selectedCommunityId,
+        title: data.title,
+        description: data.description,
+        price: data.priceType === "paid" ? Number(data.price || 0) : 0,
+        currency: "TND",
+        category: data.category,
+        type: "digital",
+        isPublished: data.isPublished,
+        images: [data.thumbnail, ...data.previewImages].filter(Boolean),
+        licenseTerms: data.license,
+        features: data.whatIncluded,
+        variants: data.priceType === "paid" && data.hasTiers
+          ? data.tiers.map(tier => ({
+              name: tier.name,
+              price: Number(tier.price || 0),
+              description: tier.description || undefined,
+            }))
+          : undefined,
       })
-      localStorage.setItem("chabaqa_products", JSON.stringify(products))
+
+      const product = (created as any)?.data?.data || (created as any)?.data || (created as any)?.product || created
+      const productId = product?._id || product?.id
+      if (!productId) throw new Error("Product was created but no product id was returned.")
+
+      setSubmitStatus("Uploading files…")
+      for (const fileItem of data.files) {
+        if (fileItem.file) await productsApi.uploadFile(productId, fileItem.file)
+      }
       setSuccess(true)
       setTimeout(() => router.push("/creator/products"), 2800)
     } catch(err:any) {

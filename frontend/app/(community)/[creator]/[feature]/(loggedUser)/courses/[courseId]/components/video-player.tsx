@@ -51,7 +51,7 @@ export default function VideoPlayer({
               allowFullScreen
               className="absolute inset-0 w-full h-full"
             ></iframe>
-            {/* Video Controls - Overlay for mock purposes */}
+            {/* Lightweight overlay controls for embedded course videos. */}
             <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
               <div className="space-y-2">
                 <div className="w-full bg-white/20 rounded-full h-1">

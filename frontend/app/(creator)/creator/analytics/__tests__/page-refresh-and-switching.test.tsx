@@ -8,6 +8,18 @@ jest.mock("@/hooks/use-creator-analytics", () => ({
   useAnalyticsDashboard: (...args: any[]) => mockUseAnalyticsDashboard(...args),
 }))
 
+jest.mock("@/app/(creator)/creator/context/creator-community-context", () => ({
+  useCreatorCommunity: () => ({
+    communities: [{ id: "community-1", _id: "community-1", name: "Community One", slug: "community-one" }],
+    selectedCommunityId: "community-1",
+    selectedCommunity: { id: "community-1", _id: "community-1", name: "Community One", slug: "community-one" },
+    setSelectedCommunityId: jest.fn(),
+    refreshCommunities: jest.fn(),
+    isLoading: false,
+    error: null,
+  }),
+}))
+
 jest.mock("@/components/creator-dashboard/DashSidebar", () => ({
   __esModule: true,
   default: () => null,
@@ -104,7 +116,7 @@ describe("Creator analytics dashboard", () => {
   test("renders dashboard metrics and content from the current dashboard query", () => {
     render(<CommunityAnalyticsPage />)
 
-    expect(mockUseAnalyticsDashboard).toHaveBeenCalledWith("30d", "all")
+    expect(mockUseAnalyticsDashboard).toHaveBeenCalledWith("30d", "all", "community-1", true)
     expect(screen.getAllByText("1,250 TND").length).toBeGreaterThan(0)
     expect(screen.getByText("Growth Course")).toBeInTheDocument()
     expect(screen.getByText("75%")).toBeInTheDocument()
@@ -114,10 +126,10 @@ describe("Creator analytics dashboard", () => {
     render(<CommunityAnalyticsPage />)
 
     fireEvent.click(screen.getByRole("button", { name: "7D" }))
-    expect(mockUseAnalyticsDashboard).toHaveBeenLastCalledWith("7d", "all")
+    expect(mockUseAnalyticsDashboard).toHaveBeenLastCalledWith("7d", "all", "community-1", true)
 
     fireEvent.click(screen.getByRole("button", { name: "Posts" }))
-    expect(mockUseAnalyticsDashboard).toHaveBeenLastCalledWith("7d", "post")
+    expect(mockUseAnalyticsDashboard).toHaveBeenLastCalledWith("7d", "post", "community-1", true)
     expect(screen.getByText("Post Engagement Analytics")).toBeInTheDocument()
   })
 

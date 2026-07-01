@@ -481,8 +481,8 @@ export function CreatorFeaturePage({ variant }: { variant: FeatureVariant }) {
                   {config.metrics.map((metric) => (
                     <div key={metric.label} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                       <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{metric.label}</p>
-                      <p className="mt-1 text-2xl font-black tabular-nums text-slate-950">{metric.value}</p>
-                      <p className="mt-1 text-[12px] font-medium text-slate-500">{metric.detail}</p>
+                      <p className="mt-1 text-2xl font-black tabular-nums text-slate-950">Unavailable</p>
+                      <p className="mt-1 text-[12px] font-medium text-slate-500">Backend integration required</p>
                     </div>
                   ))}
                 </div>
@@ -505,6 +505,18 @@ export function CreatorFeaturePage({ variant }: { variant: FeatureVariant }) {
                     </Link>
                   ))}
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+              <div>
+                <p className="text-[14px] font-black text-amber-900">Backend data unavailable</p>
+                <p className="mt-1 text-[13px] leading-6 text-amber-800">
+                  This route is a navigation shell only. Metrics, panels, and actions here are not fetched from production creator data yet.
+                </p>
               </div>
             </div>
           </section>
@@ -541,9 +553,9 @@ export function CreatorFeaturePage({ variant }: { variant: FeatureVariant }) {
           <section className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-[14px] font-black text-slate-900">Workflow-ready page</p>
+                <p className="text-[14px] font-black text-slate-900">Navigation-only page</p>
                 <p className="mt-1 text-[13px] text-slate-500">
-                  This route now has a dashboard surface, clear navigation, and creator-specific controls.
+                  Use a connected creator dashboard route for live backend data.
                 </p>
               </div>
               <Link

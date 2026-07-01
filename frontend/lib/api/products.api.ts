@@ -101,6 +101,21 @@ export const productsApi = {
     return apiClient.uploadFile<ApiSuccessResponse<ProductFile>>(`/products/${id}/files`, file);
   },
 
+  // Add product file metadata
+  addFile: async (id: string, data: CreateProductFileData): Promise<ApiSuccessResponse<ProductFile>> => {
+    return apiClient.post<ApiSuccessResponse<ProductFile>>(`/products/${id}/files`, data);
+  },
+
+  // Remove product file
+  removeFile: async (id: string, fileId: string): Promise<ApiSuccessResponse<void>> => {
+    return apiClient.delete<ApiSuccessResponse<void>>(`/products/${id}/files/${fileId}`);
+  },
+
+  // Update product file active status
+  updateFileStatus: async (id: string, fileId: string, isActive: boolean): Promise<ApiSuccessResponse<void>> => {
+    return apiClient.patch<ApiSuccessResponse<void>>(`/products/${id}/files/${fileId}/status`, { isActive });
+  },
+
   // Purchase product
   purchase: async (id: string, variantId?: string): Promise<ApiSuccessResponse<any>> => {
     return apiClient.post<ApiSuccessResponse<any>>(`/products/${id}/purchase`, { variantId });

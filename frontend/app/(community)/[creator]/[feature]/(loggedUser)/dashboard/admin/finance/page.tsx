@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useDashboard,
   DashboardShell,
   DashboardSection,
   StatCard,
-  ActionCard,
   DashboardLoading,
   DashboardUnauthorized,
   DashboardEmpty,
+  DashboardError,
   BackendRequiredPlaceholder,
 } from "../../components";
 import { CommunityPermission } from "@/lib/permissions";
@@ -22,15 +22,9 @@ import {
   DollarSign,
   CreditCard,
   Receipt,
-  TrendingUp,
   Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
   Calendar,
   Download,
-  Filter,
-  MoreVertical,
-  Eye,
   RefreshCw,
   CheckCircle,
   Clock,
@@ -46,40 +40,81 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { paymentsApi } from "@/lib/api/payments.api";
 
-// Mock financial data
-const MOCK_TRANSACTIONS = [
-  { id: "1", type: "sale", description: "Course: Advanced Photography", amount: 99, status: "completed", date: "2026-03-20" },
-  { id: "2", type: "sale", description: "Membership: Pro Plan", amount: 29, status: "completed", date: "2026-03-19" },
-  { id: "3", type: "payout", description: "Monthly Payout", amount: -450, status: "pending", date: "2026-03-18" },
-  { id: "4", type: "refund", description: "Course Refund", amount: -49, status: "completed", date: "2026-03-17" },
-  { id: "5", type: "sale", description: "Event: Live Workshop", amount: 149, status: "completed", date: "2026-03-16" },
-  { id: "6", type: "sale", description: "Course: Beginner Photography", amount: 49, status: "completed", date: "2026-03-15" },
-];
-
-const MOCK_PAYOUTS = [
-  { id: "1", amount: 1250, status: "completed", method: "Bank Transfer", date: "2026-03-01" },
-  { id: "2", amount: 980, status: "completed", method: "Bank Transfer", date: "2026-02-01" },
-  { id: "3", amount: 450, status: "pending", method: "Bank Transfer", date: "2026-03-18" },
-];
-
-type TransactionStatus = "completed" | "pending" | "failed";
-const STATUS_CONFIG: Record<TransactionStatus, { color: string; icon: typeof CheckCircle }> = {
+type PayoutStatus = "completed" | "paid" | "pending" | "processing" | "failed" | "cancelled";
+const STATUS_CONFIG: Record<PayoutStatus, { color: string; icon: typeof CheckCircle }> = {
   completed: { color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400", icon: CheckCircle },
+  paid: { color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400", icon: CheckCircle },
   pending: { color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400", icon: Clock },
+  processing: { color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", icon: RefreshCw },
   failed: { color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", icon: XCircle },
+  cancelled: { color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400", icon: XCircle },
+};
+
+const asArray = (value: any): any[] => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.data?.data)) return value.data.data;
+  if (Array.isArray(value?.items)) return value.items;
+  if (Array.isArray(value?.docs)) return value.docs;
+  if (Array.isArray(value?.payouts)) return value.payouts;
+  return [];
+};
+const unwrap = (value: any) => value?.data?.data ?? value?.data ?? value ?? {};
+const money = (value: any) => {
+  const amount = Number(value || 0);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+};
+const date = (value?: string) => value ? new Date(value).toLocaleDateString() : "Not available";
+const statusKey = (status: any): PayoutStatus => {
+  const normalized = String(status || "pending").toLowerCase() as PayoutStatus;
+  return STATUS_CONFIG[normalized] ? normalized : "pending";
 };
 
 export default function AdminFinancePage() {
-  const { role, can, isLoading, canAccessDashboard, getDashboardPath, creatorSlug } = useDashboard();
+  const { role, can, isLoading, canAccessDashboard, getDashboardPath, creatorSlug, communityId } = useDashboard();
   const basePath = getDashboardPath("admin");
   const [tab, setTab] = useState("overview");
+  const [loadingFinance, setLoadingFinance] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>({});
+  const [balance, setBalance] = useState<any>({});
+
+  const loadFinance = async () => {
+    if (!communityId) return;
+    setLoadingFinance(true);
+    setError(null);
+    try {
+      const [payoutResult, statsResult, balanceResult] = await Promise.all([
+        paymentsApi.getPayouts({ communityId, page: 1, limit: 50 }),
+        paymentsApi.getPayoutStats({ communityId }),
+        paymentsApi.getAvailableBalance({ communityId }),
+      ]);
+      setPayouts(asArray(payoutResult));
+      setStats(unwrap(statsResult));
+      setBalance(unwrap(balanceResult));
+    } catch (err: any) {
+      setError(err?.message || "Unable to load finance data.");
+    } finally {
+      setLoadingFinance(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoading && canAccessDashboard("admin") && can(CommunityPermission.FINANCE_VIEW)) {
+      loadFinance();
+    }
+  }, [communityId, isLoading, canAccessDashboard, can]);
+
+  const totals = useMemo(() => {
+    const paid = Number(stats.totalPaid ?? stats.paidAmount ?? stats.completedAmount ?? payouts.filter(p => ["paid", "completed"].includes(statusKey(p.status))).reduce((sum, p) => sum + Number(p.amount ?? p.amountDT ?? 0), 0));
+    const pending = Number(stats.totalPending ?? stats.pendingAmount ?? payouts.filter(p => statusKey(p.status) === "pending").reduce((sum, p) => sum + Number(p.amount ?? p.amountDT ?? 0), 0));
+    const available = Number(balance.availableBalance ?? balance.balance ?? 0);
+    const count = Number(stats.totalPayouts ?? stats.count ?? payouts.length);
+    return { paid, pending, available, count };
+  }, [stats, balance, payouts]);
 
   if (isLoading) return <DashboardLoading message="Loading finance..." />;
   if (!canAccessDashboard("admin")) {
@@ -106,11 +141,11 @@ export default function AdminFinancePage() {
             <p className="mt-1 text-muted-foreground">Revenue overview, payouts, and transaction history.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button variant="outline" disabled>
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
-            <Button>
+            <Button disabled={!totals.available}>
               <Banknote className="mr-2 h-4 w-4" />
               Request Payout
             </Button>
@@ -118,165 +153,116 @@ export default function AdminFinancePage() {
         </div>
       </div>
 
-      {/* Revenue Stats */}
-      <DashboardSection title="Revenue Overview" description="Financial performance this month" className="mb-8">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Total Revenue" value="$12,847" description="This month" icon={DollarSign} trend={{ value: 23 }} />
-          <StatCard title="Available Balance" value="$3,450" description="Ready to withdraw" icon={Wallet} />
-          <StatCard title="Pending" value="$890" description="Processing" icon={Clock} />
-          <StatCard title="Total Sales" value="156" description="Transactions" icon={Receipt} trend={{ value: 12 }} />
-        </div>
-      </DashboardSection>
-
-      {/* Finance Tabs */}
-      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview">Transactions</TabsTrigger>
-          <TabsTrigger value="payouts">Payouts</TabsTrigger>
-          <TabsTrigger value="settings">Payment Settings</TabsTrigger>
-        </TabsList>
-
-        {/* Transactions Tab */}
-        <TabsContent value="overview" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Recent Transactions</h3>
-            <Button variant="outline" size="sm">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
-          </div>
-
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {MOCK_TRANSACTIONS.map(tx => {
-                  const StatusIcon = STATUS_CONFIG[tx.status as TransactionStatus].icon;
-                  const isNegative = tx.amount < 0;
-                  return (
-                    <TableRow key={tx.id}>
-                      <TableCell className="font-medium">{tx.description}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">{tx.type}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={STATUS_CONFIG[tx.status as TransactionStatus].color}>
-                          <StatusIcon className="mr-1 h-3 w-3" />
-                          {tx.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{tx.date}</TableCell>
-                      <TableCell className={`text-right font-mono font-medium ${isNegative ? "text-red-600" : "text-green-600"}`}>
-                        {isNegative ? "" : "+"}${Math.abs(tx.amount).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
-                            <DropdownMenuItem><Receipt className="mr-2 h-4 w-4" />Download Receipt</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        {/* Payouts Tab */}
-        <TabsContent value="payouts" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Payout History</h3>
-            <Button>
-              <Banknote className="mr-2 h-4 w-4" />
-              Request Payout
-            </Button>
-          </div>
-
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Payout ID</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {MOCK_PAYOUTS.map(payout => {
-                  const StatusIcon = STATUS_CONFIG[payout.status as TransactionStatus].icon;
-                  return (
-                    <TableRow key={payout.id}>
-                      <TableCell className="font-mono text-sm">PAY-{payout.id.padStart(6, "0")}</TableCell>
-                      <TableCell>{payout.method}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={STATUS_CONFIG[payout.status as TransactionStatus].color}>
-                          <StatusIcon className="mr-1 h-3 w-3" />
-                          {payout.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{payout.date}</TableCell>
-                      <TableCell className="text-right font-mono font-medium">${payout.amount.toFixed(2)}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        {/* Payment Settings Tab */}
-        <TabsContent value="settings" className="space-y-4">
-          <DashboardSection title="Payment Configuration" description="Manage payout methods and thresholds">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Payout Method
-                  </CardTitle>
-                  <CardDescription>Bank account connected</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">**** **** **** 4242</p>
-                  <Button variant="outline" size="sm">Change Method</Button>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Payout Schedule
-                  </CardTitle>
-                  <CardDescription>When you receive payouts</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">Monthly (1st of each month)</p>
-                  <Button variant="outline" size="sm">Change Schedule</Button>
-                </CardContent>
-              </Card>
+      {error ? (
+        <DashboardError message={error} retry={loadFinance} />
+      ) : (
+        <>
+          <DashboardSection title="Revenue Overview" description="Live payout stats and available balance" className="mb-8">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard title="Paid Out" value={money(totals.paid)} description="Completed payouts" icon={DollarSign} isLoading={loadingFinance} />
+              <StatCard title="Available Balance" value={money(totals.available)} description={balance.minimumPayoutAmount ? `Minimum ${money(balance.minimumPayoutAmount)}` : "Ready to withdraw"} icon={Wallet} isLoading={loadingFinance} />
+              <StatCard title="Pending" value={money(totals.pending)} description="Processing payouts" icon={Clock} isLoading={loadingFinance} />
+              <StatCard title="Payouts" value={totals.count} description="Returned by payout API" icon={Receipt} isLoading={loadingFinance} />
             </div>
           </DashboardSection>
-        </TabsContent>
-      </Tabs>
+
+          <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="overview">Transactions</TabsTrigger>
+              <TabsTrigger value="payouts">Payouts</TabsTrigger>
+              <TabsTrigger value="settings">Payment Settings</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-4">
+              <BackendRequiredPlaceholder
+                feature="Transaction Ledger"
+                description="The dashboard no longer displays sample transactions. A community-scoped order, wallet, or manual payment history endpoint is needed before transaction rows can be shown here."
+              />
+            </TabsContent>
+
+            <TabsContent value="payouts" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Payout History</h3>
+                <Button variant="outline" size="sm" onClick={loadFinance} disabled={loadingFinance}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </Button>
+              </div>
+
+              <Card>
+                {loadingFinance ? (
+                  <DashboardLoading message="Loading payouts..." />
+                ) : payouts.length === 0 ? (
+                  <DashboardEmpty title="No payouts found" description="No payouts were returned for this community." />
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Payout ID</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payouts.map(payout => {
+                        const status = statusKey(payout.status);
+                        const StatusIcon = STATUS_CONFIG[status].icon;
+                        return (
+                          <TableRow key={payout._id || payout.id || payout.reference}>
+                            <TableCell className="font-mono text-sm">{payout.reference || payout._id || payout.id}</TableCell>
+                            <TableCell className="capitalize">{String(payout.method || "not configured").replace(/_/g, " ")}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className={STATUS_CONFIG[status].color}>
+                                <StatusIcon className="mr-1 h-3 w-3" />
+                                {status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{date(payout.processedAt || payout.requestedAt || payout.createdAt)}</TableCell>
+                            <TableCell className="text-right font-mono font-medium">{money(payout.amount ?? payout.amountDT)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="settings" className="space-y-4">
+              <DashboardSection title="Payment Configuration" description="Configured payout methods and schedules">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Payout Method
+                      </CardTitle>
+                      <CardDescription>No fake bank details are shown.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">Connect or manage payout methods from the backend-supported payout settings flow.</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Payout Schedule
+                      </CardTitle>
+                      <CardDescription>Returned by payout configuration</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">No schedule endpoint is currently exposed to this dashboard.</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </DashboardSection>
+            </TabsContent>
+          </Tabs>
+        </>
+      )}
     </DashboardShell>
   );
 }

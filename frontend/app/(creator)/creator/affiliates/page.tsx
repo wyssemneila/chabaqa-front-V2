@@ -260,7 +260,7 @@ function AffiliateCard({ aff, idx, onToggle, onDelete }: {
 // ─── Create Drawer ────────────────────────────────────────────────────────────
 
 function CreateDrawer({ open, onClose, onSave }: {
-  open: boolean; onClose: () => void; onSave: (a: Affiliate) => void
+  open: boolean; onClose: () => void; onSave: (a: Affiliate) => Promise<void> | void
 }) {
   const [name,      setName]      = useState('')
   const [email,     setEmail]     = useState('')
@@ -282,18 +282,21 @@ function CreateDrawer({ open, onClose, onSave }: {
   const submit = async () => {
     if (!canSave) return
     setSaving(true)
-    await new Promise(r => setTimeout(r, 600))
-    onSave({
-      id: Math.random().toString(36).slice(2),
+    try {
+      await onSave({
+      id: '',
       name, email, slug,
       commissionType: comType,
       commissionValue: Number(comVal),
       status: 'pending',
       createdAt: new Date().toISOString().slice(0, 10),
       stats: { clicks: 0, conversions: 0, earned: 0, pendingPayout: 0 },
-    })
-    setSaving(false); onClose()
-    setName(''); setEmail(''); setSlug(''); setComVal('20')
+      })
+      onClose()
+      setName(''); setEmail(''); setSlug(''); setComVal('20')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const inp = "w-full h-10 px-3 rounded-xl text-[13px] outline-none transition-colors"
@@ -572,7 +575,7 @@ export default function AffiliatesPage() {
         couponCode: affiliate.slug,
         source: 'creator_dashboard',
       })
-      setAffiliates(prev => [mapAffiliate(partner, program, null), ...prev])
+      await loadAffiliates()
     } catch (error: any) {
       setLoadError(error?.message || 'Failed to create affiliate')
     }

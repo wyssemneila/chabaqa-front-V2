@@ -1,7 +1,7 @@
 'use client'
 
 import { Users, BookOpen, Zap, Calendar, DollarSign, Activity } from 'lucide-react'
-import { kpiCards, type KpiCard, type TrendDir } from '@/lib/dashboard-data'
+import { type KpiCard, type TrendDir } from '@/lib/dashboard-types'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 
 const ICON_MAP: Record<string, any> = {
@@ -60,7 +60,7 @@ function KpiCardUI({ card, lang }: { card: KpiCard; lang: 'en' | 'ar' }) {
   )
 }
 
-export default function DashKpiGrid({ cards = kpiCards, loading = false }: { cards?: KpiCard[]; loading?: boolean }) {
+export default function DashKpiGrid({ cards = [], loading = false }: { cards?: KpiCard[]; loading?: boolean }) {
   const { lang } = useDashPrefs()
   const title = lang === 'ar' ? 'نظرة عامة على الأداء' : 'Performance overview'
 
@@ -70,15 +70,19 @@ export default function DashKpiGrid({ cards = kpiCards, loading = false }: { car
         {title}
       </p>
       <div className="grid grid-cols-3 gap-3">
-        {loading
-          ? [1, 2, 3, 4, 5, 6].map(item => (
+        {loading ? (
+          [1, 2, 3, 4, 5, 6].map(item => (
               <div key={item} className="rounded-[14px] p-[18px_20px] animate-pulse" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
                 <div className="h-4 w-2/3 rounded mb-4" style={{ background: 'var(--bg)' }} />
                 <div className="h-8 w-1/2 rounded mb-3" style={{ background: 'var(--bg)' }} />
                 <div className="h-5 w-3/4 rounded-full" style={{ background: 'var(--bg)' }} />
               </div>
             ))
-          : cards.map(card => <KpiCardUI key={card.label} card={card} lang={lang} />)}
+        ) : cards.length === 0 ? (
+          <div className="col-span-3 rounded-[14px] p-6 text-center text-[13px]" style={{ background: 'var(--white)', border: '1px solid var(--bd)', color: 'var(--t3)' }}>
+            {lang === 'ar' ? 'لا توجد بيانات أداء بعد' : 'No performance data yet'}
+          </div>
+        ) : cards.map(card => <KpiCardUI key={card.label} card={card} lang={lang} />)}
       </div>
     </section>
   )

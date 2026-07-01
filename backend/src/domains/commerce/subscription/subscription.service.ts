@@ -1644,6 +1644,69 @@ export class SubscriptionService {
     })), total, pageNum, limitNum);
   }
 
+  async getCreatorMemberSubscriptionStats(
+    creatorId: string | Types.ObjectId,
+    query: GetSubscriptionsQueryDto = {},
+  ): Promise<SubscriptionStatsDto> {
+    const filter: any = { creatorId: this.normalizeObjectId(creatorId) };
+    if (query.status) filter.status = query.status;
+    if (query.startDate || query.endDate) {
+      filter.createdAt = {};
+      if (query.startDate) filter.createdAt.$gte = new Date(query.startDate);
+      if (query.endDate) filter.createdAt.$lte = new Date(query.endDate);
+    }
+
+    const [stats = {
+      totalSubscribers: 0,
+      activeSubscribers: 0,
+      trialSubscribers: 0,
+      canceledSubscribers: 0,
+      pastDueSubscribers: 0,
+      monthlyRevenue: 0,
+    }] = await this.memberSubscriptionModel.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          totalSubscribers: { $sum: 1 },
+          activeSubscribers: {
+            $sum: { $cond: [{ $eq: ['$status', CommunityMemberSubscriptionStatus.ACTIVE] }, 1, 0] },
+          },
+          trialSubscribers: {
+            $sum: { $cond: [{ $eq: ['$status', CommunityMemberSubscriptionStatus.TRIALING] }, 1, 0] },
+          },
+          canceledSubscribers: {
+            $sum: { $cond: [{ $eq: ['$status', CommunityMemberSubscriptionStatus.CANCELED] }, 1, 0] },
+          },
+          pastDueSubscribers: {
+            $sum: { $cond: [{ $eq: ['$status', CommunityMemberSubscriptionStatus.PAST_DUE] }, 1, 0] },
+          },
+          monthlyRevenue: {
+            $sum: {
+              $cond: [
+                { $eq: ['$status', CommunityMemberSubscriptionStatus.ACTIVE] },
+                '$amount',
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]).exec();
+
+    return {
+      totalSubscribers: Number(stats.totalSubscribers || 0),
+      activeSubscribers: Number(stats.activeSubscribers || 0),
+      monthlyRevenue: Number(stats.monthlyRevenue || 0),
+      averageSubscriptionValue: stats.activeSubscribers > 0
+        ? Number(stats.monthlyRevenue || 0) / Number(stats.activeSubscribers)
+        : 0,
+      trialSubscribers: Number(stats.trialSubscribers || 0),
+      canceledSubscribers: Number(stats.canceledSubscribers || 0),
+      pastDueSubscribers: Number(stats.pastDueSubscribers || 0),
+    };
+  }
+
   async reviewManualPlatformSubscriptionOrder(
     orderId: string,
     adminId: string | Types.ObjectId,

@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { onboardSteps, type OnboardStep } from '@/lib/dashboard-data'
+import { useEffect, useMemo, useState } from 'react'
+import type { OnboardStep } from '@/lib/dashboard-types'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
+import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
+import { coursesApi } from '@/lib/api/courses.api'
 
 const STEP_LABELS: Record<string, { en: string; ar: string }> = {
   community: { en: 'Create a community',    ar: 'أنشئ مجتمعاً'          },
@@ -10,19 +12,59 @@ const STEP_LABELS: Record<string, { en: string; ar: string }> = {
   share:     { en: 'Share your invite link', ar: 'شارك رابط الدعوة'     },
 }
 
-export default function DashOnboarding({ initialSteps = onboardSteps }: { initialSteps?: OnboardStep[] }) {
+const hasItems = (response: any): boolean => {
+  if (Array.isArray(response)) return response.length > 0
+  if (Array.isArray(response?.data)) return response.data.length > 0
+  if (Array.isArray(response?.data?.data)) return response.data.data.length > 0
+  if (Array.isArray(response?.data?.courses)) return response.data.courses.length > 0
+  if (Array.isArray(response?.data?.cours)) return response.data.cours.length > 0
+  if (Array.isArray(response?.courses)) return response.courses.length > 0
+  if (Array.isArray(response?.cours)) return response.cours.length > 0
+  return false
+}
+
+export default function DashOnboarding({ initialSteps }: { initialSteps?: OnboardStep[] }) {
   const { lang } = useDashPrefs()
-  const [steps, setSteps]       = useState(initialSteps)
+  const { selectedCommunityId } = useCreatorCommunity()
+  const [hasCourse, setHasCourse] = useState(false)
+  const [courseLoaded, setCourseLoaded] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    setSteps(initialSteps)
-  }, [initialSteps])
+    let alive = true
+
+    if (!selectedCommunityId) {
+      setHasCourse(false)
+      setCourseLoaded(true)
+      return
+    }
+
+    setCourseLoaded(false)
+    coursesApi.getCreated({ page: 1, limit: 1, communityId: selectedCommunityId })
+      .then((response) => {
+        if (alive) setHasCourse(hasItems(response))
+      })
+      .catch(() => {
+        if (alive) setHasCourse(false)
+      })
+      .finally(() => {
+        if (alive) setCourseLoaded(true)
+      })
+
+    return () => {
+      alive = false
+    }
+  }, [selectedCommunityId])
+
+  const derivedSteps = useMemo<OnboardStep[]>(() => [
+    { id: 'community', label: 'Create a community', done: Boolean(selectedCommunityId) },
+    { id: 'course', label: 'Add your first course', done: courseLoaded && hasCourse },
+    { id: 'share', label: 'Share your invite link', done: false },
+  ], [courseLoaded, hasCourse, selectedCommunityId])
+
+  const steps = initialSteps?.length ? initialSteps : derivedSteps
 
   if (dismissed) return null
-
-  const toggle = (id: string) =>
-    setSteps(prev => prev.map(s => s.id === id ? { ...s, done: !s.done } : s))
 
   const title = lang === 'ar' ? 'أطلق مجتمعك في 3 خطوات' : 'Launch your community in 3 steps'
   const sub   = lang === 'ar' ? 'أكمل هذه الخطوات للوصول إلى طلابك الأوائل' : 'Complete these to reach your first students'
@@ -40,8 +82,8 @@ export default function DashOnboarding({ initialSteps = onboardSteps }: { initia
 
       <div className="flex gap-2.5 flex-wrap relative z-10">
         {steps.map((step) => (
-          <button key={step.id} onClick={() => toggle(step.id)}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+          <div key={step.id}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors"
             style={{
               border:          step.done ? '1px solid rgba(255,255,255,.1)' : '1px solid rgba(255,255,255,.12)',
               background:      step.done ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.07)',
@@ -57,7 +99,7 @@ export default function DashOnboarding({ initialSteps = onboardSteps }: { initia
               {step.done ? '✓' : ''}
             </span>
             {STEP_LABELS[step.id]?.[lang] ?? step.label}
-          </button>
+          </div>
         ))}
       </div>
 

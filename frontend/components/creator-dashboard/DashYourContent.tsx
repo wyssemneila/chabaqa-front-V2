@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { BookOpen, Zap, Calendar, FileText, Pencil } from 'lucide-react'
-import { contentItems, type ContentItem } from '@/lib/dashboard-data'
+import { type ContentItem } from '@/lib/dashboard-types'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 
 const TYPE_ICON: Record<ContentItem['type'], any> = {
@@ -52,7 +52,7 @@ const TAB_TYPE_MAP: Record<Tab, ContentItem['type'] | null> = {
   All: null, Courses: 'Course', Challenges: 'Challenge', Sessions: 'Session', Posts: 'Post',
 }
 
-export default function DashYourContent({ items = contentItems, loading = false }: { items?: ContentItem[]; loading?: boolean }) {
+export default function DashYourContent({ items = [], loading = false }: { items?: ContentItem[]; loading?: boolean }) {
   const { lang } = useDashPrefs()
   const t = TR[lang]
   const [activeTab, setActiveTab] = useState<Tab>('All')

@@ -218,6 +218,11 @@ export const eventsApi = {
     return apiClient.delete<ApiSuccessResponse<void>>(`/events/${id}/sessions/${sessionId}`);
   },
 
+  // Update session in event
+  updateSession: async (id: string, sessionId: string, data: Partial<CreateEventSessionData>): Promise<ApiSuccessResponse<any>> => {
+    return apiClient.patch<ApiSuccessResponse<any>>(`/events/${id}/sessions/${sessionId}`, data);
+  },
+
   // Add ticket to event
   addTicket: async (id: string, data: CreateEventTicketData): Promise<ApiSuccessResponse<EventTicket>> => {
     return apiClient.post<ApiSuccessResponse<EventTicket>>(`/events/${id}/tickets`, data);

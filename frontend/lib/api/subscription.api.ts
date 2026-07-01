@@ -383,6 +383,10 @@ export const subscriptionApi = {
     return apiClient.get('/subscriptions/member-revenue', params);
   },
 
+  async getMemberRevenueStats(params: GetAllSubscriptionsParams = {}): Promise<ApiSuccessResponse<SubscriptionStats> | SubscriptionStats> {
+    return apiClient.get('/subscriptions/member-revenue/stats', params);
+  },
+
   /**
    * Export subscriptions to CSV
    */

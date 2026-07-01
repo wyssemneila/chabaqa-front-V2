@@ -37,63 +37,6 @@ interface CustomAudience {
   id: string; name: string; emails: string[]; count: number; createdAt: string
 }
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
-
-const CAMP_SEED: Campaign[] = [
-  {
-    id: 'c1', name: 'Welcome Series — Onboarding', subject: 'Welcome to Motion Masters! 🎉',
-    previewText: "Here's everything you need to get started", body: 'Hi there!\n\nWelcome to the Motion Masters community. We are thrilled to have you here.\n\nHere is what you can do right now:\n• Browse our course catalog\n• Join the community challenges\n• Connect with other members\n\nSee you inside!\nThe Motion Masters Team',
-    status: 'sent', audienceType: 'all', audienceLabel: 'All Members', audienceCount: 1240,
-    sentAt: '2026-03-28', createdAt: '2026-03-27',
-    stats: { sent: 1240, opened: 748, clicked: 312 },
-  },
-  {
-    id: 'c2', name: 'New Course Launch — Motion Pro', subject: 'Our most advanced course is here',
-    previewText: "Don't miss the early-bird discount",
-    body: 'Hey!\n\nExciting news — Motion Pro is finally live.\n\nThis is our most comprehensive course yet, covering advanced techniques from industry professionals.\n\nEarly-bird pricing ends Friday. Grab your spot now.',
-    status: 'sent', audienceType: 'community', audienceLabel: 'Paid Members', audienceCount: 384,
-    sentAt: '2026-03-20', createdAt: '2026-03-19',
-    stats: { sent: 384, opened: 291, clicked: 178 },
-  },
-  {
-    id: 'c3', name: 'Weekly Digest — April Week 1', subject: "What's new this week in the community",
-    previewText: 'Highlights, top posts and upcoming events',
-    body: 'Here is your weekly digest:\n\nTop posts this week...\nUpcoming events...\nNew courses added...',
-    status: 'scheduled', audienceType: 'all', audienceLabel: 'All Members', audienceCount: 1298,
-    scheduledAt: '2026-04-07 09:00', createdAt: '2026-04-03',
-    stats: { sent: 0, opened: 0, clicked: 0 },
-  },
-  {
-    id: 'c4', name: 'Re-engagement — Inactive Users', subject: "We miss you! Come back and see what's new",
-    previewText: 'A lot has changed since you last visited',
-    body: 'Hey! We noticed you have not been around lately.\n\nHere is what you have been missing...',
-    status: 'draft', audienceType: 'custom', audienceLabel: 'Inactive Upload', audienceCount: 210,
-    createdAt: '2026-04-02',
-    stats: { sent: 0, opened: 0, clicked: 0 },
-  },
-]
-
-const AUTO_SEED: Automation[] = [
-  {
-    id: 'a1', name: 'Welcome Email', trigger: 'new_member', triggerLabel: 'New member joins', triggerIcon: 'users',
-    delay: 0, subject: 'Welcome to Motion Masters!',
-    body: 'Hi {{first_name}},\n\nWelcome! We are so excited to have you here...',
-    isActive: true, triggered: 87, createdAt: '2026-03-01',
-  },
-  {
-    id: 'a2', name: 'Course Completion Congrats', trigger: 'course_completed', triggerLabel: 'Member completes a course', triggerIcon: 'book',
-    delay: 1, subject: 'Congratulations on finishing {{course_name}}!',
-    body: 'Hey {{first_name}},\n\nYou did it! You just completed {{course_name}}. Here is your certificate...',
-    isActive: true, triggered: 34, createdAt: '2026-03-05',
-  },
-  {
-    id: 'a3', name: '7-Day Re-engagement', trigger: 'inactive_7', triggerLabel: 'Member inactive 7 days', triggerIcon: 'clock',
-    delay: 0, subject: 'We miss you, {{first_name}}!',
-    body: 'Hi {{first_name}},\n\nIt has been a week since your last visit. Here is what you missed...',
-    isActive: false, triggered: 156, createdAt: '2026-03-10',
-  },
-]
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const BASE_COMMUNITIES = ['All Members', 'Paid Members', 'Free Members', 'VIP Members', 'Trial Members', 'Inactive Members']
@@ -467,7 +410,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
   const [previewOpen,  setPreviewOpen]  = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const allCommunities = [...BASE_COMMUNITIES, ...customAudiences.map(a => a.name)]
+  const allCommunities = BASE_COMMUNITIES
 
   const toggleCom = (c: string) =>
     setCommunities(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])
@@ -481,40 +424,25 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
   }
 
   const saveCustomAudience = () => {
-    if (!newAudName.trim() || newAudEmails.length === 0) return
-    const a: CustomAudience = {
-      id: Math.random().toString(36).slice(2),
-      name: newAudName.trim(),
-      emails: newAudEmails,
-      count: newAudEmails.length,
-      createdAt: new Date().toISOString().slice(0, 10),
-    }
-    onSaveAudience(a)
-    setNewAudName(''); setNewAudEmails([]); setCsvName(''); setCsvMode('type')
-    setCustomAudId(a.id)
-    setAudMode('community')
-    setCommunities([a.name])
+    return
   }
 
-  const canSend = name.trim() && subject.trim() && communities.length > 0
+  const canSend = name.trim() && subject.trim() && communities.length > 0 && audMode === 'community'
 
   const submit = async (status: Campaign['status']) => {
     if (!canSend) return
     setSaving(true)
-    await new Promise(r => setTimeout(r, 700))
     const audLabel = communities.join(', ')
-    const audCount = communities.includes('All Members') ? 1298 : Math.floor(Math.random() * 600) + 100
     onSave({
-      id: Math.random().toString(36).slice(2),
+      id: '',
       name, subject, previewText: preview, body, status,
       audienceType: communities.includes('All Members') ? 'all' : 'community',
-      audienceLabel: audLabel, audienceCount: audCount,
+      audienceLabel: audLabel,
+      audienceCount: 0,
       sentAt:      status === 'sent'      ? new Date().toISOString().slice(0, 10) : undefined,
       scheduledAt: status === 'scheduled' ? `${schedDate} ${schedTime}`           : undefined,
       createdAt: new Date().toISOString().slice(0, 10),
-      stats: status === 'sent'
-        ? { sent: audCount, opened: Math.floor(audCount * (0.4 + Math.random() * 0.3)), clicked: Math.floor(audCount * (0.1 + Math.random() * 0.2)) }
-        : { sent: 0, opened: 0, clicked: 0 },
+      stats: { sent: 0, opened: 0, clicked: 0 },
     })
     setSaving(false)
     onClose()
@@ -619,6 +547,9 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
 
             {audMode === 'community' ? (
               <div className="space-y-2">
+                <p className="text-[11px] leading-5" style={{ color: 'var(--t3)' }}>
+                  Recipient counts are resolved by the backend campaign service when the campaign is created or sent.
+                </p>
                 {allCommunities.map(c => {
                   const sel = communities.includes(c)
                   const isCustom = !BASE_COMMUNITIES.includes(c)
@@ -643,6 +574,9 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
               </div>
             ) : (
               <div className="space-y-3">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12px] font-semibold leading-5 text-amber-800">
+                  Custom uploaded audiences are unavailable until the backend exposes stored audience lists and recipient targeting. Use backend community filters for live campaigns.
+                </div>
                 <div>
                   <LBL text={lang === 'ar' ? 'اسم الجمهور' : 'Audience Name'} req />
                   <input value={newAudName} onChange={e => setNewAudName(e.target.value)} placeholder={lang === 'ar' ? 'مثال: كبار المشترين' : 'e.g. VIP Buyers'}
@@ -701,15 +635,14 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
                       onChange={e => {
                         if (e.target.files?.[0]) {
                           setCsvName(e.target.files[0].name)
-                          const count = Math.floor(Math.random() * 800) + 100
-                          setNewAudEmails(Array.from({ length: count }, (_, i) => `user${i + 1}@example.com`))
+                          setNewAudEmails([])
                         }
                       }} />
                     <button onClick={() => fileRef.current?.click()}
                       className="w-full rounded-xl py-6 flex flex-col items-center gap-2 cursor-pointer"
                       style={{ border: `2px dashed ${csvName ? 'var(--p)' : 'var(--bd)'}`, background: csvName ? 'var(--p2)' : 'var(--bg)' }}>
                       {csvName
-                        ? <><Check className="w-5 h-5" style={{ color: 'var(--p)' }} /><p className="text-[12px] font-semibold" style={{ color: 'var(--p)' }}>{csvName}</p><p className="text-[11px]" style={{ color: 'var(--t3)' }}>{newAudEmails.length} recipients</p></>
+                        ? <><Check className="w-5 h-5" style={{ color: 'var(--p)' }} /><p className="text-[12px] font-semibold" style={{ color: 'var(--p)' }}>{csvName}</p><p className="text-[11px]" style={{ color: 'var(--t3)' }}>Upload selected but not persisted to backend</p></>
                         : <><Upload className="w-5 h-5" style={{ color: 'var(--t3)' }} strokeWidth={1.7} /><p className="text-[12px]" style={{ color: 'var(--t2)' }}>Drop CSV or click to upload</p><p className="text-[11px]" style={{ color: 'var(--t3)' }}>Must have an "email" column</p></>
                       }
                     </button>
@@ -717,10 +650,10 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
                 )}
 
                 <button onClick={saveCustomAudience}
-                  disabled={!newAudName.trim() || newAudEmails.length === 0}
+                  disabled
                   className="w-full h-9 rounded-xl text-[12px] font-bold cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-40"
                   style={{ background: 'var(--p)', color: '#fff' }}>
-                  Save &amp; Use This Audience
+                  Backend Audience Lists Required
                 </button>
               </div>
             )}
@@ -792,7 +725,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
 // ─── Create Automation Drawer ─────────────────────────────────────────────────
 
 function CreateAutomationDrawer({ open, onClose, onSave, lang = 'en' }: {
-  open: boolean; onClose: () => void; onSave: (a: Automation) => void; lang?: string
+  open: boolean; onClose: () => void; onSave: (a: Automation) => Promise<void> | void; lang?: string
 }) {
   const [name,    setName]    = useState('')
   const [trigger, setTrigger] = useState('')
@@ -807,16 +740,19 @@ function CreateAutomationDrawer({ open, onClose, onSave, lang = 'en' }: {
   const submit = async () => {
     if (!canSave) return
     setSaving(true)
-    await new Promise(r => setTimeout(r, 600))
-    const tOpt = TRIGGER_OPTIONS.find(t => t.id === trigger)!
-    onSave({
-      id: Math.random().toString(36).slice(2),
+    try {
+      const tOpt = TRIGGER_OPTIONS.find(t => t.id === trigger)!
+      await onSave({
+      id: '',
       name, trigger, triggerLabel: tOpt.label, triggerIcon: trigger,
       delay, subject, body, isActive: true, triggered: 0,
-      createdAt: new Date().toISOString().slice(0, 10),
-    })
-    setSaving(false); onClose()
-    setName(''); setTrigger(''); setDelay(0); setSubject(''); setBody('')
+        createdAt: new Date().toISOString().slice(0, 10),
+      })
+      onClose()
+      setName(''); setTrigger(''); setDelay(0); setSubject(''); setBody('')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const inp = "w-full h-10 px-3 rounded-xl text-[13px] outline-none"
@@ -1083,6 +1019,8 @@ export default function EmailMarketingPage() {
           previewText: campaign.previewText,
           audienceLabel: campaign.audienceLabel,
           audienceType: campaign.audienceType,
+          audienceSource: 'backend_community_recipients',
+          audienceCountResolution: 'resolved_by_backend_campaign_recipients',
         },
       })
       const uiCampaign = toUiCampaign(created)
@@ -1129,7 +1067,7 @@ export default function EmailMarketingPage() {
             isHtml: false,
             automationActive: true,
           })
-      setAutomations(prev => [toUiAutomation(created), ...prev])
+      await loadEmailData()
     } catch (error: any) {
       setLoadError(error?.message || 'Failed to save automation')
     }

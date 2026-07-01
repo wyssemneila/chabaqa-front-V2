@@ -60,7 +60,7 @@ export default function CreatorSubscriptionsPage() {
     try {
       const [listResult, statsResult] = await Promise.allSettled([
         subscriptionApi.getMemberRevenueSubscriptions({ page: 1, limit: 100, status: status === 'all' ? undefined : status }),
-        Promise.resolve(null),
+        subscriptionApi.getMemberRevenueStats({ status: status === 'all' ? undefined : status }),
       ])
 
       if (listResult.status === 'fulfilled') {

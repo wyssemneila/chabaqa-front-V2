@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
+import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
 import { useAnalyticsDashboard } from '@/hooks/use-creator-analytics'
 import {
   TrendingUp, TrendingDown, Users, DollarSign, BookOpen,
@@ -232,7 +233,8 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d')
   const [contentType, setContentType] = useState<ContentType>('all')
   const [sortKey, setSortKey] = useState<SortKey>('revenue')
-  const dashboardQuery = useAnalyticsDashboard(period, contentType)
+  const { selectedCommunityId, selectedCommunity, isLoading: communityLoading } = useCreatorCommunity()
+  const dashboardQuery = useAnalyticsDashboard(period, contentType, selectedCommunityId || undefined, !communityLoading)
   const dashboard = dashboardQuery.data?.data
   const isPostView = contentType === 'post'
   const currency = dashboard?.currency || 'TND'
@@ -315,7 +317,7 @@ export default function AnalyticsPage() {
               </div>
 
               <p className="text-[12px] ml-auto" style={{ color: 'var(--t3)' }}>
-                Showing data for <span className="font-semibold" style={{ color: 'var(--t2)' }}>{PERIODS.find(p => p.id === period)?.label}</span> / <span className="font-semibold" style={{ color: 'var(--t2)' }}>{CONTENT_TYPES.find(c => c.id === contentType)?.label}</span>
+                Showing backend data for <span className="font-semibold" style={{ color: 'var(--t2)' }}>{selectedCommunity?.name || 'selected community'}</span> / <span className="font-semibold" style={{ color: 'var(--t2)' }}>{PERIODS.find(p => p.id === period)?.label}</span> / <span className="font-semibold" style={{ color: 'var(--t2)' }}>{CONTENT_TYPES.find(c => c.id === contentType)?.label}</span>
               </p>
             </div>
 
