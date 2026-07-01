@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -47,28 +47,29 @@ import {
   Settings,
   AlertCircle,
   CheckCircle,
-  X,
-  Plus,
-  Download,
 } from "lucide-react"
 import { Header } from "@/components/header"
+import { getMe, updateProfile, changePassword, deleteAccount } from "@/lib/api/user.api"
+import { notificationsApi } from "@/lib/api/notifications.api"
+import { toast } from "sonner"
 
 
 export default function SettingsPage() {
-  // Mock user type - replace with actual auth
-  const [userType, setUserType] = useState<"user" | "creator">("creator") // Change to "user" to see user settings
+  const [userType, setUserType] = useState<"user" | "creator">("user")
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true)
+  const [confirmDeleteText, setConfirmDeleteText] = useState("")
   
   // Profile states
-  const [fullName, setFullName] = useState(userType === "creator" ? "John Smith" : "Jane Doe")
-  const [email, setEmail] = useState(userType === "creator" ? "john@example.com" : "jane@example.com")
-  const [bio, setBio] = useState(userType === "creator" ? "Fitness coach and wellness expert" : "Fitness enthusiast")
-  const [phone, setPhone] = useState("+1 234 567 8900")
-  const [location, setLocation] = useState("New York, USA")
-  const [website, setWebsite] = useState(userType === "creator" ? "www.johnsmith.com" : "")
+  const [fullName, setFullName] = useState("")
+  const [email, setEmail] = useState("")
+  const [bio, setBio] = useState("")
+  const [phone, setPhone] = useState("")
+  const [location, setLocation] = useState("")
+  const [website, setWebsite] = useState("")
   
   // Creator-specific states
-  const [businessName, setBusinessName] = useState("Smith Fitness Academy")
-  const [businessDescription, setBusinessDescription] = useState("Professional fitness training and wellness coaching")
+  const [businessName, setBusinessName] = useState("")
+  const [businessDescription, setBusinessDescription] = useState("")
   const [brandColor, setBrandColor] = useState("#3B82F6")
   const [publicProfile, setPublicProfile] = useState(true)
   
@@ -94,30 +95,112 @@ export default function SettingsPage() {
   const [showPasswords, setShowPasswords] = useState(false)
   
   // Subscription/Plan states
-  const [currentPlan, setCurrentPlan] = useState(userType === "creator" ? "growth" : "free")
+  const [currentPlan, setCurrentPlan] = useState("free")
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  
-  const handleSaveProfile = () => {
-    // Save profile logic
-    alert("Profile saved successfully!")
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      setIsLoadingSettings(true)
+      try {
+        const [meResult, preferencesResult] = await Promise.allSettled([
+          getMe(),
+          notificationsApi.getPreferences(),
+        ])
+
+        if (meResult.status === "fulfilled" && meResult.value) {
+          const user = meResult.value
+          setFullName(user.name || [user.prenom, user.nom].filter(Boolean).join(" ") || user.username || "")
+          setEmail(user.email || "")
+          setBio(user.bio || user.description || "")
+          setPhone(user.phone || user.telephone || "")
+          setLocation([user.ville, user.pays].filter(Boolean).join(", ") || user.location || "")
+          setWebsite(user.website || user.socialLinks?.website || "")
+          setUserType(user.role === "creator" || user.isCreator ? "creator" : "user")
+          setBusinessName(user.businessName || user.creatorProfile?.businessName || "")
+          setBusinessDescription(user.businessDescription || user.creatorProfile?.description || "")
+          setBrandColor(user.brandColor || user.creatorProfile?.brandColor || "#3B82F6")
+          setCurrentPlan(user.plan || user.subscription?.plan || "free")
+        }
+
+        if (preferencesResult.status === "fulfilled") {
+          const prefs = (preferencesResult.value as any)?.data?.preferences || (preferencesResult.value as any)?.data || {}
+          setEmailNotifications(prefs.email?.enabled ?? prefs.emailNotifications ?? true)
+          setPushNotifications(prefs.push?.enabled ?? prefs.pushNotifications ?? false)
+          setMarketingEmails(prefs.marketing?.enabled ?? false)
+          setCommunityUpdates(prefs.communityUpdates?.enabled ?? true)
+          setNewMessages(prefs.messages?.enabled ?? true)
+          setEventReminders(prefs.events?.enabled ?? true)
+        }
+      } catch (error: any) {
+        toast.error(error?.message || "Unable to load settings")
+      } finally {
+        setIsLoadingSettings(false)
+      }
+    }
+
+    loadSettings()
+  }, [])
+
+  const handleSaveProfile = async () => {
+    try {
+      const [city, country] = location.split(",").map(part => part.trim())
+      const updated = await updateProfile({
+        name: fullName,
+        email,
+        bio,
+        ville: city || undefined,
+        pays: country || undefined,
+        socialLinks: website ? { website } as any : undefined,
+      })
+      setFullName(updated?.name || fullName)
+      toast.success("Profile saved successfully")
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to save profile")
+    }
   }
-  
-  const handleChangePassword = () => {
+
+  const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      alert("Passwords don't match!")
+      toast.error("Passwords don't match")
       return
     }
-    // Change password logic
-    alert("Password changed successfully!")
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
+    try {
+      await changePassword({ currentPassword, newPassword })
+      toast.success("Password changed successfully")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to change password")
+    }
   }
-  
-  const handleDeleteAccount = () => {
-    // Delete account logic
-    alert("Account deletion requested")
-    setIsDeleteDialogOpen(false)
+
+  const handleSaveNotificationPreferences = async () => {
+    try {
+      await notificationsApi.updatePreferences({
+        preferences: {
+          email: { enabled: emailNotifications } as any,
+          push: { enabled: pushNotifications } as any,
+          marketing: { enabled: marketingEmails } as any,
+          communityUpdates: { enabled: communityUpdates } as any,
+          messages: { enabled: newMessages } as any,
+          events: { enabled: eventReminders } as any,
+        },
+      })
+      toast.success("Notification preferences saved")
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to save notification preferences")
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    try {
+      await deleteAccount({ currentPassword, confirmText: confirmDeleteText })
+      toast.success("Account deletion requested")
+      setIsDeleteDialogOpen(false)
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to delete account")
+    }
   }
 
   return (
@@ -378,7 +461,7 @@ export default function SettingsPage() {
                             <h4 className="text-sm font-medium">New Member Alerts</h4>
                             <p className="text-xs text-gray-500">Get notified when someone joins your community</p>
                           </div>
-                          <Switch defaultChecked />
+                          <Switch checked={communityUpdates} onCheckedChange={setCommunityUpdates} />
                         </div>
 
                         <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -386,7 +469,7 @@ export default function SettingsPage() {
                             <h4 className="text-sm font-medium">Revenue Updates</h4>
                             <p className="text-xs text-gray-500">Notifications about sales and earnings</p>
                           </div>
-                          <Switch defaultChecked />
+                          <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
                         </div>
 
                         <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -394,14 +477,14 @@ export default function SettingsPage() {
                             <h4 className="text-sm font-medium">Analytics Reports</h4>
                             <p className="text-xs text-gray-500">Weekly analytics summaries</p>
                           </div>
-                          <Switch defaultChecked />
+                          <Switch checked={eventReminders} onCheckedChange={setEventReminders} />
                         </div>
                       </>
                     )}
                   </div>
 
                   <div className="flex justify-end pt-4">
-                    <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Button onClick={handleSaveNotificationPreferences} className="bg-blue-600 hover:bg-blue-700">
                       <Save className="w-4 h-4 mr-2" />
                       Save Preferences
                     </Button>
@@ -690,24 +773,9 @@ export default function SettingsPage() {
                       <CardDescription>Manage your payment information</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-8 bg-gradient-to-r from-blue-600 to-blue-800 rounded flex items-center justify-center text-white text-xs font-bold">
-                            VISA
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">•••• •••• •••• 4242</p>
-                            <p className="text-xs text-gray-500">Expires 12/25</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          Edit
-                        </Button>
+                      <div className="p-4 border border-dashed rounded-lg text-sm text-gray-600">
+                        Saved payment methods are not exposed by the current user settings API.
                       </div>
-                      <Button variant="outline" className="w-full">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Payment Method
-                      </Button>
                     </CardContent>
                   </Card>
 
@@ -717,27 +785,8 @@ export default function SettingsPage() {
                       <CardDescription>View your past invoices</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-3">
-                        {[
-                          { date: "Oct 1, 2024", amount: "79.00 TND", status: "Paid" },
-                          { date: "Sep 1, 2024", amount: "79.00 TND", status: "Paid" },
-                          { date: "Aug 1, 2024", amount: "79.00 TND", status: "Paid" },
-                        ].map((invoice, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{invoice.date}</p>
-                              <p className="text-xs text-gray-500">{invoice.amount}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge className="bg-green-100 text-green-700 border-0">
-                                {invoice.status}
-                              </Badge>
-                              <Button variant="ghost" size="sm">
-                                <Download className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
+                      <div className="p-4 border border-dashed rounded-lg text-sm text-gray-600">
+                        Billing history requires a user-scoped invoices endpoint.
                       </div>
                     </CardContent>
                   </Card>
@@ -755,27 +804,8 @@ export default function SettingsPage() {
                       <CardDescription>Communities you're subscribed to</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
-                        {[
-                          { name: "Fitness Warriors", plan: "Premium", price: "29 TND/mois", expires: "Nov 15, 2024" },
-                          { name: "Tech Innovators", plan: "Basic", price: "9 TND/mois", expires: "Nov 20, 2024" },
-                        ].map((sub, idx) => (
-                          <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-3">
-                            <div className="flex-1">
-                              <h4 className="text-sm font-medium">{sub.name}</h4>
-                              <p className="text-xs text-gray-500">{sub.plan} - {sub.price}</p>
-                              <p className="text-xs text-gray-400">Renews on {sub.expires}</p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm">
-                                Manage
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-red-600">
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
+                      <div className="p-4 border border-dashed rounded-lg text-sm text-gray-600">
+                        Membership subscriptions need a user-scoped subscriptions endpoint before they can be listed here.
                       </div>
                     </CardContent>
                   </Card>
@@ -786,29 +816,9 @@ export default function SettingsPage() {
                       <CardDescription>Manage your saved payment methods</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-8 bg-gradient-to-r from-blue-600 to-blue-800 rounded flex items-center justify-center text-white text-xs font-bold">
-                            VISA
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">•••• •••• •••• 4242</p>
-                            <p className="text-xs text-gray-500">Expires 12/25</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            Edit
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-red-600">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                      <div className="p-4 border border-dashed rounded-lg text-sm text-gray-600">
+                        Saved payment methods are not exposed by the current user settings API.
                       </div>
-                      <Button variant="outline" className="w-full">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Payment Method
-                      </Button>
                     </CardContent>
                   </Card>
 
@@ -818,28 +828,8 @@ export default function SettingsPage() {
                       <CardDescription>Your payment history</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-3">
-                        {[
-                          { date: "Oct 15, 2024", description: "Fitness Warriors - Premium", amount: "29.00 TND", status: "Paid" },
-                          { date: "Oct 20, 2024", description: "Tech Innovators - Basic", amount: "9.00 TND", status: "Paid" },
-                          { date: "Sep 15, 2024", description: "Fitness Warriors - Premium", amount: "29.00 TND", status: "Paid" },
-                        ].map((invoice, idx) => (
-                          <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-2">
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{invoice.date}</p>
-                              <p className="text-xs text-gray-500">{invoice.description}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium">{invoice.amount}</p>
-                              <Badge className="bg-green-100 text-green-700 border-0">
-                                {invoice.status}
-                              </Badge>
-                              <Button variant="ghost" size="sm">
-                                <Download className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
+                      <div className="p-4 border border-dashed rounded-lg text-sm text-gray-600">
+                        Billing history requires a user-scoped invoices endpoint.
                       </div>
                     </CardContent>
                   </Card>
@@ -877,6 +867,8 @@ export default function SettingsPage() {
                   id="confirmDelete"
                   placeholder="DELETE"
                   className="font-mono"
+                  value={confirmDeleteText}
+                  onChange={(event) => setConfirmDeleteText(event.target.value)}
                 />
               </div>
 
@@ -890,6 +882,7 @@ export default function SettingsPage() {
                 <Button
                   variant="destructive"
                   onClick={handleDeleteAccount}
+                  disabled={confirmDeleteText !== "DELETE"}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete My Account

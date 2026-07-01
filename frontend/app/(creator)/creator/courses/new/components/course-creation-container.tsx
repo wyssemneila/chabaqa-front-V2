@@ -47,6 +47,13 @@ interface CourseSectionForm {
   chapters: CourseChapterForm[]
 }
 
+const createClientId = (prefix: string) => {
+  const value = typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return `client-${prefix}-${value}`
+}
+
 export function CourseCreationContainer() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -185,12 +192,12 @@ export function CourseCreationContainer() {
           chapters: [{ title: "Introduction", content: "", videoUrl: "", isPreview: true }],
         },
       ]).map((section, sectionIndex) => ({
-        id: section.id || `restored-section-${sectionIndex}-${Date.now()}`,
+        id: section.id || createClientId(`restored-section-${sectionIndex}`),
         title: section.title || "",
         description: section.description || "",
         order: sectionIndex + 1,
         chapters: (section.chapters || []).map((chapter, chapterIndex) => ({
-          id: chapter.id || `restored-chapter-${sectionIndex}-${chapterIndex}-${Date.now()}`,
+          id: chapter.id || createClientId(`restored-chapter-${sectionIndex}-${chapterIndex}`),
           title: chapter.title || "",
           content: chapter.content || "",
           videoUrl: chapter.videoUrl || "",
@@ -238,7 +245,7 @@ export function CourseCreationContainer() {
 
   const addSection = () => {
     const newSection: CourseSectionForm = {
-      id: `section-${Date.now()}`,
+      id: createClientId("section"),
       title: "",
       description: "",
       order: formData.sections.length + 1,
@@ -269,7 +276,7 @@ export function CourseCreationContainer() {
     if (!section) return
 
     const newChapter: CourseChapterForm = {
-      id: `chapter-${Date.now()}`,
+      id: createClientId("chapter"),
       title: "",
       content: "",
       videoUrl: "",

@@ -1,6 +1,6 @@
 'use client'
 
-import { activityItems, type ActivityItem } from '@/lib/dashboard-data'
+import { type ActivityItem } from '@/lib/dashboard-types'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 
 const dotColor: Record<string, string> = {
@@ -20,7 +20,7 @@ const TYPE_LABEL_AR: Record<string, string> = {
   post:      'منشور جديد',
 }
 
-export default function DashRecentActivity({ items = activityItems, loading = false }: { items?: ActivityItem[]; loading?: boolean }) {
+export default function DashRecentActivity({ items = [], loading = false }: { items?: ActivityItem[]; loading?: boolean }) {
   const { lang } = useDashPrefs()
 
   const title   = lang === 'ar' ? 'النشاط الأخير'    : 'Recent Activity'

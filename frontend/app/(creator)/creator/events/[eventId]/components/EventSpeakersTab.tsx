@@ -8,6 +8,7 @@ import { Plus, Edit, Trash2, Mic } from "lucide-react"
 import Image from "next/image"
 import { Event } from "@/lib/models"
 import { useToast } from "@/hooks/use-toast"
+import { eventsApi } from "@/lib/api/events.api"
 import {
   Dialog,
   DialogContent,
@@ -68,16 +69,29 @@ const normalizeSpeakerPhoto = (value?: string) => {
   return resolveImageUrl(raw) || raw
 }
 
-const nextId = () => `speaker_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+const normalizeSpeakerResponse = (response: any): any => {
+  if (!response) return response
+  if (response?.speaker) return response.speaker
+  if (response?.data?.speaker) return response.data.speaker
+  if (response?.data?.data?.speaker) return response.data.data.speaker
+  if (response?.data?.data) return response.data.data
+  if (response?.data) return response.data
+  return response
+}
+
+const getErrorMessage = (error: any) => error?.message || error?.error || "Try again."
 
 export default function EventSpeakersTab({ event, onUpdateEvent }: EventSpeakersTabProps) {
   const { toast } = useToast()
 
+  const eventId = event.mongoId || event.id
   const speakers = useMemo(() => event.speakers || [], [event.speakers])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [newSpeaker, setNewSpeaker] = useState<SpeakerFormState>(emptySpeaker())
   const [editingSpeaker, setEditingSpeaker] = useState<SpeakerFormState | null>(null)
+  const [savingSpeaker, setSavingSpeaker] = useState(false)
+  const [deletingSpeakerId, setDeletingSpeakerId] = useState<string | null>(null)
 
   const validateSpeaker = (speaker: SpeakerFormState): string | null => {
     if (!speaker.name.trim()) return "Speaker name is required"
@@ -91,32 +105,53 @@ export default function EventSpeakersTab({ event, onUpdateEvent }: EventSpeakers
     onUpdateEvent({ speakers: nextSpeakers as any })
   }
 
-  const handleAddSpeaker = () => {
+  const handleAddSpeaker = async () => {
     const error = validateSpeaker(newSpeaker)
     if (error) {
       toast({ title: "Validation error", description: error, variant: "destructive" as any })
       return
     }
 
-    applySpeakers([
-      ...speakers,
-      {
-        id: nextId(),
+    if (!eventId) {
+      toast({ title: "Unable to add speaker", description: "Missing event id.", variant: "destructive" as any })
+      return
+    }
+
+    setSavingSpeaker(true)
+    try {
+      const response = await eventsApi.addSpeaker(eventId, {
         name: newSpeaker.name.trim(),
         title: newSpeaker.title.trim(),
         bio: newSpeaker.bio.trim(),
-        photo: normalizeSpeakerPhoto(newSpeaker.photo),
-      },
-    ])
-
-    setNewSpeaker(emptySpeaker())
-    setIsAddDialogOpen(false)
-    toast({ title: "Speaker added", description: "Speaker added. Click Save Changes to persist." })
+        photo: normalizeSpeakerPhoto(newSpeaker.photo) || undefined,
+      })
+      const created = normalizeSpeakerResponse(response)
+      applySpeakers([
+        ...speakers,
+        {
+          id: created?.id || created?._id,
+          name: created?.name || newSpeaker.name.trim(),
+          title: created?.title || newSpeaker.title.trim(),
+          bio: created?.bio || newSpeaker.bio.trim(),
+          photo: normalizeSpeakerPhoto(created?.photo || newSpeaker.photo),
+        },
+      ])
+      setNewSpeaker(emptySpeaker())
+      setIsAddDialogOpen(false)
+      toast({ title: "Speaker added", description: "The event speaker was saved." })
+    } catch (err: any) {
+      toast({ title: "Failed to add speaker", description: getErrorMessage(err), variant: "destructive" as any })
+    } finally {
+      setSavingSpeaker(false)
+    }
   }
 
   const startEdit = (speaker: any) => {
-    setEditingSpeaker(toSpeakerForm(speaker))
-    setIsEditDialogOpen(true)
+    toast({
+      title: "Speaker editing unavailable",
+      description: "Speaker editing requires a backend update-speaker endpoint.",
+      variant: "destructive" as any,
+    })
   }
 
   const handleUpdateSpeaker = () => {
@@ -143,12 +178,25 @@ export default function EventSpeakersTab({ event, onUpdateEvent }: EventSpeakers
     applySpeakers(nextSpeakers)
     setEditingSpeaker(null)
     setIsEditDialogOpen(false)
-    toast({ title: "Speaker updated", description: "Speaker updated. Click Save Changes to persist." })
+    toast({ title: "Speaker updated", description: "The event speaker was saved." })
   }
 
-  const handleDeleteSpeaker = (speakerId: string) => {
-    applySpeakers(speakers.filter((speaker) => speaker.id !== speakerId))
-    toast({ title: "Speaker removed", description: "Speaker removed. Click Save Changes to persist." })
+  const handleDeleteSpeaker = async (speakerId: string) => {
+    if (!eventId) {
+      toast({ title: "Unable to remove speaker", description: "Missing event id.", variant: "destructive" as any })
+      return
+    }
+
+    setDeletingSpeakerId(speakerId)
+    try {
+      await eventsApi.removeSpeaker(eventId, speakerId)
+      applySpeakers(speakers.filter((speaker) => speaker.id !== speakerId))
+      toast({ title: "Speaker removed", description: "The event speaker was removed." })
+    } catch (err: any) {
+      toast({ title: "Failed to remove speaker", description: getErrorMessage(err), variant: "destructive" as any })
+    } finally {
+      setDeletingSpeakerId(null)
+    }
   }
 
   return (
@@ -161,7 +209,7 @@ export default function EventSpeakersTab({ event, onUpdateEvent }: EventSpeakers
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={savingSpeaker}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Speaker
               </Button>
@@ -211,7 +259,7 @@ export default function EventSpeakersTab({ event, onUpdateEvent }: EventSpeakers
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddSpeaker}>Add Speaker</Button>
+                <Button onClick={handleAddSpeaker} disabled={savingSpeaker}>{savingSpeaker ? "Saving..." : "Add Speaker"}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -234,10 +282,22 @@ export default function EventSpeakersTab({ event, onUpdateEvent }: EventSpeakers
                 <p className="text-sm mt-1">{speaker.bio}</p>
               </div>
               <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm" onClick={() => startEdit(speaker)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => startEdit(speaker)}
+                  disabled={savingSpeaker || deletingSpeakerId === speaker.id}
+                  title="Speaker editing requires a backend update-speaker endpoint"
+                >
                   <Edit className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleDeleteSpeaker(speaker.id)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600"
+                  disabled={savingSpeaker || deletingSpeakerId === speaker.id}
+                  onClick={() => handleDeleteSpeaker(speaker.id)}
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

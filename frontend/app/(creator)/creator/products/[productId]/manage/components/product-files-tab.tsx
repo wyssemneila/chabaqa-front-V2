@@ -66,7 +66,7 @@ export function ProductFilesTab() {
                 variant="ghost"
                 size="sm"
                 className="text-red-600"
-                onClick={() => handleRemoveFile(index)}
+                onClick={() => void handleRemoveFile(index)}
               >
                 <Trash2 className="h-4 w-4 mr-1" />
                 Remove File

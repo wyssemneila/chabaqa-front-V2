@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Event } from "@/lib/models"
 import { useToast } from "@/hooks/use-toast"
+import { eventsApi } from "@/lib/api/events.api"
 
 interface EventTicketsTabProps {
   event: Event
@@ -56,16 +57,29 @@ const toTicketForm = (ticket: any): TicketFormState => ({
   sold: Number(ticket.sold ?? 0),
 })
 
-const nextId = () => `ticket_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+const normalizeTicketResponse = (response: any): any => {
+  if (!response) return response
+  if (response?.ticket) return response.ticket
+  if (response?.data?.ticket) return response.data.ticket
+  if (response?.data?.data?.ticket) return response.data.data.ticket
+  if (response?.data?.data) return response.data.data
+  if (response?.data) return response.data
+  return response
+}
+
+const getErrorMessage = (error: any) => error?.message || error?.error || "Try again."
 
 export default function EventTicketsTab({ event, onUpdateEvent }: EventTicketsTabProps) {
   const { toast } = useToast()
 
+  const eventId = event.mongoId || event.id
   const tickets = useMemo(() => event.tickets || [], [event.tickets])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [newTicket, setNewTicket] = useState<TicketFormState>(createEmptyTicket())
   const [editingTicket, setEditingTicket] = useState<TicketFormState | null>(null)
+  const [savingTicket, setSavingTicket] = useState(false)
+  const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null)
 
   const validateTicket = (ticket: TicketFormState): string | null => {
     if (!ticket.type) return "Ticket type is required"
@@ -89,32 +103,56 @@ export default function EventTicketsTab({ event, onUpdateEvent }: EventTicketsTa
     onUpdateEvent({ tickets: nextTickets as any })
   }
 
-  const handleAddTicket = () => {
+  const handleAddTicket = async () => {
     const error = validateTicket(newTicket)
     if (error) {
       toast({ title: "Validation error", description: error, variant: "destructive" as any })
       return
     }
 
-    const created = {
-      id: nextId(),
-      type: newTicket.type,
-      name: newTicket.name.trim(),
-      price: Number(newTicket.price) || 0,
-      description: newTicket.description.trim(),
-      quantity: newTicket.quantity.trim() ? Number(newTicket.quantity) : undefined,
-      sold: 0,
+    if (!eventId) {
+      toast({ title: "Unable to add ticket", description: "Missing event id.", variant: "destructive" as any })
+      return
     }
 
-    applyTickets([...tickets, created])
-    setNewTicket(createEmptyTicket())
-    setIsAddDialogOpen(false)
-    toast({ title: "Ticket added", description: "Ticket added. Click Save Changes to persist." })
+    setSavingTicket(true)
+    try {
+      const response = await eventsApi.addTicket(eventId, {
+        type: newTicket.type,
+        name: newTicket.name.trim(),
+        price: Number(newTicket.price) || 0,
+        description: newTicket.description.trim() || undefined,
+        quantity: newTicket.quantity.trim() ? Number(newTicket.quantity) : undefined,
+      })
+      const created = normalizeTicketResponse(response)
+      applyTickets([
+        ...tickets,
+        {
+          id: created?.id || created?._id,
+          type: created?.type || newTicket.type,
+          name: created?.name || newTicket.name.trim(),
+          price: Number(created?.price ?? newTicket.price) || 0,
+          description: created?.description || newTicket.description.trim(),
+          quantity: created?.quantity ?? (newTicket.quantity.trim() ? Number(newTicket.quantity) : undefined),
+          sold: Number(created?.sold ?? 0),
+        },
+      ])
+      setNewTicket(createEmptyTicket())
+      setIsAddDialogOpen(false)
+      toast({ title: "Ticket added", description: "The event ticket was saved." })
+    } catch (err: any) {
+      toast({ title: "Failed to add ticket", description: getErrorMessage(err), variant: "destructive" as any })
+    } finally {
+      setSavingTicket(false)
+    }
   }
 
   const startEdit = (ticket: any) => {
-    setEditingTicket(toTicketForm(ticket))
-    setIsEditDialogOpen(true)
+    toast({
+      title: "Ticket editing unavailable",
+      description: "Ticket editing requires a backend update-ticket endpoint.",
+      variant: "destructive" as any,
+    })
   }
 
   const handleUpdateTicket = () => {
@@ -142,10 +180,10 @@ export default function EventTicketsTab({ event, onUpdateEvent }: EventTicketsTa
     applyTickets(nextTickets)
     setEditingTicket(null)
     setIsEditDialogOpen(false)
-    toast({ title: "Ticket updated", description: "Ticket updated. Click Save Changes to persist." })
+    toast({ title: "Ticket updated", description: "The event ticket was saved." })
   }
 
-  const handleDeleteTicket = (ticketId: string, sold: number) => {
+  const handleDeleteTicket = async (ticketId: string, sold: number) => {
     if (sold > 0) {
       toast({
         title: "Cannot delete ticket",
@@ -155,8 +193,21 @@ export default function EventTicketsTab({ event, onUpdateEvent }: EventTicketsTa
       return
     }
 
-    applyTickets(tickets.filter((ticket) => ticket.id !== ticketId))
-    toast({ title: "Ticket removed", description: "Ticket removed. Click Save Changes to persist." })
+    if (!eventId) {
+      toast({ title: "Unable to remove ticket", description: "Missing event id.", variant: "destructive" as any })
+      return
+    }
+
+    setDeletingTicketId(ticketId)
+    try {
+      await eventsApi.removeTicket(eventId, ticketId)
+      applyTickets(tickets.filter((ticket) => ticket.id !== ticketId))
+      toast({ title: "Ticket removed", description: "The event ticket was removed." })
+    } catch (err: any) {
+      toast({ title: "Failed to remove ticket", description: getErrorMessage(err), variant: "destructive" as any })
+    } finally {
+      setDeletingTicketId(null)
+    }
   }
 
   return (
@@ -169,7 +220,7 @@ export default function EventTicketsTab({ event, onUpdateEvent }: EventTicketsTa
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={savingTicket}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Ticket
               </Button>
@@ -235,7 +286,7 @@ export default function EventTicketsTab({ event, onUpdateEvent }: EventTicketsTa
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddTicket}>Add Ticket</Button>
+                <Button onClick={handleAddTicket} disabled={savingTicket}>{savingTicket ? "Saving..." : "Add Ticket"}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -264,14 +315,20 @@ export default function EventTicketsTab({ event, onUpdateEvent }: EventTicketsTa
                       {ticket.sold || 0} sold{ticket.quantity ? ` of ${ticket.quantity}` : ""}
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => startEdit(ticket)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => startEdit(ticket)}
+                    disabled={savingTicket || deletingTicketId === ticket.id}
+                    title="Ticket editing requires a backend update-ticket endpoint"
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     className={hasSales ? "text-gray-400 cursor-not-allowed" : "text-red-600"}
-                    disabled={hasSales}
+                    disabled={hasSales || savingTicket || deletingTicketId === ticket.id}
                     onClick={() => handleDeleteTicket(ticket.id, ticket.sold || 0)}
                     title={hasSales ? "Cannot delete ticket with sales" : "Delete ticket"}
                   >

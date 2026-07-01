@@ -88,7 +88,7 @@ export function FeatureCTA({ feature }: FeatureCTAProps) {
         </div>
 
         <p className="text-[10px] sm:text-xs text-purple-200 mt-3 sm:mt-4">
-          Join {Math.floor(Math.random() * 5000 + 1000)}+ members who are already seeing results
+          Join creators and members who are already seeing results
         </p>
       </div>
     </div>

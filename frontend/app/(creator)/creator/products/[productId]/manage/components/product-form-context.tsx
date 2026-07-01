@@ -3,7 +3,6 @@
 import { createContext, useContext, useState } from "react"
 import { useRouter } from "next/navigation"
 import { productsApi } from "@/lib/api/products.api"
-import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
 type ProductFormContextType = {
@@ -16,7 +15,7 @@ type ProductFormContextType = {
   removeArrayItem: (field: string, index: number) => void
   handleUploadFiles: (files: FileList | null) => Promise<void>
   handleFileChange: (index: number, field: string, value: string) => void
-  handleRemoveFile: (index: number) => void
+  handleRemoveFile: (index: number) => Promise<void>
   handleSave: () => Promise<void>
 }
 
@@ -85,6 +84,18 @@ function normalizeFileType(rawType: string, filename: string): string {
   return map[candidate] || map[ext] || "OTHER"
 }
 
+const normalizeProductFileResponse = (response: any): any => {
+  if (!response) return response
+  if (response?.file) return response.file
+  if (response?.data?.file) return response.data.file
+  if (response?.data?.data?.file) return response.data.data.file
+  if (response?.data?.data) return response.data.data
+  if (response?.data) return response.data
+  return response
+}
+
+const getErrorMessage = (error: any) => error?.message || error?.error || "Please try again."
+
 export function ProductFormProvider({
   children,
   product,
@@ -140,21 +151,43 @@ export function ProductFormProvider({
 
   const handleUploadFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return
+    const productId = String(formData.id || "")
+    if (!productId) {
+      toast({
+        title: "Upload unavailable",
+        description: "Missing product id.",
+        variant: "destructive" as any,
+      })
+      return
+    }
+
     setIsUploadingFile(true)
     try {
       const uploaded: any[] = []
       for (const file of Array.from(files)) {
-        const res = await api.storage.upload(file)
-        if (!res?.url) continue
-        uploaded.push({
-          id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          name: file.name,
-          url: res.url,
-          type: normalizeFileType(file.type, file.name),
-          size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-          isActive: true,
-          order: 0,
-        })
+        try {
+          const response = await productsApi.uploadFile(productId, file)
+          const created = normalizeProductFileResponse(response)
+          if (!created?.id && !created?._id) throw new Error("Backend did not return a file id.")
+          uploaded.push({
+            id: created.id || created._id,
+            name: created.name || file.name,
+            url: created.url,
+            type: normalizeFileType(created.type || file.type, created.name || file.name),
+            size: created.size || `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+            description: created.description || "",
+            downloadCount: Number(created.downloadCount || 0),
+            isActive: created.isActive !== false,
+            uploadedAt: created.uploadedAt,
+            order: Number(created.order || 0),
+          })
+        } catch (error: any) {
+          toast({
+            title: "File upload failed",
+            description: `${file.name}: ${getErrorMessage(error)}`,
+            variant: "destructive" as any,
+          })
+        }
       }
 
       if (uploaded.length > 0) {
@@ -173,7 +206,7 @@ export function ProductFormProvider({
     } catch (error: any) {
       toast({
         title: "File upload failed",
-        description: error?.message || "Please try again.",
+        description: getErrorMessage(error),
         variant: "destructive" as any,
       })
     } finally {
@@ -190,14 +223,46 @@ export function ProductFormProvider({
     }))
   }
 
-  const handleRemoveFile = (index: number) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      files: (prev.files || []).filter((_: any, i: number) => i !== index).map((f: any, idx: number) => ({
-        ...f,
-        order: idx,
-      })),
-    }))
+  const handleRemoveFile = async (index: number) => {
+    const productId = String(formData.id || "")
+    const file = Array.isArray(formData.files) ? formData.files[index] : null
+    if (!file) return
+
+    const removeFromState = () => {
+      setFormData((prev: any) => ({
+        ...prev,
+        files: (prev.files || []).filter((_: any, i: number) => i !== index).map((f: any, idx: number) => ({
+          ...f,
+          order: idx,
+        })),
+      }))
+    }
+
+    if (!file.id) {
+      removeFromState()
+      return
+    }
+
+    if (!productId) {
+      toast({
+        title: "Remove failed",
+        description: "Missing product id.",
+        variant: "destructive" as any,
+      })
+      return
+    }
+
+    try {
+      await productsApi.removeFile(productId, String(file.id))
+      removeFromState()
+      toast({ title: "File removed", description: "The product file was removed." })
+    } catch (error: any) {
+      toast({
+        title: "Remove failed",
+        description: getErrorMessage(error),
+        variant: "destructive" as any,
+      })
+    }
   }
 
   const handleSave = async () => {

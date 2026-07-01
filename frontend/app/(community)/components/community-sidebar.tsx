@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -33,18 +34,27 @@ import {
   Users,
 } from "lucide-react"
 import { AppHeader } from "@/components/layout/app-header"
-import {
-  getCommunityBySlug,
-  getUserEnrollments,
-  getActiveChallengesByCommunity,
-  getUserChallengeParticipation,
-} from "@/lib/mock-data"
+import { communitiesApi } from "@/lib/api/communities.api"
+import { coursesApi } from "@/lib/api/courses.api"
+import { progressionApi } from "@/lib/api/progression.api"
+import { achievementsApi } from "@/lib/api/achievements.api"
+import { sessionsCommunityApi } from "@/lib/api/sessions-community.api"
+import { postsApi } from "@/lib/api/posts.api"
+import { challengesApi } from "@/lib/api/challenges.api"
 
 interface CommunitySidebarProps {
   communitySlug: string
 }
 
-const menuItems = [
+type SidebarMenuEntry = {
+  title: string
+  url: string
+  icon: typeof LayoutDashboard
+  badge?: string
+  color?: "courses" | "challenges" | "sessions"
+}
+
+const baseMenuItems: SidebarMenuEntry[] = [
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -54,21 +64,18 @@ const menuItems = [
     title: "My Courses",
     url: "/courses",
     icon: BookOpen,
-    badge: "3 Active",
     color: "courses",
   },
   {
     title: "My Challenge",
     url: "/challenge",
     icon: Zap,
-    badge: "Day 18",
     color: "challenges",
   },
   {
     title: "1-on-1 Sessions",
     url: "/sessions",
     icon: Calendar,
-    badge: "1 Booked",
     color: "sessions",
   },
   {
@@ -80,7 +87,6 @@ const menuItems = [
     title: "Posts Feed",
     url: "/posts",
     icon: MessageSquare,
-    badge: "12 New",
   },
   {
     title: "Progress Tracking",
@@ -94,12 +100,133 @@ const menuItems = [
   },
 ]
 
+type SidebarData = {
+  community: any | null
+  activeCourses: number
+  completedCourses: number
+  bookedSessions: number
+  recentPosts: number
+  overallProgress: number
+  learningStreak: number | null
+  rank: number | null
+  activeChallenge: any | null
+  challengeProgress: number
+  challengeDay: number | null
+  challengeDaysLeft: number | null
+  challengeParticipants: number
+  achievements: any[]
+}
+
+const emptySidebarData: SidebarData = {
+  community: null,
+  activeCourses: 0,
+  completedCourses: 0,
+  bookedSessions: 0,
+  recentPosts: 0,
+  overallProgress: 0,
+  learningStreak: null,
+  rank: null,
+  activeChallenge: null,
+  challengeProgress: 0,
+  challengeDay: null,
+  challengeDaysLeft: null,
+  challengeParticipants: 0,
+  achievements: [],
+}
+
+const unwrap = (value: any) => value?.data?.data ?? value?.data ?? value ?? {}
+const asArray = (value: any): any[] => {
+  if (Array.isArray(value)) return value
+  if (Array.isArray(value?.data)) return value.data
+  if (Array.isArray(value?.data?.data)) return value.data.data
+  if (Array.isArray(value?.items)) return value.items
+  if (Array.isArray(value?.docs)) return value.docs
+  if (Array.isArray(value?.enrollments)) return value.enrollments
+  if (Array.isArray(value?.participations)) return value.participations
+  return []
+}
+
+function useCommunitySidebarData(slug: string) {
+  const [data, setData] = useState<SidebarData>(emptySidebarData)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    const load = async () => {
+      setIsLoading(true)
+      try {
+        const communityResponse = await communitiesApi.getBySlug(slug)
+        const community = unwrap(communityResponse)
+        const communityId = community?._id || community?.id
+
+        const [enrollmentsResult, progressionResult, achievementsResult, bookingsResult, postsResult, challengesResult, participationsResult] = await Promise.allSettled([
+          coursesApi.getMyEnrollments(),
+          progressionApi.getOverview({ communityId, communitySlug: slug }),
+          achievementsApi.getUserAchievements({ communitySlug: slug }),
+          sessionsCommunityApi.getUserBookings({ communityId, communitySlug: slug }),
+          communityId ? postsApi.getByCommunity(communityId, { page: 1, limit: 1 }) : Promise.resolve(null),
+          challengesApi.getByCommunity(slug),
+          challengesApi.getMyParticipations({ communitySlug: slug, status: "active" }),
+        ])
+
+        if (!active) return
+
+        const enrollments = enrollmentsResult.status === "fulfilled" ? asArray(enrollmentsResult.value) : []
+        const progression = progressionResult.status === "fulfilled" ? progressionResult.value as any : {}
+        const achievements = achievementsResult.status === "fulfilled" ? achievementsResult.value : []
+        const bookings = bookingsResult.status === "fulfilled" ? bookingsResult.value : []
+        const postTotal = postsResult.status === "fulfilled" ? Number((postsResult.value as any)?.pagination?.total ?? 0) : 0
+        const challenges = challengesResult.status === "fulfilled" ? asArray(challengesResult.value) : []
+        const participations = participationsResult.status === "fulfilled" ? asArray(participationsResult.value) : []
+        const activeChallenge = participations[0]?.challenge || challenges.find(challenge => challenge?.isActive !== false) || null
+        const startedAt = participations[0]?.startedAt || participations[0]?.createdAt
+        const endDate = activeChallenge?.endDate
+        const challengeDay = startedAt ? Math.max(1, Math.floor((Date.now() - new Date(startedAt).getTime()) / 86_400_000) + 1) : null
+        const challengeDaysLeft = endDate ? Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000)) : null
+
+        setData({
+          community,
+          activeCourses: enrollments.filter((item: any) => String(item?.status || "").toLowerCase() !== "completed").length,
+          completedCourses: enrollments.filter((item: any) => String(item?.status || "").toLowerCase() === "completed" || Number(item?.progressPercent ?? item?.progress ?? 0) >= 100).length,
+          bookedSessions: bookings.length,
+          recentPosts: postTotal,
+          overallProgress: Math.round(Number(progression?.overallProgress ?? progression?.averageProgress ?? progression?.completionPercentage ?? 0)),
+          learningStreak: progression?.streakDays ?? progression?.learningStreak ?? null,
+          rank: progression?.communityRank ?? progression?.rank ?? null,
+          activeChallenge,
+          challengeProgress: Math.round(Number(participations[0]?.progress ?? participations[0]?.progressPercent ?? 0)),
+          challengeDay,
+          challengeDaysLeft,
+          challengeParticipants: Number(activeChallenge?.participantsCount ?? activeChallenge?.participants?.length ?? 0),
+          achievements: achievements.slice(0, 2),
+        })
+      } catch {
+        if (active) setData(emptySidebarData)
+      } finally {
+        if (active) setIsLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      active = false
+    }
+  }, [slug])
+
+  return { data, isLoading }
+}
+
 export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
   const pathname = usePathname()
-  const community = getCommunityBySlug(communitySlug)
-  const userEnrollments = getUserEnrollments("2")
-  const challenges = getActiveChallengesByCommunity(community?.id || "")
-  const userChallenge = challenges.length > 0 ? getUserChallengeParticipation("2", challenges[0].id) : null
+  const { data, isLoading } = useCommunitySidebarData(communitySlug)
+  const community = data.community
+  const menuItems = useMemo(() => baseMenuItems.map(item => {
+    if (item.url === "/courses") return { ...item, badge: data.activeCourses > 0 ? `${data.activeCourses} Active` : undefined }
+    if (item.url === "/challenge") return { ...item, badge: data.challengeDay ? `Day ${data.challengeDay}` : undefined }
+    if (item.url === "/sessions") return { ...item, badge: data.bookedSessions > 0 ? `${data.bookedSessions} Booked` : undefined }
+    if (item.url === "/posts") return { ...item, badge: data.recentPosts > 0 ? `${data.recentPosts} Posts` : undefined }
+    return item
+  }), [data])
 
   return (
     <Sidebar className="border-r hidden lg:block w-64 shrink-0 sticky top-24 self-start space-y-6">
@@ -109,9 +236,9 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
             {community && (
               <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold"
-                style={{ backgroundColor: community.settings?.primaryColor || '#7c3aed' }}
+                style={{ backgroundColor: community.settings?.primaryColor || community.primaryColor || '#7c3aed' }}
               >
-                {community.name.charAt(0)}
+                {(community.name || "C").charAt(0)}
               </div>
             )}
             <div>
@@ -167,7 +294,7 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
         </SidebarGroup>
 
         {/* Active Challenge Widget */}
-        {userChallenge && challenges.length > 0 && (
+        {data.activeChallenge && (
           <SidebarGroup>
             <SidebarGroupLabel>Current Challenge</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -177,25 +304,25 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
                     <Zap className="h-4 w-4 text-challenges-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium truncate">{challenges[0].title}</h4>
-                    <p className="text-xs text-muted-foreground">Day 18 of 30</p>
+                    <h4 className="text-sm font-medium truncate">{data.activeChallenge.title || data.activeChallenge.name}</h4>
+                    <p className="text-xs text-muted-foreground">{data.challengeDay ? `Day ${data.challengeDay}` : "In progress"}</p>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span>Your Progress</span>
-                    <span>{userChallenge.progress}%</span>
+                    <span>{data.challengeProgress}%</span>
                   </div>
-                  <Progress value={userChallenge.progress} className="h-2" />
+                  <Progress value={data.challengeProgress} className="h-2" />
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center text-muted-foreground">
                     <Clock className="h-3 w-3 mr-1" />
-                    12 days left
+                    {data.challengeDaysLeft !== null ? `${data.challengeDaysLeft} days left` : "Ends later"}
                   </div>
                   <div className="flex items-center text-muted-foreground">
                     <Users className="h-3 w-3 mr-1" />
-                    {challenges[0].participants.length}
+                    {data.challengeParticipants}
                   </div>
                 </div>
                 <Link
@@ -217,33 +344,33 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
             <div className="px-3 py-2 space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Courses Enrolled</span>
-                <span className="font-medium">{userEnrollments.length}</span>
+                <span className="font-medium">{isLoading ? "..." : data.activeCourses + data.completedCourses}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Completed</span>
                 <span className="font-medium">
-                  {userEnrollments.reduce((acc, e) => acc + e.progress.filter((p) => p.isCompleted).length, 0)}
+                  {isLoading ? "..." : data.completedCourses}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Learning Streak</span>
                 <div className="flex items-center">
-                  <span className="font-medium">12 days</span>
+                  <span className="font-medium">{data.learningStreak !== null ? `${data.learningStreak} days` : "No data"}</span>
                   <div className="w-2 h-2 bg-green-500 rounded-full ml-2" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Community Rank</span>
                 <Badge variant="secondary" className="text-xs bg-primary-100 text-primary-700">
-                  #47
+                  {data.rank ? `#${data.rank}` : "No data"}
                 </Badge>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
                   <span>Overall Progress</span>
-                  <span>68%</span>
+                  <span>{data.overallProgress}%</span>
                 </div>
-                <Progress value={68} className="h-2" />
+                <Progress value={data.overallProgress} className="h-2" />
               </div>
             </div>
           </SidebarGroupContent>
@@ -254,20 +381,17 @@ export function CommunitySidebar({ communitySlug }: CommunitySidebarProps) {
           <SidebarGroupLabel>Recent Achievements</SidebarGroupLabel>
           <SidebarGroupContent>
             <div className="px-3 py-2 space-y-2">
-              <div className="flex items-center space-x-2 p-2 bg-primary-50 rounded-lg">
-                <Trophy className="h-4 w-4 text-primary-600" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium">12-Day Streak!</p>
-                  <p className="text-xs text-muted-foreground">Keep it up!</p>
+              {data.achievements.length === 0 ? (
+                <p className="px-2 text-xs text-muted-foreground">No achievements yet.</p>
+              ) : data.achievements.map((achievement: any) => (
+                <div key={achievement?._id || achievement?.id || achievement?.title} className="flex items-center space-x-2 p-2 bg-primary-50 rounded-lg">
+                  <Trophy className="h-4 w-4 text-primary-600" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium">{achievement?.title || achievement?.name || "Achievement"}</p>
+                    <p className="text-xs text-muted-foreground">{achievement?.description || "Unlocked from your activity"}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center space-x-2 p-2 bg-courses-50 rounded-lg">
-                <BookOpen className="h-4 w-4 text-courses-600" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium">Course Completed</p>
-                  <p className="text-xs text-muted-foreground">HTML Fundamentals</p>
-                </div>
-              </div>
+              ))}
             </div>
           </SidebarGroupContent>
         </SidebarGroup>

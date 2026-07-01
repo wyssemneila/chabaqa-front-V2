@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Event, EventSession } from "@/lib/models"
 import { useToast } from "@/hooks/use-toast"
+import { eventsApi } from "@/lib/api/events.api"
 
 interface EventSessionsTabProps {
   event: Event
@@ -63,16 +64,39 @@ const toSessionForm = (session: EventSession): SessionFormState => ({
 
 const isValidTimeRange = (start: string, end: string) => Boolean(start && end && start < end)
 
-const nextId = () => `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+const normalizeSessionResponse = (response: any): any => {
+  if (!response) return response
+  if (response?.session) return response.session
+  if (response?.data?.session) return response.data.session
+  if (response?.data?.data?.session) return response.data.data.session
+  if (response?.data?.data) return response.data.data
+  if (response?.data) return response.data
+  return response
+}
+
+const toEventSession = (payload: any, fallback: SessionFormState): EventSession => ({
+  id: String(payload?._id || payload?.id || fallback.id || ""),
+  title: payload?.title || fallback.title.trim(),
+  description: payload?.description || fallback.description.trim(),
+  startTime: payload?.startTime || fallback.startTime,
+  endTime: payload?.endTime || fallback.endTime,
+  speaker: payload?.speaker || fallback.speaker.trim(),
+  notes: payload?.notes || fallback.notes.trim() || undefined,
+  isActive: payload?.isActive ?? fallback.isActive,
+  attendance: Number(payload?.attendance ?? fallback.attendance ?? 0),
+})
 
 export default function EventSessionsTab({ event, onUpdateEvent }: EventSessionsTabProps) {
   const { toast } = useToast()
 
+  const eventId = event.mongoId || event.id
   const sessions = useMemo(() => event.sessions || [], [event.sessions])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [newSession, setNewSession] = useState<SessionFormState>(createEmptySession())
   const [editingSession, setEditingSession] = useState<SessionFormState | null>(null)
+  const [savingSession, setSavingSession] = useState(false)
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null)
 
   const validateSession = (session: SessionFormState): string | null => {
     if (!session.title.trim()) return "Session title is required"
@@ -88,29 +112,39 @@ export default function EventSessionsTab({ event, onUpdateEvent }: EventSessions
     onUpdateEvent({ sessions: nextSessions })
   }
 
-  const handleAddSession = () => {
+  const handleAddSession = async () => {
     const error = validateSession(newSession)
     if (error) {
       toast({ title: "Validation error", description: error, variant: "destructive" as any })
       return
     }
 
-    const created: EventSession = {
-      id: nextId(),
-      title: newSession.title.trim(),
-      description: newSession.description.trim(),
-      startTime: newSession.startTime,
-      endTime: newSession.endTime,
-      speaker: newSession.speaker.trim(),
-      notes: newSession.notes.trim() || undefined,
-      isActive: newSession.isActive,
-      attendance: Number(newSession.attendance ?? 0),
+    if (!eventId) {
+      toast({ title: "Unable to add session", description: "Missing event id.", variant: "destructive" as any })
+      return
     }
 
-    applySessionList([...sessions, created])
-    setNewSession(createEmptySession())
-    setIsAddDialogOpen(false)
-    toast({ title: "Session added", description: "Session added. Click Save Changes to persist." })
+    setSavingSession(true)
+    try {
+      const response = await eventsApi.addSession(eventId, {
+        title: newSession.title.trim(),
+        description: newSession.description.trim(),
+        startTime: newSession.startTime,
+        endTime: newSession.endTime,
+        speaker: newSession.speaker.trim() || undefined,
+        notes: newSession.notes.trim() || undefined,
+        isActive: newSession.isActive,
+      })
+      const created = toEventSession(normalizeSessionResponse(response), newSession)
+      applySessionList([...sessions, created])
+      setNewSession(createEmptySession())
+      setIsAddDialogOpen(false)
+      toast({ title: "Session added", description: "The event session was saved." })
+    } catch (err: any) {
+      toast({ title: "Failed to add session", description: err?.message || "Try again.", variant: "destructive" as any })
+    } finally {
+      setSavingSession(false)
+    }
   }
 
   const startEdit = (session: EventSession) => {
@@ -118,7 +152,7 @@ export default function EventSessionsTab({ event, onUpdateEvent }: EventSessions
     setIsEditDialogOpen(true)
   }
 
-  const handleUpdateSession = () => {
+  const handleUpdateSession = async () => {
     if (!editingSession) return
     const error = validateSession(editingSession)
     if (error) {
@@ -126,31 +160,50 @@ export default function EventSessionsTab({ event, onUpdateEvent }: EventSessions
       return
     }
 
-    const nextSessions = sessions.map((session) =>
-      session.id === editingSession.id
-        ? {
-            ...session,
-            title: editingSession.title.trim(),
-            description: editingSession.description.trim(),
-            startTime: editingSession.startTime,
-            endTime: editingSession.endTime,
-            speaker: editingSession.speaker.trim(),
-            notes: editingSession.notes.trim() || undefined,
-            isActive: editingSession.isActive,
-            attendance: Number(editingSession.attendance ?? 0),
-          }
-        : session,
-    )
+    if (!eventId || !editingSession.id) {
+      toast({ title: "Unable to update session", description: "Missing event or session id.", variant: "destructive" as any })
+      return
+    }
 
-    applySessionList(nextSessions)
-    setEditingSession(null)
-    setIsEditDialogOpen(false)
-    toast({ title: "Session updated", description: "Session updated. Click Save Changes to persist." })
+    setSavingSession(true)
+    try {
+      const response = await eventsApi.updateSession(eventId, editingSession.id, {
+        title: editingSession.title.trim(),
+        description: editingSession.description.trim(),
+        startTime: editingSession.startTime,
+        endTime: editingSession.endTime,
+        speaker: editingSession.speaker.trim() || undefined,
+        notes: editingSession.notes.trim() || undefined,
+        isActive: editingSession.isActive,
+      })
+      const updated = toEventSession(normalizeSessionResponse(response), editingSession)
+      applySessionList(sessions.map((session) => session.id === editingSession.id ? { ...session, ...updated } : session))
+      setEditingSession(null)
+      setIsEditDialogOpen(false)
+      toast({ title: "Session updated", description: "The event session was saved." })
+    } catch (err: any) {
+      toast({ title: "Failed to update session", description: err?.message || "The backend update-session endpoint may be unavailable.", variant: "destructive" as any })
+    } finally {
+      setSavingSession(false)
+    }
   }
 
-  const handleDeleteSession = (sessionId: string) => {
-    applySessionList(sessions.filter((session) => session.id !== sessionId))
-    toast({ title: "Session removed", description: "Session removed. Click Save Changes to persist." })
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!eventId) {
+      toast({ title: "Unable to remove session", description: "Missing event id.", variant: "destructive" as any })
+      return
+    }
+
+    setDeletingSessionId(sessionId)
+    try {
+      await eventsApi.removeSession(eventId, sessionId)
+      applySessionList(sessions.filter((session) => session.id !== sessionId))
+      toast({ title: "Session removed", description: "The event session was removed." })
+    } catch (err: any) {
+      toast({ title: "Failed to remove session", description: err?.message || "Try again.", variant: "destructive" as any })
+    } finally {
+      setDeletingSessionId(null)
+    }
   }
 
   return (
@@ -163,7 +216,7 @@ export default function EventSessionsTab({ event, onUpdateEvent }: EventSessions
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={savingSession}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Session
               </Button>
@@ -234,7 +287,7 @@ export default function EventSessionsTab({ event, onUpdateEvent }: EventSessions
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddSession}>Add Session</Button>
+                <Button onClick={handleAddSession} disabled={savingSession}>{savingSession ? "Saving..." : "Add Session"}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -254,7 +307,7 @@ export default function EventSessionsTab({ event, onUpdateEvent }: EventSessions
                   {session.attendance !== undefined && <Badge variant="outline">Attendance: {session.attendance}</Badge>}
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => startEdit(session)}>
+                  <Button variant="outline" size="sm" onClick={() => startEdit(session)} disabled={savingSession || deletingSessionId === session.id}>
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
                   </Button>
@@ -262,6 +315,7 @@ export default function EventSessionsTab({ event, onUpdateEvent }: EventSessions
                     variant="outline"
                     size="sm"
                     className="text-red-600 bg-transparent"
+                    disabled={savingSession || deletingSessionId === session.id}
                     onClick={() => handleDeleteSession(session.id)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -358,7 +412,7 @@ export default function EventSessionsTab({ event, onUpdateEvent }: EventSessions
             </div>
           )}
           <DialogFooter>
-            <Button onClick={handleUpdateSession}>Save Session</Button>
+            <Button onClick={handleUpdateSession} disabled={savingSession}>{savingSession ? "Saving..." : "Save Session"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

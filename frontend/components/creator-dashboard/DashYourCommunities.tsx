@@ -1,7 +1,7 @@
 'use client'
 
 import { Plus, Users } from 'lucide-react'
-import { communities, type Community } from '@/lib/dashboard-data'
+import { type Community } from '@/lib/dashboard-types'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import Link from 'next/link'
 
@@ -10,7 +10,7 @@ const TR = {
   ar: { title: 'مجتمعاتك',          createNew: 'إنشاء جديد', members: 'عضو',     view: 'عرض', customize: 'تخصيص',     verified: 'موثّق' },
 }
 
-export default function DashYourCommunities({ items = communities, loading = false }: { items?: Community[]; loading?: boolean }) {
+export default function DashYourCommunities({ items = [], loading = false }: { items?: Community[]; loading?: boolean }) {
   const { lang } = useDashPrefs()
   const t = TR[lang]
 

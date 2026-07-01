@@ -2,7 +2,7 @@ import React from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Users, Star, CheckCircle, Heart, Eye, Tag, TrendingUp, Award } from "lucide-react"
-import { Explore } from "@/lib/data-communities"
+import type { Explore } from "@/lib/explore-types"
 import { resolveExploreCardRouting } from "@/app/(landing)/(communities)/components/explore-card-routing"
 
 import Link from "next/link"

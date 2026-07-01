@@ -12,6 +12,7 @@ import { X, CreditCard, Shield, CheckCircle, Users, Star, Clock, Gift, ArrowRigh
 import { communitiesApi } from "@/lib/api/communities.api"
 import { PaymentProviderModal } from "@/components/payment-provider-modal"
 import { usePaymentProviderModal } from "@/lib/hooks/use-payment-provider-modal"
+import { toast } from "sonner"
 
 interface JoinCommunityModalProps {
   community: any
@@ -28,6 +29,7 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
   })
 
   const communityId = community?._id || community?.id
+  const communitySlug = community?.slug
 
   const paymentModal = usePaymentProviderModal({
     initStripe: () => (communitiesApi as any).initStripePayment(communityId),
@@ -40,19 +42,29 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
   }
 
   const handleJoin = async () => {
+    if (!communityId) return
+
     if (community.priceType === "free") {
-      setStep("success")
+      setIsProcessing(true)
+      try {
+        await communitiesApi.join({ communityId })
+        setStep("success")
+      } catch (error: any) {
+        toast.error(error?.message || "Unable to join this community")
+      } finally {
+        setIsProcessing(false)
+      }
       return
     }
 
-    setIsProcessing(true)
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsProcessing(false)
-    setStep("success")
+    if (communitySlug) {
+      router.push(`/community/${communitySlug}/checkout`)
+    } else {
+      setStep("payment")
+    }
   }
 
-  const handlePayment = () => {
+  const handleProviderPayment = () => {
     if (!communityId) return
     paymentModal.open()
   }
@@ -173,11 +185,11 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
 
                 <Button
                   size="lg"
-                  onClick={() => (community.priceType === "free" ? handleJoin() : setStep("payment"))}
-                  disabled={!formData.name || !formData.email}
+                  onClick={handleJoin}
+                  disabled={!formData.name || !formData.email || isProcessing}
                   className="bg-gradient-to-r from-chabaqa-primary to-chabaqa-secondary1 text-white px-8"
                 >
-                  {community.priceType === "free" ? "Join for Free" : "Continue to Payment"}
+                  {isProcessing ? "Joining..." : community.priceType === "free" ? "Join for Free" : "Continue to Payment"}
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </div>
@@ -229,11 +241,11 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
 
                 <Button
                   size="lg"
-                  onClick={handlePayment}
+                  onClick={handleProviderPayment}
                   disabled={isProcessing}
                   className="bg-gradient-to-r from-chabaqa-primary to-chabaqa-secondary1 text-white px-8"
                 >
-                  {isProcessing ? "Processing..." : `Start Free Trial`}
+                  {isProcessing ? "Starting..." : `Start Checkout`}
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </div>

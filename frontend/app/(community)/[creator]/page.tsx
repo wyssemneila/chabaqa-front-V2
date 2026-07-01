@@ -25,7 +25,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
     }
   }
 
-  // For now, redirect all creator routes to the main page
-  // This prevents 404 errors while we have the mock data structure
+  // Creator community pages are resolved by the feature-scoped routes.
+  // Unknown root creator routes fall back to the main page.
   redirect("/")
 }

@@ -140,6 +140,18 @@ export class SubscriptionController {
     return this.subscriptionService.getCreatorMemberSubscriptions(creatorId, query);
   }
 
+  @Get('member-revenue/stats')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get aggregate customer/member recurring subscription stats for the current creator' })
+  async getMemberRevenueStats(
+    @Request() req: any,
+    @Query() query: GetSubscriptionsQueryDto,
+  ): Promise<SubscriptionStatsDto> {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getCreatorMemberSubscriptionStats(creatorId, query);
+  }
+
   @Get('add-ons/available')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')

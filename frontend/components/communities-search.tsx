@@ -5,7 +5,13 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Search, X } from "lucide-react"
-import { communitiesData } from "@/lib/data-communities"
+
+const categories = ["All", "Technology", "Business", "Design", "Marketing", "Education"]
+const sortOptions = [
+  { value: "popular", label: "Most Popular" },
+  { value: "rating", label: "Highest Rated" },
+  { value: "newest", label: "Newest" },
+]
 
 interface SearchFilters {
   query: string
@@ -101,7 +107,7 @@ export function CommunitiesSearch({ onFiltersChange }: CommunitiesSearchProps) {
             onChange={(e) => handleFilterChange("category", e.target.value)}
             className="h-9 px-3 bg-white border border-gray-300 rounded-md min-w-[120px]"
           >
-            {communitiesData.categories.slice(0, 6).map((category) => (
+            {categories.map((category) => (
               <option key={category} value={category}>
                 {category}
               </option>
@@ -113,7 +119,7 @@ export function CommunitiesSearch({ onFiltersChange }: CommunitiesSearchProps) {
             onChange={(e) => handleFilterChange("sortBy", e.target.value)}
             className="h-9 px-3 bg-white border border-gray-300 rounded-md min-w-[120px]"
           >
-            {communitiesData.sortOptions.map((option) => (
+            {sortOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
