@@ -61,7 +61,7 @@ export function PieChart({
           cy="50%"
           innerRadius={innerRadius}
           outerRadius={outerRadius}
-          label={(entry) => entry[nameKey]}
+          label={(entry) => String(entry.name ?? '')}
           labelLine={true}
         >
           {data.map((entry, index) => (

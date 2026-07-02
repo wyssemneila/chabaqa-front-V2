@@ -147,7 +147,7 @@ export default function DashSidebar() {
                   <DashIcon name={item.icon} size={15} color={active ? 'var(--p)' : 'currentColor'}
                     className={active ? 'opacity-100' : 'opacity-70'} />
                   {item.label[lang]}
-                  {'soon' in item && item.soon && (
+                  {'soon' in item && Boolean(item.soon) && (
                     <span className="ml-auto text-[11px] font-semibold tracking-[.04em] px-1.5 py-0.5 rounded-full"
                       style={{ background: 'var(--p2)', color: 'var(--t3)', border: '1px solid var(--bd)' }}>
                       {soon}

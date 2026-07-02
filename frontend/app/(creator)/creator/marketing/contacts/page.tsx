@@ -161,18 +161,18 @@ export default function MarketingContactsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {inviteLinkData?.inviteLink ? (
+                  {inviteLinkData?.data?.inviteLink ? (
                     <div className="flex flex-col gap-2 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <p className="text-sm font-medium">Community invite link</p>
-                        <p className="truncate text-xs text-muted-foreground">{inviteLinkData.inviteLink}</p>
+                        <p className="truncate text-xs text-muted-foreground">{inviteLinkData.data.inviteLink}</p>
                       </div>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          void navigator.clipboard.writeText(inviteLinkData.inviteLink)
+                          void navigator.clipboard.writeText(inviteLinkData.data.inviteLink)
                           toast.success('Invite link copied')
                         }}
                       >
