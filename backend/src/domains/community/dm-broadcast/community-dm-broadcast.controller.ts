@@ -6,7 +6,6 @@ import {
   Param,
   Patch,
   Post,
-  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -15,36 +14,35 @@ import { JwtAuthGuard } from '@/domains/auth/jwt-auth.guard';
 import { DmBroadcastService } from '@/domains/communication/dm/dm-broadcast.service';
 import { DmAutomationTrigger } from '@/infrastructure/database/schemas/communication/dm-automation.schema';
 
-@ApiTags('DM Broadcasts')
-@Controller('dm')
+@ApiTags('Community DM Broadcasts')
+@Controller('communities/:communityId/dm')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
-export class DmBroadcastController {
+export class CommunityDmBroadcastController {
   constructor(private readonly broadcastService: DmBroadcastService) {}
 
   private getUserId(req: any): string {
-    return String(req.user?._id || req.user?.sub || req.user?.id || '');
+    return String(req.user?._id || req.user?.sub || req.user?.id || req.user?.userId || '');
   }
 
   @Get('broadcasts')
   @ApiOperation({ summary: 'List DM broadcasts for a community' })
-  async listBroadcasts(@Query('communityId') communityId: string, @Request() req: any) {
+  async listBroadcasts(@Param('communityId') communityId: string, @Request() req: any) {
     return this.broadcastService.listBroadcasts(communityId, this.getUserId(req));
   }
 
   @Post('broadcasts')
   @ApiOperation({ summary: 'Create a DM broadcast draft' })
   async createBroadcast(
-    @Body() body: { communityId: string; title?: string; body: string },
+    @Param('communityId') communityId: string,
+    @Body() body: { title?: string; body: string },
     @Request() req: any,
   ) {
-    return this.broadcastService.createBroadcast(this.getUserId(req), body);
-  }
-
-  @Get('broadcasts/:id')
-  @ApiOperation({ summary: 'Get a DM broadcast' })
-  async getBroadcast(@Param('id') id: string, @Request() req: any) {
-    return this.broadcastService.getBroadcast(id, this.getUserId(req));
+    return this.broadcastService.createBroadcast(this.getUserId(req), {
+      communityId,
+      title: body.title,
+      body: body.body,
+    });
   }
 
   @Post('broadcasts/:id/send')
@@ -61,16 +59,16 @@ export class DmBroadcastController {
 
   @Get('automations')
   @ApiOperation({ summary: 'List DM automations for a community' })
-  async listAutomations(@Query('communityId') communityId: string, @Request() req: any) {
+  async listAutomations(@Param('communityId') communityId: string, @Request() req: any) {
     return this.broadcastService.listAutomations(communityId, this.getUserId(req));
   }
 
   @Post('automations')
   @ApiOperation({ summary: 'Create a DM automation' })
   async createAutomation(
+    @Param('communityId') communityId: string,
     @Body()
     body: {
-      communityId: string;
       name: string;
       trigger: DmAutomationTrigger;
       delayHours?: number;
@@ -78,18 +76,10 @@ export class DmBroadcastController {
     },
     @Request() req: any,
   ) {
-    return this.broadcastService.createAutomation(this.getUserId(req), body);
-  }
-
-  @Patch('automations/:id')
-  @ApiOperation({ summary: 'Update a DM automation' })
-  async updateAutomation(
-    @Param('id') id: string,
-    @Body()
-    body: Partial<{ name: string; trigger: DmAutomationTrigger; delayHours: number; body: string; isActive: boolean }>,
-    @Request() req: any,
-  ) {
-    return this.broadcastService.updateAutomation(id, this.getUserId(req), body);
+    return this.broadcastService.createAutomation(this.getUserId(req), {
+      communityId,
+      ...body,
+    });
   }
 
   @Patch('automations/:id/toggle')

@@ -64,6 +64,7 @@ import { AffiliateModule } from '@/domains/community/affiliate/affiliate.module'
 import { CommunityFinanceModule } from '@/domains/community/finance/community-finance.module';
 import { CommunityModerationModule } from '@/domains/community/moderation/community-moderation.module';
 import { CommunitySupportModule } from '@/domains/community/support/community-support.module';
+import { CommunityDmBroadcastModule } from '@/domains/community/dm-broadcast/community-dm-broadcast.module';
 import { CommunityAccessModule } from '@/domains/community/access/community-access.module';
 import { VideoModule } from '@/domains/shared/video/video.module';
 import { SearchModule } from '@/domains/search/search.module';
@@ -207,6 +208,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     CommunityFinanceModule,
     CommunityModerationModule,
     CommunitySupportModule,
+    CommunityDmBroadcastModule,
     CommunityAccessModule,
     VideoModule,
     SearchModule,

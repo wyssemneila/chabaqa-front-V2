@@ -3,6 +3,8 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '@/domains/auth/jwt-auth.guard';
 import { DmService } from '@/domains/communication/dm/dm.service';
+import { DmBroadcastService } from '@/domains/communication/dm/dm-broadcast.service';
+import { DmAutomationTrigger } from '@/infrastructure/database/schemas/communication/dm-automation.schema';
 import { AdminGuard } from '@/domains/auth/guards/admin.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService, FileType } from '@/domains/shared/upload/upload.service';
@@ -57,7 +59,11 @@ const dmAttachmentUploadOptions = {
 @ApiTags('Direct Messages')
 @Controller('dm')
 export class DmController {
-  constructor(private readonly dmService: DmService, private readonly uploadService: UploadService) {}
+  constructor(
+    private readonly dmService: DmService,
+    private readonly uploadService: UploadService,
+    private readonly broadcastService: DmBroadcastService,
+  ) {}
   private getRequestUserId(req: any): string {
     return (req?.user?._id || req?.user?.userId || req?.user?.sub || req?.user?.id || '').toString();
   }
@@ -111,6 +117,104 @@ export class DmController {
   @ApiOperation({ summary: 'Lister les conversations' })
   async listInbox(@Query('type') type: 'community' | 'help' | 'peer' | 'session', @Query('page') page = 1, @Query('limit') limit = 20, @Request() req: any) {
     return this.dmService.listInbox(this.getRequestUserId(req), type, Number(page), Number(limit));
+  }
+
+  @Get('broadcasts')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List DM broadcasts for a community' })
+  async listBroadcasts(@Query('communityId') communityId: string, @Request() req: any) {
+    return this.broadcastService.listBroadcasts(communityId, this.getRequestUserId(req));
+  }
+
+  @Post('broadcasts')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a DM broadcast draft' })
+  async createBroadcast(
+    @Body() body: { communityId: string; title?: string; body: string },
+    @Request() req: any,
+  ) {
+    return this.broadcastService.createBroadcast(this.getRequestUserId(req), body);
+  }
+
+  @Get('broadcasts/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get a DM broadcast' })
+  async getBroadcast(@Param('id') id: string, @Request() req: any) {
+    return this.broadcastService.getBroadcast(id, this.getRequestUserId(req));
+  }
+
+  @Post('broadcasts/:id/send')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Send a DM broadcast to all community members' })
+  async sendBroadcast(@Param('id') id: string, @Request() req: any) {
+    return this.broadcastService.sendBroadcast(id, this.getRequestUserId(req));
+  }
+
+  @Delete('broadcasts/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a DM broadcast draft' })
+  async deleteBroadcast(@Param('id') id: string, @Request() req: any) {
+    return this.broadcastService.deleteBroadcast(id, this.getRequestUserId(req));
+  }
+
+  @Get('automations')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List DM automations for a community' })
+  async listAutomations(@Query('communityId') communityId: string, @Request() req: any) {
+    return this.broadcastService.listAutomations(communityId, this.getRequestUserId(req));
+  }
+
+  @Post('automations')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a DM automation' })
+  async createAutomation(
+    @Body()
+    body: {
+      communityId: string;
+      name: string;
+      trigger: DmAutomationTrigger;
+      delayHours?: number;
+      body: string;
+    },
+    @Request() req: any,
+  ) {
+    return this.broadcastService.createAutomation(this.getRequestUserId(req), body);
+  }
+
+  @Patch('automations/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a DM automation' })
+  async updateAutomation(
+    @Param('id') id: string,
+    @Body()
+    body: Partial<{ name: string; trigger: DmAutomationTrigger; delayHours: number; body: string; isActive: boolean }>,
+    @Request() req: any,
+  ) {
+    return this.broadcastService.updateAutomation(id, this.getRequestUserId(req), body);
+  }
+
+  @Patch('automations/:id/toggle')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Toggle DM automation active state' })
+  async toggleAutomation(@Param('id') id: string, @Request() req: any) {
+    return this.broadcastService.toggleAutomation(id, this.getRequestUserId(req));
+  }
+
+  @Delete('automations/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a DM automation' })
+  async deleteAutomation(@Param('id') id: string, @Request() req: any) {
+    return this.broadcastService.deleteAutomation(id, this.getRequestUserId(req));
   }
 
   @Get(':conversationId/messages')
