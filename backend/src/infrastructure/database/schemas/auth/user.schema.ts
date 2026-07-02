@@ -57,9 +57,21 @@ export interface UserDocument extends Document {
     website?: string;
   };
   profile_picture: string;
+  bankDetails?: {
+    rib: string;
+    bankName?: string;
+    ownerName?: string;
+  };
   twoFactorEnabled: boolean;
   walletBalance: number;
   totalPointsEarned: number;
+  authSessions?: Array<{
+    jti: string;
+    userAgent?: string;
+    ip?: string;
+    createdAt: Date;
+    expiresAt: Date;
+  }>;
   googleTokens?: {
     access_token: string;
     refresh_token: string;
@@ -390,6 +402,24 @@ export class User {
     min: 0
   })
   totalPointsEarned: number;
+
+  @Prop({
+    type: [{
+      jti: String,
+      userAgent: String,
+      ip: String,
+      createdAt: { type: Date, default: Date.now },
+      expiresAt: Date,
+    }],
+    default: [],
+  })
+  authSessions: Array<{
+    jti: string;
+    userAgent?: string;
+    ip?: string;
+    createdAt: Date;
+    expiresAt: Date;
+  }>;
 
   // Admin-specific fields
   /**

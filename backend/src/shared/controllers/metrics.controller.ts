@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { MonitoringService } from '@/shared/services/monitoring.service';
 import { SecurityService } from '@/shared/services/security.service';
 import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
+import { CacheService } from '@/infrastructure/cache/cache.service';
 import { Response } from 'express';
 
 @ApiTags('Health & Monitoring')
@@ -12,6 +13,7 @@ export class MetricsController {
     private monitoringService: MonitoringService,
     private securityService: SecurityService,
     private webhookRetryService: WebhookRetryService,
+    private cacheService: CacheService,
   ) {}
 
   @Get()
@@ -217,6 +219,14 @@ export class MetricsController {
     output += `# HELP shabaka_webhook_retry_queued Failed webhook jobs queued for retry\n`;
     output += `# TYPE shabaka_webhook_retry_queued gauge\n`;
     output += `shabaka_webhook_retry_queued ${webhookRetryMetrics.queued}\n\n`;
+
+    const cacheMetrics = this.cacheService.getCacheMetrics();
+    output += `# HELP shabaka_cache_hits_total Cache hits\n`;
+    output += `# TYPE shabaka_cache_hits_total counter\n`;
+    output += `shabaka_cache_hits_total ${cacheMetrics.hits}\n\n`;
+    output += `# HELP shabaka_cache_misses_total Cache misses\n`;
+    output += `# TYPE shabaka_cache_misses_total counter\n`;
+    output += `shabaka_cache_misses_total ${cacheMetrics.misses}\n\n`;
 
     // Security event metrics
     output += `# HELP shabaka_security_events_total Total number of security events\n`;

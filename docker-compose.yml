@@ -2,6 +2,7 @@ services:
     mongo:
         image: mongo:7
         container_name: chabaqa-mongo
+        command: ["--replSet", "rs0", "--bind_ip_all"]
         ports:
             - "127.0.0.1:27017:27017"
         volumes:
@@ -25,15 +26,39 @@ services:
                     cpus: "2.0"
                     memory: 1G
         healthcheck:
-            test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+            test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
             interval: 10s
             timeout: 5s
             retries: 5
 
+    # One-shot: initiates the single-node replica set (rs0) so Mongoose
+    # transactions work locally exactly like production. Safe to re-run.
+    mongo-init:
+        image: mongo:7
+        container_name: chabaqa-mongo-init
+        depends_on:
+            mongo:
+                condition: service_healthy
+        entrypoint: >
+            bash -c "
+            mongosh --host mongo:27017 --quiet --eval '
+              try {
+                rs.status();
+                print(\"replica set already initiated\");
+              } catch (e) {
+                rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongo:27017\" }] });
+                print(\"replica set initiated\");
+              }
+            '
+            "
+        restart: "no"
+
     redis:
         image: redis:7-alpine
         container_name: chabaqa-redis
-        command: redis-server --requirepass c25ec1b1cba859697df4d726baa3a30c7d0f21e0b1e5971f81fd99ebeb0a2fb9
+        command: ["sh", "-c", "redis-server --requirepass \"$$REDIS_PASSWORD\""]
+        environment:
+            REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in backend/.env}
         ports:
             - "127.0.0.1:6379:6379"
         volumes:
@@ -56,14 +81,7 @@ services:
                     cpus: "1.0"
                     memory: 256M
         healthcheck:
-            test:
-                [
-                    "CMD",
-                    "redis-cli",
-                    "-a",
-                    "c25ec1b1cba859697df4d726baa3a30c7d0f21e0b1e5971f81fd99ebeb0a2fb9",
-                    "ping",
-                ]
+            test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping"]
             interval: 10s
             timeout: 5s
             retries: 5
@@ -99,8 +117,8 @@ services:
             - "127.0.0.1:9000:9000"
             - "127.0.0.1:9001:9001"
         environment:
-            MINIO_ROOT_USER: ${MINIO_ROOT_USER:-1bee6848690bbec61d7cac85}
-            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-IbYANXJoExbEiDBXjCzFcT8rQhpdnry1}
+            MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set in backend/.env}
+            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in backend/.env}
             MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-https://chabaqa.io/monitoring/storage/}
             MINIO_PROMETHEUS_AUTH_TYPE: public
         volumes:
@@ -131,8 +149,8 @@ services:
             minio:
                 condition: service_healthy
         environment:
-            MINIO_ROOT_USER: ${MINIO_ROOT_USER:-1bee6848690bbec61d7cac85}
-            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-IbYANXJoExbEiDBXjCzFcT8rQhpdnry1}
+            MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set in backend/.env}
+            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in backend/.env}
             S3_BUCKET: ${S3_BUCKET:-chabaqa-media}
         entrypoint: >
             /bin/sh -c "
@@ -143,6 +161,8 @@ services:
         restart: "no"
 
     openwa-api:
+        profiles:
+            - whatsapp
         image: ghcr.io/rmyndharis/openwa:latest
         container_name: chabaqa-openwa
         ports:
@@ -172,6 +192,23 @@ services:
                     cpus: "1.0"
                     memory: 768M
 
+    meilisearch:
+        image: getmeili/meilisearch:v1.12
+        container_name: chabaqa-meilisearch
+        ports:
+            - "127.0.0.1:7700:7700"
+        environment:
+            MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY must be set in root .env}
+            MEILI_ENV: production
+        volumes:
+            - meili-data:/meili_data
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:7700/health"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
     chabaqa-backend:
         container_name: chabaqa-backend
         build:
@@ -184,10 +221,17 @@ services:
         environment:
             HOST: 0.0.0.0
             PORT: 3000
-            MONGO_URI: mongodb://mongo:27017/chabaqa_local
-            MONGODB_URI: mongodb://mongo:27017/chabaqa_local
+            MONGO_URI: mongodb://mongo:27017/chabaqa_local?replicaSet=rs0
+            MONGODB_URI: mongodb://mongo:27017/chabaqa_local?replicaSet=rs0
+            REDIS_ENABLED: "true"
             REDIS_HOST: redis
             REDIS_PORT: 6379
+            REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in backend/.env}
+            REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+            SOCKET_IO_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+            MEILI_HOST: http://meilisearch:7700
+            MEILI_API_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY must be set in root .env}
+            MEILI_GLOBAL_INDEX: ${MEILI_GLOBAL_INDEX:-chabaqa_content}
             PAYMENTS_STRIPE_DEFAULT: "true"
             STRIPE_ENABLED: "true"
             PAYMENTS_STRIPE_ENABLED: "true"
@@ -232,8 +276,8 @@ services:
             S3_ENDPOINT: http://minio:9000
             S3_REGION: ${S3_REGION:-us-east-1}
             S3_BUCKET: ${S3_BUCKET:-chabaqa-media}
-            S3_ACCESS_KEY: ${S3_ACCESS_KEY:-1bee6848690bbec61d7cac85}
-            S3_SECRET_KEY: ${S3_SECRET_KEY:-IbYANXJoExbEiDBXjCzFcT8rQhpdnry1}
+            S3_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set in backend/.env}
+            S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in backend/.env}
             S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
         extra_hosts:
             - "host.docker.internal:host-gateway"
@@ -243,13 +287,15 @@ services:
         depends_on:
             mongo:
                 condition: service_healthy
+            mongo-init:
+                condition: service_completed_successfully
             redis:
                 condition: service_healthy
             clamav:
                 condition: service_started
             minio:
                 condition: service_healthy
-            openwa-api:
+            meilisearch:
                 condition: service_healthy
         restart: unless-stopped
         read_only: true
@@ -299,6 +345,8 @@ services:
                 NEXT_PUBLIC_API_URL: https://chabaqa.io/api
                 NEXT_PUBLIC_APP_URL: https://chabaqa.io
                 API_INTERNAL_URL: http://chabaqa-backend:3000/api
+                NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+                SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
         ports:
             - "127.0.0.1:8083:8083"
         env_file:
@@ -307,6 +355,8 @@ services:
             API_INTERNAL_URL: http://chabaqa-backend:3000/api
             NEXT_PUBLIC_API_URL: https://chabaqa.io/api
             NEXT_PUBLIC_APP_URL: https://chabaqa.io
+            SENTRY_DSN: ${SENTRY_DSN:-}
+            SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
         depends_on:
             chabaqa-backend:
                 condition: service_healthy
@@ -357,6 +407,7 @@ services:
             - "127.0.0.1:9090:9090"
         volumes:
             - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
             - prometheus-data:/prometheus
         depends_on:
             chabaqa-backend:
@@ -367,6 +418,8 @@ services:
                 condition: service_started
             minio:
                 condition: service_healthy
+            alertmanager:
+                condition: service_started
         restart: unless-stopped
         security_opt:
             - no-new-privileges:true
@@ -377,6 +430,44 @@ services:
                 limits:
                     cpus: "1.0"
                     memory: 512M
+        logging:
+            driver: json-file
+            options:
+                max-size: "20m"
+                max-file: "3"
+
+    alertmanager:
+        image: prom/alertmanager:latest
+        container_name: chabaqa-alertmanager
+        env_file:
+            - ./.env
+        entrypoint:
+            - /bin/sh
+            - -c
+            - |
+              export PAGERDUTY_ROUTING_KEY="$${PAGERDUTY_ROUTING_KEY:-}"
+              export PAGERDUTY_EVENTS_URL="$${PAGERDUTY_EVENTS_URL:-https://events.eu.pagerduty.com/v2/enqueue}"
+              envsubst '$$PAGERDUTY_ROUTING_KEY $$PAGERDUTY_EVENTS_URL' \
+                < /etc/alertmanager/config.template.yml > /tmp/alertmanager.yml
+              exec /bin/alertmanager \
+                --config.file=/tmp/alertmanager.yml \
+                --storage.path=/alertmanager \
+                --web.external-url=$${ALERTMANAGER_EXTERNAL_URL:-https://chabaqa.io/monitoring/alertmanager/}
+        ports:
+            - "127.0.0.1:9093:9093"
+        volumes:
+            - ./monitoring/alertmanager/config.template.yml:/etc/alertmanager/config.template.yml:ro
+            - alertmanager-data:/alertmanager
+        restart: unless-stopped
+        security_opt:
+            - no-new-privileges:true
+        cap_drop:
+            - ALL
+        deploy:
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 128M
         logging:
             driver: json-file
             options:
@@ -415,7 +506,7 @@ services:
             - "127.0.0.1:3001:3000"
         environment:
             GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-            GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-this-password}
+            GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set in backend/.env}
             GF_USERS_ALLOW_SIGN_UP: "false"
             GF_ANALYTICS_REPORTING_ENABLED: "false"
             GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
@@ -513,6 +604,10 @@ volumes:
         name: chabaqa_prometheus-data
     grafana-data:
         name: chabaqa_grafana-data
+    alertmanager-data:
+        name: chabaqa_alertmanager-data
+    meili-data:
+        name: chabaqa_meili-data
 
 networks:
     default:

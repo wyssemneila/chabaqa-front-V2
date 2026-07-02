@@ -10,13 +10,14 @@ import { Package, Upload, FileText, X, AlertCircle } from "lucide-react"
 import { useProductForm } from "./product-form-context"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { UPLOAD_LIMITS, formatBytes } from "@/lib/upload-limits"
 
 const ACCEPTED_EXTENSIONS = [
   "pdf", "zip", "mp4", "mp3", "epub", "mobi", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
   "png", "jpg", "jpeg", "svg", "txt", "md", "json", "xml", "css", "js", "html", "php", "py",
   "java", "cpp", "c", "psd", "ai", "sketch", "xd", "fig", "odt", "rtf", "csv",
 ]
-const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
+const MAX_FILE_SIZE_BYTES = UPLOAD_LIMITS.productDeliveryBytes
 
 function normalizeFileType(rawType: string, filename: string): string {
   const value = (rawType || "").toLowerCase().trim()
@@ -115,7 +116,7 @@ export function DeliveryStep() {
       if (file.size > MAX_FILE_SIZE_BYTES) {
         toast({
           title: "File too large",
-          description: `${file.name}: max 100MB.`,
+          description: `${file.name}: max ${formatBytes(MAX_FILE_SIZE_BYTES)}.`,
           variant: "destructive" as any,
         })
         setUploadingCount((c) => c - 1)
@@ -226,7 +227,7 @@ export function DeliveryStep() {
           >
             <Upload className="h-10 w-10 mx-auto text-gray-400 mb-3" />
             <p className="text-sm text-gray-600">Drag and drop files here, or use Upload Files</p>
-            <p className="text-xs text-gray-500 mt-1">Max 100MB per file</p>
+            <p className="text-xs text-gray-500 mt-1">Max {formatBytes(MAX_FILE_SIZE_BYTES)} per file</p>
           </div>
 
           {errors.files && (

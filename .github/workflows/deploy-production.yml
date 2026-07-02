@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Validate deployment scripts
-        run: bash -n deploy.sh deploy-pm2.sh scripts/verify-production.sh scripts/smoke-production.sh
+        run: bash -n deploy.sh deploy-pm2.sh scripts/verify-production.sh scripts/smoke-production.sh scripts/backup-mongo.sh scripts/restore-mongo-backup.sh
 
       - name: Validate compose file
         run: |
@@ -35,6 +35,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Verify latest CI on main is green
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          conclusion="$(gh run list --workflow=ci.yml --branch=main --limit=1 --json conclusion --jq '.[0].conclusion // empty')"
+          if [ "$conclusion" != "success" ]; then
+            echo "Latest CI run on main did not succeed (conclusion=${conclusion:-none}). Fix CI before deploying."
+            exit 1
+          fi
+          echo "Latest CI on main: success"
 
       - name: Validate deployment secrets
         env:

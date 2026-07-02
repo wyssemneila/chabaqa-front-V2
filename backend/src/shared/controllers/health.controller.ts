@@ -6,6 +6,7 @@ import {
   HealthCheckResult,
 } from '@nestjs/terminus';
 import { MonitoringService } from '@/shared/services/monitoring.service';
+import { CacheService } from '@/infrastructure/cache/cache.service';
 
 @ApiTags('Health & Monitoring')
 @Controller('health')
@@ -13,6 +14,7 @@ export class HealthController {
   constructor(
     private health: HealthCheckService,
     private monitoringService: MonitoringService,
+    private cacheService: CacheService,
   ) {}
 
   @Get()
@@ -66,6 +68,7 @@ export class HealthController {
       () => this.monitoringService.getDatabaseHealth(),
       () => this.monitoringService.getSystemHealth(),
       () => this.monitoringService.getApplicationHealth(),
+      () => this.cacheService.getHealthCheck(),
     ]);
 
     // Log health check result

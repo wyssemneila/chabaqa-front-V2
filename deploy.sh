@@ -11,7 +11,7 @@ NGINX_SOURCE="${NGINX_SOURCE:-${PROJECT_DIR}/nginx/chabaqa-cloudflare.conf}"
 NGINX_TARGET="${NGINX_TARGET:-/etc/nginx/sites-available/chabaqa}"
 APP_SERVICES=(chabaqa-backend chabaqa-frontend)
 INFRA_SERVICES=(mongo redis clamav openwa-api)
-MONITORING_SERVICES=(blackbox-exporter prometheus grafana node-exporter cadvisor)
+MONITORING_SERVICES=(blackbox-exporter alertmanager prometheus grafana node-exporter cadvisor)
 export COMPOSE_PROJECT_NAME
 
 echo "[deploy] project=${PROJECT_DIR} branch=${BRANCH} compose_project=${COMPOSE_PROJECT_NAME}"

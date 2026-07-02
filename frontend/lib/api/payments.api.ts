@@ -96,4 +96,12 @@ export const paymentsApi = {
   cancelPayout: async (id: string, reason?: string): Promise<ApiSuccessResponse<any>> => {
     return apiClient.post<ApiSuccessResponse<any>>(`/payouts/${id}/cancel`, { reason });
   },
+
+  // Refund a paid Stripe order (admin/creator with permission)
+  refundOrder: async (orderId: string, reason?: string): Promise<ApiSuccessResponse<{ orderId: string; status: string }>> => {
+    return apiClient.post<ApiSuccessResponse<{ orderId: string; status: string }>>(
+      `/payment/order/${orderId}/refund`,
+      { reason },
+    );
+  },
 };

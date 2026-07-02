@@ -86,3 +86,52 @@ export async function deleteAccount(payload: DeleteAccountPayload): Promise<{ me
   const json = await res.json().catch(() => null)
   return { message: json?.message || "Account deleted successfully" }
 }
+
+export async function exportUserData(): Promise<Blob> {
+  const res = await authenticatedFetch(`${apiBase}/user/export-data`, { method: "GET" })
+  if (!res.ok) {
+    throw new Error(await readApiError(res, `Failed to export data (${res.status})`))
+  }
+  return res.blob()
+}
+
+export interface AuthSession {
+  jti: string
+  userAgent?: string
+  ip?: string
+  createdAt?: string
+  expiresAt?: string
+}
+
+export async function listAuthSessions(): Promise<AuthSession[]> {
+  const res = await authenticatedFetch(`${apiBase}/auth/sessions`, { method: "GET" })
+  if (!res.ok) {
+    throw new Error(await readApiError(res, `Failed to load sessions (${res.status})`))
+  }
+  const json = await res.json().catch(() => null)
+  const sessions = json?.sessions ?? json?.data?.sessions ?? json?.data ?? json
+  return Array.isArray(sessions) ? sessions : []
+}
+
+export async function revokeAuthSession(jti: string): Promise<void> {
+  const res = await authenticatedFetch(`${apiBase}/auth/sessions/${encodeURIComponent(jti)}/revoke`, {
+    method: "POST",
+  })
+  if (!res.ok) {
+    throw new Error(await readApiError(res, `Failed to revoke session (${res.status})`))
+  }
+}
+
+export async function setTwoFactorEnabled(enabled: boolean, currentPassword?: string): Promise<{ twoFactorEnabled: boolean }> {
+  const endpoint = enabled ? `${apiBase}/auth/2fa/enable` : `${apiBase}/auth/2fa/disable`
+  const res = await authenticatedFetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword }),
+  })
+  if (!res.ok) {
+    throw new Error(await readApiError(res, `Failed to update 2FA (${res.status})`))
+  }
+  const json = await res.json().catch(() => null)
+  return { twoFactorEnabled: json?.twoFactorEnabled ?? enabled }
+}

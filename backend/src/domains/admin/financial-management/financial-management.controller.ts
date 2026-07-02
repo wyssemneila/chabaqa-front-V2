@@ -20,6 +20,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { FinancialManagementService } from '@/domains/admin/financial-management/financial-management.service';
+import { PaymentAuditService } from '@/shared/services/payment-audit.service';
 import { AdminAuthGuard } from '@/domains/admin/common/guards/admin-auth.guard';
 import { AdminRolesGuard } from '@/domains/admin/common/guards/admin-roles.guard';
 import { RequireAdminRoles } from '@/domains/admin/common/decorators/admin-roles.decorator';
@@ -64,7 +65,17 @@ import {
 export class FinancialManagementController {
   constructor(
     private readonly financialManagementService: FinancialManagementService,
+    private readonly paymentAuditService: PaymentAuditService,
   ) {}
+
+  @Get('payment-audit-logs')
+  @RequireAdminRoles(AdminRole.SUPER_ADMIN, AdminRole.FINANCIAL_MANAGER)
+  async getPaymentAuditLogs(
+    @Query('limit') limit?: string,
+    @Query('orderId') orderId?: string,
+  ) {
+    return this.paymentAuditService.listRecent(Number(limit) || 50, orderId);
+  }
 
   @Get('revenue-dashboard')
   @RequireAdminRoles(AdminRole.SUPER_ADMIN, AdminRole.FINANCIAL_MANAGER)

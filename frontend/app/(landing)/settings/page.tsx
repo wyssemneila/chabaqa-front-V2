@@ -49,7 +49,7 @@ import {
   CheckCircle,
 } from "lucide-react"
 import { Header } from "@/components/header"
-import { getMe, updateProfile, changePassword, deleteAccount } from "@/lib/api/user.api"
+import { getMe, updateProfile, changePassword, deleteAccount, exportUserData, setTwoFactorEnabled } from "@/lib/api/user.api"
 import { notificationsApi } from "@/lib/api/notifications.api"
 import { toast } from "sonner"
 
@@ -91,7 +91,9 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+  const [twoFactorEnabled, setTwoFactorEnabledState] = useState(false)
+  const [twoFactorBusy, setTwoFactorBusy] = useState(false)
+  const [exportBusy, setExportBusy] = useState(false)
   const [showPasswords, setShowPasswords] = useState(false)
   
   // Subscription/Plan states
@@ -120,6 +122,7 @@ export default function SettingsPage() {
           setBusinessDescription(user.businessDescription || user.creatorProfile?.description || "")
           setBrandColor(user.brandColor || user.creatorProfile?.brandColor || "#3B82F6")
           setCurrentPlan(user.plan || user.subscription?.plan || "free")
+          setTwoFactorEnabledState(Boolean(user.twoFactorEnabled))
         }
 
         if (preferencesResult.status === "fulfilled") {
@@ -172,6 +175,37 @@ export default function SettingsPage() {
       setConfirmPassword("")
     } catch (error: any) {
       toast.error(error?.message || "Unable to change password")
+    }
+  }
+
+  const handleToggle2FA = async (enabled: boolean) => {
+    setTwoFactorBusy(true)
+    try {
+      const result = await setTwoFactorEnabled(enabled, currentPassword || undefined)
+      setTwoFactorEnabledState(result.twoFactorEnabled)
+      toast.success(result.twoFactorEnabled ? "Two-factor authentication enabled" : "Two-factor authentication disabled")
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to update 2FA")
+    } finally {
+      setTwoFactorBusy(false)
+    }
+  }
+
+  const handleExportData = async () => {
+    setExportBusy(true)
+    try {
+      const blob = await exportUserData()
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = `chabaqa-export-${new Date().toISOString().slice(0, 10)}.json`
+      anchor.click()
+      URL.revokeObjectURL(url)
+      toast.success("Your data export has started")
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to export data")
+    } finally {
+      setExportBusy(false)
     }
   }
 
@@ -642,8 +676,27 @@ export default function SettingsPage() {
                             : "Protect your account with 2FA"}
                         </p>
                       </div>
-                      <Switch checked={twoFactorEnabled} onCheckedChange={setTwoFactorEnabled} />
+                      <Switch
+                        checked={twoFactorEnabled}
+                        disabled={twoFactorBusy}
+                        onCheckedChange={(checked) => void handleToggle2FA(checked)}
+                      />
                     </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Your Data</CardTitle>
+                    <CardDescription>
+                      Download a copy of your Chabaqa data (GDPR export)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button variant="outline" disabled={exportBusy} onClick={() => void handleExportData()}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      {exportBusy ? "Preparing export…" : "Download my data"}
+                    </Button>
                   </CardContent>
                 </Card>
 

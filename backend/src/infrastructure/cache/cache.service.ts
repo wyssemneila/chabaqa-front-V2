@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nest
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
+import { HealthIndicatorResult } from '@nestjs/terminus';
 import { RedisClientType, createClient } from 'redis';
 
 @Injectable()
@@ -11,6 +12,8 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   private readonly defaultTtlSeconds: number;
   private redisClient: RedisClientType | null = null;
   private redisConnectPromise: Promise<void> | null = null;
+  private hits = 0;
+  private misses = 0;
   private lastRedisErrorMsg = '';
   private lastRedisErrorTs = 0;
 
@@ -157,10 +160,12 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         try {
           const value = JSON.parse(raw) as T;
           this.logger.debug(`Cache hit: ${key}`);
+          this.hits += 1;
           return value;
         } catch {
           // Backward compatibility if any non-JSON values exist.
           this.logger.debug(`Cache hit: ${key}`);
+          this.hits += 1;
           return raw as unknown as T;
         }
       }
@@ -168,9 +173,11 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       const value = await this.cacheManager.get<T>(key);
       if (value !== null && value !== undefined) {
         this.logger.debug(`Cache hit: ${key}`);
+        this.hits += 1;
         return value;
       } else {
         this.logger.debug(`Cache miss: ${key}`);
+        this.misses += 1;
         return undefined;
       }
     } catch (error) {
@@ -406,6 +413,53 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error(`Error deleting pattern ${pattern}:`, error);
       return 0;
+    }
+  }
+
+  getCacheMetrics() {
+    return { hits: this.hits, misses: this.misses };
+  }
+
+  /**
+   * Terminus-compatible health indicator for /api/health when REDIS_ENABLED=true.
+   */
+  async getHealthCheck(): Promise<HealthIndicatorResult> {
+    if (!this.isRedisEnabled) {
+      return {
+        redis: {
+          status: 'up',
+          enabled: false,
+        },
+      };
+    }
+
+    const connected = await this.ensureRedisConnected();
+    if (!connected) {
+      return {
+        redis: {
+          status: 'down',
+          enabled: true,
+          error: 'Redis unreachable',
+        },
+      };
+    }
+
+    try {
+      const pong = await this.redisClient!.ping();
+      return {
+        redis: {
+          status: pong === 'PONG' ? 'up' : 'down',
+          enabled: true,
+        },
+      };
+    } catch (error) {
+      return {
+        redis: {
+          status: 'down',
+          enabled: true,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      };
     }
   }
 

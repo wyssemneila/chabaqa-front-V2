@@ -20,6 +20,7 @@ import {
   isSwaggerEnabled,
 } from '@/shared/utils/security-config.util';
 import { validateStartupEnv } from '@/shared/utils/startup-env.validation';
+import { initSentry } from '@/shared/observability/sentry';
 import { csrfProtectionMiddleware } from '@/shared/middleware/csrf-protection.middleware';
 import { SecurityMiddleware } from '@/shared/middleware/security.middleware';
 import { resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
@@ -57,6 +58,7 @@ const getLocalNetworkIp = (): string => {
 
 async function bootstrap() {
   validateStartupEnv();
+  initSentry();
 
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();

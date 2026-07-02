@@ -11,7 +11,9 @@ import { Community, CommunitySchema } from '@/infrastructure/database/schemas/co
 import { User, UserSchema } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Plan, PlanSchema } from '@/infrastructure/database/schemas/commerce/plan.schema';
 import { Order, OrderSchema } from '@/infrastructure/database/schemas/commerce/order.schema';
+import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/database/schemas/commerce/payment-audit-log.schema';
 import { SubscriptionModule } from '@/domains/commerce/subscription/subscription.module';
+import { PaymentAuditService } from '@/shared/services/payment-audit.service';
 
 // Import admin common services
 import { AuditLogService } from '@/domains/admin/common/services/audit-log.service';
@@ -29,11 +31,13 @@ import { AdminRolesGuard } from '@/domains/admin/common/guards/admin-roles.guard
       { name: User.name, schema: UserSchema },
       { name: Plan.name, schema: PlanSchema },
       { name: Order.name, schema: OrderSchema },
+      { name: PaymentAuditLog.name, schema: PaymentAuditLogSchema },
     ]),
   ],
   controllers: [FinancialManagementController],
   providers: [
     FinancialManagementService,
+    PaymentAuditService,
     AuditLogService,
     AdminAuthGuard,
     AdminRolesGuard,

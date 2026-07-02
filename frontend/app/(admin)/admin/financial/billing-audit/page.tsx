@@ -9,6 +9,7 @@ import { DataTable, ColumnDef } from "@/app/(admin)/_components/data-table"
 import { StatusBadge } from "@/app/(admin)/_components/status-badge"
 import { Button } from "@/components/ui/button"
 import { adminApi } from "@/lib/api/admin-api"
+import { paymentsApi } from "@/lib/api/payments.api"
 
 interface BillingAuditRow {
   id: string
@@ -108,6 +109,19 @@ export default function BillingAuditPage() {
     }
   }
 
+  const refundPaidOrder = async (row: BillingAuditRow) => {
+    if (!window.confirm(`Refund order ${row.orderId.slice(-10)} for ${formatMoney(row.amount, row.currency)}?`)) {
+      return
+    }
+    try {
+      await paymentsApi.refundOrder(row.orderId, "admin_refund")
+      toast.success("Refund processed")
+      await loadAudit()
+    } catch (error: any) {
+      toast.error(error?.message || "Refund failed")
+    }
+  }
+
   const columns: ColumnDef<BillingAuditRow>[] = [
     {
       id: "order",
@@ -140,11 +154,17 @@ export default function BillingAuditPage() {
       header: "Actions",
       cell: (row) => {
         const canReview = row.contentType === "subscription" && row.provider === "manual" && row.status === "pending_verification"
+        const canRefund = row.status === "paid" && row.provider === "stripe" && row.paymentId
         return (
           <div className="flex items-center gap-2">
             {row.proofUrl && (
               <Button variant="outline" size="sm" asChild>
                 <a href={row.proofUrl} target="_blank" rel="noreferrer">Proof</a>
+              </Button>
+            )}
+            {canRefund && (
+              <Button variant="outline" size="sm" onClick={() => void refundPaidOrder(row)}>
+                Refund
               </Button>
             )}
             {canReview && (

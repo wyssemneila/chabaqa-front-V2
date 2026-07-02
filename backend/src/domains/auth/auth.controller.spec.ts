@@ -31,6 +31,7 @@ describe('AuthController token compatibility', () => {
 
     const result = await controller.login(
       { email: 'user@example.com', password: 'secret' } as any,
+      { headers: {}, ip: '127.0.0.1' } as any,
       response as any,
     );
 

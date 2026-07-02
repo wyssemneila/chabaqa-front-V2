@@ -10,7 +10,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Loader2, Shield, AlertCircle } from "lucide-react"
 import { signInSchema } from "@/lib/validation/auth.validation"
 import { useToast } from "@/hooks/use-toast"
-import { useAuthContext } from "@/app/providers/auth-provider"
+import { useAuthContext, Requires2FAError } from "@/app/providers/auth-provider"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
 
@@ -31,12 +31,15 @@ export default function SignInForm({ onSuccess }: SignInFormProps = {}) {
   const [successMessage, setSuccessMessage] = useState("")
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
+  const [pending2FAEmail, setPending2FAEmail] = useState<string | null>(null)
+  const [verificationCode, setVerificationCode] = useState("")
+  const [resendingCode, setResendingCode] = useState(false)
 
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { toast } = useToast()
-  const { login } = useAuthContext()
+  const { login, verify2FA, resend2FA } = useAuthContext()
   const t = useTranslations("auth.signinForm")
 
   useEffect(() => {
@@ -68,6 +71,25 @@ export default function SignInForm({ onSuccess }: SignInFormProps = {}) {
     e.preventDefault()
     setError("")
 
+    if (pending2FAEmail) {
+      if (verificationCode.trim().length !== 6) {
+        setError(t("invalidCode") || "Enter the 6-digit verification code")
+        return
+      }
+      setIsLoading(true)
+      try {
+        await verify2FA({ email: pending2FAEmail, verificationCode: verificationCode.trim() })
+        if (onSuccess) onSuccess()
+      } catch (err: any) {
+        const errorMessage = err.message || t("loginFailed")
+        setError(errorMessage)
+        toast({ variant: "destructive", title: t("connectionError"), description: errorMessage, duration: 5000 })
+      } finally {
+        setIsLoading(false)
+      }
+      return
+    }
+
     if (!validateForm()) {
       return
     }
@@ -77,8 +99,16 @@ export default function SignInForm({ onSuccess }: SignInFormProps = {}) {
     try {
       await login({ email, password, rememberMe })
       if (onSuccess) onSuccess()
-      // Redirect is handled in AuthProvider
     } catch (err: any) {
+      if (err instanceof Requires2FAError) {
+        setPending2FAEmail(err.email)
+        setError("")
+        toast({
+          title: t("twoFactorTitle") || "Two-Factor Authentication",
+          description: t("twoFactorSubtitle") || "Enter the 6-digit code sent to your email.",
+        })
+        return
+      }
       const errorMessage = err.message || t("loginFailed")
       setError(errorMessage)
 
@@ -91,6 +121,59 @@ export default function SignInForm({ onSuccess }: SignInFormProps = {}) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleResendCode = async () => {
+    if (!pending2FAEmail) return
+    setResendingCode(true)
+    try {
+      await resend2FA(pending2FAEmail)
+      toast({ title: "Code sent", description: "A new verification code was sent to your email." })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Resend failed", description: err?.message || "Try again later." })
+    } finally {
+      setResendingCode(false)
+    }
+  }
+
+  if (pending2FAEmail) {
+    return (
+      <div className="backdrop-blur-xl bg-white/25 border border-white/40 p-8 rounded-3xl shadow-2xl animate-fade-in-delay-600">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="text-center space-y-2">
+            <Shield className="w-10 h-10 mx-auto text-[#86e4fd]" />
+            <h2 className="text-lg font-semibold text-gray-900">{t("twoFactorTitle") || "Two-Factor Authentication"}</h2>
+            <p className="text-sm text-gray-600">{t("twoFactorSubtitle") || "Enter the 6-digit code sent to your email."}</p>
+            <p className="text-xs text-gray-500">{pending2FAEmail}</p>
+          </div>
+          {error && (
+            <div className="p-4 bg-red-100/80 backdrop-blur-sm border border-red-200 rounded-2xl">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+          <Input
+            inputMode="numeric"
+            maxLength={6}
+            value={verificationCode}
+            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="000000"
+            className="text-center text-2xl tracking-widest"
+            autoFocus
+          />
+          <Button type="submit" disabled={isLoading} className="w-full">
+            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify"}
+          </Button>
+          <div className="flex justify-between text-sm">
+            <button type="button" className="text-[#86e4fd] hover:underline" onClick={() => { setPending2FAEmail(null); setVerificationCode("") }}>
+              Back
+            </button>
+            <button type="button" className="text-[#86e4fd] hover:underline disabled:opacity-50" disabled={resendingCode} onClick={handleResendCode}>
+              {resendingCode ? "Sending…" : "Resend code"}
+            </button>
+          </div>
+        </form>
+      </div>
+    )
   }
 
   const handleGoogleLogin = () => {
