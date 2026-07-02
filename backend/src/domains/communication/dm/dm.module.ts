@@ -3,7 +3,6 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DmService } from '@/domains/communication/dm/dm.service';
 import { DmController } from '@/domains/communication/dm/dm.controller';
-import { DmBroadcastController } from '@/domains/communication/dm/dm-broadcast.controller';
 import { DmBroadcastService } from '@/domains/communication/dm/dm-broadcast.service';
 import { DmGateway } from '@/domains/communication/dm/dm.gateway';
 import { Conversation, ConversationSchema } from '@/infrastructure/database/schemas/communication/conversation.schema';
@@ -35,7 +34,7 @@ import { DmAutomation, DmAutomationSchema } from '@/infrastructure/database/sche
     UploadModule,
     PolicyModule,
   ],
-  controllers: [DmController, DmBroadcastController],
+  controllers: [DmController],
   providers: [DmService, DmGateway, DmBroadcastService],
   exports: [DmService, DmGateway, DmBroadcastService],
 })

@@ -404,7 +404,7 @@ function BroadcastsView({ lang }: { lang: string }) {
         title: title.trim() || undefined,
         body: body.trim(),
       })
-      await dmBroadcastsApi.sendBroadcast(String(broadcast.id || broadcast._id))
+      await dmBroadcastsApi.sendBroadcast(String(broadcast.id || broadcast._id), selectedCommunityId)
       setBody('')
       setTitle('')
       await load()
@@ -563,11 +563,11 @@ function AutomationsView({ lang }: { lang: string }) {
               <p className="text-[12px] mt-2 line-clamp-2" style={{ color: 'var(--t2)' }}>{a.body}</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => void dmBroadcastsApi.toggleAutomation(String(a.id || a._id)).then(load)}
+              <button onClick={() => void dmBroadcastsApi.toggleAutomation(String(a.id || a._id), selectedCommunityId).then(load)}
                 className="h-8 px-3 rounded-lg text-[12px] font-semibold" style={{ background: 'var(--p2)', color: 'var(--p)' }}>
                 {a.isActive ? 'Pause' : 'Activate'}
               </button>
-              <button onClick={() => void dmBroadcastsApi.deleteAutomation(String(a.id || a._id)).then(load)}
+              <button onClick={() => void dmBroadcastsApi.deleteAutomation(String(a.id || a._id), selectedCommunityId).then(load)}
                 className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(239,68,68,.1)', color: '#ef4444' }}>
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
