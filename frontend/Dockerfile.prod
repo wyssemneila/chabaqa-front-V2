@@ -18,16 +18,21 @@ COPY i18n ./i18n
 COPY messages ./messages
 COPY middleware ./middleware
 COPY middleware.ts ./
+COPY instrumentation.ts instrumentation-client.ts ./
 COPY public ./public
 COPY scripts ./scripts
 
 ARG NEXT_PUBLIC_API_URL=https://chabaqa.io/api
 ARG NEXT_PUBLIC_APP_URL=https://chabaqa.io
 ARG API_INTERNAL_URL=http://chabaqa-backend:3000/api
+ARG NEXT_PUBLIC_SENTRY_DSN=
+ARG SENTRY_ENVIRONMENT=production
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV API_INTERNAL_URL=$API_INTERNAL_URL
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
+ENV SENTRY_ENVIRONMENT=$SENTRY_ENVIRONMENT
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build

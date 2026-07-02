@@ -591,7 +591,17 @@ export default function CreatorBillingPage() {
                             <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{formatDate(invoice.invoiceDate)}</p>
                           </div>
                           <p className="font-bold" style={{ color: 'var(--t2)' }}>{money(invoice.total, invoice.currency)}</p>
-                          <Badge variant="outline" className="w-fit capitalize">{invoice.status}</Badge>
+                          <div className="flex flex-col gap-2">
+                            <Badge variant="outline" className="w-fit capitalize">{invoice.status}</Badge>
+                            {invoice.invoicePdfUrl && (
+                              <Button variant="outline" size="sm" asChild className="h-7 text-xs">
+                                <a href={invoice.invoicePdfUrl} target="_blank" rel="noreferrer">
+                                  <ExternalLink className="mr-1 h-3 w-3" />
+                                  PDF
+                                </a>
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

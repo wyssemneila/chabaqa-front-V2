@@ -50,4 +50,17 @@ export class PaymentAuditService {
     if (orderId instanceof Types.ObjectId) return orderId;
     return Types.ObjectId.isValid(orderId) ? new Types.ObjectId(orderId) : undefined;
   }
+
+  async listRecent(limit = 50, orderId?: string) {
+    const filter: Record<string, unknown> = {};
+    if (orderId && Types.ObjectId.isValid(orderId)) {
+      filter.orderId = new Types.ObjectId(orderId);
+    }
+    return this.paymentAuditLogModel
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .limit(Math.min(limit, 200))
+      .lean()
+      .exec();
+  }
 }

@@ -51,6 +51,12 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const router = useRouter()
 
+  const submitSearch = () => {
+    const q = searchQuery.trim()
+    if (q.length < 2) return
+    router.push(`/search?q=${encodeURIComponent(q)}`)
+  }
+
   const { user } = useAuth()
   const [userCommunities, setUserCommunities] = useState<Community[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -277,6 +283,12 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
               placeholder="Search courses, challenges, posts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  submitSearch()
+                }
+              }}
               className="ps-10 bg-muted/50 border-0 focus-visible:ring-1"
             />
           </div>
@@ -448,6 +460,12 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        submitSearch()
+                      }
+                    }}
                     className="ps-10"
                   />
                 </div>

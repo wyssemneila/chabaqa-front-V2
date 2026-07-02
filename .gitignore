@@ -1,6 +1,8 @@
 .DS_Store
 .env
 .env.*
+!.env.example
+!**/.env.example
 
 # Editor and local tooling
 .vscode/
@@ -43,8 +45,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Documentation files are intentionally kept out of this code-only repo.
+# Ad-hoc markdown notes stay local; production docs are tracked.
 *.md
+!README.md
+!docs/**/*.md
+!.github/**/*.md
 
 # Local-only support content
 external-skills/

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorResponseDto, ErrorDetail } from '@/shared/dto';
+import { captureException } from '@/shared/observability/sentry';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -66,6 +67,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
       `${request.method} ${request.url} - ${status}: ${message}`,
       exception instanceof Error ? exception.stack : exception,
     );
+
+    if (status >= 500) {
+      captureException(exception, {
+        method: request.method,
+        url: request.url,
+        requestId: (request as any).requestId,
+      });
+    }
 
     // Create standardized error response
     const errorResponse = new ErrorResponseDto(code, message, details.length > 0 ? details : undefined);

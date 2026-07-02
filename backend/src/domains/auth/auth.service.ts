@@ -14,6 +14,8 @@ import { RegisterDto } from '@/domains/auth/dto/register.dto';
 import { UploadService } from '@/domains/shared/upload/upload.service';
 import { generateUniqueUsername } from '@/shared/utils/username.util';
 import { TokenBlacklistService } from '@/shared/services/token-blacklist.service';
+import { Verify2FADto } from '@/domains/auth/dto/verify-2fa.dto';
+import { assertUserPasswordStrength } from '@/shared/utils/user-password.validation';
 import { getJwtRefreshSecret, getJwtSecret } from '@/shared/utils/security-config.util';
 
 type RegistrationRole = 'user' | 'creator';
@@ -36,14 +38,16 @@ interface UserTokenPair {
 }
 
 export interface UserAuthPayload {
-  accessToken: string;
-  refreshToken: string;
-  access_token: string;
-  refresh_token: string;
-  rememberMe: boolean;
-  expires_in: number;
-  user: any;
+  accessToken?: string;
+  refreshToken?: string;
+  access_token?: string;
+  refresh_token?: string;
+  rememberMe?: boolean;
+  expires_in?: number;
+  user?: any;
   message?: string;
+  requires2FA?: boolean;
+  email?: string;
 }
 
 export interface UserRefreshPayload {
@@ -175,7 +179,7 @@ export class AuthService {
     email?: string;
     name?: string;
     photo?: string;
-  }): Promise<LoginResponseDto> {
+  }): Promise<UserAuthPayload> {
     if (!oauthUser.email) {
       throw new BadRequestException('Adresse e-mail Google introuvable');
     }
@@ -205,7 +209,7 @@ export class AuthService {
     return this.buildAuthPayload(user, tokens, 'Connexion réussie avec Google');
   }
 
-  async loginWithGoogleMobile(idToken: string): Promise<LoginResponseDto> {
+  async loginWithGoogleMobile(idToken: string): Promise<UserAuthPayload> {
     const googleAuthClientId = process.env.GOOGLE_AUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
     const client = new OAuth2Client(googleAuthClientId);
     const ticket = await client.verifyIdToken({
@@ -366,12 +370,171 @@ export class AuthService {
     return payload;
   }
 
-  async login(loginDto: LoginDto): Promise<UserAuthPayload> {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
-    const tokens = this.generateTokens(user, !!loginDto.remember_me);
-    await this.userLoginActivityService.trackUserLoginForAllCommunities(user._id.toString());
+  private async shouldRequireUser2FA(user: UserDocument): Promise<boolean> {
+    if (user.twoFactorEnabled) return true;
+    if (user.role !== 'creator') return false;
+    return Boolean(user.bankDetails?.rib);
+  }
 
+  private async sendUser2FACode(user: UserDocument, rememberMe: boolean): Promise<void> {
+    const verificationCode = this.generateOtpCode();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    await this.verificationCodeModel.deleteMany({ userId: user._id, type: '2fa_login' });
+    await this.verificationCodeModel.create({
+      userId: user._id,
+      code: verificationCode,
+      type: '2fa_login',
+      expiresAt,
+      isUsed: false,
+      rememberMe,
+    });
+    await this.emailService.send2FACode(user.email, verificationCode, user.name);
+  }
+
+  private extractAccessJti(accessToken: string): string | null {
+    try {
+      const payload: any = this.jwtService.decode(accessToken);
+      return payload?.jti ? String(payload.jti) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async recordAuthSession(
+    userId: Types.ObjectId,
+    accessToken: string,
+    meta: { userAgent?: string; ip?: string },
+    expiresInSeconds: number,
+  ): Promise<void> {
+    const jti = this.extractAccessJti(accessToken);
+    if (!jti) return;
+    const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
+    await this.userModel.findByIdAndUpdate(userId, {
+      $push: {
+        authSessions: {
+          $each: [{
+            jti,
+            userAgent: meta.userAgent?.slice(0, 512),
+            ip: meta.ip?.slice(0, 64),
+            createdAt: new Date(),
+            expiresAt,
+          }],
+          $slice: -20,
+        },
+      },
+    }).exec();
+  }
+
+  async login(
+    loginDto: LoginDto,
+    meta: { userAgent?: string; ip?: string } = {},
+  ): Promise<UserAuthPayload> {
+    const user = await this.validateUser(loginDto.email, loginDto.password);
+    const rememberMe = !!loginDto.remember_me;
+
+    if (await this.shouldRequireUser2FA(user)) {
+      await this.sendUser2FACode(user, rememberMe);
+      return {
+        requires2FA: true,
+        email: user.email,
+        message: 'Verification code sent to your email.',
+      };
+    }
+
+    const tokens = this.generateTokens(user, rememberMe);
+    await this.recordAuthSession(user._id, tokens.accessToken, meta, tokens.accessExpiresInSeconds);
+    await this.userLoginActivityService.trackUserLoginForAllCommunities(user._id.toString());
     return this.buildAuthPayload(user, tokens, 'Connexion réussie');
+  }
+
+  async resendUser2FACode(email: string): Promise<{ success: boolean; message: string }> {
+    const normalizedEmail = this.normalizeEmail(email);
+    const user = await this.userModel.findOne({ email: normalizedEmail }).exec();
+    if (!user) {
+      throw new BadRequestException('Invalid email');
+    }
+    if (!(await this.shouldRequireUser2FA(user))) {
+      throw new BadRequestException('Two-factor authentication is not required for this account');
+    }
+    const pending = await this.verificationCodeModel
+      .findOne({ userId: user._id, type: '2fa_login', isUsed: false, expiresAt: { $gt: new Date() } })
+      .sort({ createdAt: -1 })
+      .lean();
+    await this.sendUser2FACode(user, !!pending?.rememberMe);
+    return { success: true, message: 'Verification code sent to your email.' };
+  }
+
+  async verifyUser2FA(dto: Verify2FADto, meta: { userAgent?: string; ip?: string } = {}): Promise<UserAuthPayload> {
+    const email = this.normalizeEmail(dto.email);
+    const user = await this.userModel.findOne({ email }).exec();
+    if (!user) throw new BadRequestException('Invalid email');
+
+    const record = await this.verificationCodeModel.findOne({
+      userId: user._id,
+      code: String(dto.verificationCode || '').trim(),
+      type: '2fa_login',
+      isUsed: false,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!record) throw new BadRequestException('Invalid or expired verification code');
+
+    record.isUsed = true;
+    await record.save();
+
+    if (!user.twoFactorEnabled && user.role === 'creator' && user.bankDetails?.rib) {
+      user.twoFactorEnabled = true;
+      await user.save();
+    }
+
+    const tokens = this.generateTokens(user, !!record.rememberMe);
+    await this.recordAuthSession(user._id, tokens.accessToken, meta, tokens.accessExpiresInSeconds);
+    await this.userLoginActivityService.trackUserLoginForAllCommunities(user._id.toString());
+    return this.buildAuthPayload(user, tokens, 'Two-factor verification successful');
+  }
+
+  async setTwoFactorEnabled(userId: string, enabled: boolean, currentPassword?: string): Promise<{ twoFactorEnabled: boolean }> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) throw new BadRequestException('User not found');
+
+    if (!enabled && user.role === 'creator' && user.bankDetails?.rib) {
+      throw new BadRequestException('Two-factor authentication is required for creators with payout details');
+    }
+
+    if (currentPassword && user.password) {
+      const valid = await bcrypt.compare(currentPassword, user.password);
+      if (!valid) throw new UnauthorizedException('Invalid password');
+    }
+
+    user.twoFactorEnabled = enabled;
+    await user.save();
+    return { twoFactorEnabled: user.twoFactorEnabled };
+  }
+
+  async listAuthSessions(userId: string) {
+    const user = await this.userModel.findById(userId).select('authSessions').lean();
+    const now = Date.now();
+    return (user?.authSessions || [])
+      .filter((s) => new Date(s.expiresAt).getTime() > now)
+      .map((s) => ({
+        jti: s.jti,
+        userAgent: s.userAgent,
+        ip: s.ip,
+        createdAt: s.createdAt,
+        expiresAt: s.expiresAt,
+      }));
+  }
+
+  async revokeAuthSession(userId: string, jti: string): Promise<void> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) throw new BadRequestException('User not found');
+    await this.userModel.findByIdAndUpdate(userId, { $pull: { authSessions: { jti } } }).exec();
+    const session = (user.authSessions || []).find((s) => s.jti === jti);
+    await this.tokenBlacklistService.revokeToken(
+      new Types.ObjectId(userId),
+      jti,
+      'access',
+      session?.expiresAt || new Date(Date.now() + 2 * 60 * 60 * 1000),
+    );
   }
 
   async refreshToken(refreshToken: string): Promise<UserRefreshPayload> {
@@ -464,6 +627,7 @@ export class AuthService {
   ): Promise<{ email: string; code: string; name: string; expiresInMinutes: number }> {
     const normalizedEmail = this.normalizeEmail(registerDto.email);
     const normalizedName = this.normalizeName(registerDto.name);
+    assertUserPasswordStrength(registerDto.password);
 
     const existingUser = await this.userModel.findOne({ email: normalizedEmail }).lean();
     if (existingUser) {
@@ -710,6 +874,7 @@ export class AuthService {
       return { success: false, error: 'Code de réinitialisation invalide ou expiré.' };
     }
 
+    assertUserPasswordStrength(newPassword);
     user.password = await this.hashPassword(newPassword);
     if (user.role) {
       user.role = user.role.toLowerCase() as any;

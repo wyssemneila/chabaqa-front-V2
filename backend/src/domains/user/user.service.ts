@@ -15,6 +15,7 @@ import { UploadService, FileType } from '@/domains/shared/upload/upload.service'
 import { CommunityAffCreaJoinService } from '@/domains/community/affiliate-creator-join/community-aff-crea-join.service';
 import { generateUniqueUsername, slugifyFullNameToUsername } from '@/shared/utils/username.util';
 import { CacheService } from '@/shared/services/cache.service';
+import { assertUserPasswordStrength } from '@/shared/utils/user-password.validation';
 
 export interface PublicUserProfile {
   _id: string;
@@ -123,9 +124,15 @@ export class UserService {
       walletTransactions,
       payouts,
       notifications,
-      messages,
+      messagesSent,
+      messagesReceived,
       feedback,
       achievements,
+      subscriptions,
+      conversations,
+      challengeSubmissions,
+      courseProgress,
+      billingInvoices,
     ] = await Promise.all([
       findMany('Community', { createur: userObjectId }),
       findMany('Community', { members: userObjectId }),
@@ -137,8 +144,14 @@ export class UserService {
       findMany('Payout', { creatorId: userObjectId }),
       findMany('Notification', { recipient: userObjectId }),
       findMany('Message', { senderId: userObjectId }),
+      findMany('Message', { recipientId: userObjectId }),
       findMany('Feedback', { userId: userObjectId }),
       findMany('UserAchievement', { userId: userObjectId }),
+      findMany('Subscription', { userId: userObjectId }),
+      findMany('Conversation', { participants: userObjectId }),
+      findMany('ChallengeSubmission', { userId: userObjectId }),
+      findMany('CourseProgress', { userId: userObjectId }),
+      findMany('BillingInvoice', { userId: userObjectId }),
     ]);
 
     return {
@@ -155,8 +168,9 @@ export class UserService {
         walletTransactions,
         payouts,
       },
-      learning: { enrollments, achievements },
-      communication: { notifications, messages },
+      learning: { enrollments, achievements, courseProgress, challengeSubmissions },
+      communication: { notifications, messagesSent, messagesReceived, conversations },
+      billing: { subscriptions, billingInvoices },
     };
   }
 
@@ -812,6 +826,7 @@ export class UserService {
       }
     }
 
+    assertUserPasswordStrength(changePasswordDto.newPassword);
     const hashedPassword = await this.hashPassword(changePasswordDto.newPassword);
     await this.userModel.findByIdAndUpdate(id, {
       password: hashedPassword,

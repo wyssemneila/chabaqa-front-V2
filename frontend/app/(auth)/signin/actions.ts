@@ -88,8 +88,8 @@ export async function loginAction(data: {
     }
 
     // Check for 2FA requirement
-    if (json?.requires2FA) {
-      return { success: false, requires2FA: true, userId: json.userId };
+    if (json?.requires2FA || json?.data?.requires2FA) {
+      return { success: false, requires2FA: true, userId: json?.email || json?.data?.email };
     }
 
     if (res.ok) {
@@ -126,7 +126,7 @@ export async function loginAction(data: {
   }
 }
 
-export async function verify2FAAction(userId: string, code: string, rememberMe: boolean = false): Promise<LoginResult> {
+export async function verify2FAAction(email: string, code: string, rememberMe: boolean = false): Promise<LoginResult> {
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
     const verifyUrl = `${apiBase}/auth/verify-2fa`
@@ -140,10 +140,14 @@ export async function verify2FAAction(userId: string, code: string, rememberMe: 
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ userId, code, rememberMe })
+      body: JSON.stringify({
+        email: String(email || '').trim().toLowerCase(),
+        verificationCode: String(code || '').trim(),
+      })
     })
 
     const json = await res.clone().json().catch(() => null)
+    const payload = json?.data || json
 
     // Propagate Set-Cookie headers from backend to browser via Next cookies()
     const setCookieHeaders: string[] = (res.headers as any).getSetCookie?.() || (res.headers.get('set-cookie') ? [res.headers.get('set-cookie') as string] : [])
@@ -179,8 +183,8 @@ export async function verify2FAAction(userId: string, code: string, rememberMe: 
     if (res.ok) {
       return {
         success: true,
-        user: json.user,
-        role: json.user?.role
+        user: payload?.user,
+        role: payload?.user?.role
       }
     }
 
@@ -194,7 +198,7 @@ export async function verify2FAAction(userId: string, code: string, rememberMe: 
   }
 }
 
-export async function resend2FACodeAction(userId: string): Promise<{ success: boolean; error?: string; message?: string }> {
+export async function resend2FACodeAction(email: string): Promise<{ success: boolean; error?: string; message?: string }> {
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
     const resendUrl = `${apiBase}/auth/resend-2fa`
@@ -203,7 +207,7 @@ export async function resend2FACodeAction(userId: string): Promise<{ success: bo
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ userId })
+      body: JSON.stringify({ email: String(email || '').trim().toLowerCase() })
     })
 
     const json = await res.json().catch(() => null)

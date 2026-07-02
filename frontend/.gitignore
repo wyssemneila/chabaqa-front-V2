@@ -68,7 +68,6 @@ temp/
 .env.test.local
 
 # Misc
-.env.example
 
 # Profile images
 public/profile/

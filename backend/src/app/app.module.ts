@@ -6,6 +6,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { extname, basename } from 'path';
 import { resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
+import { attachMongoSlowQueryLogger } from '@/shared/database/mongo-slow-query';
 
 import { AppController } from '@/app/app.controller';
 import { AppService } from '@/app/app.service';
@@ -148,6 +149,8 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
           connection.on('error', (err: any) =>
             console.error('❌ MongoDB connection error:', err),
           );
+
+          attachMongoSlowQueryLogger(connection);
 
           return connection;
         },

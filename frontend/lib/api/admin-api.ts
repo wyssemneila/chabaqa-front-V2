@@ -1845,6 +1845,9 @@ export const adminApi = {
       return toPaginatedResult(response, items, filters, ['items']);
     },
 
+    getPaymentAuditLogs: async (params?: { limit?: number; orderId?: string }) =>
+      apiClient.get('/admin/financial/payment-audit-logs', params),
+
     reviewManualPlatformSubscription: (orderId: string, action: 'approve' | 'reject') =>
       apiClient.post(`/admin/financial/manual-platform-subscriptions/${orderId}/review`, { action }),
 

@@ -20,6 +20,16 @@ export interface User {
   [key: string]: any
 }
 
+export class Requires2FAError extends Error {
+  email: string
+
+  constructor(email: string) {
+    super('Two-factor authentication required')
+    this.name = 'Requires2FAError'
+    this.email = email
+  }
+}
+
 interface AuthContextValue {
   user: User | null
   loading: boolean
@@ -27,6 +37,8 @@ interface AuthContextValue {
   isAuthenticated: boolean
   register: (payload: any) => Promise<void>
   login: (payload: { email: string; password: string; rememberMe?: boolean }) => Promise<void>
+  verify2FA: (payload: { email: string; verificationCode: string }) => Promise<void>
+  resend2FA: (email: string) => Promise<void>
   updateAuth: (accessToken: string, user: any) => void
   logout: () => Promise<void>
   fetchMe: () => Promise<User | null>
@@ -189,6 +201,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const finalizeAuthenticatedSession = useCallback((accessToken: string, user: any) => {
+    localStorage.setItem('accessToken', accessToken)
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('refresh_token')
+    localStorage.setItem('user', JSON.stringify(user))
+    syncAccessTokenCookie(accessToken)
+    setToken(accessToken)
+    const normalizedUser = normalizeUser(user)
+    setUser(normalizedUser)
+
+    const redirectParam = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('redirect') ||
+        new URLSearchParams(window.location.search).get('returnUrl')
+      : null
+    const safeRedirect =
+      redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+        ? redirectParam
+        : null
+    if (safeRedirect && safeRedirect !== localizeHref(pathname || '/', '/signin')) {
+      router.push(localizeHref(pathname || '/', safeRedirect))
+      return
+    }
+
+    const role = user.role?.toLowerCase()
+    if (role === 'creator') {
+      router.push(localizeHref(pathname || '/', '/creator/dashboard'))
+    } else if (role === 'admin') {
+      router.push(localizeHref(pathname || '/', '/admin'))
+    } else {
+      router.push(localizeHref(pathname || '/', '/explore'))
+    }
+  }, [router, pathname])
+
   const login = useCallback(async (payload: { email: string; password: string; rememberMe?: boolean }) => {
     try {
       setError(null)
@@ -219,12 +265,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await res.json()
 
+      const responseData = data.data || data
+
+      if (responseData?.requires2FA || data?.requires2FA) {
+        throw new Requires2FAError(responseData?.email || normalizedPayload.email)
+      }
+
       if (!res.ok) {
         throw new Error(extractErrorMessage(data))
       }
 
       // Handle potential data wrapping (e.g. { data: { user, accessToken } })
-      const responseData = data.data || data;
       const accessToken = extractAccessTokenFromResponse(responseData)
       const user = responseData?.user
 
@@ -233,38 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Invalid server response: auth payload missing");
       }
 
-      localStorage.setItem('accessToken', accessToken)
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refreshToken')
-      localStorage.removeItem('refresh_token')
-      localStorage.setItem('user', JSON.stringify(user))
-      syncAccessTokenCookie(accessToken)
-      setToken(accessToken)
-      const normalizedUser = normalizeUser(user)
-      setUser(normalizedUser)
-
-      const redirectParam = typeof window !== 'undefined'
-        ? new URLSearchParams(window.location.search).get('redirect') ||
-          new URLSearchParams(window.location.search).get('returnUrl')
-        : null
-      const safeRedirect =
-        redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
-          ? redirectParam
-          : null
-      if (safeRedirect && safeRedirect !== localizeHref(pathname || '/', '/signin')) {
-        router.push(localizeHref(pathname || '/', safeRedirect))
-        return
-      }
-
-      // Redirect based on role
-      const role = user.role?.toLowerCase()
-      if (role === 'creator') {
-        router.push(localizeHref(pathname || '/', '/creator/dashboard'))
-      } else if (role === 'admin') {
-        router.push(localizeHref(pathname || '/', '/admin'))
-      } else {
-        router.push(localizeHref(pathname || '/', '/explore'))
-      }
+      finalizeAuthenticatedSession(accessToken, user)
 
     } catch (e: any) {
       console.error("Login error:", e);
@@ -276,7 +296,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       throw e
     }
-  }, [router, pathname])
+  }, [finalizeAuthenticatedSession])
+
+  const verify2FA = useCallback(async (payload: { email: string; verificationCode: string }) => {
+    try {
+      setError(null)
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ||
+        (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api` : "http://localhost:3000/api")
+
+      const res = await fetch(`${apiBase}/auth/verify-2fa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: String(payload.email || '').trim().toLowerCase(),
+          verificationCode: String(payload.verificationCode || '').trim(),
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(extractErrorMessage(data))
+      }
+
+      const responseData = data.data || data
+      const accessToken = extractAccessTokenFromResponse(responseData)
+      const user = responseData?.user
+      if (!user || !accessToken) {
+        throw new Error('Invalid server response: auth payload missing')
+      }
+
+      finalizeAuthenticatedSession(accessToken, user)
+    } catch (e: any) {
+      const errorMessage = e?.message || 'Verification failed'
+      setError(errorMessage)
+      throw e
+    }
+  }, [finalizeAuthenticatedSession])
+
+  const resend2FA = useCallback(async (email: string) => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ||
+      (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api` : "http://localhost:3000/api")
+    const res = await fetch(`${apiBase}/auth/resend-2fa`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: String(email || '').trim().toLowerCase() }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error(extractErrorMessage(data))
+    }
+  }, [])
 
   const updateAuth = useCallback((accessToken: string, userData: any) => {
     if (typeof window !== 'undefined') {
@@ -493,11 +564,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated,
     register,
     login,
+    verify2FA,
+    resend2FA,
     updateAuth,
     logout,
     fetchMe,
     token,
-  }), [user, loading, error, isAuthenticated, register, login, updateAuth, logout, fetchMe, token])
+  }), [user, loading, error, isAuthenticated, register, login, verify2FA, resend2FA, updateAuth, logout, fetchMe, token])
 
   return (
     <AuthContext.Provider value={value}>

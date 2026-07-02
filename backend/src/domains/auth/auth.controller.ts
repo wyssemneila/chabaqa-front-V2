@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Req, Res, UnauthorizedException, Param, Delete } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
@@ -14,6 +14,7 @@ import { GoogleAuthGuard } from '@/domains/auth/guards/google-auth.guard';
 import { CookieUtil } from '@/shared/utils/cookie.util';
 import { PublicThrottlerGuard } from '@/shared/guards/public-throttler.guard';
 import { RefreshTokenDto } from '@/domains/auth/dto/refresh-token.dto';
+import { Verify2FADto } from '@/domains/auth/dto/verify-2fa.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -84,13 +85,75 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(
     @Body() loginDto: LoginDto,
+    @Req() req: any,
     @Res({ passthrough: true }) res: Response,
   ): Promise<UserAuthPayload> {
-    const result = await this.authService.login(loginDto);
+    const result = await this.authService.login(loginDto, {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip || req.headers['x-forwarded-for'],
+    });
+    if (result?.requires2FA) {
+      return result;
+    }
     if (result?.accessToken && result?.refreshToken) {
       CookieUtil.setTokenCookies(res as any, result.accessToken, result.refreshToken, !!result.rememberMe);
     }
     return result;
+  }
+
+  @Post('verify-2fa')
+  @UseGuards(PublicThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 10 } } as any)
+  @HttpCode(HttpStatus.OK)
+  async verify2FA(
+    @Body() dto: Verify2FADto,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<UserAuthPayload> {
+    const result = await this.authService.verifyUser2FA(dto, {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip || req.headers['x-forwarded-for'],
+    });
+    if (result?.accessToken && result?.refreshToken) {
+      CookieUtil.setTokenCookies(res as any, result.accessToken, result.refreshToken, !!result.rememberMe);
+    }
+    return result;
+  }
+
+  @Post('resend-2fa')
+  @UseGuards(PublicThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 5 } } as any)
+  @HttpCode(HttpStatus.OK)
+  async resend2FA(@Body() body: { email: string }) {
+    return this.authService.resendUser2FACode(body.email);
+  }
+
+  @Post('2fa/enable')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async enable2FA(@Req() req: any, @Body() body: { currentPassword?: string }) {
+    return this.authService.setTwoFactorEnabled(req.user.userId || req.user.sub, true, body.currentPassword);
+  }
+
+  @Post('2fa/disable')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async disable2FA(@Req() req: any, @Body() body: { currentPassword?: string }) {
+    return this.authService.setTwoFactorEnabled(req.user.userId || req.user.sub, false, body.currentPassword);
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  async listSessions(@Req() req: any) {
+    return this.authService.listAuthSessions(req.user.userId || req.user.sub);
+  }
+
+  @Post('sessions/:jti/revoke')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async revokeSession(@Req() req: any, @Param('jti') jti: string) {
+    await this.authService.revokeAuthSession(req.user.userId || req.user.sub, jti);
+    return { message: 'Session revoked' };
   }
 
   @Post('refresh')
