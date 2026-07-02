@@ -9,7 +9,7 @@ type DraftPayload = Record<string, any>;
 @Injectable()
 export class AiCreateService {
   private readonly logger = new Logger(AiCreateService.name);
-  private readonly client: OpenAI;
+  private readonly client: OpenAI | null;
   private readonly models: string[];
   private readonly temperature: number;
   private readonly maxTokens: number;
@@ -24,24 +24,26 @@ export class AiCreateService {
       ? this.configService.get<string>('OLLAMA_BASE_URL') || 'https://ollama.com/v1'
       : this.configService.get<string>('OPENROUTER_BASE_URL') || 'https://openrouter.ai/api/v1';
 
-    this.client = new OpenAI({
-      apiKey,
-      baseURL,
-      timeout: Number(this.configService.get<string>('AI_CREATE_TIMEOUT_MS') || 45000),
-      ...(useOllamaCloud
-        ? {}
-        : {
-            defaultHeaders: {
-              'HTTP-Referer':
-                this.configService.get<string>('OPENROUTER_SITE_URL') ||
-                this.configService.get<string>('FRONTEND_URL') ||
-                'https://chabaqa.io',
-              'X-Title':
-                this.configService.get<string>('OPENROUTER_APP_NAME') ||
-                'Chabaqa AI Cofounder',
-            },
-          }),
-    });
+    this.client = apiKey
+      ? new OpenAI({
+          apiKey,
+          baseURL,
+          timeout: Number(this.configService.get<string>('AI_CREATE_TIMEOUT_MS') || 45000),
+          ...(useOllamaCloud
+            ? {}
+            : {
+                defaultHeaders: {
+                  'HTTP-Referer':
+                    this.configService.get<string>('OPENROUTER_SITE_URL') ||
+                    this.configService.get<string>('FRONTEND_URL') ||
+                    'https://chabaqa.io',
+                  'X-Title':
+                    this.configService.get<string>('OPENROUTER_APP_NAME') ||
+                    'Chabaqa AI Cofounder',
+                },
+              }),
+        })
+      : null;
 
     const primary =
       this.configService.get<string>('AI_CREATE_MODEL') ||
@@ -62,7 +64,7 @@ export class AiCreateService {
   }
 
   async generateDraft(input: CreateWithAiDto) {
-    if (!this.hasApiKey()) {
+    if (!this.hasApiKey() || !this.client) {
       return this.buildFallbackDraft(input, 'fallback-no-api-key');
     }
 

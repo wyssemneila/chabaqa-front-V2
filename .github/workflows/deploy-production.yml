@@ -11,9 +11,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Validate Deployment Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate deployment scripts
+        run: bash -n deploy.sh deploy-pm2.sh scripts/verify-production.sh scripts/smoke-production.sh
+
+      - name: Validate compose file
+        run: |
+          touch frontend/.env
+          touch backend/.env
+          docker compose config --quiet
+
   deploy:
     name: Docker Deploy to VPS
     runs-on: ubuntu-latest
+    needs: validate
     environment: production
     steps:
       - name: Checkout

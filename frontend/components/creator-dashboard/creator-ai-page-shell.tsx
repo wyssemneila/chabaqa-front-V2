@@ -22,7 +22,7 @@ export function CreatorAiPageShell({
     <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
       <DashSidebar />
       <div className="md:ml-[220px] flex-1 flex min-h-screen flex-col">
-        <DashTopbar title={topbarTitle} subtitle={topbarSubtitle} />
+        <DashTopbar title={topbarTitle} subtitle={topbarSubtitle ?? ''} />
         <div className="flex-1 px-7 pb-7">
           <AiShellLayout title={title} description={description}>
             {children}
