@@ -1,5 +1,5 @@
-﻿import { CreatorFeaturePage } from '@/components/creator-dashboard/CreatorFeaturePage'
+import { redirect } from 'next/navigation'
 
-export default function Page() {
-  return <CreatorFeaturePage variant="ai-create" />
+export default function AiCreateRedirectPage() {
+  redirect('/creator/ai/staff/new')
 }

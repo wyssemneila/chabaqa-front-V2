@@ -24,9 +24,15 @@ export interface LinkPaymentMethod {
   };
 }
 
+type StripeClient = InstanceType<typeof Stripe>;
+type StripeCheckoutSession = Awaited<ReturnType<StripeClient['checkout']['sessions']['retrieve']>>;
+type StripePaymentIntent = Awaited<ReturnType<StripeClient['paymentIntents']['retrieve']>>;
+type StripeCustomer = Awaited<ReturnType<StripeClient['customers']['retrieve']>>;
+type StripeWebhookEvent = ReturnType<StripeClient['webhooks']['constructEvent']>;
+
 @Injectable()
 export class StripePaymentService {
-  private readonly stripe: Stripe;
+  private readonly stripe: StripeClient;
   private cachedTndToUsdRate: number = 0.32; // Fallback rate
   private rateLastFetched: number = 0;
   private readonly RATE_CACHE_DURATION_MS = 1200000;
@@ -200,7 +206,7 @@ export class StripePaymentService {
    */
   async getCheckoutSession(sessionId: string): Promise<{
     success: boolean;
-    session?: Stripe.Checkout.Session;
+    session?: StripeCheckoutSession;
     error?: string;
   }> {
     try {
@@ -244,8 +250,8 @@ export class StripePaymentService {
         };
       }
 
-      const paymentIntent = session.payment_intent as Stripe.PaymentIntent;
-      const customer = session.customer as Stripe.Customer;
+      const paymentIntent = session.payment_intent as StripePaymentIntent;
+      const customer = session.customer as StripeCustomer | string | null;
 
 
       let paymentMethod: LinkPaymentMethod | undefined;
@@ -274,7 +280,7 @@ export class StripePaymentService {
         status: paymentIntent.status,
         amountDT: paymentIntent.amount / 100, // Convert from cents to dollars
         paymentMethod,
-        customerId: customer?.id,
+        customerId: typeof customer === 'string' ? customer : customer?.id,
         sessionMetadata: (session.metadata || {}) as Record<string, string>,
       };
     } catch (e: any) {
@@ -291,7 +297,7 @@ export class StripePaymentService {
   async createWebhookEvent(
     body: Buffer,
     signature: string,
-  ): Promise<{ success: boolean; event?: Stripe.Event; error?: string }> {
+  ): Promise<{ success: boolean; event?: StripeWebhookEvent; error?: string }> {
     try {
       const webhookSecret = this.configService.get('STRIPE_WEBHOOK_SECRET');
       const event = this.stripe.webhooks.constructEvent(

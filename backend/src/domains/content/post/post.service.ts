@@ -1624,4 +1624,43 @@ export class PostService {
       },
     };
   }
+
+  async setModerationStatus(
+    postId: string,
+    status: 'approved' | 'hidden' | 'rejected' | 'flagged' | 'escalated' | 'pending',
+    userId: string,
+    publish?: boolean,
+  ): Promise<PostResponseDto> {
+    const post = await this.resolvePostByIdentifier(postId);
+    if (!post) throw new NotFoundException('Post non trouvé');
+
+    (post as any).moderationStatus = status;
+    if (typeof publish === 'boolean') {
+      post.isPublished = publish;
+    } else if (status === 'hidden' || status === 'rejected') {
+      post.isPublished = false;
+    } else if (status === 'approved') {
+      post.isPublished = true;
+    }
+    await post.save();
+
+    const community = await this.communityModel.findById(post.communityId);
+    const populatedPost = await this.postModel
+      .findById(post._id)
+      .populate('authorId', 'name email profile_picture photo_profil')
+      .exec();
+    return this.transformToResponseDto(populatedPost!, community, userId);
+  }
+
+  async hidePost(postId: string, userId: string): Promise<PostResponseDto> {
+    return this.setModerationStatus(postId, 'hidden', userId, false);
+  }
+
+  async approvePost(postId: string, userId: string): Promise<PostResponseDto> {
+    return this.setModerationStatus(postId, 'approved', userId, true);
+  }
+
+  async restorePost(postId: string, userId: string): Promise<PostResponseDto> {
+    return this.setModerationStatus(postId, 'approved', userId, true);
+  }
 }

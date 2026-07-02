@@ -1,16 +1,46 @@
 "use client";
 
-import { useDashboard, DashboardShell, DashboardLoading, DashboardUnauthorized, BackendRequiredPlaceholder } from "../../components";
+import { useEffect, useState } from "react";
+import {
+  useDashboard,
+  DashboardShell,
+  DashboardLoading,
+  DashboardUnauthorized,
+  DashboardEmpty,
+  StatCard,
+} from "../../components";
+import { communitySupportApi } from "@/lib/api/community-support.api";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, HeadphonesIcon, AlertTriangle, MessageCircle, Inbox } from "lucide-react";
+import { ArrowLeft, HeadphonesIcon, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 export default function SupportQueuePage() {
-  const { role, isLoading, canAccessDashboard, getDashboardPath, creatorSlug } = useDashboard();
+  const { role, isLoading, canAccessDashboard, getDashboardPath, creatorSlug, communityId } = useDashboard();
   const basePath = getDashboardPath("support");
+  const [loading, setLoading] = useState(true);
+  const [queue, setQueue] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<any>({});
+
+  const load = async () => {
+    if (!communityId) return;
+    setLoading(true);
+    try {
+      const [queueResult, metricsResult] = await Promise.all([
+        communitySupportApi.getQueue(communityId, { page: 1, limit: 50, status: 'open' }),
+        communitySupportApi.getMetrics(communityId),
+      ]);
+      setQueue(queueResult?.items ?? []);
+      setMetrics(metricsResult ?? {});
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoading && communityId) void load();
+  }, [communityId, isLoading]);
 
   if (isLoading) return <DashboardLoading message="Loading support queue..." />;
   if (!canAccessDashboard("support")) {
@@ -21,54 +51,51 @@ export default function SupportQueuePage() {
     <DashboardShell variant="support">
       <div className="mb-6">
         <Button variant="ghost" size="sm" asChild className="mb-4"><Link href={basePath}><ArrowLeft className="mr-2 h-4 w-4" />Back to Dashboard</Link></Button>
-        <h1 className="text-2xl font-bold tracking-tight">Support Queue</h1>
-        <p className="mt-1 text-muted-foreground">View and manage incoming support tickets.</p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Support Queue</h1>
+            <p className="mt-1 text-muted-foreground">Community DM conversations needing support attention.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className="mr-2 h-4 w-4" />Refresh
+          </Button>
+        </div>
       </div>
 
-      <Alert className="mb-8 border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
-        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        <AlertTitle className="text-amber-800 dark:text-amber-200">Backend Required</AlertTitle>
-        <AlertDescription className="text-amber-700 dark:text-amber-300">This feature requires community-scoped support endpoints pending backend implementation.</AlertDescription>
-      </Alert>
-
-      <div className="space-y-4">
-        <Card className="border-dashed">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted"><Inbox className="h-5 w-5 text-muted-foreground" /></div>
-              <div><CardTitle className="text-base">Ticket Queue</CardTitle><CardDescription>Incoming support tickets from community members</CardDescription></div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-lg border border-dashed p-8 text-center">
-              <HeadphonesIcon className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="font-medium mb-1">Support queue not yet available</p>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">Community-level support queue requires backend endpoint alignment.</p>
-              <Badge variant="outline" className="text-xs">Pending Backend Alignment</Badge>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-dashed">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted"><MessageCircle className="h-5 w-5 text-muted-foreground" /></div>
-              <div><CardTitle className="text-base">Live Chat</CardTitle><CardDescription>Real-time chat support with community members</CardDescription></div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-lg border border-dashed p-8 text-center">
-              <MessageCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="font-medium mb-1">Live chat not yet available</p>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">Requires community-role-compatible live support endpoints.</p>
-              <Badge variant="outline" className="text-xs">Pending Backend Alignment</Badge>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        <StatCard title="Open conversations" value={metrics.openCount ?? 0} icon={HeadphonesIcon} isLoading={loading} />
+        <StatCard title="Resolved today" value={metrics.resolvedToday ?? 0} icon={HeadphonesIcon} isLoading={loading} />
+        <StatCard title="Total conversations" value={metrics.totalConversations ?? 0} icon={HeadphonesIcon} isLoading={loading} />
       </div>
 
-      <div className="mt-8">
-        <BackendRequiredPlaceholder feature="Community Support Queue" description="To enable support queue, backend needs community-scoped endpoints protected by CommunityPermission.SUPPORT_MANAGE." />
-      </div>
+      {loading ? (
+        <DashboardLoading message="Loading queue..." />
+      ) : queue.length === 0 ? (
+        <DashboardEmpty title="Queue is clear" description="No open support conversations for this community." />
+      ) : (
+        <div className="space-y-3">
+          {queue.map((item) => {
+            const member = item.participantA;
+            const name = member?.name || [member?.firstName, member?.lastName].filter(Boolean).join(' ') || member?.email || 'Member';
+            return (
+              <Card key={item._id || item.id}>
+                <CardContent className="flex items-center justify-between gap-4 py-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold truncate">{name}</p>
+                    <p className="text-sm text-muted-foreground truncate">{item.lastMessageText || 'No messages yet'}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant={item.isOpen ? 'default' : 'secondary'}>{item.isOpen ? 'Open' : 'Closed'}</Badge>
+                    <Button size="sm" variant="outline" onClick={() => void communitySupportApi.assignConversation(communityId!, String(item._id || item.id)).then(load)}>
+                      Assign to me
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </DashboardShell>
   );
 }

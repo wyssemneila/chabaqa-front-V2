@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useDashboard,
   DashboardShell,
@@ -8,10 +8,14 @@ import {
   DashboardLoading,
   DashboardUnauthorized,
   BackendRequiredPlaceholder,
+  StatCard,
+  DashboardEmpty,
 } from "../../components";
 import { ModerationQueue } from "../../moderator/components";
 import { CommunityPermission } from "@/lib/permissions";
+import { moderationApi } from "@/lib/api/moderation.api";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, MessageSquare, Shield, Users, RefreshCw } from "lucide-react";
 import Link from "next/link";
@@ -20,6 +24,28 @@ export default function AdminModerationPage() {
   const { role, can, isLoading, canAccessDashboard, getDashboardPath, creatorSlug, communityId } = useDashboard();
   const basePath = getDashboardPath("admin");
   const [tab, setTab] = useState("queue");
+  const [stats, setStats] = useState<any>(null);
+  const [flaggedUsers, setFlaggedUsers] = useState<any[]>([]);
+  const [loadingMeta, setLoadingMeta] = useState(true);
+
+  const loadMeta = async () => {
+    if (!communityId) return;
+    setLoadingMeta(true);
+    try {
+      const [statsResult, usersResult] = await Promise.all([
+        moderationApi.getStats(communityId),
+        moderationApi.getFlaggedUsers(communityId),
+      ]);
+      setStats(statsResult);
+      setFlaggedUsers(usersResult);
+    } finally {
+      setLoadingMeta(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoading && communityId) void loadMeta();
+  }, [communityId, isLoading]);
 
   if (isLoading) return <DashboardLoading message="Loading moderation..." />;
   if (!canAccessDashboard("admin")) {
@@ -45,18 +71,20 @@ export default function AdminModerationPage() {
             <h1 className="text-2xl font-bold tracking-tight">Post Moderation</h1>
             <p className="mt-1 text-muted-foreground">Review flagged content and manage community moderation workflows.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+          <Button variant="outline" size="sm" onClick={() => { void loadMeta(); window.location.reload(); }}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
         </div>
       </div>
 
-      <DashboardSection title="Moderation Overview" description="Live queue data is available below; aggregate moderation metrics require dedicated endpoints." className="mb-8">
-        <BackendRequiredPlaceholder
-          feature="Moderation Aggregates"
-          description="Pending review counts, flagged-user rollups, community health score, and auto-mod rule metrics need community-scoped moderation aggregate endpoints before they can be displayed here."
-        />
+      <DashboardSection title="Moderation Overview" description="Live aggregates from community moderation endpoints." className="mb-8">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard title="Pending review" value={stats?.totalPending ?? 0} icon={MessageSquare} isLoading={loadingMeta} />
+          <StatCard title="Reviewed" value={stats?.totalReviewed ?? 0} icon={Shield} isLoading={loadingMeta} />
+          <StatCard title="Escalations" value={stats?.escalations ?? 0} icon={Users} isLoading={loadingMeta} />
+          <StatCard title="Pinned posts" value={stats?.pinnedPosts ?? 0} icon={MessageSquare} isLoading={loadingMeta} />
+        </div>
       </DashboardSection>
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-6">
@@ -71,10 +99,25 @@ export default function AdminModerationPage() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-4">
-          <BackendRequiredPlaceholder
-            feature="Flagged Users"
-            description="The content queue is live, but user-level flag aggregation is not exposed as a community-role endpoint yet."
-          />
+          {loadingMeta ? (
+            <DashboardLoading message="Loading flagged users..." />
+          ) : flaggedUsers.length === 0 ? (
+            <DashboardEmpty title="No flagged users" description="No users with flagged posts in the moderation queue." />
+          ) : (
+            <div className="grid gap-3">
+              {flaggedUsers.map((user) => (
+                <Card key={user.userId}>
+                  <CardContent className="flex items-center justify-between py-4">
+                    <div>
+                      <p className="font-semibold">{user.name}</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                    </div>
+                    <p className="text-sm font-medium">{user.flaggedPosts} flagged posts</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="automod" className="space-y-4">

@@ -1,17 +1,19 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
 import { emailCampaignsApi, type EmailCampaign } from '@/lib/api/email-campaigns.api'
+import { EmailTemplateCards } from '@/app/(creator)/creator/marketing/components/email-template-cards'
+import { ImportContactsDialog } from '@/app/(creator)/creator/marketing/contacts/components/import-contacts-dialog'
 import {
   Plus, Mail, Send, Clock, Users, MousePointerClick, Eye,
-  Trash2, Upload, X, Check, Calendar, AlertCircle, Inbox,
+  Trash2, X, Check, Calendar, AlertCircle, Inbox,
   Search, Zap, Monitor, Smartphone, BookOpen, Trophy,
   ShoppingBag, UserMinus, ToggleLeft, ToggleRight, Pencil,
-  ChevronDown, AtSign, Play, Pause,
+  ChevronDown, AtSign, Play, Pause, UserPlus,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -33,14 +35,7 @@ interface Automation {
   isActive: boolean; triggered: number; createdAt: string
 }
 
-interface CustomAudience {
-  id: string; name: string; emails: string[]; count: number; createdAt: string
-}
-
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const BASE_COMMUNITIES = ['All Members', 'Paid Members', 'Free Members', 'VIP Members', 'Trial Members', 'Inactive Members']
-
 const TRIGGER_OPTIONS = [
   { id: 'new_member',       label: 'New member joins',          desc: 'When anyone joins your community',            icon: Users       },
   { id: 'purchase',         label: 'Purchase completed',        desc: 'When a member buys a product or course',      icon: ShoppingBag },
@@ -384,60 +379,31 @@ function AutomationCard({ a, onToggle, onDelete, lang = 'en' }: {
 
 // ─── Create Campaign Drawer ───────────────────────────────────────────────────
 
-function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAudience, lang = 'en' }: {
+function CreateCampaignDrawer({ open, onClose, onSave, lang = 'en' }: {
   open: boolean; onClose: () => void
   onSave: (c: Campaign) => void
-  customAudiences: CustomAudience[]
-  onSaveAudience: (a: CustomAudience) => void
   lang?: string
 }) {
   const [name,         setName]         = useState('')
   const [subject,      setSubject]      = useState('')
   const [preview,      setPreview]      = useState('')
   const [body,         setBody]         = useState('')
-  const [audMode,      setAudMode]      = useState<'community' | 'custom'>('community')
-  const [communities,  setCommunities]  = useState<string[]>(['All Members'])
-  const [customAudId,  setCustomAudId]  = useState<string>('')
-  const [newAudName,   setNewAudName]   = useState('')
-  const [newAudEmails, setNewAudEmails] = useState<string[]>([])
-  const [emailInput,   setEmailInput]   = useState('')
-  const [csvName,      setCsvName]      = useState('')
-  const [csvMode,      setCsvMode]      = useState<'type' | 'upload'>('type')
   const [schedMode,    setSchedMode]    = useState<'now' | 'later'>('now')
   const [schedDate,    setSchedDate]    = useState('')
   const [schedTime,    setSchedTime]    = useState('')
   const [saving,       setSaving]       = useState(false)
   const [previewOpen,  setPreviewOpen]  = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
 
-  const allCommunities = BASE_COMMUNITIES
-
-  const toggleCom = (c: string) =>
-    setCommunities(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])
-
-  const addEmail = () => {
-    const e = emailInput.trim()
-    if (e && /\S+@\S+\.\S+/.test(e) && !newAudEmails.includes(e)) {
-      setNewAudEmails(p => [...p, e])
-      setEmailInput('')
-    }
-  }
-
-  const saveCustomAudience = () => {
-    return
-  }
-
-  const canSend = name.trim() && subject.trim() && communities.length > 0 && audMode === 'community'
+  const canSend = name.trim() && subject.trim() && body.trim()
 
   const submit = async (status: Campaign['status']) => {
     if (!canSend) return
     setSaving(true)
-    const audLabel = communities.join(', ')
     onSave({
       id: '',
       name, subject, previewText: preview, body, status,
-      audienceType: communities.includes('All Members') ? 'all' : 'community',
-      audienceLabel: audLabel,
+      audienceType: 'all',
+      audienceLabel: 'All community members',
       audienceCount: 0,
       sentAt:      status === 'sent'      ? new Date().toISOString().slice(0, 10) : undefined,
       scheduledAt: status === 'scheduled' ? `${schedDate} ${schedTime}`           : undefined,
@@ -447,7 +413,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
     setSaving(false)
     onClose()
     setName(''); setSubject(''); setPreview(''); setBody('')
-    setCommunities(['All Members']); setSchedMode('now'); setSchedDate(''); setSchedTime('')
+    setSchedMode('now'); setSchedDate(''); setSchedTime('')
   }
 
   const inp = "w-full h-10 px-3 rounded-xl text-[13px] outline-none transition-colors"
@@ -532,131 +498,21 @@ function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAu
           {/* Audience */}
           <section>
             <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>{lang === 'ar' ? 'الجمهور' : 'Audience'}</p>
-
-            <div className="flex gap-2 mb-4">
-              {(['community', 'custom'] as const).map(m => (
-                <button key={m} onClick={() => setAudMode(m)}
-                  className="flex-1 h-9 rounded-xl text-[12px] font-semibold cursor-pointer transition-all"
-                  style={audMode === m
-                    ? { background: 'var(--p)', color: '#fff' }
-                    : { background: 'var(--bg)', color: 'var(--t2)', border: '1.5px solid var(--bd)' }}>
-                  {m === 'community' ? (lang === 'ar' ? 'تصفية المجتمع' : 'Community Filter') : (lang === 'ar' ? 'جمهور مخصص' : 'Custom Audience')}
-                </button>
-              ))}
-            </div>
-
-            {audMode === 'community' ? (
-              <div className="space-y-2">
-                <p className="text-[11px] leading-5" style={{ color: 'var(--t3)' }}>
-                  Recipient counts are resolved by the backend campaign service when the campaign is created or sent.
-                </p>
-                {allCommunities.map(c => {
-                  const sel = communities.includes(c)
-                  const isCustom = !BASE_COMMUNITIES.includes(c)
-                  return (
-                    <button key={c} onClick={() => toggleCom(c)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-left"
-                      style={sel
-                        ? { background: 'var(--p2)', border: '1.5px solid var(--p)' }
-                        : { background: 'var(--bg)', border: '1.5px solid var(--bd)' }}>
-                      <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0"
-                        style={{ background: sel ? 'var(--p)' : 'transparent', border: sel ? 'none' : '1.5px solid var(--bd)' }}>
-                        {sel && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-                      </div>
-                      <p className="text-[13px] font-medium flex-1" style={{ color: sel ? 'var(--p)' : 'var(--t2)' }}>{c}</p>
-                      {isCustom && (
-                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'var(--p2)', color: 'var(--p)' }}>CUSTOM</span>
-                      )}
-                      <Users className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
-                    </button>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12px] font-semibold leading-5 text-amber-800">
-                  Custom uploaded audiences are unavailable until the backend exposes stored audience lists and recipient targeting. Use backend community filters for live campaigns.
-                </div>
+            <div className="rounded-xl border px-4 py-3" style={{ background: 'var(--p2)', borderColor: 'var(--bd)' }}>
+              <div className="flex items-start gap-3">
+                <Users className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
                 <div>
-                  <LBL text={lang === 'ar' ? 'اسم الجمهور' : 'Audience Name'} req />
-                  <input value={newAudName} onChange={e => setNewAudName(e.target.value)} placeholder={lang === 'ar' ? 'مثال: كبار المشترين' : 'e.g. VIP Buyers'}
-                    className={inp} style={fieldStyle} {...focusStyle} />
+                  <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+                    {lang === 'ar' ? 'جميع أعضاء المجتمع' : 'All community members'}
+                  </p>
+                  <p className="text-[11px] mt-1 leading-5" style={{ color: 'var(--t3)' }}>
+                    {lang === 'ar'
+                      ? 'يحلّ الخادم قائمة المستلمين عند إنشاء الحملة أو إرسالها. استخدم قوالب الحملات المتقدمة أدناه للاستهداف حسب النشاط أو تقدم الدورة.'
+                      : 'The backend resolves recipients when the campaign is created or sent. Use advanced campaign templates below for inactivity or course-progress targeting.'}
+                  </p>
                 </div>
-
-                {/* CSV or manual */}
-                <div className="flex gap-2">
-                  {(['type', 'upload'] as const).map(m => (
-                    <button key={m} onClick={() => setCsvMode(m)}
-                      className="flex-1 h-8 rounded-xl text-[11px] font-semibold cursor-pointer transition-all"
-                      style={csvMode === m
-                        ? { background: 'var(--p2)', color: 'var(--p)', border: '1.5px solid var(--p)' }
-                        : { background: 'var(--bg)', color: 'var(--t3)', border: '1.5px solid var(--bd)' }}>
-                      {m === 'type' ? (lang === 'ar' ? 'إدخال يدوي' : 'Type manually') : (lang === 'ar' ? 'رفع CSV' : 'Upload CSV')}
-                    </button>
-                  ))}
-                </div>
-
-                {csvMode === 'type' ? (
-                  <div>
-                    <div className="flex gap-2">
-                      <input value={emailInput} onChange={e => setEmailInput(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addEmail())}
-                        placeholder="email@example.com" type="email"
-                        className="flex-1 h-10 px-3 rounded-xl text-[13px] outline-none"
-                        style={fieldStyle} {...focusStyle} />
-                      <button onClick={addEmail}
-                        className="h-10 px-3 rounded-xl text-[12px] font-bold cursor-pointer hover:opacity-80"
-                        style={{ background: 'var(--p)', color: '#fff' }}>
-                        Add
-                      </button>
-                    </div>
-                    {newAudEmails.length > 0 && (
-                      <div className="mt-2 rounded-xl p-2 max-h-[140px] overflow-y-auto space-y-1"
-                        style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
-                        {newAudEmails.map(e => (
-                          <div key={e} className="flex items-center justify-between px-2 py-1 rounded-lg"
-                            style={{ background: 'var(--white)' }}>
-                            <span className="text-[12px]" style={{ color: 'var(--t2)' }}>{e}</span>
-                            <button onClick={() => setNewAudEmails(p => p.filter(x => x !== e))}
-                              className="cursor-pointer" style={{ color: '#ef4444' }}>
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <p className="text-[11px] mt-1.5" style={{ color: 'var(--t3)' }}>
-                      {newAudEmails.length} email{newAudEmails.length !== 1 ? 's' : ''} added
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <input ref={fileRef} type="file" accept=".csv" className="hidden"
-                      onChange={e => {
-                        if (e.target.files?.[0]) {
-                          setCsvName(e.target.files[0].name)
-                          setNewAudEmails([])
-                        }
-                      }} />
-                    <button onClick={() => fileRef.current?.click()}
-                      className="w-full rounded-xl py-6 flex flex-col items-center gap-2 cursor-pointer"
-                      style={{ border: `2px dashed ${csvName ? 'var(--p)' : 'var(--bd)'}`, background: csvName ? 'var(--p2)' : 'var(--bg)' }}>
-                      {csvName
-                        ? <><Check className="w-5 h-5" style={{ color: 'var(--p)' }} /><p className="text-[12px] font-semibold" style={{ color: 'var(--p)' }}>{csvName}</p><p className="text-[11px]" style={{ color: 'var(--t3)' }}>Upload selected but not persisted to backend</p></>
-                        : <><Upload className="w-5 h-5" style={{ color: 'var(--t3)' }} strokeWidth={1.7} /><p className="text-[12px]" style={{ color: 'var(--t2)' }}>Drop CSV or click to upload</p><p className="text-[11px]" style={{ color: 'var(--t3)' }}>Must have an "email" column</p></>
-                      }
-                    </button>
-                  </div>
-                )}
-
-                <button onClick={saveCustomAudience}
-                  disabled
-                  className="w-full h-9 rounded-xl text-[12px] font-bold cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-40"
-                  style={{ background: 'var(--p)', color: '#fff' }}>
-                  Backend Audience Lists Required
-                </button>
               </div>
-            )}
+            </div>
           </section>
 
           <div style={{ borderTop: '1px solid var(--bd)' }} />
@@ -924,7 +780,6 @@ export default function EmailMarketingPage() {
   const { selectedCommunityId, isLoading: communityLoading } = useCreatorCommunity()
   const [campaigns,       setCampaigns]       = useState<Campaign[]>([])
   const [automations,     setAutomations]     = useState<Automation[]>([])
-  const [customAudiences, setCustomAudiences] = useState<CustomAudience[]>([])
   const [loading,         setLoading]         = useState(true)
   const [loadError,       setLoadError]       = useState('')
   const [view,            setView]            = useState<'campaigns' | 'automations'>('campaigns')
@@ -933,12 +788,12 @@ export default function EmailMarketingPage() {
   const [campDrawer,      setCampDrawer]      = useState(false)
   const [autoDrawer,      setAutoDrawer]      = useState(false)
   const [previewCamp,     setPreviewCamp]     = useState<Campaign | null>(null)
+  const [importOpen,      setImportOpen]      = useState(false)
 
   const loadEmailData = async () => {
     if (!selectedCommunityId) {
       setCampaigns([])
       setAutomations([])
-      setCustomAudiences([])
       setLoading(false)
       return
     }
@@ -971,7 +826,6 @@ export default function EmailMarketingPage() {
         nextAutomations.push(...(inactivityResult.value || []).map(toUiAutomation))
       }
       setAutomations(nextAutomations)
-      setCustomAudiences([])
 
       const errors = [campaignsResult, welcomeResult, inactivityResult]
         .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
@@ -980,7 +834,6 @@ export default function EmailMarketingPage() {
     } catch (error: any) {
       setCampaigns([])
       setAutomations([])
-      setCustomAudiences([])
       setLoadError(error?.message || 'Failed to load email data')
     } finally {
       setLoading(false)
@@ -994,7 +847,6 @@ export default function EmailMarketingPage() {
 
   const saveCamps = (list: Campaign[]) => setCampaigns(list)
   const saveAutos = (list: Automation[]) => setAutomations(list)
-  const saveAuds  = (list: CustomAudience[]) => setCustomAudiences(list)
 
   const handleSaveCampaign = async (campaign: Campaign) => {
     if (!selectedCommunityId) {
@@ -1017,8 +869,8 @@ export default function EmailMarketingPage() {
           : undefined,
         metadata: {
           previewText: campaign.previewText,
-          audienceLabel: campaign.audienceLabel,
-          audienceType: campaign.audienceType,
+          audienceLabel: 'All community members',
+          audienceType: 'all',
           audienceSource: 'backend_community_recipients',
           audienceCountResolution: 'resolved_by_backend_campaign_recipients',
         },
@@ -1151,6 +1003,12 @@ export default function EmailMarketingPage() {
               <KpiCard icon={<MousePointerClick className="w-5 h-5" />} label={lang === 'ar' ? 'متوسط معدل النقر' : 'Avg Click Rate'}  value={`${pct(totalClicked, totalSent)}%`} sub={`${totalClicked.toLocaleString()} ${lang==='ar'?'نقرة':'clicks'}`} color="var(--pink)" />
             </div>
 
+            {selectedCommunityId && (
+              <div className="mb-7">
+                <EmailTemplateCards onCampaignCreated={() => void loadEmailData()} />
+              </div>
+            )}
+
             {/* View toggle + actions */}
             <div className="flex items-center gap-3 mb-5 flex-wrap">
               <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
@@ -1195,6 +1053,16 @@ export default function EmailMarketingPage() {
                   </div>
                 </>
               )}
+
+              <button
+                type="button"
+                onClick={() => setImportOpen(true)}
+                disabled={!selectedCommunityId}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold cursor-pointer hover:opacity-90 disabled:opacity-40"
+                style={{ background: 'var(--white)', color: 'var(--p)', border: '1px solid var(--bd)' }}>
+                <UserPlus className="w-4 h-4" strokeWidth={1.7} />
+                {lang === 'ar' ? 'استيراد جهات اتصال' : 'Import Contacts'}
+              </button>
 
               <button onClick={() => view === 'campaigns' ? setCampDrawer(true) : setAutoDrawer(true)}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90 ml-auto"
@@ -1284,9 +1152,16 @@ export default function EmailMarketingPage() {
       <CreateCampaignDrawer
         open={campDrawer} onClose={() => setCampDrawer(false)}
         onSave={c => void handleSaveCampaign(c)}
-        customAudiences={customAudiences}
-        onSaveAudience={a => saveAuds([...customAudiences, a])}
         lang={lang} />
+
+      {selectedCommunityId ? (
+        <ImportContactsDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          communityId={selectedCommunityId}
+          onSuccess={() => void loadEmailData()}
+        />
+      ) : null}
 
       <CreateAutomationDrawer
         open={autoDrawer} onClose={() => setAutoDrawer(false)}

@@ -21,33 +21,9 @@ export function CommunityTestimonials({
   themeTokens,
   contentWidthClass = "max-w-7xl",
 }: CommunityTestimonialsProps) {
-  const defaultTestimonials = [
-    {
-      name: "Michael Rodriguez",
-      role: "Marketing Manager",
-      avatar:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuBu7MVh7knj_t08kwzuj5Ea_2O5G2lxUEbgu5uPnop2g4fUYv_ilamBS95GExu0COXhDlr8C85-tAeMerGwRIiXmL7d3UWFI91Rrqs6ABaBtMx2zvugPkpITKkJX-cmbGD5FqlhyAHbDtw-w2Wbv1SIALDDkpwW8xh8nqURUolqXRgNI24zLCkVUzPL0b0MPQRW3BkNdLyKMheDYmejxLvjvh92mbNPF-mXr7LO5USWkLqP2CRs3FvAmKyg3_fj13HACt_m2MXI1As",
-      text: "This completely transformed how I approach my work. The insights and strategies are invaluable!",
-    },
-    {
-      name: "Emily Watson",
-      role: "Entrepreneur",
-      avatar:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuCykuuNlThazErbBEoOZfjeOLbiIDLXNZXlCUilw0tc4CFsErutdNAM64Pd6MNqc2sdnmYFi9FCQmfQrqrZxFuGPX1neQfzNtTeq9QX7B2WxMzRohASBiO1zmaAwPG3G01PH0dN_-0KAt5AYDFtFzBTcYgtGiYdkGMOlP2_A8lqCX8r7HyyPWomRrY-EiQtMz5DHowbcda3WxD7TyE6Y6GObnzxTx3p3xTFA0j2n2hEG98SopT8Ve5J0AYeTY-jWsGJmQGS8WjTwXM",
-      text: "Best investment I've made in my professional development. Highly recommend to anyone serious about growth.",
-    },
-    {
-      name: "David Kim",
-      role: "Designer",
-      avatar:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuB8XVD2Zzw1U0_bhkFGwRU8UB3iNS1nXNiCCMGRGI-LJ_yG_gqxrK0o-NCyFdDFruy2OEUfkjHLfxCpUVSJltQPQjCEmfASU2UjIxOsvxkNOusDpbSz2FJAPflQZyCSTAjko90uuLgjbUAu8riOgs1rlBeO1j7Nki9Fc9RIX2aVX4Yy90gReptU6AJvl-bIxirQS8ZRCIDf3G7nxW4XpugAIGHzpKhurcx1pjqNIPLvh7BUyB8a--b5ScQLXpaDi2cKlrJmUufwOmM",
-      text: "The community support and expert guidance made all the difference. Exceeded my expectations!",
-    },
-  ]
-
-  const dynamicTestimonials =
+  const testimonials =
     testimonialsContent?.testimonials
-      ?.filter((testimonial) => testimonial.visible !== false)
+      ?.filter((testimonial) => testimonial.visible !== false && testimonial.content?.trim())
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .map((testimonial) => ({
         name: testimonial.name,
@@ -57,11 +33,13 @@ export function CommunityTestimonials({
         rating: testimonial.rating,
       })) || []
 
-  const testimonials = dynamicTestimonials.length > 0 ? dynamicTestimonials : defaultTestimonials
+  if (testimonials.length === 0) {
+    return null
+  }
 
   const title = testimonialsContent?.title || "What Members Are Saying"
   const subtitle =
-    testimonialsContent?.subtitle || "Join thousands of satisfied members who have achieved amazing results."
+    testimonialsContent?.subtitle || `See what members are saying about ${community.name}.`
   const showRatings = testimonialsContent?.showRatings ?? true
 
   return (

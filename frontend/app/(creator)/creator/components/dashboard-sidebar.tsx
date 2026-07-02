@@ -239,7 +239,7 @@ export function DashboardSidebar({ user, onLogout }: DashboardSidebarProps) {
       icon: HelpCircle,
       expandable: true,
       items: [
-        { title: "Integrations", href: "/creator/integrations", icon: Globe, badge: "soon" },
+        { title: "Integrations", href: "/creator/integrations", icon: Globe },
         { title: "Help", href: "/creator/help", icon: HelpCircle },
         { title: "Affiliate Portal", href: "/dashboard/affiliate", icon: ExternalLink },
       ],

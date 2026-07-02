@@ -120,24 +120,11 @@ export const moderationApi = {
     communityId: string,
     filters?: ModerationQueueFilters,
   ): Promise<ModerationQueueResponse> => {
-    try {
-      const response = await apiClient.get<any>(
-        `/communities/${communityId}/moderation/queue`,
-        filters,
-      );
-      return normalizeModerationQueueResponse(response, filters);
-    } catch {
-      return {
-        items: [],
-        pagination: {
-          page: filters?.page ?? 1,
-          limit: filters?.limit ?? 10,
-          total: 0,
-          totalPages: 0,
-        },
-        stats: { pending: 0, approved: 0, hidden: 0, deleted: 0 },
-      };
-    }
+    const response = await apiClient.get<any>(
+      `/communities/${communityId}/moderation/queue`,
+      filters,
+    );
+    return normalizeModerationQueueResponse(response, filters);
   },
 
   moderatePost: async (
@@ -195,38 +182,25 @@ export const moderationApi = {
     communityId: string,
     params?: PaginationParams,
   ): Promise<ModerationActivityLog[]> => {
-    try {
-      const response = await apiClient.get<ApiSuccessResponse<ModerationActivityLog[]>>(
-        `/communities/${communityId}/moderation/activity`,
-        params,
-      );
-      return (response as any)?.data ?? [];
-    } catch {
-      return [];
-    }
+    const response = await apiClient.get<any>(
+      `/communities/${communityId}/moderation/activity`,
+      params,
+    );
+    const data = response?.data ?? response;
+    return data?.items ?? data ?? [];
+  },
+
+  getFlaggedUsers: async (communityId: string) => {
+    const response = await apiClient.get<any>(`/communities/${communityId}/moderation/flagged-users`);
+    const data = response?.data ?? response;
+    return data?.items ?? [];
   },
 
   getStats: async (communityId: string): Promise<ModerationStats> => {
-    try {
-      const response = await apiClient.get<ApiSuccessResponse<ModerationStats>>(
-        `/communities/${communityId}/moderation/stats`,
-      );
-      return (response as any)?.data ?? {
-        totalPending: 0,
-        totalReviewed: 0,
-        avgResponseTime: 0,
-        escalations: 0,
-        pinnedPosts: 0,
-      };
-    } catch {
-      return {
-        totalPending: 0,
-        totalReviewed: 0,
-        avgResponseTime: 0,
-        escalations: 0,
-        pinnedPosts: 0,
-      };
-    }
+    const response = await apiClient.get<any>(
+      `/communities/${communityId}/moderation/stats`,
+    );
+    return response?.data ?? response;
   },
 
   reportContent: async (

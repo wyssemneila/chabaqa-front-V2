@@ -616,9 +616,12 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
   const shouldRenderBenefits =
     normalizedSettings.showBenefits &&
     (effectiveBenefits.length > 0 || Boolean(benefitsContent) || !hasCustomContent)
+  const visibleTestimonialCount =
+    testimonialsContent?.testimonials?.filter(
+      (testimonial) => testimonial.visible !== false && testimonial.content?.trim(),
+    ).length ?? 0
   const shouldRenderTestimonials =
-    normalizedSettings.showTestimonials &&
-    (Boolean(testimonialsContent) || !hasCustomContent)
+    normalizedSettings.showTestimonials && visibleTestimonialCount > 0
   const shouldRenderCTA = Boolean(ctaContent) || !hasCustomContent
   const shouldRenderPosts = normalizedSettings.showPosts
   const socialEntries = Object.entries(normalizedSettings.socialLinks)
