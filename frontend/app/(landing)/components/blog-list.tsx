@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation"
 import { getAllBlogPosts } from "@/lib/blog-content"
 import { localizeHref } from "@/lib/i18n/client"
 import type { BlogPost } from "@/lib/blog-content"
+import { BlogDisclaimer } from "./blog-disclaimer"
 
 const POSTS_PER_PAGE = 6
 
@@ -383,6 +384,10 @@ export function BlogList() {
           </p>
         </div>
       </section>
+
+      <div className="mx-auto max-w-3xl px-6 pb-4">
+        <BlogDisclaimer />
+      </div>
 
       {/* ── Category Filter ── */}
       <nav

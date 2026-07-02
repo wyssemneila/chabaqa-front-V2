@@ -41,6 +41,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { paymentsApi } from "@/lib/api/payments.api";
+import { communityFinanceApi } from "@/lib/api/community-finance.api";
 
 type PayoutStatus = "completed" | "paid" | "pending" | "processing" | "failed" | "cancelled";
 const STATUS_CONFIG: Record<PayoutStatus, { color: string; icon: typeof CheckCircle }> = {
@@ -81,20 +82,26 @@ export default function AdminFinancePage() {
   const [payouts, setPayouts] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
   const [balance, setBalance] = useState<any>({});
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactionStats, setTransactionStats] = useState<any>({});
 
   const loadFinance = async () => {
     if (!communityId) return;
     setLoadingFinance(true);
     setError(null);
     try {
-      const [payoutResult, statsResult, balanceResult] = await Promise.all([
+      const [payoutResult, statsResult, balanceResult, txResult, txStatsResult] = await Promise.all([
         paymentsApi.getPayouts({ communityId, page: 1, limit: 50 }),
         paymentsApi.getPayoutStats({ communityId }),
         paymentsApi.getAvailableBalance({ communityId }),
+        communityFinanceApi.getTransactions(communityId, { page: 1, limit: 50 }),
+        communityFinanceApi.getTransactionStats(communityId),
       ]);
       setPayouts(asArray(payoutResult));
       setStats(unwrap(statsResult));
       setBalance(unwrap(balanceResult));
+      setTransactions(asArray(txResult?.items ?? txResult));
+      setTransactionStats(unwrap(txStatsResult));
     } catch (err: any) {
       setError(err?.message || "Unable to load finance data.");
     } finally {
@@ -174,10 +181,42 @@ export default function AdminFinancePage() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
-              <BackendRequiredPlaceholder
-                feature="Transaction Ledger"
-                description="The dashboard no longer displays sample transactions. A community-scoped order, wallet, or manual payment history endpoint is needed before transaction rows can be shown here."
-              />
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Transaction Ledger</h3>
+                <Badge variant="outline">{transactionStats.orderCount ?? transactions.length} orders</Badge>
+              </div>
+              <Card>
+                {loadingFinance ? (
+                  <DashboardLoading message="Loading transactions..." />
+                ) : transactions.length === 0 ? (
+                  <DashboardEmpty title="No transactions yet" description="Paid orders for this community will appear here." />
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Buyer</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Net</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {transactions.map((tx) => (
+                        <TableRow key={tx.id}>
+                          <TableCell>{date(tx.date)}</TableCell>
+                          <TableCell>{tx.buyerName || tx.buyerEmail || 'Member'}</TableCell>
+                          <TableCell className="capitalize">{tx.contentType}</TableCell>
+                          <TableCell>{money(tx.amountDT)}</TableCell>
+                          <TableCell>{money(tx.creatorNetDT)}</TableCell>
+                          <TableCell><Badge variant="outline">{tx.status}</Badge></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </Card>
             </TabsContent>
 
             <TabsContent value="payouts" className="space-y-4">

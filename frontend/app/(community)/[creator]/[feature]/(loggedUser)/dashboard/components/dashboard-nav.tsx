@@ -85,7 +85,7 @@ function getNavSections(basePath: string, variant: "admin" | "moderator" | "supp
         title: "Settings",
         items: [
           { label: "Community Settings", href: `${basePath}/admin/settings`, icon: Settings, permission: CommunityPermission.COMMUNITY_MANAGE_SETTINGS },
-          { label: "Support Center", href: `${basePath}/admin/support`, icon: HeadphonesIcon, permission: CommunityPermission.SUPPORT_MANAGE, badge: "Limited", badgeVariant: "secondary" },
+          { label: "Support Center", href: `${basePath}/admin/support`, icon: HeadphonesIcon, permission: CommunityPermission.SUPPORT_MANAGE },
         ],
       }
     );
@@ -117,7 +117,7 @@ function getNavSections(basePath: string, variant: "admin" | "moderator" | "supp
         title: "Support Tools",
         items: [
           { label: "Member Lookup", href: `${basePath}/support/members`, icon: Users, permission: CommunityPermission.MEMBERS_VIEW },
-          { label: "Support Queue", href: `${basePath}/support/queue`, icon: HeadphonesIcon, permission: CommunityPermission.SUPPORT_MANAGE, badge: "Backend Required", badgeVariant: "destructive", backendRequired: true },
+          { label: "Support Queue", href: `${basePath}/support/queue`, icon: HeadphonesIcon, permission: CommunityPermission.SUPPORT_MANAGE },
         ],
       }
     );

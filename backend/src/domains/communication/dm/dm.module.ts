@@ -3,6 +3,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DmService } from '@/domains/communication/dm/dm.service';
 import { DmController } from '@/domains/communication/dm/dm.controller';
+import { DmBroadcastController } from '@/domains/communication/dm/dm-broadcast.controller';
+import { DmBroadcastService } from '@/domains/communication/dm/dm-broadcast.service';
 import { DmGateway } from '@/domains/communication/dm/dm.gateway';
 import { Conversation, ConversationSchema } from '@/infrastructure/database/schemas/communication/conversation.schema';
 import { Message, MessageSchema } from '@/infrastructure/database/schemas/communication/message.schema';
@@ -13,6 +15,8 @@ import { Community, CommunitySchema } from '@/infrastructure/database/schemas/co
 import { User, UserSchema } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Admin, AdminSchema } from '@/infrastructure/database/schemas/auth/admin.schema';
 import { Session, SessionSchema } from '@/infrastructure/database/schemas/commerce/session.schema';
+import { DmBroadcast, DmBroadcastSchema } from '@/infrastructure/database/schemas/communication/dm-broadcast.schema';
+import { DmAutomation, DmAutomationSchema } from '@/infrastructure/database/schemas/communication/dm-automation.schema';
 
 @Module({
   imports: [
@@ -24,14 +28,16 @@ import { Session, SessionSchema } from '@/infrastructure/database/schemas/commer
       { name: User.name, schema: UserSchema },
       { name: Admin.name, schema: AdminSchema },
       { name: Session.name, schema: SessionSchema },
+      { name: DmBroadcast.name, schema: DmBroadcastSchema },
+      { name: DmAutomation.name, schema: DmAutomationSchema },
     ]),
     AuthModule,
     UploadModule,
     PolicyModule,
   ],
-  controllers: [DmController],
-  providers: [DmService, DmGateway],
-  exports: [DmService, DmGateway],
+  controllers: [DmController, DmBroadcastController],
+  providers: [DmService, DmGateway, DmBroadcastService],
+  exports: [DmService, DmGateway, DmBroadcastService],
 })
 export class DmModule {}
 

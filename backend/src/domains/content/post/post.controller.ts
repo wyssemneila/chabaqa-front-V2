@@ -913,4 +913,43 @@ export class PostController {
     const stats = await this.postService.getPostStats(postId, effectiveUserId);
     return { success: true, data: stats };
   }
+
+  @Patch(':id/hide')
+  @UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.POSTS_MODERATE)
+  @CommunityIdFrom({ type: 'entity', modelName: 'Post', paramName: 'id' })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Hide a post (community moderation)' })
+  async hidePost(@Param('id') postId: string, @Request() req: any) {
+    const userId = this.resolveRequestUserId(req);
+    if (!userId) throw new UnauthorizedException();
+    const data = await this.postService.hidePost(postId, userId);
+    return { success: true, data };
+  }
+
+  @Patch(':id/approve')
+  @UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.POSTS_MODERATE)
+  @CommunityIdFrom({ type: 'entity', modelName: 'Post', paramName: 'id' })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Approve a post (community moderation)' })
+  async approvePost(@Param('id') postId: string, @Request() req: any) {
+    const userId = this.resolveRequestUserId(req);
+    if (!userId) throw new UnauthorizedException();
+    const data = await this.postService.approvePost(postId, userId);
+    return { success: true, data };
+  }
+
+  @Patch(':id/restore')
+  @UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.POSTS_MODERATE)
+  @CommunityIdFrom({ type: 'entity', modelName: 'Post', paramName: 'id' })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Restore a moderated post' })
+  async restorePost(@Param('id') postId: string, @Request() req: any) {
+    const userId = this.resolveRequestUserId(req);
+    if (!userId) throw new UnauthorizedException();
+    const data = await this.postService.restorePost(postId, userId);
+    return { success: true, data };
+  }
 }

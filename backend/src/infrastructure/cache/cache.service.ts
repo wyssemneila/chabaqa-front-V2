@@ -376,11 +376,15 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
 
     try {
       if (await this.ensureRedisConnected()) {
-        let cursor = 0;
+        let cursor: string | number = 0;
         let deleted = 0;
+        const scan = this.redisClient!.scan as unknown as (
+          cursor: string | number,
+          options: { MATCH: string; COUNT: number },
+        ) => Promise<{ cursor: string | number; keys: string[] }>;
 
         do {
-          const result = await this.redisClient!.scan(cursor, {
+          const result = await scan(cursor, {
             MATCH: pattern,
             COUNT: 500,
           });
@@ -390,7 +394,7 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
           if (keys.length > 0) {
             deleted += await this.redisClient!.del(keys);
           }
-        } while (cursor !== 0);
+        } while (String(cursor) !== '0');
 
         if (deleted > 0) {
           this.logger.debug(`Deleted ${deleted} keys matching pattern: ${pattern}`);

@@ -9,6 +9,7 @@ import type { BlogPost as BlogPostType } from "@/lib/blog-content"
 import { getRelatedBlogPosts } from "@/lib/blog-content"
 import { localizeHref } from "@/lib/i18n/client"
 import { SafeHtml } from "@/components/security/safe-html"
+import { BlogDisclaimer } from "./blog-disclaimer"
 import "../blogs/blog-styles.css"
 
 interface TocItem {
@@ -259,6 +260,7 @@ export function BlogPost({ post }: BlogPostProps) {
 
         {/* Main content */}
         <div style={{ flex: 1, minWidth: 0 }}>
+          <BlogDisclaimer className="mb-6 max-w-[680px]" />
           {/* Article */}
           <SafeHtml
             ref={contentRef}

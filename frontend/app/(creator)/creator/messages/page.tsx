@@ -6,10 +6,12 @@ import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import { useAuthContext } from '@/app/providers/auth-provider'
 import { dmApi } from '@/lib/api/dm.api'
+import { dmBroadcastsApi, type DmAutomation, type DmBroadcast } from '@/lib/api/dm-broadcasts.api'
+import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
 import type { Conversation as ApiConversation, Message as ApiMessage, MessageParticipant } from '@/lib/api/types'
 import {
   Search, Send, Zap, Check, MoreHorizontal,
-  MessageSquare, Megaphone, Edit3,
+  MessageSquare, Megaphone, Edit3, Plus, Trash2, Play,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -368,27 +370,211 @@ function ConversationsView({ lang }: { lang: string }) {
 // ─── Broadcasts view ──────────────────────────────────────────────────────────
 
 function BroadcastsView({ lang }: { lang: string }) {
+  const { selectedCommunityId } = useCreatorCommunity()
+  const [broadcasts, setBroadcasts] = useState<DmBroadcast[]>([])
+  const [loading, setLoading] = useState(true)
+  const [body, setBody] = useState('')
+  const [title, setTitle] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = async () => {
+    if (!selectedCommunityId) return
+    setLoading(true)
+    setError('')
+    try {
+      const result = await dmBroadcastsApi.listBroadcasts(selectedCommunityId)
+      setBroadcasts(result.broadcasts)
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load broadcasts')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { void load() }, [selectedCommunityId])
+
+  const createAndSend = async () => {
+    if (!selectedCommunityId || !body.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      const { broadcast } = await dmBroadcastsApi.createBroadcast({
+        communityId: selectedCommunityId,
+        title: title.trim() || undefined,
+        body: body.trim(),
+      })
+      await dmBroadcastsApi.sendBroadcast(String(broadcast.id || broadcast._id))
+      setBody('')
+      setTitle('')
+      await load()
+    } catch (err: any) {
+      setError(err?.message || 'Failed to send broadcast')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!selectedCommunityId) {
+    return (
+      <div className="rounded-2xl p-8 text-center" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+        <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>Select a community to manage broadcasts.</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="rounded-2xl p-8 text-center" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-      <Megaphone className="mx-auto h-8 w-8" style={{ color: 'var(--t3)' }} />
-      <p className="mt-3 text-[15px] font-black" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'الرسائل الجماعية غير متصلة بعد' : 'Broadcasts are not connected yet'}</p>
-      <p className="mx-auto mt-2 max-w-xl text-[13px]" style={{ color: 'var(--t3)' }}>
-        {lang === 'ar' ? 'لا توجد واجهة خلفية لرسائل DM الجماعية حتى الآن. استخدم حملات البريد الإلكتروني أو واتساب للرسائل الجماعية الحقيقية.' : 'There is no backend DM broadcast endpoint yet. Use Email or WhatsApp campaigns for real audience targeting and send history.'}
-      </p>
+    <div className="space-y-5">
+      <div className="rounded-2xl p-5" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+        <p className="text-[15px] font-bold mb-3" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'بث جديد' : 'New broadcast'}</p>
+        <div className="space-y-3">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={lang === 'ar' ? 'عنوان اختياري' : 'Optional title'}
+            className="w-full h-10 px-3 rounded-xl text-[13px] outline-none" style={{ border: '1px solid var(--bd)', background: 'var(--bg)' }} />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4}
+            placeholder={lang === 'ar' ? 'رسالة لجميع الأعضاء' : 'Message to all community members'}
+            className="w-full px-3 py-2 rounded-xl text-[13px] outline-none resize-none" style={{ border: '1px solid var(--bd)', background: 'var(--bg)' }} />
+          {error && <p className="text-[12px] text-red-500">{error}</p>}
+          <button onClick={() => void createAndSend()} disabled={saving || !body.trim()}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl text-[13px] font-bold text-white disabled:opacity-50"
+            style={{ background: 'var(--p)' }}>
+            <Send className="w-4 h-4" />{saving ? (lang === 'ar' ? 'جاري الإرسال…' : 'Sending…') : (lang === 'ar' ? 'إرسال للجميع' : 'Send to all members')}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl p-5" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+        <p className="text-[15px] font-bold mb-4" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'سجل البث' : 'Broadcast history'}</p>
+        {loading ? (
+          <p className="text-[13px]" style={{ color: 'var(--t3)' }}>Loading…</p>
+        ) : broadcasts.length === 0 ? (
+          <p className="text-[13px]" style={{ color: 'var(--t3)' }}>{lang === 'ar' ? 'لا توجد رسائل جماعية بعد' : 'No broadcasts yet.'}</p>
+        ) : (
+          <div className="space-y-3">
+            {broadcasts.map((b) => (
+              <div key={b.id || b._id} className="rounded-xl p-4" style={{ border: '1px solid var(--bd)' }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>{b.title || 'Broadcast'}</p>
+                    <p className="text-[12px] mt-1 line-clamp-2" style={{ color: 'var(--t2)' }}>{b.body}</p>
+                  </div>
+                  <span className="text-[11px] font-semibold uppercase" style={{ color: 'var(--p)' }}>{b.status}</span>
+                </div>
+                <p className="text-[11px] mt-2" style={{ color: 'var(--t3)' }}>
+                  {b.sentCount}/{b.recipientCount} delivered
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-// ─── Automations view ─────────────────────────────────────────────────────────
-
 function AutomationsView({ lang }: { lang: string }) {
+  const { selectedCommunityId } = useCreatorCommunity()
+  const [automations, setAutomations] = useState<DmAutomation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [name, setName] = useState('')
+  const [body, setBody] = useState('')
+  const [trigger, setTrigger] = useState<'new_member' | 'inactive_7' | 'inactive_30'>('new_member')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = async () => {
+    if (!selectedCommunityId) return
+    setLoading(true)
+    try {
+      const result = await dmBroadcastsApi.listAutomations(selectedCommunityId)
+      setAutomations(result.automations)
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load automations')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { void load() }, [selectedCommunityId])
+
+  const createAutomation = async () => {
+    if (!selectedCommunityId || !name.trim() || !body.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      await dmBroadcastsApi.createAutomation({
+        communityId: selectedCommunityId,
+        name: name.trim(),
+        trigger,
+        body: body.trim(),
+      })
+      setName('')
+      setBody('')
+      await load()
+    } catch (err: any) {
+      setError(err?.message || 'Failed to create automation')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!selectedCommunityId) {
+    return (
+      <div className="rounded-2xl p-8 text-center" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+        <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>Select a community to manage automations.</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="rounded-2xl p-8 text-center" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-      <Zap className="mx-auto h-8 w-8" style={{ color: 'var(--t3)' }} />
-      <p className="mt-3 text-[15px] font-black" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'أتمتة الرسائل غير متصلة بعد' : 'Message automations are not connected yet'}</p>
-      <p className="mx-auto mt-2 max-w-xl text-[13px]" style={{ color: 'var(--t3)' }}>
-        {lang === 'ar' ? 'أتمتة DM تحتاج واجهة خلفية قبل عرض قواعد أو أعداد حقيقية.' : 'DM automation needs a backend workflow endpoint before this page can show real rules or delivery counts.'}
-      </p>
+    <div className="space-y-5">
+      <div className="rounded-2xl p-5" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+        <p className="text-[15px] font-bold mb-3" style={{ color: 'var(--t1)' }}>{lang === 'ar' ? 'أتمتة جديدة' : 'New automation'}</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Automation name"
+            className="h-10 px-3 rounded-xl text-[13px] outline-none" style={{ border: '1px solid var(--bd)', background: 'var(--bg)' }} />
+          <select value={trigger} onChange={(e) => setTrigger(e.target.value as any)}
+            className="h-10 px-3 rounded-xl text-[13px] outline-none" style={{ border: '1px solid var(--bd)', background: 'var(--bg)' }}>
+            <option value="new_member">New member joins</option>
+            <option value="inactive_7">Inactive 7 days</option>
+            <option value="inactive_30">Inactive 30 days</option>
+          </select>
+        </div>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Automated DM message"
+          className="w-full mt-3 px-3 py-2 rounded-xl text-[13px] outline-none resize-none" style={{ border: '1px solid var(--bd)', background: 'var(--bg)' }} />
+        {error && <p className="text-[12px] text-red-500 mt-2">{error}</p>}
+        <button onClick={() => void createAutomation()} disabled={saving || !name.trim() || !body.trim()}
+          className="mt-3 inline-flex items-center gap-2 h-10 px-4 rounded-xl text-[13px] font-bold text-white disabled:opacity-50"
+          style={{ background: 'var(--p)' }}>
+          <Plus className="w-4 h-4" />{saving ? 'Saving…' : 'Create automation'}
+        </button>
+      </div>
+
+      <div className="grid gap-3">
+        {loading ? (
+          <p className="text-[13px]" style={{ color: 'var(--t3)' }}>Loading…</p>
+        ) : automations.length === 0 ? (
+          <p className="text-[13px]" style={{ color: 'var(--t3)' }}>No automations yet.</p>
+        ) : automations.map((a) => (
+          <div key={a.id || a._id} className="rounded-2xl p-4 flex items-start justify-between gap-4"
+            style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
+            <div>
+              <p className="text-[14px] font-bold" style={{ color: 'var(--t1)' }}>{a.name}</p>
+              <p className="text-[12px] mt-1" style={{ color: 'var(--t3)' }}>{a.trigger.replace('_', ' ')} · {a.triggeredCount} triggered</p>
+              <p className="text-[12px] mt-2 line-clamp-2" style={{ color: 'var(--t2)' }}>{a.body}</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => void dmBroadcastsApi.toggleAutomation(String(a.id || a._id)).then(load)}
+                className="h-8 px-3 rounded-lg text-[12px] font-semibold" style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+                {a.isActive ? 'Pause' : 'Activate'}
+              </button>
+              <button onClick={() => void dmBroadcastsApi.deleteAutomation(String(a.id || a._id)).then(load)}
+                className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(239,68,68,.1)', color: '#ef4444' }}>
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

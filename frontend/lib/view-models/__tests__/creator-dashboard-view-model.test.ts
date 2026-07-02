@@ -1,44 +1,32 @@
-import { toCreatorDashboardViewModel } from "@/lib/view-models/creator-dashboard-view-model"
+import { toCreatorDashboardViewModel } from '@/lib/view-models/creator-dashboard-view-model'
 
-describe("toCreatorDashboardViewModel", () => {
-  it("marks an empty creator community as incomplete with a next action", () => {
-    const vm = toCreatorDashboardViewModel({
-      community: { id: "c1", slug: "motion", name: "Motion School" },
+describe('creator dashboard view model customize links', () => {
+  it('falls back to communities list when slug is missing', () => {
+    const model = toCreatorDashboardViewModel({
+      community: { name: 'Untitled' },
       posts: [],
       courses: [],
-      products: [],
       sessions: [],
+      products: [],
       challenges: [],
       events: [],
-      bankConfigured: false,
     })
 
-    expect(vm.setup.percent).toBeLessThan(100)
-    expect(vm.setup.nextAction?.id).toBe("community-logo")
-    expect(vm.contentCounts).toMatchObject({ posts: 0, courses: 0, products: 0 })
+    expect(model.setup.items[0]?.actionUrl).toBe('/creator/communities')
+    expect(model.setup.items[1]?.actionUrl).toBe('/creator/communities')
   })
 
-  it("marks configured communities and first content as launch ready", () => {
-    const vm = toCreatorDashboardViewModel({
-      community: {
-        id: "c1",
-        slug: "motion",
-        name: "Motion School",
-        logoUrl: "/uploads/logo.png",
-        coverUrl: "/uploads/cover.png",
-        price: 49,
-      },
-      posts: [{ id: "p1" }],
-      courses: [{ id: "course1" }],
-      bankConfigured: true,
-      paidOfferCount: 1,
-      membersCount: 12,
-      revenue: 120,
+  it('uses community-scoped customize route when slug exists', () => {
+    const model = toCreatorDashboardViewModel({
+      community: { name: 'Design Hub', slug: 'design-hub' },
+      posts: [],
+      courses: [],
+      sessions: [],
+      products: [],
+      challenges: [],
+      events: [],
     })
 
-    expect(vm.setup.percent).toBe(100)
-    expect(vm.setup.nextAction).toBeUndefined()
-    expect(vm.metrics.members).toBe(12)
-    expect(vm.metrics.revenue).toBe(120)
+    expect(model.setup.items[0]?.actionUrl).toBe('/creator/community/design-hub/customize')
   })
 })

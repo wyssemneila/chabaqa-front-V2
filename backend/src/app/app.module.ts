@@ -61,6 +61,9 @@ import { CommunityDomainModule } from '@/domains/community/community-domain.modu
 import { LearningPathModule } from '@/domains/learning/learning-path/learning-path.module';
 import { CommunityInvitationModule } from '@/domains/community/invitation/community-invitation.module';
 import { AffiliateModule } from '@/domains/community/affiliate/affiliate.module';
+import { CommunityFinanceModule } from '@/domains/community/finance/community-finance.module';
+import { CommunityModerationModule } from '@/domains/community/moderation/community-moderation.module';
+import { CommunitySupportModule } from '@/domains/community/support/community-support.module';
 import { CommunityAccessModule } from '@/domains/community/access/community-access.module';
 import { VideoModule } from '@/domains/shared/video/video.module';
 import { SearchModule } from '@/domains/search/search.module';
@@ -201,6 +204,9 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     Ga4Module,
     CommunityInvitationModule,
     AffiliateModule,
+    CommunityFinanceModule,
+    CommunityModerationModule,
+    CommunitySupportModule,
     CommunityAccessModule,
     VideoModule,
     SearchModule,

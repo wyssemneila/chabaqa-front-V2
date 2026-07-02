@@ -41,15 +41,25 @@ const navGroups = [
     items: [
       { label: { en: 'Email Campaigns',    ar: 'حملات البريد'    }, href: '/creator/email',      icon: 'mail'      },
       { label: { en: 'WhatsApp Campaign',  ar: 'حملات واتساب'   }, href: '/creator/whatsapp',   icon: 'whatsapp'  },
+      { label: { en: 'Contacts',           ar: 'جهات الاتصال'    }, href: '/creator/marketing/contacts', icon: 'users' },
       { label: { en: 'Messages',           ar: 'الرسائل'         }, href: '/creator/messages',   icon: 'message'   },
       { label: { en: 'Affiliates',         ar: 'الإحالات'        }, href: '/creator/affiliates', icon: 'share'     },
     ],
   },
   {
+    label: { en: 'AI', ar: 'الذكاء الاصطناعي' },
+    items: [
+      { label: { en: 'AI Workspace', ar: 'مساحة الذكاء الاصطناعي' }, href: '/creator/ai', icon: 'bolt' },
+      { label: { en: 'AI Staff',     ar: 'فريق الذكاء الاصطناعي'  }, href: '/creator/ai/staff', icon: 'team' },
+      { label: { en: 'Cofounder',    ar: 'المؤسس المساعد'         }, href: '/creator/ai/cofounder', icon: 'chart' },
+    ],
+  },
+  {
     label: { en: 'Settings', ar: 'الإعدادات' },
     items: [
+      { label: { en: 'Notifications', ar: 'الإشعارات'       }, href: '/creator/notifications', icon: 'message' },
       { label: { en: 'Team & Roles',  ar: 'الفريق والأدوار' }, href: '/creator/team',         icon: 'team'               },
-      { label: { en: 'Integrations',  ar: 'التكاملات'       }, href: '/creator/integrations', icon: 'settings', soon: true },
+      { label: { en: 'Integrations',  ar: 'التكاملات'       }, href: '/creator/integrations', icon: 'settings' },
       { label: { en: 'Help & Support', ar: 'المساعدة والدعم' }, href: '/creator/help',        icon: 'help'               },
     ],
   },

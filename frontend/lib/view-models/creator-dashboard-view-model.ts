@@ -84,7 +84,9 @@ export function toCreatorDashboardViewModel(input: {
       description: "Use a recognizable logo so members trust the space instantly.",
       status: hasUsableMedia(rawCommunity.logoUrl || rawCommunity.logo || rawCommunity.settings?.logo) ? "completed" : "not-started",
       actionLabel: "Customize",
-      actionUrl: rawCommunity.slug ? `/creator/community/${rawCommunity.slug}/customize` : "/creator/customize",
+      actionUrl: rawCommunity.slug
+        ? `/creator/community/${rawCommunity.slug}/customize`
+        : "/creator/communities",
       isRequired: true,
       estimatedMinutes: 3,
     },
@@ -94,7 +96,9 @@ export function toCreatorDashboardViewModel(input: {
       description: "Add a branded cover image for the public page and member header.",
       status: hasUsableMedia(rawCommunity.coverUrl || rawCommunity.coverImage || rawCommunity.photo_de_couverture || rawCommunity.settings?.heroBackground) ? "completed" : "not-started",
       actionLabel: "Customize",
-      actionUrl: rawCommunity.slug ? `/creator/community/${rawCommunity.slug}/customize` : "/creator/customize",
+      actionUrl: rawCommunity.slug
+        ? `/creator/community/${rawCommunity.slug}/customize`
+        : "/creator/communities",
       isRequired: true,
       estimatedMinutes: 4,
     },
