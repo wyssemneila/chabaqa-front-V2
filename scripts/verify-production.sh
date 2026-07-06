@@ -95,7 +95,9 @@ assert_port 8088 docker-proxy
 assert_port 3001 docker-proxy
 
 assert_http_ok "http://127.0.0.1:3000/api/health/ping" "backend local health" "200"
-assert_http_ok "http://127.0.0.1:8083/" "frontend local health" "200,307,308"
+assert_http_ok "http://127.0.0.1:8083/api/health/ping" "frontend local health" "200"
+assert_http_ok "http://127.0.0.1:8083/health" "frontend public health" "200"
+assert_http_ok "http://127.0.0.1:8083/ping" "frontend public ping" "200"
 assert_http_ok "http://127.0.0.1:9090/-/ready" "prometheus readiness" "200"
 assert_http_ok "http://127.0.0.1:9115/-/healthy" "blackbox exporter health" "200"
 assert_http_ok "http://127.0.0.1:9100/metrics" "node exporter metrics" "200"

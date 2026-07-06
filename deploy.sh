@@ -397,7 +397,7 @@ docker compose ps
 
 echo "[deploy] health checks"
 BACKEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/api/health/ping || true)"
-FRONTEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:8083/ || true)"
+FRONTEND_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:8083/api/health/ping || true)"
 
 assert_http_status() {
   local url="$1"
@@ -417,12 +417,14 @@ if [ "$BACKEND_STATUS" != "200" ]; then
   exit 1
 fi
 
-if [ "$FRONTEND_STATUS" != "200" ] && [ "$FRONTEND_STATUS" != "307" ]; then
+if [ "$FRONTEND_STATUS" != "200" ]; then
   echo "[deploy] frontend failed health check: $FRONTEND_STATUS"
   docker logs chabaqa-frontend --tail 120 || true
   exit 1
 fi
 
+assert_http_status "http://127.0.0.1:8083/health" "200" "frontend public health"
+assert_http_status "http://127.0.0.1:8083/ping" "200" "frontend public ping"
 assert_http_status "http://127.0.0.1:8083/logo_chabaqa.png" "200" "frontend logo asset"
 assert_http_status "http://127.0.0.1:8083/Logos/PNG/frensh1.png" "200" "frontend header logo asset"
 assert_http_status "http://127.0.0.1:8083/banners-community/community-1-email-marketing.png" "200" "frontend image fallback asset"
