@@ -436,8 +436,12 @@ services:
             - |
               export PAGERDUTY_ROUTING_KEY="$${PAGERDUTY_ROUTING_KEY:-}"
               export PAGERDUTY_EVENTS_URL="$${PAGERDUTY_EVENTS_URL:-https://events.eu.pagerduty.com/v2/enqueue}"
-              envsubst '$$PAGERDUTY_ROUTING_KEY $$PAGERDUTY_EVENTS_URL' \
-                < /etc/alertmanager/config.template.yml > /tmp/alertmanager.yml
+              pd_key="$$(printf '%s' "$$PAGERDUTY_ROUTING_KEY" | sed 's/[&|\\]/\\&/g')"
+              pd_url="$$(printf '%s' "$$PAGERDUTY_EVENTS_URL" | sed 's/[&|\\]/\\&/g')"
+              sed \
+                -e "s|\\$${PAGERDUTY_ROUTING_KEY}|$$pd_key|g" \
+                -e "s|\\$${PAGERDUTY_EVENTS_URL}|$$pd_url|g" \
+                /etc/alertmanager/config.template.yml > /tmp/alertmanager.yml
               exec /bin/alertmanager \
                 --config.file=/tmp/alertmanager.yml \
                 --storage.path=/alertmanager \
