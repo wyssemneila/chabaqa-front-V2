@@ -21,7 +21,7 @@ receivers:
   - name: pagerduty-critical
     pagerduty_configs:
       - routing_key: '${PAGERDUTY_ROUTING_KEY}'
-        url: ${PAGERDUTY_EVENTS_URL}
+        url: https://events.eu.pagerduty.com/v2/enqueue
         send_resolved: true
         description: '{{ .CommonAnnotations.summary }}'
         details:
