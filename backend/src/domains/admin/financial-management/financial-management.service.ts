@@ -272,7 +272,6 @@ export class FinancialManagementService {
         providerSubscriptionId: order.metadata?.providerSubscriptionId,
         amount: order.amountDT,
         currency: order.metadata?.currency || 'TND',
-        proofUrl: order.paymentProof,
         buyer: order.buyerId,
         creator: order.creatorId,
         metadata: order.metadata || {},
@@ -284,10 +283,6 @@ export class FinancialManagementService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
-  }
-
-  async reviewManualPlatformSubscription(orderId: string, adminId: string, action: 'approve' | 'reject') {
-    return this.subscriptionService.reviewManualPlatformSubscriptionOrder(orderId, adminId, action);
   }
 
   /**
@@ -1489,7 +1484,7 @@ export class FinancialManagementService {
     endDate: Date,
   ): Promise<Omit<RevenueMetricsDto, 'growthRate' | 'period' | 'startDate' | 'endDate'>> {
     // 1. Calculate revenue metrics from paid orders. Orders are the canonical record
-    // for platform sales; wallet transactions may be absent for manual/offline payments.
+    // for platform sales; wallet transactions may be absent for provider payments.
     const revenuePipeline = [
       {
         $match: {

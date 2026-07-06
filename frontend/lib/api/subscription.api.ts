@@ -257,6 +257,39 @@ export interface ExportSubscriptionsParams {
   endDate?: string;
 }
 
+const unwrapPayload = <T,>(response: any, fallback: T): T => (
+  response?.data?.data ?? response?.data ?? response ?? fallback
+) as T;
+
+export const normalizeInvoiceList = (response: any): PaginatedResponse<Invoice> => {
+  const payload = unwrapPayload<any>(response, {});
+  const invoices = Array.isArray(payload?.invoices)
+    ? payload.invoices
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload)
+        ? payload
+        : [];
+
+  return {
+    success: true,
+    data: invoices,
+    pagination: {
+      total: Number(payload?.total ?? payload?.pagination?.total ?? invoices.length),
+      page: Number(payload?.page ?? payload?.pagination?.page ?? 1),
+      limit: Number(payload?.limit ?? payload?.pagination?.limit ?? invoices.length),
+      totalPages: Number(payload?.totalPages ?? payload?.pagination?.totalPages ?? payload?.pages ?? 1),
+    },
+  } as PaginatedResponse<Invoice>;
+};
+
+export const createSubscriptionIdempotencyKey = (provider: string, tier: PlanTier, interval: BillingInterval) => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `subscription:${provider}:${tier}:${interval}:${crypto.randomUUID()}`;
+  }
+  return `subscription:${provider}:${tier}:${interval}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+};
+
 // ============ API CLIENT ============
 
 export const subscriptionApi = {
@@ -347,7 +380,7 @@ export const subscriptionApi = {
   async getInvoices(
     params: { page?: number; limit?: number } = {}
   ): Promise<PaginatedResponse<Invoice>> {
-    return apiClient.get('/subscriptions/invoices', params);
+    return normalizeInvoiceList(await apiClient.get('/subscriptions/invoices', params));
   },
 
   async getInvoiceById(invoiceId: string): Promise<ApiSuccessResponse<Invoice>> {
@@ -371,8 +404,8 @@ export const subscriptionApi = {
     return apiClient.get('/subscriptions/add-ons');
   },
 
-  async purchaseAddon(data: { type: SubscriptionAddonType; quantity?: number; billingInterval?: BillingInterval }): Promise<ApiSuccessResponse<SubscriptionAddon> | SubscriptionAddon> {
-    return apiClient.post('/subscriptions/add-ons', data);
+  async purchaseAddon(_data: { type: SubscriptionAddonType; quantity?: number; billingInterval?: BillingInterval }): Promise<ApiSuccessResponse<SubscriptionAddon> | SubscriptionAddon> {
+    throw new Error('Add-on checkout is not available yet. Contact support for admin-reviewed add-ons.');
   },
 
   async cancelAddon(addonId: string): Promise<ApiSuccessResponse<SubscriptionAddon> | SubscriptionAddon> {
@@ -467,17 +500,10 @@ export const subscriptionApi = {
    * Initiate Stripe Link payment for subscription
    */
   initStripePayment: async (tier: PlanTier, interval: 'month' | 'year' = 'month'): Promise<any> => {
-    return apiClient.post('/payment/stripe-link/init/subscription', { tier, interval });
-  },
-
-  initKonnectPayment: async (tier: PlanTier, interval: 'month' | 'year' = 'month'): Promise<any> => {
-    return apiClient.post('/payment/konnect/init/subscription', { tier, interval });
-  },
-
-  initManualPayment: async (data: { tier: PlanTier; interval?: 'month' | 'year'; proof: File }): Promise<any> => {
-    return apiClient.uploadFile('/payment/manual/init/subscription', data.proof, 'proof', {
-      tier: data.tier,
-      interval: data.interval || 'month',
+    return apiClient.post('/payment/stripe-link/init/subscription', {
+      tier,
+      interval,
+      idempotencyKey: createSubscriptionIdempotencyKey('stripe', tier, interval),
     });
   },
 

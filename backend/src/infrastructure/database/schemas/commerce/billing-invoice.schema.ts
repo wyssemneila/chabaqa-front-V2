@@ -86,6 +86,15 @@ export class BillingInvoice {
   @Prop({ default: 'TND' })
   currency: string;
 
+  @Prop({ type: Number })
+  providerAmount?: number;
+
+  @Prop({ type: String })
+  providerCurrency?: string;
+
+  @Prop({ type: Number })
+  providerExchangeRate?: number;
+
   @Prop({ type: Date, required: true, index: true })
   invoiceDate: Date;
 

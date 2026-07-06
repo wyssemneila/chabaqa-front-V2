@@ -59,7 +59,6 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
 
   const coursePagePaymentModal = usePaymentProviderModal({
     initStripe: () => (coursesApi as any).initStripePayment(String(course?.mongoId || courseId), undefined),
-    initKonnect: () => (coursesApi as any).initKonnectPayment(String(course?.mongoId || courseId), undefined),
     onError: (err: any) => toast({ title: "Checkout failed", description: err?.message || "Please try again.", variant: "destructive" }),
   })
 

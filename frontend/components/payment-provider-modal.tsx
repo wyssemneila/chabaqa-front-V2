@@ -4,9 +4,9 @@ import React, { useState } from "react"
 import Image from "next/image"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { ArrowRight, Check, Clock3, Loader2, LockKeyhole, ShieldCheck } from "lucide-react"
+import { ArrowRight, Check, Loader2, LockKeyhole, ShieldCheck } from "lucide-react"
 
-export type PaymentProvider = "stripe" | "konnect"
+export type PaymentProvider = "stripe"
 
 interface PaymentProviderModalProps {
   open: boolean
@@ -18,21 +18,13 @@ interface PaymentProviderModalProps {
 }
 
 type ProviderOption = {
-  id: PaymentProvider | "flouci" | "manual"
+  id: PaymentProvider
   label: string
   sublabel: string
   icon: string
   accent: string
   bg: string
   available: boolean
-}
-
-const isProviderEnabled = (provider: PaymentProvider) => {
-  if (provider === "stripe") return true
-  if (provider === "konnect") {
-    return process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_PAYMENT_ENABLE_KONNECT === "true"
-  }
-  return false
 }
 
 const providerOptions: ProviderOption[] = [
@@ -44,33 +36,6 @@ const providerOptions: ProviderOption[] = [
     accent: "#8e78fb",
     bg: "from-[#8e78fb]/12 to-[#47c7ea]/10",
     available: true,
-  },
-  {
-    id: "konnect",
-    label: "Konnect",
-    sublabel: isProviderEnabled("konnect") ? "Tunisian card checkout" : "Disabled in production",
-    icon: "/payement/konnect_payment_icon.png",
-    accent: "#47c7ea",
-    bg: "from-[#47c7ea]/14 to-[#8e78fb]/10",
-    available: isProviderEnabled("konnect"),
-  },
-  {
-    id: "flouci",
-    label: "Flouci",
-    sublabel: "Mobile wallet, coming soon",
-    icon: "/payement/flouci_payment_icon.png",
-    accent: "#f65887",
-    bg: "from-[#f65887]/14 to-[#8e78fb]/10",
-    available: false,
-  },
-  {
-    id: "manual",
-    label: "Manual Transfer",
-    sublabel: "Proof review, coming soon",
-    icon: "/payement/manual_transfer_icon.png",
-    accent: "#ff9b28",
-    bg: "from-[#ff9b28]/14 to-[#8e78fb]/8",
-    available: false,
   },
 ]
 
@@ -181,7 +146,7 @@ export function PaymentProviderModal({
               <DialogDescription className="text-sm leading-relaxed text-slate-500">{description}</DialogDescription>
             </DialogHeader>
 
-            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-6 grid grid-cols-1 gap-3">
               {providerOptions.map((provider) => {
                 const isAvailable = provider.available
                 const isThis = processingProvider === provider.id
@@ -213,12 +178,7 @@ export function PaymentProviderModal({
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-black/5 transition-colors group-hover:text-[#8e78fb]">
                             <ArrowRight className="h-4 w-4" />
                           </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-400 shadow-sm">
-                            <Clock3 className="h-3 w-3" />
-                            Soon
-                          </div>
-                        )}
+                        ) : null}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">

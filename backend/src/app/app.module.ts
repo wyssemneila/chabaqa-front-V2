@@ -26,7 +26,6 @@ import { MediaModule } from '@/domains/content/media/media.module';
 import { ChallengeModule } from '@/domains/learning/challenge/challenge.module';
 import { PolicyModule } from '@/shared/modules/policy.module';
 import { StripePaymentService } from '@/shared/services/stripe-payment.service';
-import { FlouciPaymentService } from '@/shared/services/flouci-payment.service';
 import { PromoService } from '@/shared/services/promo.service';
 import { FeeService } from '@/shared/services/fee.service';
 import { PromoCode, PromoCodeSchema } from '@/infrastructure/database/schemas/commerce/promo-code.schema';
@@ -53,7 +52,6 @@ import { MonitoringModule } from '@/shared/modules/monitoring.module';
 import { CacheModule } from '@/shared/modules/cache.module';
 import { Achievement, AchievementSchema } from '@/infrastructure/database/schemas/shared/achievement.schema';
 import { UserAchievement, UserAchievementSchema } from '@/infrastructure/database/schemas/shared/user-achievement.schema';
-import { ManualPaymentService } from '@/shared/services/manual-payment.service';
 import { AiModule } from '@/domains/shared/ai/ai.module';
 import { Ga4Module } from '@/domains/analytics/ga4/ga4.module';
 import { LearningDomainModule } from '@/domains/learning/learning-domain.module';
@@ -221,10 +219,8 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     AppService,
     UserService,
     StripePaymentService,
-    FlouciPaymentService,
     PromoService,
     FeeService,
-    ManualPaymentService,
     SeedTunisianUsers,
   ],
 })

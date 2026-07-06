@@ -52,7 +52,6 @@ export default function ChallengeSelectionModal({
 
   const paymentModal = usePaymentProviderModal({
     initStripe: () => (challengesApi as any).initStripePayment(String(challenge?.id || challenge?._id), promoCode.trim() || undefined),
-    initKonnect: () => (challengesApi as any).initKonnectPayment(String(challenge?.id || challenge?._id), promoCode.trim() || undefined),
     onError: (err: any) => toast({ title: "Payment failed", description: err?.message || "Please try again.", variant: "destructive" }),
   })
 

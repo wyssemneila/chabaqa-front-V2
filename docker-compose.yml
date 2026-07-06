@@ -243,17 +243,6 @@ services:
             PAYMENTS_STRIPE_PRODUCT_ENABLED: "true"
             PAYMENTS_STRIPE_SESSION_ENABLED: "true"
             PAYMENTS_ENABLE_WALLET_FALLBACK: "false"
-            PAYMENTS_ENABLE_MANUAL_FALLBACK: "false"
-            FLOUCI_ENABLED: "false"
-            PAYMENTS_FLOUCI_ENABLED: "false"
-            FLOUCI_APP_TOKEN: ""
-            FLOUCI_APP_SECRET: ""
-            FLOUCI_WEBHOOK_SECRET: ""
-            KONNECT_ENABLED: "false"
-            PAYMENTS_KONNECT_ENABLED: "false"
-            KONNECT_MOCK_MODE: "false"
-            KONNECT_API_KEY: ""
-            KONNECT_WALLET_ID: ""
             UPLOAD_MALWARE_SCANNING: required
             CLAMAV_HOST: clamav
             CLAMAV_PORT: 3310

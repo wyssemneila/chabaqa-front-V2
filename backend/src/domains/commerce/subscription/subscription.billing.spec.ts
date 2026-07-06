@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { SubscriptionService } from '@/domains/commerce/subscription/subscription.service';
 import { BillingInvoiceOwnerType } from '@/infrastructure/database/schemas/commerce/billing-invoice.schema';
 import { BillingInterval, SubscriptionStatus } from '@/infrastructure/database/schemas/commerce/subscription.schema';
+import { PlanTier } from '@/infrastructure/database/schemas/commerce/plan.schema';
 import { SubscriptionAddonType } from '@/infrastructure/database/schemas/commerce/subscription-addon.schema';
 
 const objectId = () => new Types.ObjectId();
@@ -86,6 +87,7 @@ describe('SubscriptionService billing records', () => {
       models.storageUsageModel as any,
       models.emailCampaignModel as any,
       models.whatsappCampaignModel as any,
+      (overrides.stripePaymentService || { cancelSubscriptionAtPeriodEnd: jest.fn() }) as any,
     );
 
     return { service, models };
@@ -198,41 +200,239 @@ describe('SubscriptionService billing records', () => {
     expect(models.invoiceModel.updateOne).toHaveBeenCalled();
   });
 
-  it('admin approval activates manual platform subscription proofs', async () => {
-    const buyerId = objectId();
-    const order = {
+  it('rejects paid direct plan activation without provider or admin context', async () => {
+    const { service, models } = buildService();
+    models.planModel.findOne.mockReturnValue(chain({
+      tier: PlanTier.PRO,
+      priceDTPerMonth: 159,
+      limits: {
+        communitiesMax: 10,
+        membersMax: 1000,
+        coursesActivationMax: 20,
+        storageGB: 200,
+        adminsMax: 5,
+        emailCampaignRecipientsPerMonth: 10000,
+        whatsappMessagesPerMonth: 1000,
+        analyticsLookbackDays: 365,
+        sessionBookingsPerMonth: 100,
+        aiAgentsMax: 1,
+        aiCofounderRunsPerMonth: 1,
+        aiKnowledgeReindexPerMonth: 1,
+        aiStaffChatTurnsPerMonth: 100,
+      },
+    }));
+
+    await expect(service.upgradePlan(objectId(), PlanTier.PRO)).rejects.toThrow(
+      'Paid plan activation must come from provider checkout or admin-approved billing context',
+    );
+  });
+
+  it('allows paid activation from provider checkout context', async () => {
+    const { service, models } = buildService({
+      subModel: {
+        findOne: jest.fn(),
+        findById: jest.fn(),
+        findOneAndUpdate: jest.fn().mockResolvedValue({ _id: objectId(), plan: PlanTier.PRO }),
+      },
+    });
+    models.planModel.findOne.mockReturnValue(chain({
+      tier: PlanTier.PRO,
+      priceDTPerMonth: 159,
+      limits: {
+        communitiesMax: 10,
+        membersMax: 1000,
+        coursesActivationMax: 20,
+        storageGB: 200,
+        adminsMax: 5,
+        emailCampaignRecipientsPerMonth: 10000,
+        whatsappMessagesPerMonth: 1000,
+        analyticsLookbackDays: 365,
+        sessionBookingsPerMonth: 100,
+        aiAgentsMax: 1,
+        aiCofounderRunsPerMonth: 1,
+        aiKnowledgeReindexPerMonth: 1,
+        aiStaffChatTurnsPerMonth: 100,
+      },
+    }));
+
+    await expect(
+      service.upgradePlan(objectId(), PlanTier.PRO, null, { provider: 'stripe' }),
+    ).resolves.toEqual(expect.objectContaining({ message: 'Plan mis à jour' }));
+  });
+
+  it('schedules paid Stripe cancellations at the provider before persisting locally', async () => {
+    const periodEnd = new Date('2026-03-01T00:00:00Z');
+    const subscription = {
       _id: objectId(),
-      buyerId,
-      creatorId: buyerId,
-      contentType: 'subscription',
-      contentId: 'pro',
-      amountDT: 159,
-      paymentMethod: 'manual',
-      status: 'pending_verification',
-      metadata: { tier: 'pro', billingInterval: 'month', amount: 159, currency: 'TND' },
+      creatorId: objectId(),
+      provider: 'stripe',
+      providerSubscriptionId: 'sub_real',
+      status: SubscriptionStatus.ACTIVE,
+      amount: 159,
+      cancelAtPeriodEnd: false,
+      currentPeriodStart: new Date('2026-02-01T00:00:00Z'),
+      currentPeriodEnd: periodEnd,
+      nextBillingAt: periodEnd,
       save: jest.fn().mockResolvedValue(undefined),
     };
-    const { service, models } = buildService({
-      orderModel: { findOne: jest.fn().mockResolvedValue(order) },
-    });
-    jest.spyOn(service, 'upgradePlan').mockResolvedValue({ subscription: { _id: objectId() } } as any);
-    jest.spyOn(service, 'recordInvoiceForOrder').mockResolvedValue(undefined);
-
-    await service.reviewManualPlatformSubscriptionOrder(order._id.toString(), objectId(), 'approve');
-
-    expect(service.upgradePlan).toHaveBeenCalledWith(
-      buyerId.toString(),
-      'pro',
-      null,
-      expect.objectContaining({
-        provider: 'manual',
-        status: SubscriptionStatus.ACTIVE,
-        amount: 159,
+    const stripePaymentService = {
+      cancelSubscriptionAtPeriodEnd: jest.fn().mockResolvedValue({
+        success: true,
+        subscriptionId: 'sub_real',
+        status: 'active',
+        cancelAtPeriodEnd: true,
+        currentPeriodEnd: periodEnd,
       }),
+    };
+    const { service } = buildService({
+      subModel: {
+        findOne: jest.fn().mockResolvedValue(subscription),
+        findById: jest.fn(),
+      },
+      stripePaymentService,
+    });
+
+    await expect(service.cancelAtPeriodEnd(subscription.creatorId)).resolves.toEqual(
+      expect.objectContaining({ subscription }),
     );
-    expect(order.status).toBe('paid');
-    expect(order.save).toHaveBeenCalled();
-    expect(models.orderModel.findOne).toHaveBeenCalled();
+
+    expect(stripePaymentService.cancelSubscriptionAtPeriodEnd).toHaveBeenCalledWith('sub_real');
+    expect(subscription.cancelAtPeriodEnd).toBe(true);
+    expect(subscription.nextBillingAt).toEqual(periodEnd);
+    expect(subscription.save).toHaveBeenCalled();
+  });
+
+  it('rejects active paid Stripe cancellation when provider subscription id is missing', async () => {
+    const subscription = {
+      _id: objectId(),
+      creatorId: objectId(),
+      provider: 'stripe',
+      status: SubscriptionStatus.ACTIVE,
+      amount: 159,
+      cancelAtPeriodEnd: false,
+      save: jest.fn(),
+    };
+    const stripePaymentService = { cancelSubscriptionAtPeriodEnd: jest.fn() };
+    const { service } = buildService({
+      subModel: {
+        findOne: jest.fn().mockResolvedValue(subscription),
+        findById: jest.fn(),
+      },
+      stripePaymentService,
+    });
+
+    await expect(service.cancelAtPeriodEnd(subscription.creatorId)).rejects.toThrow(
+      'Stripe subscription ID is required',
+    );
+
+    expect(stripePaymentService.cancelSubscriptionAtPeriodEnd).not.toHaveBeenCalled();
+    expect(subscription.save).not.toHaveBeenCalled();
+  });
+
+  it('keeps trial or local cancellations local', async () => {
+    const subscription = {
+      _id: objectId(),
+      creatorId: objectId(),
+      provider: undefined,
+      status: SubscriptionStatus.TRIALING,
+      amount: 0,
+      cancelAtPeriodEnd: false,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const stripePaymentService = { cancelSubscriptionAtPeriodEnd: jest.fn() };
+    const { service } = buildService({
+      subModel: {
+        findOne: jest.fn().mockResolvedValue(subscription),
+        findById: jest.fn(),
+      },
+      stripePaymentService,
+    });
+
+    await service.cancelAtPeriodEnd(subscription.creatorId);
+
+    expect(stripePaymentService.cancelSubscriptionAtPeriodEnd).not.toHaveBeenCalled();
+    expect(subscription.cancelAtPeriodEnd).toBe(true);
+    expect(subscription.save).toHaveBeenCalled();
+  });
+
+  it('rejects provider-owned fields in generic admin subscription updates', async () => {
+    const subscription = {
+      _id: objectId(),
+      creatorId: objectId(),
+      plan: PlanTier.PRO,
+      provider: 'stripe',
+      providerCustomerId: 'cus_existing',
+      providerSubscriptionId: 'sub_existing',
+      billingInterval: BillingInterval.MONTH,
+      currentPeriodStart: new Date('2026-01-01T00:00:00Z'),
+      currentPeriodEnd: new Date('2026-02-01T00:00:00Z'),
+      nextBillingAt: new Date('2026-02-01T00:00:00Z'),
+      status: SubscriptionStatus.ACTIVE,
+      cancelAtPeriodEnd: false,
+      amount: 159,
+      currency: 'TND',
+      communitiesMax: 10,
+      membersMax: 1000,
+      coursesActivationMax: 20,
+      storageGB: 200,
+      adminsMax: 5,
+      hasPaymentMethod: true,
+      save: jest.fn(),
+    };
+    const { service } = buildService({
+      subModel: {
+        findOne: jest.fn(),
+        findById: jest.fn().mockReturnValue(chain(subscription)),
+      },
+    });
+
+    await expect(
+      service.updateSubscription(subscription._id.toString(), {
+        providerSubscriptionId: 'sub_attacker',
+        status: SubscriptionStatus.CANCELED,
+      } as any, { adminUserId: objectId().toString() }),
+    ).rejects.toThrow('Provider-owned subscription fields cannot be changed here');
+    expect(subscription.save).not.toHaveBeenCalled();
+  });
+
+  it('applies only allowlisted generic admin subscription fields', async () => {
+    const subscription = {
+      _id: objectId(),
+      creatorId: objectId(),
+      plan: PlanTier.STARTER,
+      billingInterval: BillingInterval.MONTH,
+      currentPeriodStart: new Date('2026-01-01T00:00:00Z'),
+      currentPeriodEnd: new Date('2026-02-01T00:00:00Z'),
+      nextBillingAt: new Date('2026-02-01T00:00:00Z'),
+      status: SubscriptionStatus.ACTIVE,
+      cancelAtPeriodEnd: false,
+      amount: 0,
+      currency: 'TND',
+      communitiesMax: 1,
+      membersMax: 100,
+      coursesActivationMax: 3,
+      storageGB: 2,
+      adminsMax: 0,
+      hasPaymentMethod: false,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const { service } = buildService({
+      subModel: {
+        findOne: jest.fn(),
+        findById: jest.fn().mockReturnValue(chain(subscription)),
+      },
+    });
+
+    await service.updateSubscription(subscription._id.toString(), {
+      plan: PlanTier.PRO,
+      storageGB: 250,
+      notes: 'ignored because not persisted on schema',
+    } as any, { adminUserId: objectId().toString() });
+
+    expect(subscription.plan).toBe(PlanTier.PRO);
+    expect(subscription.storageGB).toBe(250);
+    expect((subscription as any).notes).toBeUndefined();
+    expect(subscription.save).toHaveBeenCalled();
   });
 
   it('exposes supported add-ons with concrete price and capacity deltas', () => {

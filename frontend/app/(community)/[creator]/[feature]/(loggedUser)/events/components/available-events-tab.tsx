@@ -38,7 +38,6 @@ export default function AvailableEventsTab({
 
   const paymentModal = usePaymentProviderModal({
     initStripe: () => (eventsApi as any).initStripePayment(String(selectedEvent?.id), String(selectedTicket), promoCode.trim() || undefined),
-    initKonnect: () => (eventsApi as any).initKonnectPayment(String(selectedEvent?.id), String(selectedTicket), promoCode.trim() || undefined),
     onError: (err: any) => toast({ title: "Payment failed", description: err?.message || "Please try again.", variant: "destructive" }),
   });
 

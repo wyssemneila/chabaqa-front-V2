@@ -1,8 +1,6 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { StripePaymentService } from '@/shared/services/stripe-payment.service';
-import { FlouciPaymentService } from '@/shared/services/flouci-payment.service';
-import { KonnectPaymentService } from '@/shared/services/konnect-payment.service';
 import { PaymentController } from '@/shared/controllers/payment.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Community, CommunitySchema } from '@/infrastructure/database/schemas/community/community.schema';
@@ -26,11 +24,9 @@ import {
 } from '@/infrastructure/database/schemas/commerce/payment-audit-log.schema';
 import { PromoService } from '@/shared/services/promo.service';
 import { FeeService } from '@/shared/services/fee.service';
-import { ManualPaymentService } from '@/shared/services/manual-payment.service';
 import { PaymentFulfillmentService } from '@/shared/services/payment-fulfillment.service';
 import { PaymentAuditService } from '@/shared/services/payment-audit.service';
 import { PaymentVerificationService } from '@/shared/services/payment-verification.service';
-import { UploadModule } from '@/domains/shared/upload/upload.module';
 import { NotificationModule } from '@/domains/communication/notification/notification.module';
 import { CoursModule } from '@/domains/learning/course/cours.module';
 import { ChallengeModule } from '@/domains/learning/challenge/challenge.module';
@@ -60,7 +56,6 @@ import { EmailModule } from '@/domains/communication/email/email.module';
       { name: ProcessedWebhookEvent.name, schema: ProcessedWebhookEventSchema },
       { name: PaymentAuditLog.name, schema: PaymentAuditLogSchema },
     ]),
-    UploadModule,
     NotificationModule,
     CoursModule,
     ChallengeModule,
@@ -73,21 +68,15 @@ import { EmailModule } from '@/domains/communication/email/email.module';
   ],
   controllers: [PaymentController],
   providers: [
-    FlouciPaymentService,
     StripePaymentService,
-    KonnectPaymentService,
     PromoService,
     FeeService,
-    ManualPaymentService,
     PaymentFulfillmentService,
     PaymentAuditService,
     PaymentVerificationService,
   ],
   exports: [
-    FlouciPaymentService,
     StripePaymentService,
-    KonnectPaymentService,
-    ManualPaymentService,
     PromoService,
     FeeService,
     PaymentFulfillmentService,

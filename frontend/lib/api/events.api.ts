@@ -150,14 +150,6 @@ export const eventsApi = {
     return apiClient.post<any>(endpoint, { eventId, ticketType });
   },
 
-  initKonnectPayment: async (eventId: string, ticketType: string, promoCode?: string): Promise<any> => {
-    const endpoint = promoCode
-      ? `/payment/konnect/init/event?promoCode=${encodeURIComponent(promoCode)}`
-      : `/payment/konnect/init/event`;
-
-    return apiClient.post<any>(endpoint, { eventId, ticketType });
-  },
-
   // Unregister from event
   unregister: async (id: string): Promise<ApiSuccessResponse<void>> => {
     return apiClient.post<ApiSuccessResponse<void>>(`/events/${id}/unregister`, {});

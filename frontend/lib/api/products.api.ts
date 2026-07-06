@@ -170,11 +170,4 @@ export const productsApi = {
       : `/payment/stripe-link/init/product`;
     return apiClient.post(endpoint, { productId });
   },
-
-  initKonnectPayment: async (productId: string, promoCode?: string): Promise<any> => {
-    const endpoint = promoCode
-      ? `/payment/konnect/init/product?promoCode=${encodeURIComponent(promoCode)}`
-      : `/payment/konnect/init/product`;
-    return apiClient.post(endpoint, { productId });
-  },
 };

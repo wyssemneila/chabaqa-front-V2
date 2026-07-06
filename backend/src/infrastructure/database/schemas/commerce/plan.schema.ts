@@ -89,6 +89,17 @@ export class PlanFeatures {
 
 export const PlanFeaturesSchema = SchemaFactory.createForClass(PlanFeatures);
 
+@Schema({ _id: false })
+export class StripePriceIds {
+  @Prop({ type: String, trim: true })
+  month?: string;
+
+  @Prop({ type: String, trim: true })
+  year?: string;
+}
+
+export const StripePriceIdsSchema = SchemaFactory.createForClass(StripePriceIds);
+
 @Schema({ timestamps: true })
 export class Plan {
   @Prop({ required: true, type: String, enum: PlanTier, unique: true })
@@ -125,6 +136,9 @@ export class Plan {
 
   @Prop({ type: Boolean, default: true })
   isActive: boolean;
+
+  @Prop({ type: StripePriceIdsSchema, default: {} })
+  stripePriceIds?: StripePriceIds;
 }
 
 export const PlanSchema = SchemaFactory.createForClass(Plan);

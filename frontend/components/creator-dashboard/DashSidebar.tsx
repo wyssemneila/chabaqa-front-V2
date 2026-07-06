@@ -33,7 +33,6 @@ const navGroups = [
     items: [
       { label: { en: 'Plan History',    ar: 'سجل الخطة'     }, href: '/creator/subscriptions',   icon: 'creditcard' },
       { label: { en: 'Payouts',         ar: 'المدفوعات'     }, href: '/creator/payouts',         icon: 'dollar'     },
-      { label: { en: 'Manual Payments', ar: 'الدفعات اليدوية' }, href: '/creator/monetization/manual-payments', icon: 'creditcard' },
     ],
   },
   {

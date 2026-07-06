@@ -110,6 +110,35 @@ describe('adminApi normalization contracts', () => {
     expect(payload.pagination.total).toBe(7);
   });
 
+  it('normalizes billing audit rows from paginated backend envelope', async () => {
+    mockedApiClient.get.mockResolvedValueOnce({
+      success: true,
+      data: {
+        items: [
+          {
+            _id: 'audit1',
+            orderId: 'order1',
+            provider: 'stripe',
+            status: 'paid',
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 100,
+        totalPages: 1,
+      },
+    } as any);
+
+    const response = await adminApi.financial.getBillingAudit({ page: 1, limit: 100 });
+    const payload = response.data;
+
+    expect(payload.items).toHaveLength(1);
+    expect(payload.data).toHaveLength(1);
+    expect(payload.items[0].provider).toBe('stripe');
+    expect(payload.total).toBe(1);
+    expect(payload.pagination.total).toBe(1);
+  });
+
   it('uses backend events list without client-side faux pagination slicing', async () => {
     mockedApiClient.get.mockResolvedValueOnce({
       success: true,

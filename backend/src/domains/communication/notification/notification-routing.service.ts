@@ -73,7 +73,7 @@ export class NotificationRoutingService {
           if (contentType === 'event') return `/creator/events/${data.contentId}`;
           if (contentType === 'product') return `/creator/products/${data.contentId}/manage`;
         }
-        return '/creator/monetization/manual-payments';
+        return '/creator/billing';
 
       case NotificationType.ANALYTICS_UPDATE:
         return '/creator/analytics';

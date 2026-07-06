@@ -4,7 +4,7 @@ Last reviewed: 2026-06-30
 
 ## Purpose
 
-This document maps the current backend and frontend implementation for creator plans, billing, subscriptions, payments, manual payment review, and payouts. It then turns the findings into a phased implementation plan.
+This document maps the current backend and frontend implementation for creator plans, billing, subscriptions, payments and payouts. It then turns the findings into a phased implementation plan.
 
 The goal is to make the creator commercial system coherent end to end:
 
@@ -12,7 +12,7 @@ The goal is to make the creator commercial system coherent end to end:
 - Creator account billing must be a real billing hub, not a placeholder.
 - Subscription checkout must create and verify real provider payments.
 - Creator revenue pages must clearly separate platform subscription billing from customer/member revenue.
-- Payment success, payouts, manual payment review, and plan gating must all use the same backend truth.
+- Payment success, payouts, and plan gating must all use the same backend truth.
 
 ## Source Map
 
@@ -221,9 +221,9 @@ Important frontend mismatch:
 - amount, platform fee, creator net
 - promo code and discount
 - provider payment ID
-- payment method: `flouci`, `stripe`, `manual`, `offline`
-- status: `paid`, `refunded`, `pending`, `pending_verification`, `cancelled`
-- proof URL and metadata
+- payment method: `stripe`
+- status: `paid`, `refunded`, `pending`, `cancelled`
+- Stripe provider metadata
 
 `PaymentFulfillmentService` gives idempotent fulfillment states:
 
@@ -254,11 +254,10 @@ Controller route: `/payment`
 Provider enablement:
 
 - Stripe is treated as generally available in frontend modal.
-- Konnect is available in frontend when not production or `NEXT_PUBLIC_PAYMENT_ENABLE_KONNECT=true`.
+- Legacy local provider is available in frontend when not production or `NEXT_PUBLIC_PAYMENT_ENABLE_KONNECT=true`.
 - Backend strict production requires:
   - `PAYMENT_ENABLE_FLOUCI=true`
   - `PAYMENT_ENABLE_KONNECT=true`
-  - `PAYMENT_ENABLE_MANUAL=true`
 - Backend validates redirect overrides against `PAYMENTS_REDIRECT_ALLOWLIST` or `FRONTEND_URL`.
 
 Subscription payment endpoints:
@@ -269,46 +268,30 @@ Subscription payment endpoints:
 | Stripe | `GET /payment/stripe-link/verify?sessionId=` | Verifies session and grants subscription |
 | Stripe | `POST /payment/stripe-link/webhook` | Signed webhook, deduped, grants/reconciles |
 | Stripe | `POST /payment/stripe-link/customer-portal` | Requires stored provider customer ID |
-| Konnect | `POST /payment/konnect/init/subscription` | Present, but amount field is wrong |
-| Konnect | `GET /payment/konnect/verify?paymentRef=` | Verifies and grants |
-| Flouci | `POST /payment/init/subscription` | Present, but amount field is wrong and not used by modal |
+| Legacy local provider | `POST /payment/legacy-local-provider/init/subscription` | Present, but amount field is wrong |
+| Legacy local provider | `GET /payment/legacy-local-provider/verify?paymentRef=` | Verifies and grants |
+| Legacy wallet provider | `POST /payment/init/subscription` | Present, but amount field is wrong and not used by modal |
 
 Critical bug:
 
-- Konnect and Flouci subscription init read `(plan as any).priceMonthlyDT || (plan as any).priceDT || 0`, but the schema uses `priceDTPerMonth`, `yearlyPriceDTPerMonth`, and `yearlyTotalDT`. These endpoints can return "Montant invalide" for real plans.
+- legacy local providers subscription init read `(plan as any).priceMonthlyDT || (plan as any).priceDT || 0`, but the schema uses `priceDTPerMonth`, `yearlyPriceDTPerMonth`, and `yearlyTotalDT`. These endpoints can return "Montant invalide" for real plans.
 
 Content payment endpoints:
 
-| Content type | Stripe | Konnect | Manual proof |
-| --- | --- | --- | --- |
-| Community | Yes | Yes | Yes |
-| Course | Yes | Yes | Yes |
-| Chapter | Yes | No observed Konnect route | No observed manual route |
-| Challenge | Yes | Yes | Yes |
-| Event | Yes | Yes | Yes |
-| Product | Yes | Yes | Yes |
-| Session | Yes | Yes | Yes |
-| Subscription | Yes | Yes, bug above | No manual subscription endpoint |
+| Content type | Stripe |
+| --- | --- |
+| Community | Yes |
+| Course | Yes |
+| Chapter | Yes |
+| Challenge | Yes |
+| Event | Yes |
+| Product | Yes |
+| Session | Yes |
+| Subscription | Yes |
 
-### Manual Payment Review
+### Stripe-Only Payment Policy
 
-Backend supports manual proof upload for paid content:
-
-- Proof upload accepts image/PDF formats with backend limits.
-- Creates `Order` with `status='pending_verification'` and `paymentMethod='manual'`.
-- Creator endpoints:
-  - `GET /payment/manual/pending`
-  - `GET /payment/manual/history`
-  - `POST /payment/manual/verify/:orderId`
-- Approval marks order paid, claims fulfillment, grants access, updates audit log, sends notification, and triggers affiliate commission when relevant.
-- Rejection marks order cancelled and can email the buyer.
-
-Frontend state:
-
-- `frontend/lib/api/manual-payments.ts` exists and points to those endpoints.
-- Manual init proxy routes exist under `frontend/app/api/payments/manual/init/*`.
-- The shared `PaymentProviderModal` marks Manual Transfer as unavailable and "coming soon".
-- `/creator/monetization/manual-payments` has a loading file only and is blocked by catch-all route `notFound()`.
+Production checkout is Stripe-only across platform subscriptions and content purchases.
 
 ### Payouts
 
@@ -418,7 +401,7 @@ Current behavior:
 - Shows plan cards, comparison rows, add-ons, FAQ, and CTA.
 - Opens `PaymentProviderModal`.
 - Stripe init calls `subscriptionApi.initStripePayment(tier, interval)`.
-- Konnect init calls `subscriptionApi.initKonnectPayment(tier)`.
+- Legacy local provider init calls `subscriptionApi.initLegacy local providerPayment(tier)`.
 
 Problems:
 
@@ -430,7 +413,7 @@ Problems:
   - priority support
   - social media promo
   - CSV export
-- Konnect subscription checkout is wired but backend amount bug blocks it.
+- Legacy local provider subscription checkout is wired but backend amount bug blocks it.
 - Add-ons are displayed but no backend purchase or enforcement flow exists for add-ons.
 
 ### Payment Provider Modal
@@ -438,14 +421,12 @@ Problems:
 `PaymentProviderModal` supports:
 
 - Stripe, labeled "International Card".
-- Konnect, conditionally available.
-- Flouci and Manual Transfer, displayed but disabled.
+- Legacy local provider, conditionally available.
+- Stripe only.
 
 Current gap:
 
-- Backend supports manual proof payments for content, but the shared modal disables manual everywhere.
-- Backend does not support manual subscription payments, so manual must remain unavailable for subscription checkout unless a subscription-specific manual workflow is added.
-- Flouci backend exists, but the modal does not expose it and subscription amount fields are wrong.
+- Checkout should expose Stripe only.
 
 ### Payment Success Page
 
@@ -508,20 +489,9 @@ Problems:
 - API wrapper lacks community filter params for stats and balance.
 - The page should show the backend minimum payout amount when a payout is blocked.
 
-### Creator Manual Payments Page
+### Creator Payments Page
 
-Current state:
-
-- API wrapper exists.
-- Backend endpoints exist.
-- Route is blocked by catch-all `notFound()` when slug includes `manual-payments`.
-
-Required direction:
-
-- Implement `/creator/monetization/manual-payments`.
-- Display pending proofs, proof file links/previews, buyer, content, amount, status, and approve/reject controls.
-- Use `manualPaymentsApi`.
-- Keep access guarded by finance permission.
+Creator revenue pages should focus on Stripe-paid orders, payouts, and subscription billing.
 
 ### Content Pricing Surfaces
 
@@ -551,7 +521,7 @@ These should remain content pricing tools, separate from platform subscription b
    - Frontend calls `/api/payments/verify?sessionId=...`.
    - Backend verifies Stripe session, claims order, grants subscription by calling `upgradePlan`, and marks fulfillment completed.
    - Frontend redirects to `/creator/billing?checkout=success`.
-5. For Konnect:
+5. For Legacy local provider:
    - Frontend can call backend, but backend subscription amount field is currently wrong.
 
 ### Homepage Landing Pricing Flow Today
@@ -568,14 +538,13 @@ This means the homepage pricing section is disconnected from subscription paymen
 1. User opens a paid community checkout.
 2. Frontend displays price and a hardcoded platform fee.
 3. For paid communities, frontend opens `PaymentProviderModal`.
-4. Stripe/Konnect init calls community payment endpoints.
+4. Stripe init calls community payment endpoints.
 5. Success page verifies payment and redirects to community home.
 6. For free communities, frontend directly calls `communitiesApi.join`.
 
 Gap:
 
-- Manual transfer exists in backend for communities, but modal disables manual.
-- Displayed platform fee is not backend-derived.
+- Checkout is Stripe-only; displayed platform fee must be backend-derived.
 
 ## Critical Gaps To Fix Or Delete
 
@@ -599,14 +568,10 @@ Gap:
 6. Wrong auth fallback path.
    - Replace `/auth/register` with `/signup` or `/signin` plus redirect params.
 
-7. Konnect and Flouci subscription amount fields are wrong.
+7. legacy local providers subscription amount fields are wrong.
    - Use `subscriptionService.getPlanAmount(plan, interval)` and accept interval.
 
-8. Manual payment review is half wired.
-   - Backend and API wrapper exist, but UI route is blocked and modal disables manual.
-
-9. Manual subscription payments are not supported.
-   - Do not expose manual provider for platform subscriptions unless a backend workflow is built.
+8. Keep checkout and docs Stripe-only.
 
 10. Pricing comparison advertises unsupported features.
     - Delete or implement custom domain, priority support, social promotion, CSV export, add-on purchase flows, and Enterprise.
@@ -637,7 +602,6 @@ Backend tasks:
 - Confirm whether `subscriberId` will be used later or removed from creator-facing subscription pages.
 - Confirm whether Enterprise is a real self-service tier or delete it from public API types.
 - Confirm whether add-ons are roadmap or required for launch.
-- Confirm whether manual transfer is allowed for platform subscriptions. Current backend says no.
 
 Frontend tasks:
 
@@ -700,7 +664,7 @@ Make trial and payment behavior truthful, provider-safe, and reliable.
 
 Backend tasks:
 
-- Fix Konnect and Flouci subscription amount lookup:
+- Fix legacy local providers subscription amount lookup:
   - Accept `interval`.
   - Use `subscriptionService.getPlanAmount(plan, interval)`.
   - Store `billingInterval`, `tier`, `provider`, `amount`, and `currency` in order metadata.
@@ -708,8 +672,8 @@ Backend tasks:
 - Keep Stripe subscription checkout as the paid/card trial path.
 - Add provider-specific tests:
   - Stripe init returns checkout URL and creates pending order.
-  - Konnect init uses correct amount.
-  - Flouci init uses correct amount or is hidden.
+  - Legacy local provider init uses correct amount.
+  - Legacy wallet provider init uses correct amount or is hidden.
   - Verification grants subscription idempotently.
 
 Frontend tasks:
@@ -720,14 +684,14 @@ Frontend tasks:
 - Make CTA copy match behavior:
   - If no-card: "Start free trial".
   - If provider checkout: "Start trial with checkout" or "Subscribe".
-- Pass `interval` to Konnect when backend supports it.
+- Pass `interval` to Legacy local provider when backend supports it.
 - Show provider-specific errors without losing selected plan.
 
 Acceptance criteria:
 
 - A user can click upgrade from a gated feature and land on `/pricing` with correct plan and billing selected.
 - Stripe subscription checkout succeeds, verifies, and redirects to a real billing page.
-- Konnect subscription checkout either works or is hidden.
+- Legacy local provider subscription checkout either works or is hidden.
 - Copy no longer promises "No credit card required" unless `/subscriptions/start-trial` is the actual path.
 
 ### Phase 3: Real Creator Account Billing Hub
@@ -842,47 +806,26 @@ Acceptance criteria:
 - Page title, sidebar label, API data, and metrics all mean the same thing.
 - No creator sees their own platform subscription described as customer revenue.
 
-### Phase 6: Manual Payment Review
+### Phase 6: Stripe Checkout Hardening
 
 Objective:
 
-Make manual payment proof review usable for creators where backend already supports it.
+Keep checkout, verification, and billing support Stripe-only.
 
 Backend tasks:
 
-- Confirm manual provider production flag behavior with `PAYMENT_ENABLE_MANUAL`.
-- Add `communityId` filtering to manual pending/history if needed.
-- Return enriched manual orders with:
-  - buyer name/email/avatar
-  - content type/title
-  - amount and currency
-  - proof URL
-  - submitted date
-  - status
-  - fulfillment status
-- Add tests for approve/reject granting access.
+- Remove any remaining manual provider flags/routes.
+- Ensure every paid content path starts a Stripe checkout session.
+- Keep payment audit logs keyed by Stripe IDs and order IDs.
 
 Frontend tasks:
 
-- Implement `/creator/monetization/manual-payments`.
-- Remove catch-all `notFound()` block for `manual-payments`.
-- Use `manualPaymentsApi.getPendingPayments`, `getHistory`, and `verifyPayment`.
-- UI states:
-  - pending queue
-  - history tab
-  - proof preview/download
-  - approve/reject confirmation
-  - loading/error states
-  - fulfilled/requires booking/failed badges
-- Enable manual transfer in checkout only for content types with backend manual init support.
-- Keep manual disabled for platform subscription checkout until backend supports it.
+- Keep checkout modal Stripe-only.
+- Remove stale manual review pages, API wrappers, and sidebar entries.
 
 Acceptance criteria:
 
-- Buyer can submit manual proof for supported content.
-- Creator can approve it.
-- Access is granted through existing fulfillment.
-- Creator can reject it and buyer is notified.
+- Buyer can pay supported content through Stripe and access is granted through existing fulfillment.
 
 ### Phase 7: Payouts And Revenue Reconciliation
 
@@ -946,7 +889,7 @@ Frontend tasks:
   - `/pricing` opens checkout with selected tier.
 - Alternative:
   - Homepage CTA directly opens `PaymentProviderModal`.
-  - Use the same `subscriptionApi.initStripePayment` and `initKonnectPayment` handlers.
+  - Use the same `subscriptionApi.initStripePayment` and `initLegacy local providerPayment` handlers.
 - Remove stale `siteData.pricing.plans`.
 - Ensure `localizeHref` keeps query strings intact.
 - Ensure mobile plan cards do not overflow.
@@ -1033,12 +976,11 @@ Keep creator billing operations observable and supportable.
 
 Backend tasks:
 
-- Ensure admin plan CRUD, subscription updates, payout processing, and manual payment audit logs are permission guarded.
+- Ensure admin plan CRUD, subscription updates, payout processing, and payment audit logs are permission guarded.
 - Add audit log entries for:
   - plan changes
   - subscription checkout
   - subscription webhook updates
-  - manual proof approval/rejection
   - payout processing/cancellation
 
 Frontend tasks:
@@ -1062,11 +1004,9 @@ Backend tests:
 - `seed-plans` values match expected tiers.
 - `SubscriptionService.getPlanAmount` monthly/yearly.
 - Stripe subscription init creates order and metadata.
-- Konnect subscription init uses correct amount.
-- Flouci subscription init uses correct amount or is disabled.
+- Legacy local provider subscription init uses correct amount.
+- Legacy wallet provider subscription init uses correct amount or is disabled.
 - Stripe verify is idempotent.
-- Manual proof approve grants access.
-- Manual proof reject cancels and notifies.
 - `PolicyService` feature and limit checks.
 - `FeeService` default and plan-specific fees.
 - Payout available balance and minimum payout validation.
@@ -1079,7 +1019,6 @@ Frontend tests:
 - Payment modal hides unavailable providers by scope.
 - Payment success subscription redirects to billing.
 - Billing hub handles active, trialing, past_due, canceled, and no subscription.
-- Manual payment page approves/rejects.
 - Payout page passes community ID to all payout API calls.
 
 Playwright smoke:
@@ -1091,7 +1030,6 @@ Playwright smoke:
 - Confirm `/creator/billing?checkout=success` shows plan and status.
 - Visit homepage pricing and verify CTA routes to same flow.
 - Create or use a paid community, checkout, verify access.
-- Submit manual proof for supported content, approve as creator, confirm access.
 - Request payout from selected community and verify validation states.
 
 Launch checklist:
@@ -1100,8 +1038,7 @@ Launch checklist:
 - Provider flags set for production.
 - Redirect allowlist contains production frontend URL.
 - Stripe webhook secret configured.
-- Konnect webhook URL configured if enabled.
-- Manual payments enabled only if review UI is live.
+- Legacy local provider webhook URL configured if enabled.
 - Public pricing has no unsupported claims.
 - Billing placeholder removed.
 
@@ -1109,11 +1046,10 @@ Launch checklist:
 
 1. Fix plan data drift and delete unsupported pricing claims.
 2. Make `/pricing` query-aware and fix auth redirects/copy.
-3. Fix Konnect/Flouci subscription amount bugs or hide those providers for subscriptions.
+3. Fix legacy local providers subscription amount bugs or hide those providers for subscriptions.
 4. Replace `/creator/billing` with a real subscription billing hub.
 5. Connect homepage pricing to `/pricing` or checkout.
 6. Resolve `/creator/subscriptions` semantics.
-7. Implement manual payment review page.
 8. Make payout page community-aware.
 9. Add payment quote endpoints and remove hardcoded frontend fees.
 10. Replace placeholder invoices, usage, and export behavior.
@@ -1126,7 +1062,7 @@ The system is ready when:
 - A creator can start trial or checkout from landing, pricing, upgrade modal, and billing with consistent behavior.
 - Subscription payment verification creates or updates the creator subscription and lands on a useful billing hub.
 - Creator revenue pages are clearly named and backed by matching APIs.
-- Manual payment proof review works where advertised.
+- Stripe payment verification works where advertised.
 - Payout balances reconcile with paid order creator net.
 - Unsupported options are either implemented or removed from the UI.
-- Tests cover plan math, provider init, verification, enforcement, manual review, payouts, and key frontend flows.
+- Tests cover plan math, provider init, verification, enforcement, payouts, and key frontend flows.

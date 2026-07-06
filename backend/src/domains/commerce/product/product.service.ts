@@ -1299,7 +1299,7 @@ export class ProductService {
         };
       }
 
-      // Check for existing order (manual payment flow)
+      // Check for existing paid order.
       const buyerFilter: any = Types.ObjectId.isValid(userId)
         ? { $in: [new Types.ObjectId(userId), userId] }
         : userId;

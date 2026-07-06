@@ -41,8 +41,6 @@ export default function PaymentSuccessContent() {
   const [journeyStage, setJourneyStage] = useState<JourneyStage>('verifying');
 
   const sessionId = searchParams.get('sessionId');
-  const paymentRef = searchParams.get('paymentRef');
-  const paymentId = searchParams.get('paymentId');
   const orderIdParam = searchParams.get('orderId');
   const scope = searchParams.get('scope');
   const id = searchParams.get('id');
@@ -55,11 +53,8 @@ export default function PaymentSuccessContent() {
   };
 
   const buildVerifyUrl = useCallback(() => {
-    if (orderIdParam && (!sessionId && !paymentRef && !paymentId)) {
+    if (orderIdParam && !sessionId) {
       return `/api/payments/order/${encodeURIComponent(orderIdParam)}`;
-    }
-    if (provider === 'konnect' && paymentRef) {
-      return `/api/payments/verify?paymentRef=${encodeURIComponent(paymentRef)}`;
     }
     if ((provider === 'stripe' || provider === 'stripe-link') && sessionId) {
       return `/api/payments/verify?sessionId=${encodeURIComponent(sessionId)}`;
@@ -67,14 +62,8 @@ export default function PaymentSuccessContent() {
     if (sessionId) {
       return `/api/payments/verify?sessionId=${encodeURIComponent(sessionId)}`;
     }
-    if (paymentRef) {
-      return `/api/payments/verify?paymentRef=${encodeURIComponent(paymentRef)}`;
-    }
-    if (paymentId) {
-      return `/api/payments/verify?paymentId=${encodeURIComponent(paymentId)}`;
-    }
     return null;
-  }, [orderIdParam, paymentId, paymentRef, provider, sessionId]);
+  }, [orderIdParam, provider, sessionId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -170,9 +159,7 @@ export default function PaymentSuccessContent() {
           setJourneyStage('pending');
           setError(
             normalizedPayment.message ||
-              (normalizedPayment.provider === 'manual'
-                ? 'Your manual payment proof is pending creator review.'
-                : 'Payment is still pending. This can happen while the payment provider sends the webhook.'),
+              'Payment is still pending. This can happen while Stripe sends the webhook.',
           );
           return;
         }
@@ -344,7 +331,7 @@ export default function PaymentSuccessContent() {
     return null;
   };
 
-  const supportReference = sessionId || paymentRef || paymentId || orderIdParam || normalizedPayment.orderId;
+  const supportReference = sessionId || orderIdParam || normalizedPayment.orderId;
   const pending = journeyStage === 'pending';
   const failed = journeyStage === 'failed' || journeyStage === 'cancelled';
 
@@ -417,7 +404,7 @@ export default function PaymentSuccessContent() {
               <h1 className="mb-2 text-2xl font-bold text-gray-900">Payment Pending</h1>
               <p className="mb-4 text-gray-600">{error || 'We are still waiting for final confirmation.'}</p>
               <p className="mb-6 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
-                Keep this page reference. Access will unlock automatically after the provider webhook or manual review is completed.
+                Keep this page reference. Access will unlock automatically after Stripe confirms the payment.
               </p>
               <div className="space-y-3">
                 <button onClick={() => window.location.reload()} className="block w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700">Check Again</button>

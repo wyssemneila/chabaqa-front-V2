@@ -1,6 +1,8 @@
-import { Controller, Post, UseGuards, Request, Body, Get, Query, Put, Delete, Param, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Post, UseGuards, Request, Body, Get, Query, Put, Delete, Param, HttpCode, HttpStatus, Logger, GoneException, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiBody, ApiQuery, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/domains/auth/guards/jwt-auth.guard';
+import { AdminGuard } from '@/domains/auth/guards/admin.guard';
+import { InternalServiceTokenGuard } from '@/shared/guards/internal-service-token.guard';
 import { SubscriptionService } from '@/domains/commerce/subscription/subscription.service';
 import { PlanTier } from '@/infrastructure/database/schemas/commerce/plan.schema';
 import { BillingInterval } from '@/infrastructure/database/schemas/commerce/subscription.schema';
@@ -57,8 +59,7 @@ export class SubscriptionController {
   @ApiResponse({ status: 200, description: 'Billing method setup successfully' })
   @ApiResponse({ status: 400, description: 'Invalid billing information' })
   async setupBilling(@Request() req: any, @Body() body: any) {
-    const creatorId = req.user._id || req.user.sub;
-    return this.subscriptionService.setupBillingMethod(creatorId, body);
+    throw new GoneException('Direct billing setup is disabled. Use provider checkout or admin-approved billing updates.');
   }
 
   @Post('upgrade')
@@ -67,8 +68,7 @@ export class SubscriptionController {
   @ApiOperation({ summary: 'Upgrade plan tier for the current creator subscription' })
   @ApiBody({ schema: { type: 'object', properties: { tier: { type: 'string', enum: Object.values(PlanTier) } }, required: ['tier'] } })
   async upgrade(@Request() req: any, @Body('tier') tier: string) {
-    const creatorId = req.user._id || req.user.sub;
-    return this.subscriptionService.upgradePlan(creatorId, tier as PlanTier);
+    throw new GoneException('Direct paid upgrades are disabled. Use checkout to change plans.');
   }
 
   @Post('cancel')
@@ -179,8 +179,7 @@ export class SubscriptionController {
     @Body('quantity') quantity?: number,
     @Body('billingInterval') billingInterval?: BillingInterval,
   ) {
-    const creatorId = req.user._id || req.user.sub;
-    return this.subscriptionService.purchaseAddon(creatorId, type, quantity, billingInterval);
+    throw new GoneException('Self-serve add-on activation is disabled until checkout or admin approval is available.');
   }
 
   @Delete('add-ons/:id')
@@ -193,7 +192,7 @@ export class SubscriptionController {
   }
 
   @Post('plans')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Create a new subscription plan' })
   @ApiBody({ type: CreateSubscriptionDto })
@@ -221,7 +220,7 @@ export class SubscriptionController {
   }
 
   @Put('plans/:tier')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Update a subscription plan' })
   @ApiBody({ type: UpdateSubscriptionDto })
@@ -234,7 +233,7 @@ export class SubscriptionController {
   }
 
   @Delete('plans/:tier')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Delete a subscription plan' })
   @ApiResponse({ status: 200, description: 'Plan deleted successfully' })
@@ -266,20 +265,25 @@ export class SubscriptionController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Update a subscription' })
   @ApiBody({ type: UpdateSubscriptionDto })
   @ApiResponse({ status: 200, type: SubscriptionResponseDto })
   async updateSubscription(
+    @Request() req: any,
     @Param('id') subscriptionId: string,
     @Body() updateDto: UpdateSubscriptionDto
   ): Promise<SubscriptionResponseDto> {
-    return this.subscriptionService.updateSubscription(subscriptionId, updateDto);
+    return this.subscriptionService.updateSubscription(subscriptionId, updateDto, {
+      adminUserId: req.user?._id || req.user?.sub,
+      adminEmail: req.user?.email,
+      requestId: req.headers?.['x-request-id'],
+    });
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Delete a canceled subscription' })
   @ApiParam({ name: 'id', description: 'Subscription ID' })
@@ -339,7 +343,7 @@ export class SubscriptionController {
   }
 
   @Post('invoices')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Create a new invoice' })
   @ApiBody({ type: CreateInvoiceDto })
@@ -351,17 +355,17 @@ export class SubscriptionController {
   // ============ USAGE TRACKING ENDPOINTS ============
 
   @Post('usage')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Record usage for current creator' })
+  @UseGuards(InternalServiceTokenGuard)
+  @ApiOperation({ summary: 'Record usage for a creator from an internal service' })
   @ApiBody({ type: RecordUsageDto })
   @ApiResponse({ status: 200, description: 'Usage recorded successfully' })
   async recordUsage(
-    @Request() req: any,
     @Body() recordUsageDto: RecordUsageDto
   ): Promise<{ message: string }> {
-    const creatorId = req.user._id || req.user.sub;
-    return this.subscriptionService.recordUsage(creatorId, recordUsageDto);
+    if (!recordUsageDto.creatorId) {
+      throw new BadRequestException('creatorId is required for internal usage recording.');
+    }
+    return this.subscriptionService.recordUsage(recordUsageDto.creatorId, recordUsageDto);
   }
 
   @Get('usage')

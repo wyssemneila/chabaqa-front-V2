@@ -1229,18 +1229,17 @@ export class EventService {
 
     if (!order) return { status: 'not_applicable', reason: 'No paid order found' };
     if (!order.paymentId || order.paymentMethod !== 'stripe') {
-      order.status = 'pending_verification';
       order.metadata = {
         ...(order.metadata || {}),
         refundRequestedAt: new Date().toISOString(),
         refundReason: 'event_attendee_unregister_non_stripe',
       };
       await order.save();
-      return { status: 'manual_review_required', orderId: order._id.toString(), reason: 'Non-Stripe or missing payment id' };
+      return { status: 'refund_unavailable', orderId: order._id.toString(), reason: 'Missing Stripe payment id' };
     }
 
     if (!this.stripePaymentService) {
-      return { status: 'manual_review_required', orderId: order._id.toString(), reason: 'Stripe refund service unavailable' };
+      return { status: 'refund_unavailable', orderId: order._id.toString(), reason: 'Stripe refund service unavailable' };
     }
 
     const result = await this.stripePaymentService.refundPayment(order.paymentId);

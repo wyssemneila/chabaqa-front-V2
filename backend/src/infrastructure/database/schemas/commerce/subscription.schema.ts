@@ -120,6 +120,15 @@ export class Subscription {
   @Prop({ type: String, default: 'TND' })
   currency: string;
 
+  @Prop({ type: Number })
+  providerAmount?: number;
+
+  @Prop({ type: String })
+  providerCurrency?: string;
+
+  @Prop({ type: Number })
+  providerExchangeRate?: number;
+
   @Prop({ type: String, enum: Object.values(BillingInterval), default: BillingInterval.MONTH })
   billingInterval: BillingInterval;
 

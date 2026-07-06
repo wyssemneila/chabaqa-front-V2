@@ -26,7 +26,7 @@ describe('PaymentVerificationService', () => {
 
   it('normalizes action-required session payments', () => {
     expect(
-      service.fromPayload('konnect', {
+      service.fromPayload('stripe', {
         status: 'paid_action_required',
         orderId: 'order-2',
         action: 'choose_session_slot',
@@ -35,7 +35,7 @@ describe('PaymentVerificationService', () => {
       expect.objectContaining({
         success: true,
         status: 'requires_action',
-        provider: 'konnect',
+        provider: 'stripe',
         fulfillmentStatus: 'requires_booking',
         actionRequired: 'choose_session_slot',
       }),
@@ -43,11 +43,11 @@ describe('PaymentVerificationService', () => {
   });
 
   it('normalizes pending and failed provider statuses', () => {
-    expect(service.fromPayload('flouci', { status: 'PENDING' })).toEqual(
-      expect.objectContaining({ success: false, status: 'pending', provider: 'flouci' }),
+    expect(service.fromPayload('stripe', { status: 'PENDING' })).toEqual(
+      expect.objectContaining({ success: false, status: 'pending', provider: 'stripe' }),
     );
-    expect(service.fromPayload('manual', { status: 'rejected' })).toEqual(
-      expect.objectContaining({ success: false, status: 'failed', provider: 'manual' }),
+    expect(service.fromPayload('stripe', { status: 'rejected' })).toEqual(
+      expect.objectContaining({ success: false, status: 'failed', provider: 'stripe' }),
     );
   });
 });

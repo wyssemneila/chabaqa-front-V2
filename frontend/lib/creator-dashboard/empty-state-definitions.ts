@@ -130,13 +130,6 @@ const CREATOR_EMPTY_STATE_DEFINITION_MAP = {
     action: { label: "Browse Integrations", href: "/creator/integrations", icon: ArrowRight },
     tips: ["Add integrations only when they remove repeated manual work"],
   },
-  manualPayments: {
-    icon: launchIcons.payout,
-    title: "No manual payments yet",
-    description: "Manual payment requests and offline confirmations will appear here.",
-    action: { label: "Open Monetization", href: "/creator/monetization", icon: ArrowRight },
-    tips: ["Use manual payment review for exceptional cases only"],
-  },
   noResults: {
     icon: SearchX,
     title: "No results found",

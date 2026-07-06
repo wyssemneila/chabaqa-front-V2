@@ -8,7 +8,6 @@ import { SessionModule } from '@/domains/commerce/session/session.module';
 import { EventModule } from '@/domains/commerce/event/event.module';
 import { FeeModule } from '@/shared/modules/fee.module';
 import { PromoModule } from '@/shared/modules/promo.module';
-import { FlouciModule } from '@/shared/modules/flouci.module';
 
 @Module({
   imports: [
@@ -21,7 +20,6 @@ import { FlouciModule } from '@/shared/modules/flouci.module';
     EventModule,
     FeeModule,
     PromoModule,
-    FlouciModule,
   ],
   exports: [
     PaymentModule,
@@ -33,7 +31,6 @@ import { FlouciModule } from '@/shared/modules/flouci.module';
     EventModule,
     FeeModule,
     PromoModule,
-    FlouciModule,
   ],
 })
 export class CommerceDomainModule {}

@@ -81,6 +81,15 @@ export class SubscriptionResponseDto {
   @ApiProperty({ example: 'TND' })
   currency: string;
 
+  @ApiPropertyOptional({ example: 50.88 })
+  providerAmount?: number;
+
+  @ApiPropertyOptional({ example: 'USD' })
+  providerCurrency?: string;
+
+  @ApiPropertyOptional({ example: 0.32 })
+  providerExchangeRate?: number;
+
   @ApiPropertyOptional({ example: '2024-03-15T00:00:00.000Z' })
   nextBillingAt?: Date;
 
@@ -147,4 +156,7 @@ export class SubscriptionPlanDto {
 
   @ApiProperty({ example: true })
   isActive: boolean;
+
+  @ApiPropertyOptional({ type: Object, example: { month: 'price_123', year: 'price_456' } })
+  stripePriceIds?: { month?: string; year?: string };
 }
