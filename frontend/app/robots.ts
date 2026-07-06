@@ -37,7 +37,6 @@ export default function robots(): MetadataRoute.Robots {
           "/invitation/",
           "/payment-success",
           "/ticket/verify/",
-          "/konnect-mock-checkout",
           "/private/",
         ],
       },

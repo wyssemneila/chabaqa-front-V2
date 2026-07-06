@@ -7,7 +7,7 @@ export type PaymentVerificationStatus =
   | 'cancelled'
   | 'requires_action';
 
-export type PaymentVerificationProvider = 'stripe' | 'flouci' | 'konnect' | 'manual';
+export type PaymentVerificationProvider = 'stripe';
 
 export type PaymentVerificationTargetType =
   | 'community'
@@ -45,9 +45,7 @@ export class PaymentVerificationService {
   normalizeProvider(raw?: string): PaymentVerificationProvider {
     const value = String(raw || '').toLowerCase();
     if (value.includes('stripe')) return 'stripe';
-    if (value.includes('konnect')) return 'konnect';
-    if (value.includes('manual')) return 'manual';
-    return 'flouci';
+    return 'stripe';
   }
 
   normalizeStatus(raw?: string): PaymentVerificationStatus {

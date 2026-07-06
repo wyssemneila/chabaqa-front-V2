@@ -184,6 +184,14 @@ export class UsageSummaryDto {
 }
 
 export class RecordUsageDto {
+  @ApiPropertyOptional({
+    description: 'Creator ID whose usage should be recorded. Required for internal service writes.',
+    example: '507f1f77bcf86cd799439012'
+  })
+  @IsOptional()
+  @IsString()
+  creatorId?: string;
+
   @ApiProperty({ 
     description: 'Metric type',
     enum: UsageMetricType

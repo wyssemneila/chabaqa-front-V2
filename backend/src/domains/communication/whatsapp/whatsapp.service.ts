@@ -827,7 +827,14 @@ export class WhatsappService {
     payload?: any,
   ): Promise<void> {
     const normalized = eventType.toLowerCase();
-    if (['session.ready', 'ready', 'authenticated'].includes(normalized)) {
+    if (
+      [
+        'session.ready',
+        'session.authenticated',
+        'ready',
+        'authenticated',
+      ].includes(normalized)
+    ) {
       await this.sessionService.markFromWebhook(
         sessionId,
         WhatsappSessionStatus.READY,
@@ -850,13 +857,18 @@ export class WhatsappService {
 
     if (!messageId) return;
 
-    const status = normalized.includes('read')
-      ? WhatsappRecipientStatus.READ
-      : normalized.includes('delivered')
-        ? WhatsappRecipientStatus.DELIVERED
-        : normalized.includes('reply') || normalized.includes('message')
-          ? WhatsappRecipientStatus.REPLIED
-          : null;
+    const ackStatus = this.mapOpenWaAckToRecipientStatus(payload);
+    const status =
+      ackStatus ||
+      (normalized.includes('read')
+        ? WhatsappRecipientStatus.READ
+        : normalized.includes('delivered')
+          ? WhatsappRecipientStatus.DELIVERED
+          : normalized.includes('failed')
+            ? WhatsappRecipientStatus.FAILED
+            : normalized.includes('reply')
+              ? WhatsappRecipientStatus.REPLIED
+              : null);
     if (!status) return;
 
     const set: Record<string, any> = { 'recipients.$.status': status };
@@ -870,6 +882,14 @@ export class WhatsappService {
     } else if (status === WhatsappRecipientStatus.REPLIED) {
       set['recipients.$.repliedAt'] = new Date();
       inc.repliedCount = 1;
+    } else if (status === WhatsappRecipientStatus.FAILED) {
+      set['recipients.$.errorMessage'] =
+        payload?.error ||
+        payload?.message ||
+        payload?.data?.error ||
+        payload?.data?.message ||
+        'OpenWA reported message failure';
+      inc.failedCount = 1;
     }
 
     await this.campaignModel.updateOne(
@@ -902,6 +922,37 @@ export class WhatsappService {
         ...(Object.keys(inc).length ? { $inc: inc } : {}),
       },
     );
+  }
+
+  private mapOpenWaAckToRecipientStatus(
+    payload?: any,
+  ): WhatsappRecipientStatus | null {
+    const rawAck =
+      payload?.ack ??
+      payload?.status ??
+      payload?.data?.ack ??
+      payload?.data?.status ??
+      payload?.data?.message?.ack;
+    const ackNumber =
+      typeof rawAck === 'number'
+        ? rawAck
+        : /^-?\d+$/.test(String(rawAck || ''))
+          ? Number(rawAck)
+          : null;
+    if (ackNumber !== null) {
+      if (ackNumber >= 3) return WhatsappRecipientStatus.READ;
+      if (ackNumber >= 2) return WhatsappRecipientStatus.DELIVERED;
+      if (ackNumber < 0) return WhatsappRecipientStatus.FAILED;
+      return null;
+    }
+
+    const ackText = String(rawAck || '').toLowerCase();
+    if (ackText.includes('read')) return WhatsappRecipientStatus.READ;
+    if (ackText.includes('delivered')) return WhatsappRecipientStatus.DELIVERED;
+    if (ackText.includes('failed') || ackText.includes('error')) {
+      return WhatsappRecipientStatus.FAILED;
+    }
+    return null;
   }
 
   private appendOptOutFooter(body: string): string {

@@ -64,7 +64,6 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
   const [loadingSessionReviews, setLoadingSessionReviews] = useState(false)
 
   const [promoCode, setPromoCode] = useState("")
-  // const [paymentProof, setPaymentProof] = useState<File | null>(null) // Removed
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Available slots from backend
@@ -264,7 +263,6 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
       notes: bookingNotes.trim() || undefined,
       slotId: selectedSlotId || undefined,
     }, promoCode.trim() || undefined),
-    initKonnect: () => (sessionsApi as any).initKonnectPayment(String(session?.id), promoCode.trim() || undefined),
   })
 
   const handleTimeSelect = (slotId: string, time: string) => {

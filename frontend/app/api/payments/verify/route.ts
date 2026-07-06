@@ -2,20 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * API endpoint to verify payment status
- * Gets called after user returns from Stripe / Flouci / Konnect checkout
+ * Gets called after user returns from Stripe checkout
  */
 export async function GET(req: NextRequest) {
   const noCacheHeaders = { 'Cache-Control': 'private, no-cache' };
   try {
     const sessionId = req.nextUrl.searchParams.get('sessionId');
-    const paymentId = req.nextUrl.searchParams.get('paymentId');
-    const paymentRef = req.nextUrl.searchParams.get('paymentRef');
     const authHeader = req.headers.get('authorization');
     const incomingCookies = req.headers.get('cookie') || '';
 
-    if (!sessionId && !paymentId && !paymentRef) {
+    if (!sessionId) {
       return NextResponse.json(
-        { message: 'sessionId, paymentId, or paymentRef query parameter is required' },
+        { message: 'sessionId query parameter is required' },
         { status: 400, headers: noCacheHeaders }
       );
     }
@@ -37,24 +35,9 @@ export async function GET(req: NextRequest) {
       ? backendUrl 
       : `http://localhost:3000${backendUrl}`;
 
-    let verifyPath: string;
-    let providerLabel: string;
+    const verifyPath = `/payment/stripe-link/verify?sessionId=${encodeURIComponent(sessionId)}`;
 
-    if (paymentRef) {
-      // Konnect payment verification
-      verifyPath = `/payment/konnect/verify?paymentRef=${encodeURIComponent(paymentRef)}`;
-      providerLabel = 'konnect';
-    } else if (sessionId) {
-      // Stripe session verification
-      verifyPath = `/payment/stripe-link/verify?sessionId=${encodeURIComponent(sessionId)}`;
-      providerLabel = 'stripe session';
-    } else {
-      // Flouci payment verification
-      verifyPath = `/payment/verify?paymentId=${encodeURIComponent(paymentId as string)}`;
-      providerLabel = 'flouci payment';
-    }
-
-    console.log(`[Payment Verify] Verifying ${providerLabel} at ${finalBackendUrl}${verifyPath}`);
+    console.log(`[Payment Verify] Verifying stripe session at ${finalBackendUrl}${verifyPath}`);
 
     // Call the backend verification endpoint
     const response = await fetch(

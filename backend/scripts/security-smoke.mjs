@@ -272,9 +272,6 @@ async function main() {
     );
     expectCheck('EICAR document upload is rejected', malwareUpload.status >= 400, `status=${malwareUpload.status}`);
 
-    const mockPayment = await request('/payment/konnect/mock/confirm?paymentRef=smoke-test&outcome=success');
-    expectCheck('Konnect mock confirm is not usable when mock mode is disabled', mockPayment.status >= 400, `status=${mockPayment.status}`);
-
     const admin = await ensureSmokeAdmin(db);
     const adminJar = new CookieJar();
     const adminLogin = await request('/admin/login', {

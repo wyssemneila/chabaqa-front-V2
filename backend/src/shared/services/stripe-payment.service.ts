@@ -8,6 +8,9 @@ export interface LinkCheckoutSession {
   success: boolean;
   sessionId?: string;
   url?: string;
+  providerAmount?: number;
+  providerCurrency?: string;
+  providerExchangeRate?: number;
   error?: string;
 }
 
@@ -26,6 +29,31 @@ export interface LinkPaymentMethod {
   };
 }
 
+export interface StripeSubscriptionDetails {
+  success: boolean;
+  error?: string;
+  subscriptionId?: string;
+  customerId?: string;
+  status?: string;
+  currentPeriodStart?: Date;
+  currentPeriodEnd?: Date;
+  trialEndsAt?: Date;
+  cancelAtPeriodEnd?: boolean;
+  providerPriceId?: string;
+  paymentMethod?: LinkPaymentMethod;
+}
+
+export type StripeSubscriptionCancelResult = StripeSubscriptionDetails;
+
+export interface StripePriceDetails {
+  success: boolean;
+  priceId?: string;
+  providerAmount?: number;
+  providerCurrency?: string;
+  providerExchangeRate?: number;
+  error?: string;
+}
+
 type StripeClient = InstanceType<typeof Stripe>;
 type StripeCheckoutSession = Awaited<ReturnType<StripeClient['checkout']['sessions']['retrieve']>>;
 type StripePaymentIntent = Awaited<ReturnType<StripeClient['paymentIntents']['retrieve']>>;
@@ -42,12 +70,12 @@ export class StripePaymentService {
   private readonly RATE_CACHE_DURATION_MS = 1200000;
 
   constructor(private configService: ConfigService) {
-    const stripeKey = String(this.configService.get('STRIPE_SECRET_KEY') || '').trim();
+    const stripeKey = this.resolveStripeSecretKey();
     const hasUsableStripeKey = /^sk_(test|live)_/.test(stripeKey);
     this.mockMode = !isStrictProductionRuntime() && (this.isEnvFlagEnabled('STRIPE_MOCK_MODE') || !hasUsableStripeKey);
 
     if (!hasUsableStripeKey && !this.mockMode) {
-      throw new Error('STRIPE_SECRET_KEY must be a valid Stripe secret key');
+      throw new Error('STRIPE_SECRET_KEY or STRIPE_API_KEY must be a valid Stripe secret key');
     }
 
     if (this.mockMode) {
@@ -64,6 +92,22 @@ export class StripePaymentService {
     return ['1', 'true', 'yes', 'on'].includes(
       String(this.configService.get(name) || '').trim().toLowerCase(),
     );
+  }
+
+  private resolveStripeSecretKey(): string {
+    return String(
+      this.configService.get('STRIPE_SECRET_KEY') ||
+      this.configService.get('STRIPE_API_KEY') ||
+      '',
+    ).trim();
+  }
+
+  private resolveStripeWebhookSecret(): string {
+    return String(
+      this.configService.get('STRIPE_WEBHOOK_SECRET') ||
+      this.configService.get('STRIPE_LINK_WEBHOOK_SECRET') ||
+      '',
+    ).trim();
   }
 
   private createMockId(prefix: string): string {
@@ -134,6 +178,9 @@ export class StripePaymentService {
           success: true,
           sessionId,
           url: this.resolveMockCheckoutUrl(params.successUrl, sessionId),
+          providerAmount: params.amountDT,
+          providerCurrency: (params.currency || 'TND').toUpperCase(),
+          providerExchangeRate: 1,
         };
       }
 
@@ -190,6 +237,9 @@ export class StripePaymentService {
         success: true,
         sessionId: session.id,
         url: session.url || undefined,
+        providerAmount: amount / 100,
+        providerCurrency: currency.toUpperCase(),
+        providerExchangeRate: conversionRate,
       };
     } catch (e: any) {
       return {
@@ -209,6 +259,9 @@ export class StripePaymentService {
     customerEmail?: string;
     metadata?: Record<string, any>;
     trialPeriodDays?: number;
+    providerAmount?: number;
+    providerCurrency?: string;
+    providerExchangeRate?: number;
   }): Promise<LinkCheckoutSession> {
     try {
       if (this.mockMode) {
@@ -217,6 +270,9 @@ export class StripePaymentService {
           success: true,
           sessionId,
           url: this.resolveMockCheckoutUrl(params.successUrl, sessionId),
+          providerAmount: params.providerAmount,
+          providerCurrency: params.providerCurrency,
+          providerExchangeRate: params.providerExchangeRate,
         };
       }
 
@@ -240,6 +296,9 @@ export class StripePaymentService {
         success: true,
         sessionId: session.id,
         url: session.url || undefined,
+        providerAmount: params.providerAmount,
+        providerCurrency: params.providerCurrency,
+        providerExchangeRate: params.providerExchangeRate,
       };
     } catch (e: any) {
       return {
@@ -290,6 +349,9 @@ export class StripePaymentService {
     checkoutStatus?: string | null;
     paymentIntentStatus?: string;
     amountDT?: number;
+    providerAmount?: number;
+    providerCurrency?: string;
+    providerExchangeRate?: number;
     paymentMethod?: LinkPaymentMethod;
     customerId?: string;
     subscriptionId?: string;
@@ -320,6 +382,9 @@ export class StripePaymentService {
               exp_year: now.getFullYear() + 2,
             },
           },
+          providerAmount: undefined,
+          providerCurrency: undefined,
+          providerExchangeRate: undefined,
           customerId: this.createMockId('cus_mock'),
           subscriptionId: String(sessionId || '').startsWith('cs_mock_sub')
             ? this.createMockId('sub_mock')
@@ -373,6 +438,9 @@ export class StripePaymentService {
         checkoutStatus: session.status,
         paymentIntentStatus: paymentIntent?.status,
         amountDT: typeof session.amount_total === 'number' ? session.amount_total / 100 : paymentIntent ? paymentIntent.amount / 100 : undefined,
+        providerAmount: typeof session.amount_total === 'number' ? session.amount_total / 100 : paymentIntent ? paymentIntent.amount / 100 : undefined,
+        providerCurrency: (session.currency || paymentIntent?.currency || '').toUpperCase() || undefined,
+        providerExchangeRate: session.metadata?.providerExchangeRate ? Number(session.metadata.providerExchangeRate) : undefined,
         paymentMethod,
         customerId: typeof customer === 'string' ? customer : customer?.id,
         subscriptionId: typeof subscription === 'string' ? subscription : subscription?.id,
@@ -387,6 +455,165 @@ export class StripePaymentService {
       return {
         success: false,
         error: e?.message || 'Payment verification failed',
+      };
+    }
+  }
+
+  async getSubscriptionDetails(subscriptionId: string): Promise<StripeSubscriptionDetails> {
+    try {
+      if (this.mockMode || String(subscriptionId || '').startsWith('sub_mock')) {
+        const now = new Date();
+        return {
+          success: true,
+          subscriptionId,
+          customerId: this.createMockId('cus_mock'),
+          status: 'active',
+          currentPeriodStart: now,
+          currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          cancelAtPeriodEnd: false,
+          paymentMethod: {
+            id: this.createMockId('pm_mock'),
+            type: 'card',
+            card: {
+              brand: 'visa',
+              last4: '4242',
+              exp_month: 12,
+              exp_year: now.getFullYear() + 2,
+            },
+          },
+        };
+      }
+
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId, {
+        expand: ['default_payment_method', 'items.data.price'],
+      });
+      const subscriptionObject = subscription as any;
+      const defaultPaymentMethod = subscriptionObject.default_payment_method;
+      const paymentMethodObject =
+        defaultPaymentMethod && typeof defaultPaymentMethod === 'object'
+          ? defaultPaymentMethod
+          : null;
+
+      return {
+        success: true,
+        subscriptionId: subscription.id,
+        customerId: typeof subscription.customer === 'string'
+          ? subscription.customer
+          : subscription.customer?.id,
+        status: subscriptionObject.status,
+        currentPeriodStart: subscriptionObject.current_period_start
+          ? new Date(subscriptionObject.current_period_start * 1000)
+          : undefined,
+        currentPeriodEnd: subscriptionObject.current_period_end
+          ? new Date(subscriptionObject.current_period_end * 1000)
+          : undefined,
+        trialEndsAt: subscriptionObject.trial_end
+          ? new Date(subscriptionObject.trial_end * 1000)
+          : undefined,
+        cancelAtPeriodEnd: subscriptionObject.cancel_at_period_end,
+        providerPriceId: subscriptionObject.items?.data?.[0]?.price?.id,
+        paymentMethod: paymentMethodObject
+          ? {
+              id: paymentMethodObject.id,
+              type: paymentMethodObject.type,
+              card: paymentMethodObject.card
+                ? {
+                    brand: paymentMethodObject.card.brand,
+                    last4: paymentMethodObject.card.last4,
+                    exp_month: paymentMethodObject.card.exp_month,
+                    exp_year: paymentMethodObject.card.exp_year,
+                  }
+                : undefined,
+            }
+          : undefined,
+      };
+    } catch (e: any) {
+      return {
+        success: false,
+        error: e?.message || 'Failed to retrieve Stripe subscription',
+      };
+    }
+  }
+
+  async getPriceDetails(priceId: string, businessAmount?: number): Promise<StripePriceDetails> {
+    try {
+      if (this.mockMode || String(priceId || '').startsWith('price_mock')) {
+        return {
+          success: true,
+          priceId,
+        };
+      }
+
+      const price = await this.stripe.prices.retrieve(priceId);
+      const providerAmount = typeof price.unit_amount === 'number'
+        ? price.unit_amount / 100
+        : undefined;
+      const providerCurrency = price.currency?.toUpperCase();
+      const providerExchangeRate =
+        providerAmount !== undefined && businessAmount && businessAmount > 0
+          ? providerAmount / businessAmount
+          : undefined;
+
+      return {
+        success: true,
+        priceId: price.id,
+        providerAmount,
+        providerCurrency,
+        providerExchangeRate,
+      };
+    } catch (e: any) {
+      return {
+        success: false,
+        error: e?.message || 'Failed to retrieve Stripe price',
+      };
+    }
+  }
+
+  async cancelSubscriptionAtPeriodEnd(subscriptionId: string): Promise<StripeSubscriptionCancelResult> {
+    try {
+      if (this.mockMode || String(subscriptionId || '').startsWith('sub_mock')) {
+        const now = new Date();
+        const currentPeriodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        return {
+          success: true,
+          subscriptionId,
+          customerId: this.createMockId('cus_mock'),
+          status: 'active',
+          currentPeriodStart: now,
+          currentPeriodEnd,
+          cancelAtPeriodEnd: true,
+        };
+      }
+
+      const subscription = await this.stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true,
+        expand: ['default_payment_method', 'items.data.price'],
+      } as any);
+      const subscriptionObject = subscription as any;
+
+      return {
+        success: true,
+        subscriptionId: subscription.id,
+        customerId: typeof subscription.customer === 'string'
+          ? subscription.customer
+          : subscription.customer?.id,
+        status: subscriptionObject.status,
+        currentPeriodStart: subscriptionObject.current_period_start
+          ? new Date(subscriptionObject.current_period_start * 1000)
+          : undefined,
+        currentPeriodEnd: subscriptionObject.current_period_end
+          ? new Date(subscriptionObject.current_period_end * 1000)
+          : undefined,
+        trialEndsAt: subscriptionObject.trial_end
+          ? new Date(subscriptionObject.trial_end * 1000)
+          : undefined,
+        cancelAtPeriodEnd: subscriptionObject.cancel_at_period_end,
+        providerPriceId: subscriptionObject.items?.data?.[0]?.price?.id,
+      };
+    } catch (e: any) {
+      return {
+        success: false,
+        error: e?.message || 'Failed to cancel Stripe subscription',
       };
     }
   }
@@ -406,7 +633,7 @@ export class StripePaymentService {
         };
       }
 
-      const webhookSecret = this.configService.get('STRIPE_WEBHOOK_SECRET');
+      const webhookSecret = this.resolveStripeWebhookSecret();
       if (!webhookSecret) {
         return {
           success: false,
@@ -501,6 +728,9 @@ export class StripePaymentService {
   }): Promise<{
     success: boolean;
     priceId?: string;
+    providerAmount?: number;
+    providerCurrency?: string;
+    providerExchangeRate?: number;
     error?: string;
   }> {
     try {
@@ -508,16 +738,21 @@ export class StripePaymentService {
         return {
           success: true,
           priceId: this.createMockId('price_mock'),
+          providerAmount: params.amountDT,
+          providerCurrency: (params.currency || 'TND').toUpperCase(),
+          providerExchangeRate: 1,
         };
       }
 
       const inputCurrency = (params.currency || 'tnd').toLowerCase();
       let stripeCurrency = inputCurrency;
       let amountInStripeCurrency = params.amountDT;
+      let conversionRate = 1;
 
       if (inputCurrency === 'tnd') {
         const tndToUsdRate = await this.getTndToUsdRate();
         stripeCurrency = 'usd';
+        conversionRate = tndToUsdRate;
         amountInStripeCurrency = params.amountDT * tndToUsdRate;
       }
 
@@ -540,6 +775,9 @@ export class StripePaymentService {
       return {
         success: true,
         priceId: price.id,
+        providerAmount: Math.round(amountInStripeCurrency * 100) / 100,
+        providerCurrency: stripeCurrency.toUpperCase(),
+        providerExchangeRate: conversionRate,
       };
     } catch (e: any) {
       return {

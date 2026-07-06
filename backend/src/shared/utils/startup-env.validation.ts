@@ -1,13 +1,8 @@
 import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 
 const PLACEHOLDER_VALUES = new Set([
-  'your-flouci-token',
-  'your-flouci-secret',
-  'your-konnect-api-key',
-  'your-konnect-wallet-id',
   'your-stripe-secret',
   'your-stripe-webhook-secret',
-  'your-flouci-webhook-secret',
 ]);
 
 function getConfiguredEnv(name: string): string {
@@ -28,14 +23,28 @@ function requireAny(names: string[], missing: string[]): void {
   }
 }
 
+function requireStripePlanPrices(missing: string[]): void {
+  const required = [
+    'STRIPE_PRICE_STARTER_MONTH',
+    'STRIPE_PRICE_STARTER_YEAR',
+    'STRIPE_PRICE_GROWTH_MONTH',
+    'STRIPE_PRICE_GROWTH_YEAR',
+    'STRIPE_PRICE_PRO_MONTH',
+    'STRIPE_PRICE_PRO_YEAR',
+  ];
+  for (const name of required) {
+    if (!getConfiguredEnv(name)) missing.push(name);
+  }
+}
+
 export function validateStartupEnv(): void {
   if (!isStrictProductionRuntime()) {
     return;
   }
 
-  const konnectMockMode = String(process.env.KONNECT_MOCK_MODE || '').trim().toLowerCase();
-  if (['1', 'true', 'yes', 'on'].includes(konnectMockMode)) {
-    throw new Error('[startup-env] KONNECT_MOCK_MODE cannot be enabled in production');
+  const planEnforcementMode = String(process.env.PLAN_ENFORCEMENT_MODE || '').trim().toLowerCase();
+  if (!['1', 'true', 'yes', 'on'].includes(planEnforcementMode)) {
+    throw new Error('[startup-env] PLAN_ENFORCEMENT_MODE must be true in production');
   }
 
   const swaggerEnabled = String(process.env.ENABLE_SWAGGER || '').trim().toLowerCase();
@@ -50,8 +59,11 @@ export function validateStartupEnv(): void {
   requireAny(['FRONTEND_URL', 'NEXT_PUBLIC_APP_URL'], missing);
   requireAny(['SERVER_URL', 'NEXT_PUBLIC_API_URL', 'API_INTERNAL_URL'], missing);
 
+  requireAny(['INTERNAL_SERVICE_TOKEN'], missing);
+
   requireAny(['STRIPE_SECRET_KEY', 'STRIPE_API_KEY'], missing);
   requireAny(['STRIPE_WEBHOOK_SECRET', 'STRIPE_LINK_WEBHOOK_SECRET'], missing);
+  requireStripePlanPrices(missing);
 
   if (missing.length > 0) {
     throw new Error(`[startup-env] Missing required production env: ${missing.join(', ')}`);

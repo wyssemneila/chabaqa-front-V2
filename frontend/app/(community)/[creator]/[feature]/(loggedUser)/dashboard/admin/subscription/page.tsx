@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useDashboard,
@@ -39,7 +39,6 @@ import {
 import Link from "next/link";
 import {
   subscriptionApi,
-  PlanTier as ApiPlanTier,
   SubscriptionStatus,
   type CreatorSubscription,
   type Invoice,
@@ -143,18 +142,10 @@ export default function SubscriptionManagementPage() {
     },
   });
 
-  const upgradeMutation = useMutation({
-    mutationFn: (newTier: PlanTier) =>
-      subscriptionApi.upgradePlan({ tier: newTier as unknown as ApiPlanTier }),
-    onSuccess: () => {
-      toast({ title: "Plan upgraded!", description: "Your new plan is now active." });
-      queryClient.invalidateQueries({ queryKey: ["my-subscription"] });
-      setShowUpgradeDialog(false);
-    },
-    onError: () => {
-      toast({ title: "Upgrade failed", description: "Please try again or contact support.", variant: "destructive" });
-    },
-  });
+  const checkoutUrl = useMemo(
+    () => `/pricing?plan=${selectedUpgradeTier}&billing=yearly`,
+    [selectedUpgradeTier],
+  );
 
   // ── Render guards ────────────────────────────────────────────────
 
@@ -436,7 +427,7 @@ export default function SubscriptionManagementPage() {
           <DialogHeader>
             <DialogTitle>Upgrade to {PLANS[selectedUpgradeTier]?.name}</DialogTitle>
             <DialogDescription>
-              You{"'"}ll be upgraded immediately and charged the prorated difference for the remainder of this billing period.
+              Paid plan changes now go through secure checkout. You{"'"}ll review the amount before activation.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-3">
@@ -458,17 +449,11 @@ export default function SubscriptionManagementPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => upgradeMutation.mutate(selectedUpgradeTier)}
-              disabled={upgradeMutation.isPending}
+              asChild
             >
-              {upgradeMutation.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Upgrading...
-                </>
-              ) : (
-                `Upgrade to ${PLANS[selectedUpgradeTier]?.name}`
-              )}
+              <Link href={checkoutUrl}>
+                Continue to checkout
+              </Link>
             </Button>
           </DialogFooter>
         </DialogContent>

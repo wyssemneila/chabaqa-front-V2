@@ -27,6 +27,18 @@ export class Order {
   @Prop({ type: Number, required: true })
   amountDT: number;
 
+  @Prop({ type: String, default: 'TND' })
+  businessCurrency?: string;
+
+  @Prop({ type: Number })
+  providerAmount?: number;
+
+  @Prop({ type: String })
+  providerCurrency?: string;
+
+  @Prop({ type: Number })
+  providerExchangeRate?: number;
+
   @Prop({ type: Number, required: true })
   platformPercent: number;
 
@@ -49,13 +61,10 @@ export class Order {
   paymentId?: string;
 
   @Prop({ type: String })
-  paymentMethod?: string; // e.g. 'flouci', 'stripe', 'manual', 'offline'
+  paymentMethod?: string; // e.g. 'stripe'
 
   @Prop({ type: String, default: 'pending' })
-  status: 'paid' | 'refunded' | 'pending' | 'pending_verification' | 'cancelled';
-
-  @Prop({ type: String })
-  paymentProof?: string; // URL of the uploaded proof file
+  status: 'paid' | 'refunded' | 'pending' | 'cancelled';
 
   @Prop({ type: Object, default: {} })
   metadata?: Record<string, any>;

@@ -639,7 +639,7 @@ function buildOrderDoc(user, type, contentId, doc, orderIndex, now) {
   const discountDT = gross > 90 && orderIndex % 3 === 0 ? 10 : 0;
   const amountDT = Math.max(0, gross - discountDT);
   const platformFeeDT = Math.round((amountDT * 0.1 + (amountDT > 0 ? 1 : 0)) * 100) / 100;
-  const status = pick(['paid', 'paid', 'pending_verification', 'refunded'], orderIndex);
+  const status = pick(['paid', 'paid', 'pending', 'refunded'], orderIndex);
   return {
     _id: oid(`order:${user.username}:${type}:${contentId}:${orderIndex}`),
     buyerId: user._id,
@@ -655,9 +655,8 @@ function buildOrderDoc(user, type, contentId, doc, orderIndex, now) {
     promoCode: discountDT > 0 ? 'DEMO10' : null,
     discountDT,
     paymentId: `demo-order-${orderIndex}-${type}-${slugify(contentId).slice(0, 50)}`,
-    paymentMethod: pick(['offline', 'flouci', 'manual', 'stripe'], orderIndex),
+    paymentMethod: 'stripe',
     status,
-    paymentProof: status === 'pending_verification' ? asset('payment-proof', `${type}-${contentId}`, orderIndex) : undefined,
     metadata: {
       seedKey: SEED_KEY,
       note: `Demo ${status} ${type} order`,
@@ -1749,7 +1748,7 @@ async function main() {
         analyticsDailyRows: analyticsDailyRows.length,
         orders: paidOrders.length,
         paidOrders: paidOrders.filter((order) => order.status === 'paid').length,
-        pendingVerificationOrders: paidOrders.filter((order) => order.status === 'pending_verification').length,
+        pendingOrders: paidOrders.filter((order) => order.status === 'pending').length,
         refundedOrders: paidOrders.filter((order) => order.status === 'refunded').length,
       },
       accounts: {

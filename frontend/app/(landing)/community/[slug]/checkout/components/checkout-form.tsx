@@ -6,7 +6,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, CheckCircle, Tag, Users, Star, Loader2, ShieldCheck, Percent, Upload } from "lucide-react"
+import { ArrowLeft, CheckCircle, Tag, Users, Star, Loader2, ShieldCheck, Percent } from "lucide-react"
 import { communitiesApi } from "@/lib/api"
 import type { CommunityThemeTokens } from "@/lib/community-theme"
 import { PaymentProviderModal } from "@/components/payment-provider-modal"
@@ -34,20 +34,12 @@ export function CheckoutForm({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [alreadyMember, setAlreadyMember] = useState(false)
-  const [manualProof, setManualProof] = useState<File | null>(null)
-  const [manualSubmitting, setManualSubmitting] = useState(false)
-  const [manualSubmitted, setManualSubmitted] = useState(false)
 
   const pricing = community as any
   const normalizedInviteCode = typeof inviteCode === "string" ? inviteCode.trim() : ""
 
   const paymentModal = usePaymentProviderModal({
     initStripe: () => (communitiesApi as any).initStripePayment(
-      community?.id,
-      promoCode || undefined,
-      normalizedInviteCode || undefined,
-    ),
-    initKonnect: () => (communitiesApi as any).initKonnectPayment(
       community?.id,
       promoCode || undefined,
       normalizedInviteCode || undefined,
@@ -217,42 +209,6 @@ export function CheckoutForm({
       return
     }
     router.push(`/community/${community.slug}`)
-  }
-
-  const handleManualProofSubmit = async () => {
-    if (!manualProof || manualSubmitting) return
-    if (!community?.id) {
-      setError("Missing community information")
-      return
-    }
-    if (isPrivateCommunity && !normalizedInviteCode) {
-      setError("This private community requires a valid invitation link.")
-      return
-    }
-
-    setManualSubmitting(true)
-    setError(null)
-    try {
-      await (communitiesApi as any).initManualPayment({
-        communityId: community.id,
-        proof: manualProof,
-        promoCode: promoCode || undefined,
-        inviteCode: normalizedInviteCode || undefined,
-      })
-      setManualSubmitted(true)
-      setManualProof(null)
-    } catch (err: any) {
-      const msg = String(err?.message || '').toLowerCase()
-      if (msg.includes("authentication") || msg.includes("unauthorized") || msg.includes("login")) {
-        const returnPath = `${window.location.pathname}${window.location.search || ""}`
-        const returnUrl = encodeURIComponent(returnPath)
-        router.push(`/signin?redirect=${returnUrl}&returnUrl=${returnUrl}`)
-        return
-      }
-      setError(err?.message || "Failed to submit manual payment proof.")
-    } finally {
-      setManualSubmitting(false)
-    }
   }
 
   return (
@@ -425,33 +381,6 @@ export function CheckoutForm({
                   Instant Access
                 </p>
                 <p className="mt-1 opacity-90">Pay securely with your credit/debit card and get instant access to the community.</p>
-              </div>
-            )}
-
-            {basePrice > 0 && !success && (
-              <div className="mb-6 rounded-lg border border-dashed border-gray-300 bg-white p-4">
-                <p className="text-sm font-semibold text-gray-900">Manual transfer proof</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">
-                  Upload a bank transfer proof for creator review. Access starts after approval.
-                </p>
-                <div className="mt-3 flex flex-col gap-2">
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    onChange={(event) => setManualProof(event.target.files?.[0] || null)}
-                    className="block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-gray-700"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleManualProofSubmit}
-                    disabled={!manualProof || manualSubmitting || manualSubmitted}
-                    className="h-11 w-full justify-center gap-2"
-                  >
-                    {manualSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    {manualSubmitted ? 'Proof submitted' : 'Submit proof for review'}
-                  </Button>
-                </div>
               </div>
             )}
 

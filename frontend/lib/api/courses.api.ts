@@ -302,14 +302,6 @@ export const coursesApi = {
     return apiClient.post<any>(endpoint, { courseId, chapterId });
   },
 
-  initKonnectPayment: async (courseId: string, promoCode?: string): Promise<any> => {
-    const endpoint = promoCode
-      ? `/payment/konnect/init/course?promoCode=${encodeURIComponent(promoCode)}`
-      : `/payment/konnect/init/course`;
-
-    return apiClient.post<any>(endpoint, { courseId });
-  },
-
   // Get course progress
   getProgress: async (id: string): Promise<ApiSuccessResponse<CourseEnrollment>> => {
     return apiClient.get<ApiSuccessResponse<CourseEnrollment>>(`/cours/${id}/track/progress`);

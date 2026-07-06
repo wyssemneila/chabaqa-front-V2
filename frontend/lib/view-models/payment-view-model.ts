@@ -1,5 +1,5 @@
 export type PaymentStatus = "paid" | "pending" | "failed" | "cancelled" | "requires_action"
-export type PaymentProvider = "stripe" | "flouci" | "konnect" | "manual"
+export type PaymentProvider = "stripe"
 
 export interface PaymentViewModel {
   success: boolean

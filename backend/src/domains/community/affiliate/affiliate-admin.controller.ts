@@ -29,7 +29,7 @@ export class AffiliateAdminController {
   }
 
   @Post('payouts/:id/mark-paid')
-  @ApiOperation({ summary: 'Mark a payout as paid (manual transfer done)' })
+  @ApiOperation({ summary: 'Mark a payout as paid after transfer completion' })
   async markPaid(@Param('id') id: string, @Body() dto: AdminPayoutActionDto) {
     return this.payoutService.markPayoutPaid(id, dto.adminNotes);
   }

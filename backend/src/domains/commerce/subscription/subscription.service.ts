@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { StripePaymentService } from '@/shared/services/stripe-payment.service';
 import { BillingInterval, Subscription, SubscriptionDocument, SubscriptionStatus } from '@/infrastructure/database/schemas/commerce/subscription.schema';
 import { Plan, PlanDocument, PlanTier } from '@/infrastructure/database/schemas/commerce/plan.schema';
 import { Order, OrderDocument } from '@/infrastructure/database/schemas/commerce/order.schema';
@@ -55,6 +56,36 @@ import {
 @Injectable()
 export class SubscriptionService {
   private readonly logger = new Logger(SubscriptionService.name);
+  private readonly providerOwnedSubscriptionFields = new Set([
+    'provider',
+    'providerCustomerId',
+    'providerSubscriptionId',
+    'providerCheckoutSessionId',
+    'providerPriceId',
+    'status',
+    'amount',
+    'currency',
+    'currentPeriodStart',
+    'currentPeriodEnd',
+    'trialEndsAt',
+    'cancelAtPeriodEnd',
+    'hasPaymentMethod',
+    'paymentBrand',
+    'paymentLast4',
+  ]);
+  private readonly adminSafeSubscriptionFields = new Set([
+    'plan',
+    'billingInterval',
+    'communitiesMax',
+    'membersMax',
+    'coursesActivationMax',
+    'storageGB',
+    'adminsMax',
+    'emailCampaignRecipientsPerMonth',
+    'whatsappMessagesPerMonth',
+    'analyticsLookbackDays',
+    'sessionBookingsPerMonth',
+  ]);
   private readonly addonCatalog = {
     [SubscriptionAddonType.STORAGE_50GB]: {
       type: SubscriptionAddonType.STORAGE_50GB,
@@ -87,6 +118,7 @@ export class SubscriptionService {
     @InjectModel(StorageUsage.name) private readonly storageUsageModel: Model<StorageUsageDocument>,
     @InjectModel(EmailCampaign.name) private readonly emailCampaignModel: Model<any>,
     @InjectModel(WhatsappCampaign.name) private readonly whatsappCampaignModel: Model<any>,
+    private readonly stripePaymentService: StripePaymentService,
   ) {}
 
   getPlanAmount(plan: PlanDocument, interval: BillingInterval | 'month' | 'year' = BillingInterval.MONTH): number {
@@ -196,6 +228,7 @@ export class SubscriptionService {
       transactionFeePercent: plan.transactionFeePercent,
       transactionFixedFeeDT: plan.transactionFixedFeeDT,
       isActive: plan.isActive,
+      stripePriceIds: plan.stripePriceIds,
     };
   }
 
@@ -404,6 +437,9 @@ export class SubscriptionService {
       status?: SubscriptionStatus;
       amount?: number;
       currency?: string;
+      providerAmount?: number;
+      providerCurrency?: string;
+      providerExchangeRate?: number;
       paymentBrand?: string;
       paymentLast4?: string;
       hasPaymentMethod?: boolean;
@@ -420,6 +456,17 @@ export class SubscriptionService {
     const currentPeriodStart = options.currentPeriodStart || fallbackPeriod.currentPeriodStart;
     const currentPeriodEnd = options.currentPeriodEnd || fallbackPeriod.currentPeriodEnd;
     const amount = options.amount ?? this.getPlanAmount(plan, interval);
+    const trustedProvider = Boolean(
+      options.provider ||
+      options.providerCustomerId ||
+      options.providerSubscriptionId ||
+      options.providerCheckoutSessionId ||
+      options.providerPriceId,
+    );
+    const activatesPaidPlan = amount > 0 && (options.status || SubscriptionStatus.ACTIVE) === SubscriptionStatus.ACTIVE;
+    if (activatesPaidPlan && !trustedProvider) {
+      throw new BadRequestException('Paid plan activation must come from provider checkout or admin-approved billing context');
+    }
 
     const setPayload: Record<string, any> = {
       plan: plan.tier,
@@ -431,6 +478,9 @@ export class SubscriptionService {
       billingInterval: interval,
       amount,
       currency: options.currency || 'TND',
+      providerAmount: options.providerAmount,
+      providerCurrency: options.providerCurrency,
+      providerExchangeRate: options.providerExchangeRate,
       hasPaymentMethod: options.hasPaymentMethod ?? true,
       ...this.buildPlanLimitSnapshot(plan),
     };
@@ -458,6 +508,38 @@ export class SubscriptionService {
     if (!sub) {
       throw new BadRequestException('Aucune souscription trouvée');
     }
+
+    const provider = String(sub.provider || '').toLowerCase();
+    const isPaidActiveStripeSubscription =
+      provider === 'stripe' &&
+      sub.status === SubscriptionStatus.ACTIVE &&
+      Number(sub.amount || 0) > 0;
+
+    if (isPaidActiveStripeSubscription) {
+      if (!sub.providerSubscriptionId) {
+        throw new BadRequestException('Stripe subscription ID is required before cancellation can be scheduled');
+      }
+
+      const providerResult = await this.stripePaymentService.cancelSubscriptionAtPeriodEnd(sub.providerSubscriptionId);
+      if (!providerResult.success) {
+        throw new BadRequestException(providerResult.error || 'Unable to schedule Stripe cancellation');
+      }
+
+      sub.status = this.normalizeProviderStatus(providerResult.status);
+      sub.cancelAtPeriodEnd = providerResult.cancelAtPeriodEnd ?? true;
+      if (providerResult.currentPeriodStart) sub.currentPeriodStart = providerResult.currentPeriodStart;
+      if (providerResult.currentPeriodEnd) {
+        sub.currentPeriodEnd = providerResult.currentPeriodEnd;
+        sub.nextBillingAt = providerResult.currentPeriodEnd;
+      }
+      if (providerResult.trialEndsAt) sub.trialEndsAt = providerResult.trialEndsAt;
+      if (providerResult.customerId) sub.providerCustomerId = providerResult.customerId;
+      if (providerResult.providerPriceId) sub.providerPriceId = providerResult.providerPriceId;
+      await sub.save();
+
+      return { message: 'La souscription sera annulée à la fin de la période', subscription: sub };
+    }
+
     sub.cancelAtPeriodEnd = true;
     await sub.save();
     return { message: 'La souscription sera annulée à la fin de la période', subscription: sub };
@@ -640,6 +722,9 @@ export class SubscriptionService {
         billingInterval: sub.billingInterval,
         providerCheckoutSessionId: sub.providerCheckoutSessionId || undefined,
         providerPriceId: sub.providerPriceId || undefined,
+        providerAmount: sub.providerAmount,
+        providerCurrency: sub.providerCurrency,
+        providerExchangeRate: sub.providerExchangeRate,
         trialEndsAt: sub.trialEndsAt || undefined,
         currentPeriodStart: sub.currentPeriodStart,
         currentPeriodEnd: sub.currentPeriodEnd,
@@ -764,15 +849,49 @@ export class SubscriptionService {
     };
   }
 
-  async updateSubscription(subscriptionId: string, updateDto: UpdateSubscriptionDto): Promise<SubscriptionResponseDto> {
+  async updateSubscription(
+    subscriptionId: string,
+    updateDto: UpdateSubscriptionDto,
+    auditContext: { adminUserId?: string; adminEmail?: string; requestId?: string | string[] } = {},
+  ): Promise<SubscriptionResponseDto> {
     const subscription = await this.subModel.findById(subscriptionId).exec();
     if (!subscription) {
       throw new NotFoundException('Subscription not found');
     }
 
-    // Update fields
-    Object.assign(subscription, updateDto);
+    const incomingFields = Object.keys(updateDto || {}).filter((field) => (updateDto as any)[field] !== undefined);
+    const blockedFields = incomingFields.filter((field) => this.providerOwnedSubscriptionFields.has(field));
+    if (blockedFields.length > 0) {
+      this.logger.warn(JSON.stringify({
+        event: 'admin_subscription_update_rejected',
+        subscriptionId,
+        adminUserId: auditContext.adminUserId?.toString?.(),
+        adminEmail: auditContext.adminEmail,
+        requestId: Array.isArray(auditContext.requestId) ? auditContext.requestId[0] : auditContext.requestId,
+        blockedFields,
+      }));
+      throw new BadRequestException(
+        `Provider-owned subscription fields cannot be changed here: ${blockedFields.join(', ')}`,
+      );
+    }
+
+    const appliedFields = incomingFields.filter((field) => this.adminSafeSubscriptionFields.has(field));
+    const ignoredFields = incomingFields.filter((field) => !this.adminSafeSubscriptionFields.has(field));
+
+    for (const field of appliedFields) {
+      (subscription as any)[field] = (updateDto as any)[field];
+    }
+
     await subscription.save();
+    this.logger.log(JSON.stringify({
+      event: 'admin_subscription_update',
+      subscriptionId,
+      adminUserId: auditContext.adminUserId?.toString?.(),
+      adminEmail: auditContext.adminEmail,
+      requestId: Array.isArray(auditContext.requestId) ? auditContext.requestId[0] : auditContext.requestId,
+      appliedFields,
+      ignoredFields,
+    }));
 
     return {
       id: subscription._id.toString(),
@@ -866,11 +985,7 @@ export class SubscriptionService {
       }
     } catch (error) {
       this.logger.error(`Webhook processing failed for event ${webhookEvent.id}:`, error.message);
-      return {
-        message: 'Webhook processing failed',
-        eventId: webhookEvent.id,
-        status: 'error'
-      };
+      throw error;
     }
   }
 
@@ -1114,6 +1229,9 @@ export class SubscriptionService {
       communityId?: string | Types.ObjectId;
       invoicePdfUrl?: string;
       status?: BillingInvoiceStatus;
+      providerAmount?: number;
+      providerCurrency?: string;
+      providerExchangeRate?: number;
     } = {},
     session: any = null,
   ): Promise<void> {
@@ -1123,7 +1241,7 @@ export class SubscriptionService {
     const creatorId = order.creatorId instanceof Types.ObjectId ? order.creatorId : new Types.ObjectId(String(order.creatorId));
     const customerId = order.buyerId instanceof Types.ObjectId ? order.buyerId : new Types.ObjectId(String(order.buyerId));
     const invoiceDate = order.updatedAt || order.createdAt || new Date();
-    const provider = options.provider || order.metadata?.provider || order.paymentMethod || 'manual';
+    const provider = options.provider || order.metadata?.provider || order.paymentMethod || 'stripe';
     const externalProviderInvoiceId = String(options.providerInvoiceId || '').trim() || undefined;
     const providerInvoiceId = externalProviderInvoiceId || `order_${orderId.toString()}`;
     const invoiceNumber = externalProviderInvoiceId || `INV-${orderId.toString().slice(-10).toUpperCase()}`;
@@ -1142,6 +1260,9 @@ export class SubscriptionService {
       subtotal: Number(order.amountDT || order.metadata?.amount || 0),
       tax: 0,
       currency: order.metadata?.currency || 'TND',
+      providerAmount: options.providerAmount ?? order.providerAmount ?? order.metadata?.providerAmount,
+      providerCurrency: options.providerCurrency ?? order.providerCurrency ?? order.metadata?.providerCurrency,
+      providerExchangeRate: options.providerExchangeRate ?? order.providerExchangeRate ?? order.metadata?.providerExchangeRate,
       invoiceDate,
       paidAt: invoiceDate,
       invoicePdfUrl: options.invoicePdfUrl,
@@ -1157,6 +1278,8 @@ export class SubscriptionService {
         contentId: order.contentId,
         paymentMethod: order.paymentMethod,
         providerCheckoutSessionId: order.metadata?.providerCheckoutSessionId || order.paymentId,
+        businessAmount: Number(order.amountDT || order.metadata?.amount || 0),
+        businessCurrency: order.businessCurrency || order.metadata?.currency || 'TND',
         generatedProviderInvoiceId: !externalProviderInvoiceId,
       },
     };
@@ -1260,7 +1383,7 @@ export class SubscriptionService {
         customerId,
         subscriptionId,
         ownerType: BillingInvoiceOwnerType.PLATFORM_SUBSCRIPTION,
-        provider: 'manual',
+        provider: 'stripe',
         status: BillingInvoiceStatus.OPEN,
         invoiceNumber: `INV-${now.getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
         total,
@@ -1553,7 +1676,7 @@ export class SubscriptionService {
       billingInterval: interval,
       amount: Number(metadata.amount || order.amountDT || 0),
       currency: metadata.currency || 'TND',
-      provider: options.provider || metadata.provider || order.paymentMethod || 'manual',
+      provider: options.provider || metadata.provider || order.paymentMethod || 'stripe',
       providerCustomerId: options.providerCustomerId,
       providerSubscriptionId: options.providerSubscriptionId || metadata.providerSubscriptionId,
       providerCheckoutSessionId: options.providerCheckoutSessionId || metadata.providerCheckoutSessionId || order.paymentId,
@@ -1705,67 +1828,6 @@ export class SubscriptionService {
       canceledSubscribers: Number(stats.canceledSubscribers || 0),
       pastDueSubscribers: Number(stats.pastDueSubscribers || 0),
     };
-  }
-
-  async reviewManualPlatformSubscriptionOrder(
-    orderId: string,
-    adminId: string | Types.ObjectId,
-    action: 'approve' | 'reject',
-  ) {
-    if (!Types.ObjectId.isValid(orderId)) {
-      throw new BadRequestException('Invalid order id');
-    }
-    const order = await this.orderModel.findOne({
-      _id: new Types.ObjectId(orderId),
-      paymentMethod: 'manual',
-      contentType: 'subscription',
-      status: 'pending_verification',
-    });
-    if (!order) {
-      throw new NotFoundException('Pending manual platform subscription proof not found');
-    }
-
-    if (action === 'reject') {
-      order.status = 'cancelled';
-      order.metadata = {
-        ...(order.metadata || {}),
-        reviewedBy: String(adminId),
-        reviewedAt: new Date().toISOString(),
-        reviewAction: 'reject',
-      };
-      await order.save();
-      return { order, subscription: null };
-    }
-
-    const tier = String(order.metadata?.tier || order.contentId || '').toLowerCase() as PlanTier;
-    const billingInterval = this.normalizeBillingInterval(order.metadata?.billingInterval);
-    const result = await this.upgradePlan(order.buyerId.toString(), tier, null, {
-      billingInterval,
-      provider: 'manual',
-      providerCheckoutSessionId: order._id.toString(),
-      status: SubscriptionStatus.ACTIVE,
-      amount: Number(order.metadata?.amount || order.amountDT || 0),
-      currency: order.metadata?.currency || 'TND',
-      hasPaymentMethod: true,
-    });
-
-    order.status = 'paid';
-    order.metadata = {
-      ...(order.metadata || {}),
-      reviewedBy: String(adminId),
-      reviewedAt: new Date().toISOString(),
-      reviewAction: 'approve',
-      fulfillmentStatus: 'completed',
-      fulfillmentUpdatedAt: new Date().toISOString(),
-    };
-    await order.save();
-    await this.recordInvoiceForOrder(order, {
-      provider: 'manual',
-      subscriptionId: (result.subscription as any)?._id,
-      status: BillingInvoiceStatus.PAID,
-    });
-
-    return { order, subscription: result.subscription };
   }
 
   private async checkUsageLimits(

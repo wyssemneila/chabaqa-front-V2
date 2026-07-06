@@ -33,7 +33,6 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
 
   const paymentModal = usePaymentProviderModal({
     initStripe: () => (communitiesApi as any).initStripePayment(communityId),
-    initKonnect: () => (communitiesApi as any).initKonnectPayment(communityId),
   })
 
   const formatPrice = (price: number, type: string) => {

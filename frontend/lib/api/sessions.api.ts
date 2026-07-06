@@ -296,13 +296,6 @@ export const sessionsApi = {
     return apiClient.post<any>(endpoint, { sessionId, bookingDto });
   },
 
-  initKonnectPayment: async (sessionId: string, promoCode?: string): Promise<any> => {
-    const endpoint = promoCode
-      ? `/payment/konnect/init/session?promoCode=${encodeURIComponent(promoCode)}`
-      : `/payment/konnect/init/session`;
-    return apiClient.post<any>(endpoint, { sessionId });
-  },
-
   // Finalize booking for already-paid session orders
   finalizePaidSessionBooking: async (
     orderId: string,

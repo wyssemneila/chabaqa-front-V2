@@ -141,7 +141,6 @@ function PricingPageContent() {
 
   const paymentModal = usePaymentProviderModal({
     initStripe: () => subscriptionApi.initStripePayment(pendingTier!, billing === 'yearly' ? 'year' : 'month'),
-    initKonnect: () => subscriptionApi.initKonnectPayment(pendingTier!, billing === 'yearly' ? 'year' : 'month'),
     onError: () => {
       const params = new URLSearchParams({ billing });
       if (selectedTier) params.set('plan', selectedTier);
@@ -172,7 +171,7 @@ function PricingPageContent() {
   };
 
   const checkoutDescription = useMemo(() => {
-    if (!selectedTier) return 'Choose Stripe or Konnect to start your 7-day trial through secure checkout.';
+    if (!selectedTier) return 'Start your 7-day trial through secure Stripe checkout.';
     return `Start the ${PLANS[selectedTier].name} 7-day trial through secure checkout.`;
   }, [selectedTier]);
 

@@ -251,14 +251,6 @@ export const challengesApi = {
     return apiClient.post<any>(endpoint, { challengeId });
   },
 
-  initKonnectPayment: async (challengeId: string, promoCode?: string): Promise<any> => {
-    const endpoint = promoCode
-      ? `/payment/konnect/init/challenge?promoCode=${encodeURIComponent(promoCode)}`
-      : `/payment/konnect/init/challenge`;
-
-    return apiClient.post<any>(endpoint, { challengeId });
-  },
-
   // Leave challenge
   leave: async (challengeId: string): Promise<ApiSuccessResponse<Challenge>> => {
     return apiClient.post<ApiSuccessResponse<Challenge>>('/challenges/leave', { challengeId });

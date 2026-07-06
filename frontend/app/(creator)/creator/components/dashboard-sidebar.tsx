@@ -45,7 +45,6 @@ import {
   Palette,
   ExternalLink,
   Star,
-  WalletCards,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { launchIcons } from "@/components/icons/launch-icons"
@@ -208,7 +207,6 @@ export function DashboardSidebar({ user, onLogout }: DashboardSidebarProps) {
         { title: "Account Billing", href: "/creator/billing", icon: CreditCard },
         { title: "Payouts", href: "/creator/monetization/payouts", icon: launchIcons.payout, requiredPermission: CommunityPermission.FINANCE_VIEW as CommunityPermissionValue },
         { title: "Plan History", href: "/creator/monetization/subscriptions", icon: launchIcons.pricing, requiredPermission: CommunityPermission.FINANCE_VIEW as CommunityPermissionValue },
-        { title: "Manual Payments", href: "/creator/monetization/manual-payments", icon: WalletCards, requiredPermission: CommunityPermission.FINANCE_VIEW as CommunityPermissionValue },
       ],
     },
     {

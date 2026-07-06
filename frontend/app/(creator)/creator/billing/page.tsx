@@ -13,7 +13,6 @@ import {
   RefreshCw,
   ShieldCheck,
   Trash2,
-  Upload,
   WalletCards,
   XCircle,
   type LucideIcon,
@@ -33,7 +32,6 @@ import {
   type SubscriptionAddon,
   type TrialRemaining,
   type UsageSummary,
-  SubscriptionAddonType,
 } from '@/lib/api/subscription.api'
 import {
   PLANS,
@@ -47,17 +45,6 @@ type Billing = 'monthly' | 'yearly'
 
 const unwrapData = <T,>(response: any, fallback: T): T => {
   return (response?.data?.data ?? response?.data ?? response ?? fallback) as T
-}
-
-const unwrapInvoices = (response: any): Invoice[] => {
-  const source =
-    response?.data?.data?.invoices ||
-    response?.data?.invoices ||
-    response?.invoices ||
-    response?.data?.data ||
-    response?.data ||
-    response
-  return Array.isArray(source) ? source : []
 }
 
 const unwrapArray = <T,>(response: any): T[] => {
@@ -130,8 +117,6 @@ export default function CreatorBillingPage() {
   const [savingCancel, setSavingCancel] = useState(false)
   const [openingPortal, setOpeningPortal] = useState(false)
   const [checkoutSuccess, setCheckoutSuccess] = useState(false)
-  const [manualProof, setManualProof] = useState<File | null>(null)
-  const [submittingManual, setSubmittingManual] = useState(false)
   const [addonBusy, setAddonBusy] = useState<string | null>(null)
 
   const tier = ((subscription?.plan as PlanTier | undefined) || 'starter') as PlanTier
@@ -143,7 +128,6 @@ export default function CreatorBillingPage() {
 
   const paymentModal = usePaymentProviderModal({
     initStripe: () => subscriptionApi.initStripePayment(tierToApi[checkoutTier], billing === 'yearly' ? 'year' : 'month'),
-    initKonnect: () => subscriptionApi.initKonnectPayment(tierToApi[checkoutTier], billing === 'yearly' ? 'year' : 'month'),
     onError: (err) => {
       setActionError(err instanceof Error ? err.message : 'Unable to start checkout.')
     },
@@ -179,7 +163,7 @@ export default function CreatorBillingPage() {
       }
 
       if (invoiceResult.status === 'fulfilled') {
-        setInvoices(unwrapInvoices(invoiceResult.value))
+        setInvoices(invoiceResult.value.data)
       } else {
         setInvoices([])
       }
@@ -247,44 +231,6 @@ export default function CreatorBillingPage() {
       setActionError(err?.message || 'Unable to open billing portal.')
     } finally {
       setOpeningPortal(false)
-    }
-  }
-
-  const submitManualProof = async () => {
-    if (!manualProof) {
-      setActionError('Choose a JPG, PNG, WebP, or PDF proof file first.')
-      return
-    }
-    setSubmittingManual(true)
-    setActionError('')
-    setActionMessage('')
-    try {
-      await subscriptionApi.initManualPayment({
-        tier: tierToApi[checkoutTier],
-        interval: billing === 'yearly' ? 'year' : 'month',
-        proof: manualProof,
-      })
-      setManualProof(null)
-      setActionMessage('Manual transfer proof submitted. An admin will review and activate the plan after approval.')
-    } catch (err: any) {
-      setActionError(err?.message || 'Unable to submit manual proof.')
-    } finally {
-      setSubmittingManual(false)
-    }
-  }
-
-  const activateAddon = async (type: SubscriptionAddonType) => {
-    setAddonBusy(type)
-    setActionError('')
-    setActionMessage('')
-    try {
-      await subscriptionApi.purchaseAddon({ type, quantity: 1, billingInterval: 'month' })
-      setActionMessage('Add-on activated and plan capacity updated.')
-      await loadBilling()
-    } catch (err: any) {
-      setActionError(err?.message || 'Unable to activate add-on.')
-    } finally {
-      setAddonBusy(null)
     }
   }
 
@@ -472,33 +418,6 @@ export default function CreatorBillingPage() {
                       })}
                     </div>
 
-                    <div className="mt-5 rounded-xl p-3" style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
-                      <p className="text-[11px] font-bold uppercase tracking-[.06em]" style={{ color: 'var(--t3)' }}>Manual transfer</p>
-                      <p className="mt-1 text-[12px] leading-5" style={{ color: 'var(--t2)' }}>Submit proof for admin review when provider checkout is not available.</p>
-                      <label
-                        className="mt-3 flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed px-3 text-[12px] font-bold transition-colors hover:opacity-80"
-                        style={{ borderColor: 'var(--bd2)', color: 'var(--t2)', background: 'var(--white)' }}
-                      >
-                        <Upload className="h-4 w-4" />
-                        <span className="truncate">{manualProof ? manualProof.name : 'Choose proof'}</span>
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,application/pdf"
-                          className="sr-only"
-                          onChange={(event) => setManualProof(event.target.files?.[0] || null)}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl px-3 text-[12px] font-bold transition-opacity hover:opacity-85 disabled:opacity-50"
-                        style={{ background: manualProof ? 'var(--p)' : 'var(--white)', border: '1px solid var(--bd)', color: manualProof ? '#fff' : 'var(--t3)' }}
-                        disabled={submittingManual || !manualProof}
-                        onClick={submitManualProof}
-                      >
-                        {submittingManual ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                        Submit proof
-                      </button>
-                    </div>
                   </Panel>
                 </section>
 
@@ -540,7 +459,7 @@ export default function CreatorBillingPage() {
                   </Panel>
                 </section>
 
-                <Panel title="Add-ons" subtitle="Only backend-configured add-ons appear here.">
+                <Panel title="Add-ons" subtitle="Paid add-ons require checkout or admin review before capacity changes.">
                   <div className="mt-5 grid gap-3 lg:grid-cols-2">
                     {availableAddons.map((addon) => (
                       <div key={addon.type} className="rounded-xl p-4" style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
@@ -549,10 +468,9 @@ export default function CreatorBillingPage() {
                             <p className="text-[13px] font-bold" style={{ color: 'var(--t1)' }}>{addon.label}</p>
                             <p className="mt-1 text-[12px] font-semibold" style={{ color: 'var(--t3)' }}>{money(addon.unitAmount, addon.currency)} / {addon.billingInterval}</p>
                           </div>
-                          <Button size="sm" onClick={() => activateAddon(addon.type)} disabled={addonBusy === addon.type} className="gap-2 rounded-xl" style={{ background: 'var(--p)', color: '#fff' }}>
-                            {addonBusy === addon.type ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                            Add
-                          </Button>
+                          <Badge variant="outline" className="rounded-xl">
+                            Checkout unavailable
+                          </Badge>
                         </div>
                       </div>
                     ))}
@@ -581,7 +499,7 @@ export default function CreatorBillingPage() {
                   )}
                 </Panel>
 
-                <Panel title="Invoices" subtitle="Provider invoices and reconciled manual plan payments." icon={WalletCards}>
+                <Panel title="Invoices" subtitle="Stripe invoices and reconciled provider payments." icon={WalletCards}>
                   {invoices.length > 0 ? (
                     <div className="mt-5 overflow-hidden rounded-xl" style={{ border: '1px solid var(--bd)' }}>
                       {invoices.map((invoice) => (
@@ -606,7 +524,7 @@ export default function CreatorBillingPage() {
                       ))}
                     </div>
                   ) : (
-                    <EmptyState icon={AlertCircle} title="No invoices yet" text="Paid provider checkouts and approved manual proofs will appear here after reconciliation." />
+                    <EmptyState icon={AlertCircle} title="No invoices yet" text="Paid Stripe checkouts will appear here after reconciliation." />
                   )}
                 </Panel>
               </div>

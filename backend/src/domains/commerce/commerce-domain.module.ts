@@ -8,10 +8,9 @@ import { SessionModule } from '@/domains/commerce/session/session.module';
 import { EventModule } from '@/domains/commerce/event/event.module';
 import { FeeModule } from '@/shared/modules/fee.module';
 import { PromoModule } from '@/shared/modules/promo.module';
-import { FlouciModule } from '@/shared/modules/flouci.module';
 
 @Module({
-  imports: [PaymentModule, SubscriptionModule, WalletModule, PayoutModule, ProductModule, SessionModule, EventModule, FeeModule, PromoModule, FlouciModule],
-  exports: [PaymentModule, SubscriptionModule, WalletModule, PayoutModule, ProductModule, SessionModule, EventModule, FeeModule, PromoModule, FlouciModule],
+  imports: [PaymentModule, SubscriptionModule, WalletModule, PayoutModule, ProductModule, SessionModule, EventModule, FeeModule, PromoModule],
+  exports: [PaymentModule, SubscriptionModule, WalletModule, PayoutModule, ProductModule, SessionModule, EventModule, FeeModule, PromoModule],
 })
 export class CommerceDomainModule {}

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule } from '@nestjs/config';
 import { SubscriptionController } from '@/domains/commerce/subscription/subscription.controller';
 import { Subscription, SubscriptionSchema } from '@/infrastructure/database/schemas/commerce/subscription.schema';
 import { Plan, PlanSchema } from '@/infrastructure/database/schemas/commerce/plan.schema';
@@ -19,9 +20,13 @@ import { EmailCampaign, EmailCampaignSchema } from '@/infrastructure/database/sc
 import { WhatsappCampaign, WhatsappCampaignSchema } from '@/infrastructure/database/schemas/communication/whatsapp-campaign.schema';
 import { SubscriptionService } from '@/domains/commerce/subscription/subscription.service';
 import { SubscriptionScheduler } from '@/domains/commerce/subscription/subscription.scheduler';
+import { AdminGuard } from '@/domains/auth/guards/admin.guard';
+import { InternalServiceTokenGuard } from '@/shared/guards/internal-service-token.guard';
+import { StripePaymentService } from '@/shared/services/stripe-payment.service';
 
 @Module({
   imports: [
+    ConfigModule,
     MongooseModule.forFeature([
       { name: Subscription.name, schema: SubscriptionSchema },
       { name: Plan.name, schema: PlanSchema },
@@ -39,7 +44,7 @@ import { SubscriptionScheduler } from '@/domains/commerce/subscription/subscript
     ]),
   ],
   controllers: [SubscriptionController],
-  providers: [SubscriptionService, SubscriptionScheduler],
+  providers: [SubscriptionService, SubscriptionScheduler, AdminGuard, InternalServiceTokenGuard, StripePaymentService],
   exports: [SubscriptionService],
 })
 export class SubscriptionModule {}

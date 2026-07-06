@@ -1,19 +1,12 @@
-import { Controller, Post, Body, Query, Get, BadRequestException, UnauthorizedException, ForbiddenException, InternalServerErrorException, Req, UseGuards, UseInterceptors, UploadedFile, Param, Logger, Optional } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import * as crypto from 'crypto';
+import { Controller, Post, Body, Query, Get, BadRequestException, UnauthorizedException, ForbiddenException, InternalServerErrorException, Req, UseGuards, Param, Logger, Optional } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { FlouciPaymentService } from '@/shared/services/flouci-payment.service';
 import { StripePaymentService } from '@/shared/services/stripe-payment.service';
-import { KonnectPaymentService } from '@/shared/services/konnect-payment.service';
-import { ManualPaymentService } from '@/shared/services/manual-payment.service';
+import type { LinkCheckoutSession } from '@/shared/services/stripe-payment.service';
 import { PaymentFulfillmentService } from '@/shared/services/payment-fulfillment.service';
 import { PaymentAuditService } from '@/shared/services/payment-audit.service';
 import { PaymentVerificationService } from '@/shared/services/payment-verification.service';
-import { UploadService } from '@/domains/shared/upload/upload.service';
 import { Community, CommunityDocument } from '@/infrastructure/database/schemas/community/community.schema';
 import { User, UserDocument } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Order, OrderDocument } from '@/infrastructure/database/schemas/commerce/order.schema';
@@ -35,61 +28,16 @@ import { BillingInterval, SubscriptionStatus } from '@/infrastructure/database/s
 import { JwtAuthGuard } from '@/domains/auth/guards/jwt-auth.guard';
 import { NotificationService } from '@/domains/communication/notification/notification.service';
 import { EmailService } from '@/shared/services/email.service';
-import { MediaPurpose } from '@/domains/content/media/media.types';
 import {
   ProcessedWebhookEvent,
   ProcessedWebhookEventDocument,
+  ProcessedWebhookEventStatus,
 } from '@/infrastructure/database/schemas/commerce/processed-webhook-event.schema';
 import { AffiliateAttributionService } from '@/domains/community/affiliate/affiliate-attribution.service';
 import { AffiliateCommissionService } from '@/domains/community/affiliate/affiliate-commission.service';
 import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
 
-const manualProofStorage = diskStorage({
-  destination: (req, file, cb) => {
-    const extension = extname(file.originalname || '').toLowerCase();
-    let folder = join(process.cwd(), 'uploads', 'document');
-    if (['.jpg', '.jpeg', '.png', '.webp'].includes(extension)) {
-      folder = join(process.cwd(), 'uploads', 'image');
-    } else if (['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt'].includes(extension)) {
-      folder = join(process.cwd(), 'uploads', 'document');
-    }
-    cb(null, folder);
-  },
-  filename: (req, file, cb) => {
-    const extension = extname(file.originalname || '');
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`;
-    cb(null, uniqueName);
-  },
-});
-
-const MANUAL_PROOF_MAX_BYTES = 8 * 1024 * 1024;
-const MANUAL_PROOF_ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf']);
-const MANUAL_PROOF_ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/pdf',
-]);
-const ENABLED_VALUES = new Set(['1', 'true', 'yes', 'on']);
-
-function isKonnectMockConfirmationEnabled(): boolean {
-  return ENABLED_VALUES.has(String(process.env.KONNECT_MOCK_MODE || '').trim().toLowerCase());
-}
-
-const manualProofUploadOptions = {
-  storage: manualProofStorage,
-  limits: { fileSize: MANUAL_PROOF_MAX_BYTES },
-  fileFilter: (_req: any, file: Express.Multer.File, cb: Function) => {
-    const extension = extname(file.originalname || '').toLowerCase();
-    const mimetype = String(file.mimetype || '').toLowerCase();
-    if (!MANUAL_PROOF_ALLOWED_EXTENSIONS.has(extension) || !MANUAL_PROOF_ALLOWED_MIME_TYPES.has(mimetype)) {
-      cb(new BadRequestException('Payment proof must be a JPG, PNG, WebP, or PDF file'), false);
-      return;
-    }
-    cb(null, true);
-  },
-};
 
 @ApiTags('Payments')
 @Controller('payment')
@@ -98,13 +46,9 @@ export class PaymentController {
   private mongoTransactionSupport: boolean | null = null;
 
   constructor(
-    private readonly flouci: FlouciPaymentService,
     private readonly stripe: StripePaymentService,
-    private readonly konnect: KonnectPaymentService,
     private readonly promoService: PromoService,
     private readonly feeService: FeeService,
-    private readonly manualPaymentService: ManualPaymentService,
-    private readonly uploadService: UploadService,
     private readonly paymentFulfillmentService: PaymentFulfillmentService,
     private readonly paymentAuditService: PaymentAuditService,
     private readonly paymentVerificationService: PaymentVerificationService,
@@ -141,24 +85,101 @@ export class PaymentController {
     return String(raw || '').toLowerCase() === 'mobile' ? 'mobile' : 'web';
   }
 
-  private assertPaymentProviderEnabled(provider: 'flouci' | 'konnect' | 'manual'): void {
-    if (!isStrictProductionRuntime()) return;
-
-    const flagByProvider: Record<typeof provider, string> = {
-      flouci: 'PAYMENT_ENABLE_FLOUCI',
-      konnect: 'PAYMENT_ENABLE_KONNECT',
-      manual: 'PAYMENT_ENABLE_MANUAL',
-    };
-
-    if (!this.isEnvFlagEnabled(flagByProvider[provider], false)) {
-      throw new BadRequestException(`${provider} payments are disabled in production`);
-    }
-  }
-
   private normalizeBillingInterval(raw?: string): BillingInterval {
     return String(raw || '').toLowerCase() === BillingInterval.YEAR
       ? BillingInterval.YEAR
       : BillingInterval.MONTH;
+  }
+
+  private stableStripePriceEnvName(tier: string, interval: BillingInterval): string {
+    const normalizedTier = String(tier || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+    const normalizedInterval = String(interval || BillingInterval.MONTH).toUpperCase();
+    return `STRIPE_PRICE_${normalizedTier}_${normalizedInterval}`;
+  }
+
+  private resolvePlanStripePriceId(plan: PlanDocument, tier: string, interval: BillingInterval): string | undefined {
+    const schemaPriceId = interval === BillingInterval.YEAR
+      ? plan.stripePriceIds?.year
+      : plan.stripePriceIds?.month;
+    const envPriceId = process.env[this.stableStripePriceEnvName(tier || plan.tier, interval)];
+    return String(schemaPriceId || envPriceId || '').trim() || undefined;
+  }
+
+  private async resolveSubscriptionStripePrice(params: {
+    plan: PlanDocument;
+    tier: string;
+    interval: BillingInterval;
+    amount: number;
+  }): Promise<{
+    priceId: string;
+    providerAmount?: number;
+    providerCurrency?: string;
+    providerExchangeRate?: number;
+    source: 'stable' | 'dynamic';
+  }> {
+    const stablePriceId = this.resolvePlanStripePriceId(params.plan, params.tier, params.interval);
+    if (stablePriceId) {
+      const priceDetails = await this.stripe.getPriceDetails(stablePriceId, params.amount);
+      if (!priceDetails.success && isStrictProductionRuntime()) {
+        throw new BadRequestException(priceDetails.error || 'Unable to verify configured Stripe price');
+      }
+      return {
+        priceId: stablePriceId,
+        providerAmount: priceDetails.providerAmount,
+        providerCurrency: priceDetails.providerCurrency,
+        providerExchangeRate: priceDetails.providerExchangeRate,
+        source: 'stable',
+      };
+    }
+
+    if (isStrictProductionRuntime()) {
+      throw new BadRequestException(
+        `Missing stable Stripe price ID for ${params.tier}/${params.interval}; configure plan.stripePriceIds or ${this.stableStripePriceEnvName(params.tier, params.interval)}`,
+      );
+    }
+
+    const priceResult = await this.stripe.createPrice({
+      amountDT: params.amount,
+      interval: params.interval,
+      currency: 'TND',
+      productName: `${params.plan.name} Plan`,
+      productDescription: `Subscription to ${params.plan.name} plan`,
+    });
+    if (!priceResult.success || !priceResult.priceId) throw new BadRequestException(priceResult.error);
+    return {
+      priceId: priceResult.priceId,
+      providerAmount: priceResult.providerAmount,
+      providerCurrency: priceResult.providerCurrency,
+      providerExchangeRate: priceResult.providerExchangeRate,
+      source: 'dynamic',
+    };
+  }
+
+  private buildProviderMoneyMetadata(params: {
+    providerAmount?: number;
+    providerCurrency?: string;
+    providerExchangeRate?: number;
+  }): Record<string, any> {
+    const metadata: Record<string, any> = {};
+    if (params.providerAmount !== undefined) metadata.providerAmount = params.providerAmount;
+    if (params.providerCurrency) metadata.providerCurrency = params.providerCurrency;
+    if (params.providerExchangeRate !== undefined) metadata.providerExchangeRate = params.providerExchangeRate;
+    return metadata;
+  }
+
+  private applyProviderMoneyToOrder(order: any, session: LinkCheckoutSession | any): void {
+    const providerMoney = this.buildProviderMoneyMetadata({
+      providerAmount: session?.providerAmount,
+      providerCurrency: session?.providerCurrency,
+      providerExchangeRate: session?.providerExchangeRate,
+    });
+    if (session?.providerAmount !== undefined) order.providerAmount = session.providerAmount;
+    if (session?.providerCurrency) order.providerCurrency = session.providerCurrency;
+    if (session?.providerExchangeRate !== undefined) order.providerExchangeRate = session.providerExchangeRate;
+    order.metadata = {
+      ...(order.metadata || {}),
+      ...providerMoney,
+    };
   }
 
   private getCommunityPriceType(community: CommunityDocument): string {
@@ -267,6 +288,45 @@ export class PaymentController {
     return Object.fromEntries(entries);
   }
 
+  private normalizeIdempotencyKey(raw: any): string | undefined {
+    const value = String(raw || '').trim();
+    if (!value) return undefined;
+    return value.slice(0, 128);
+  }
+
+  private async findReusablePendingSubscriptionOrder(params: {
+    userId: string;
+    tier: string;
+    billingInterval: BillingInterval;
+    provider: 'stripe';
+    idempotencyKey?: string;
+  }): Promise<any | null> {
+    const baseQuery: Record<string, any> = {
+      buyerId: new Types.ObjectId(params.userId),
+      creatorId: new Types.ObjectId(params.userId),
+      contentType: TrackableContentType.SUBSCRIPTION,
+      contentId: params.tier,
+      status: 'pending',
+      paymentMethod: params.provider,
+      'metadata.provider': params.provider,
+      'metadata.billingInterval': params.billingInterval,
+    };
+
+    if (params.idempotencyKey) {
+      const keyedOrder = await this.orderModel.findOne({
+        ...baseQuery,
+        'metadata.idempotencyKey': params.idempotencyKey,
+      }).sort({ createdAt: -1 });
+      if (keyedOrder) return keyedOrder;
+    }
+
+    return this.orderModel.findOne({
+      ...baseQuery,
+      paymentId: { $exists: true, $ne: null },
+      createdAt: { $gte: new Date(Date.now() - 15 * 60 * 1000) },
+    }).sort({ createdAt: -1 });
+  }
+
   private buildStripeInitResponse(params: {
     scope: string;
     targetId: string;
@@ -299,16 +359,55 @@ export class PaymentController {
     return clickId ? { affiliateClickId: clickId } : {};
   }
 
-  private async hasProcessedWebhookEvent(provider: string, eventId: string): Promise<boolean> {
+  private async claimWebhookEvent(
+    provider: string,
+    eventId: string,
+    eventType: string,
+  ): Promise<'claimed' | 'duplicate'> {
     if (!eventId) {
-      return false;
+      return 'claimed';
     }
 
-    const count = await this.processedWebhookEventModel.countDocuments({
-      provider,
-      eventId,
-    });
-    return count > 0;
+    const now = new Date();
+    try {
+      const result: any = await this.processedWebhookEventModel.updateOne(
+        {
+          provider,
+          eventId,
+          $or: [
+            { status: { $exists: false }, processedAt: { $exists: false } },
+            { status: ProcessedWebhookEventStatus.FAILED },
+          ],
+        },
+        {
+          $set: {
+            eventType,
+            status: ProcessedWebhookEventStatus.PROCESSING,
+            claimedAt: now,
+            error: undefined,
+            metadata: { retriedAt: now },
+          },
+          $unset: { failedAt: '' },
+          $setOnInsert: {
+            provider,
+            eventId,
+          },
+        },
+        { upsert: true },
+      );
+
+      if (result?.upsertedCount === 1 || result?.modifiedCount === 1) {
+        return 'claimed';
+      }
+
+      const existing = await this.processedWebhookEventModel.findOne({ provider, eventId }).lean();
+      return existing ? 'duplicate' : 'claimed';
+    } catch (error: any) {
+      if (error?.code === 11000) {
+        return 'duplicate';
+      }
+      throw error;
+    }
   }
 
   private async markWebhookEventProcessed(
@@ -324,10 +423,11 @@ export class PaymentController {
       await this.processedWebhookEventModel.updateOne(
         { provider, eventId },
         {
-          $setOnInsert: {
+          $set: {
             provider,
             eventId,
             eventType,
+            status: ProcessedWebhookEventStatus.PROCESSED,
             processedAt: new Date(),
           },
         },
@@ -340,6 +440,30 @@ export class PaymentController {
         throw error;
       }
     }
+  }
+
+  private async markWebhookEventFailed(
+    provider: string,
+    eventId: string,
+    eventType: string,
+    error: any,
+  ): Promise<void> {
+    if (!eventId) return;
+
+    await this.processedWebhookEventModel.updateOne(
+      { provider, eventId },
+      {
+        $set: {
+          provider,
+          eventId,
+          eventType,
+          status: ProcessedWebhookEventStatus.FAILED,
+          failedAt: new Date(),
+          error: error?.message || String(error || 'Webhook processing failed'),
+        },
+      },
+      { upsert: true },
+    );
   }
 
   private async auditPaymentEvent(
@@ -632,182 +756,6 @@ export class PaymentController {
     return normalizedInviteCode;
   }
 
-  @Post('init/community')
-  @ApiOperation({ summary: 'Initiate Flouci payment for community membership' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initCommunityPayment(
-    @Body('communityId') communityId: string,
-    @Body('inviteCode') inviteCode: string | undefined,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('flouci');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const community = await this.communityModel.findById(communityId);
-    if (!community) throw new BadRequestException('Communauté non trouvée');
-    const validatedInviteCode = await this.assertPrivateInviteAccess(community, inviteCode);
-
-    const price = community.fees_of_join || 0;
-    if (price <= 0) throw new BadRequestException('Communauté gratuite');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.COMMUNITY, community._id.toString(), (buyer as any)?.email);
-      if (promo.valid) {
-        amount = promo.finalAmountDT;
-        discountDT = promo.discountDT;
-        appliedCode = promo.appliedCode;
-      }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, community.createur.toString());
-    const recurringMetadata = this.getCommunityRecurringMetadata(community, amount);
-    const metadata: Record<string, any> = {
-      ...recurringMetadata,
-      provider: 'flouci',
-    };
-    if (validatedInviteCode) {
-      metadata.inviteCode = validatedInviteCode;
-    }
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: community.createur,
-      communityId: community._id,
-      contentType: TrackableContentType.COMMUNITY,
-      contentId: community._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-      metadata,
-    });
-
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=community&id=${communityId}`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=community&id=${communityId}`;
-
-    const init = await this.flouci.initPayment({
-      amountTND: amount,
-      successUrl,
-      failUrl,
-      metadata: {
-        userId,
-        contentType: 'community',
-        contentId: communityId,
-        ...recurringMetadata,
-        provider: 'flouci',
-        ...(validatedInviteCode ? { inviteCode: validatedInviteCode } : {}),
-      },
-    });
-    if (!init.success) throw new BadRequestException(init.error);
-    pendingOrder.paymentId = init.paymentId;
-    await pendingOrder.save();
-    return { link: init.link, paymentId: init.paymentId, qrCode: init.qrCode };
-  }
-
-  @Get('verify')
-  @ApiOperation({ summary: 'Vérifier un paiement Flouci' })
-  async verify(
-    @Query('paymentId') paymentId: string,
-    @Query('sessionId') sessionId?: string,
-  ) {
-    if (sessionId) {
-      return this.verifyStripeLink(sessionId);
-    }
-
-    this.assertPaymentProviderEnabled('flouci');
-
-    if (!paymentId) {
-      throw new BadRequestException('paymentId or sessionId is required');
-    }
-
-    // Support offline: if paymentId equals an Order _id, use it directly
-    let order: any = await this.orderModel.findOne({ paymentId });
-    if (!order) {
-      const byId = await this.orderModel.findById(paymentId as any);
-      order = byId || null;
-    }
-    if (!order) throw new BadRequestException('Commande non trouvée');
-    const verify = await this.flouci.verifyPayment(paymentId);
-    if (!verify.success) throw new BadRequestException((verify as any).error);
-
-    if (verify.status === 'SUCCESS') {
-      await this.auditPaymentEvent({
-        orderId: order._id?.toString?.(),
-        eventType: 'provider_verification_completed',
-        provider: 'flouci',
-        eventId: paymentId,
-        paymentMethod: (verify as any).paymentMethod || order.paymentMethod,
-        previousStatus: order.status,
-        nextStatus: 'paid',
-      });
-      let didCompleteFulfillment = false;
-      await this.runWithOptionalTransaction(async (session) => {
-        const claim = await this.paymentFulfillmentService.claimForProcessing(
-          order._id.toString(),
-          (verify as any).paymentMethod || order.paymentMethod,
-          session,
-        );
-        if (!claim.order) {
-          throw new BadRequestException('Commande non trouvée');
-        }
-        order = claim.order;
-
-        if (claim.state === 'requires_booking' || claim.state === 'completed') {
-          return;
-        }
-        if (claim.state !== 'claimed') {
-          return;
-        }
-
-        try {
-          await this.grantAccess(order, session);
-          order = await this.paymentFulfillmentService.markCompleted(order, session);
-          didCompleteFulfillment = true;
-        } catch (error: any) {
-          if (order.contentType === TrackableContentType.SESSION && this.isMissingScheduledAtError(error)) {
-            order = await this.paymentFulfillmentService.markRequiresBooking(order, session, {
-              contentId: order.metadata?.contentId || order.contentId,
-            });
-            return;
-          }
-          await this.paymentFulfillmentService.markFailed(order, error, session);
-          throw error;
-        }
-      });
-
-      if (didCompleteFulfillment) {
-        await this.incrementProductSalesFromOrder(order);
-        await this.affiliateCommissionService.onOrderPaid(order).catch((e) => this.logger.error(`Affiliate onOrderPaid failed: ${e?.message}`));
-      }
-
-      if (order.contentType === TrackableContentType.SESSION && order.metadata?.fulfillmentStatus === 'requires_booking') {
-        return this.paymentVerificationService.fromPayload('flouci', {
-          status: 'paid_action_required',
-          action: 'choose_session_slot',
-          message: 'Payment received. Please choose a session slot to finalize your booking.',
-          orderId: order._id,
-          sessionContentId: order.metadata?.contentId || order.contentId,
-          ...(await this.enrichOrderDetails(order)),
-        });
-      }
-      const enriched = await this.enrichOrderDetails(order);
-      return this.paymentVerificationService.fromPayload('flouci', { status: 'paid', orderId: order._id, ...enriched });
-    }
-
-    order.status = 'pending';
-    await order.save();
-    return this.paymentVerificationService.fromPayload('flouci', { status: verify.status, orderId: order._id });
-  }
-
   @Get('order/:orderId')
   @ApiOperation({ summary: 'Get order state (including fulfillment status)' })
   @UseGuards(JwtAuthGuard)
@@ -931,347 +879,6 @@ export class PaymentController {
       success: true,
       data: { orderId, status: 'refunded' },
     };
-  }
-
-  @Post('init/subscription')
-  @ApiOperation({ summary: 'Initier un paiement Flouci pour une souscription' })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initSubscription(
-    @Req() req: any,
-    @Body('tier') tier: string,
-    @Body('interval') interval: 'month' | 'year' = 'month',
-  ) {
-    this.assertPaymentProviderEnabled('flouci');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const plan = await this.subscriptionService.getActivePlanOrBootstrap(tier);
-    if (!plan) throw new BadRequestException('Plan introuvable');
-    const billingInterval = this.normalizeBillingInterval(interval);
-    const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);
-    if (amount <= 0) throw new BadRequestException('Montant invalide');
-
-    const breakdown = await this.feeService.calculateForAmount(amount, userId);
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: new Types.ObjectId(userId),
-      contentType: TrackableContentType.SUBSCRIPTION,
-      contentId: tier,
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      status: 'pending',
-      metadata: this.buildPendingFulfillmentMetadata({
-        tier,
-        billingInterval,
-        provider: 'flouci',
-        amount,
-        currency: 'TND',
-      }),
-    });
-
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=subscription&tier=${tier}&provider=flouci`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=subscription&tier=${tier}&provider=flouci`;
-    const init = await this.flouci.initPayment({
-      amountTND: amount,
-      successUrl,
-      failUrl,
-      metadata: { userId, contentType: 'subscription', tier, billingInterval, amount, currency: 'TND' },
-    });
-    if (!init.success) throw new BadRequestException(init.error);
-    pendingOrder.paymentId = init.paymentId; await pendingOrder.save();
-    return { link: init.link, paymentId: init.paymentId, qrCode: init.qrCode };
-  }
-
-  @Post('webhook')
-  @ApiOperation({ summary: 'Webhook Flouci (server-to-server reconciliation)' })
-  async webhook(@Req() req: any) {
-    this.assertPaymentProviderEnabled('flouci');
-    const body = req.body || {};
-    const paymentId: string = body.payment_id;
-    if (!paymentId) throw new BadRequestException('payment_id requis');
-
-    const configuredSecret = process.env.FLOUCI_WEBHOOK_SECRET;
-    const incomingSig = req.headers['x-flouci-signature'] as string | undefined;
-
-    if (isStrictProductionRuntime() && !configuredSecret) {
-      throw new InternalServerErrorException('Flouci webhook secret is not configured');
-    }
-
-    if (configuredSecret) {
-      if (!incomingSig) throw new UnauthorizedException('Signature manquante');
-      const computed = crypto
-        .createHmac('sha256', configuredSecret)
-        .update(JSON.stringify(body))
-        .digest('hex');
-      const incoming = Buffer.from(incomingSig);
-      const expected = Buffer.from(computed);
-      const equal = incoming.length === expected.length && crypto.timingSafeEqual(incoming, expected);
-      if (!equal) throw new UnauthorizedException('Signature invalide');
-    }
-
-    try {
-      return await this.verify(paymentId);
-    } catch (error) {
-      this.webhookRetryService?.enqueue('flouci', { paymentId, body }, error);
-      throw error;
-    }
-  }
-
-  @Post('init/course')
-  @ApiOperation({ summary: 'Initier un paiement Flouci pour un cours' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initCourse(
-    @Body('courseId') courseId: string,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('flouci');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const offlineMode = (process.env.PAYMENT_MODE || 'instant') === 'offline';
-    let cours: CoursDocument | null = null;
-    if (Types.ObjectId.isValid(courseId)) {
-      cours = await this.coursModel.findById(courseId);
-    }
-    if (!cours) {
-      cours = await this.coursModel.findOne({ id: courseId });
-    }
-    if (!cours) throw new BadRequestException('Cours non trouvé');
-    const courseObjectId = cours._id;
-    const coursePublicId = cours.id || courseObjectId.toString();
-    const price = cours.prix || 0;
-    if (price <= 0) throw new BadRequestException('Cours gratuit');
-
-    let amount = price;
-    let discountDT = 0; let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.COURSE, cours._id.toString(), (buyer as any)?.email);
-      if (promo.valid) { amount = promo.finalAmountDT; discountDT = promo.discountDT; appliedCode = promo.appliedCode; }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, cours.creatorId.toString());
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: cours.creatorId,
-      contentType: TrackableContentType.COURSE,
-      contentId: courseObjectId.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-    });
-
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=course&id=${coursePublicId}`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=course&id=${coursePublicId}`;
-    const init = await this.flouci.initPayment({ amountTND: amount, successUrl, failUrl, metadata: { userId, contentType: 'course', contentId: courseId } });
-    if (!init.success) throw new BadRequestException(init.error);
-    pendingOrder.paymentId = init.paymentId;
-    await pendingOrder.save();
-    return { link: init.link, paymentId: init.paymentId, qrCode: init.qrCode };
-  }
-
-  @Post('init/challenge')
-  @ApiOperation({ summary: 'Initier un paiement Flouci pour un défi' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initChallenge(
-    @Body('challengeId') challengeId: string,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('flouci');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const offlineMode = (process.env.PAYMENT_MODE || 'instant') === 'offline';
-    const challenge = await this.challengeModel.findById(challengeId);
-    if (!challenge) throw new BadRequestException('Défi non trouvé');
-    const price = challenge.pricing?.participationFee || 0;
-    if (price <= 0) throw new BadRequestException('Défi gratuit');
-
-    let amount = price; let discountDT = 0; let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.CHALLENGE, challenge._id.toString(), (buyer as any)?.email);
-      if (promo.valid) { amount = promo.finalAmountDT; discountDT = promo.discountDT; appliedCode = promo.appliedCode; }
-    }
-    const breakdown = await this.feeService.calculateForAmount(amount, challenge.creatorId.toString());
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: challenge.creatorId,
-      contentType: TrackableContentType.CHALLENGE,
-      contentId: challenge._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-    });
-
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=challenge&id=${challengeId}`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=challenge&id=${challengeId}`;
-    const init = await this.flouci.initPayment({ amountTND: amount, successUrl, failUrl, metadata: { userId, contentType: 'challenge', contentId: challengeId } });
-    if (!init.success) throw new BadRequestException(init.error);
-    pendingOrder.paymentId = init.paymentId; await pendingOrder.save();
-    return { link: init.link, paymentId: init.paymentId, qrCode: init.qrCode };
-  }
-
-  @Post('init/event')
-  @ApiOperation({ summary: 'Initier un paiement Flouci pour un événement (billet)' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initEvent(
-    @Body('eventId') eventId: string,
-    @Body('ticketType') ticketType: string,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('flouci');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const offlineMode = (process.env.PAYMENT_MODE || 'instant') === 'offline';
-    const event = await this.eventModel.findById(eventId);
-    if (!event) throw new BadRequestException('Événement non trouvé');
-    const alreadyRegistered = (event.attendees || []).some((attendee: any) => attendee?.userId?.toString() === userId);
-    if (alreadyRegistered) {
-      throw new BadRequestException('Vous êtes déjà inscrit à cet événement');
-    }
-    const ticket = event.tickets.find(t => t.type === ticketType);
-    if (!ticket || (ticket.price || 0) <= 0) throw new BadRequestException('Billet invalide ou gratuit');
-    let amount = ticket.price || 0; let discountDT = 0; let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, amount, TrackableContentType.EVENT, (event as any)._id.toString(), (buyer as any)?.email);
-      if (promo.valid) { amount = promo.finalAmountDT; discountDT = promo.discountDT; appliedCode = promo.appliedCode; }
-    }
-    const breakdown = await this.feeService.calculateForAmount(amount, event.creatorId.toString());
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: event.creatorId,
-      contentType: TrackableContentType.EVENT,
-      contentId: (event as any)._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-    });
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=event&id=${eventId}`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=event&id=${eventId}`;
-    const init = await this.flouci.initPayment({ amountTND: amount, successUrl, failUrl, metadata: { userId, contentType: 'event', contentId: eventId, ticketType } });
-    if (!init.success) throw new BadRequestException(init.error);
-    pendingOrder.paymentId = init.paymentId; await pendingOrder.save();
-    return { link: init.link, paymentId: init.paymentId, qrCode: init.qrCode };
-  }
-
-  @Post('init/product')
-  @ApiOperation({ summary: 'Initier un paiement Flouci pour un produit' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initProduct(
-    @Body('productId') productId: string,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('flouci');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const offlineMode = (process.env.PAYMENT_MODE || 'instant') === 'offline';
-    let product = await this.productModel.findById(productId);
-    if (!product) {
-      product = await this.productModel.findOne({ id: productId });
-    }
-    if (!product) throw new BadRequestException('Produit non trouvé');
-    const existingPaidOrder = await this.findExistingPaidProductOrder(userId, product);
-    if (existingPaidOrder) {
-      throw new BadRequestException('Product already purchased. You already have lifetime access.');
-    }
-    const price = product.price || 0; if (price <= 0) throw new BadRequestException('Produit gratuit');
-    let amount = price; let discountDT = 0; let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.PRODUCT, product._id.toString(), (buyer as any)?.email);
-      if (promo.valid) { amount = promo.finalAmountDT; discountDT = promo.discountDT; appliedCode = promo.appliedCode; }
-    }
-    const breakdown = await this.feeService.calculateForAmount(amount, product.creatorId.toString());
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: product.creatorId,
-      contentType: TrackableContentType.PRODUCT,
-      contentId: product._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-    });
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=product&id=${productId}`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=product&id=${productId}`;
-    const init = await this.flouci.initPayment({ amountTND: amount, successUrl, failUrl, metadata: { userId, contentType: 'product', contentId: productId } });
-    if (!init.success) throw new BadRequestException(init.error);
-    pendingOrder.paymentId = init.paymentId; await pendingOrder.save();
-    return { link: init.link, paymentId: init.paymentId, qrCode: init.qrCode };
-  }
-
-  @Post('init/session')
-  @ApiOperation({ summary: 'Initier un paiement Flouci pour une session 1-to-1' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initSession(
-    @Body('sessionId') sessionId: string,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('flouci');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const offlineMode = (process.env.PAYMENT_MODE || 'instant') === 'offline';
-    const session = await this.sessionModel.findById(sessionId);
-    if (!session) throw new BadRequestException('Session non trouvée');
-    const price = session.price || 0; if (price <= 0) throw new BadRequestException('Session gratuite');
-    let amount = price; let discountDT = 0; let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.SESSION, session._id.toString(), (buyer as any)?.email);
-      if (promo.valid) { amount = promo.finalAmountDT; discountDT = promo.discountDT; appliedCode = promo.appliedCode; }
-    }
-    const breakdown = await this.feeService.calculateForAmount(amount, session.creatorId.toString());
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: session.creatorId,
-      contentType: TrackableContentType.SESSION,
-      contentId: session._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-    });
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=session&id=${sessionId}`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=session&id=${sessionId}`;
-    const init = await this.flouci.initPayment({ amountTND: amount, successUrl, failUrl, metadata: { userId, contentType: 'session', contentId: sessionId } });
-    if (!init.success) throw new BadRequestException(init.error);
-    pendingOrder.paymentId = init.paymentId; await pendingOrder.save();
-    return { link: init.link, paymentId: init.paymentId, qrCode: init.qrCode };
   }
 
   // ==================== STRIPE LINK ENDPOINTS ====================
@@ -1406,6 +1013,7 @@ export class PaymentController {
     if (!session.success) throw new BadRequestException(session.error);
 
     pendingOrder.paymentId = session.sessionId;
+    this.applyProviderMoneyToOrder(pendingOrder, session);
     pendingOrder.metadata = {
       ...(pendingOrder.metadata || {}),
       providerCheckoutSessionId: session.sessionId,
@@ -1522,6 +1130,7 @@ export class PaymentController {
     if (!session.success) throw new BadRequestException(session.error);
 
     pendingOrder.paymentId = session.sessionId;
+    this.applyProviderMoneyToOrder(pendingOrder, session);
     await pendingOrder.save();
 
     return this.buildStripeInitResponse({
@@ -1629,6 +1238,7 @@ export class PaymentController {
     if (!session.success) throw new BadRequestException(session.error);
 
     pendingOrder.paymentId = session.sessionId;
+    this.applyProviderMoneyToOrder(pendingOrder, session);
     await pendingOrder.save();
 
     return this.buildStripeInitResponse({
@@ -1742,6 +1352,7 @@ export class PaymentController {
     if (!session.success) throw new BadRequestException(session.error);
 
     pendingOrder.paymentId = session.sessionId;
+    this.applyProviderMoneyToOrder(pendingOrder, session);
     await pendingOrder.save();
 
     return this.buildStripeInitResponse({
@@ -1847,6 +1458,7 @@ export class PaymentController {
     if (!session.success) throw new BadRequestException(session.error);
 
     pendingOrder.paymentId = session.sessionId;
+    this.applyProviderMoneyToOrder(pendingOrder, session);
     await pendingOrder.save();
 
     return this.buildStripeInitResponse({
@@ -1956,6 +1568,7 @@ export class PaymentController {
     if (!session.success) throw new BadRequestException(session.error);
 
     pendingOrder.paymentId = session.sessionId;
+    this.applyProviderMoneyToOrder(pendingOrder, session);
     await pendingOrder.save();
 
     return this.buildStripeInitResponse({
@@ -1982,6 +1595,7 @@ export class PaymentController {
     @Body('successRedirectUrl') successRedirectUrl?: string,
     @Body('cancelRedirectUrl') cancelRedirectUrl?: string,
     @Body('clientContext') clientContextRaw?: Record<string, any>,
+    @Body('idempotencyKey') idempotencyKeyRaw?: string,
   ) {
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const channel = this.normalizePaymentChannel(channelRaw);
@@ -1993,7 +1607,36 @@ export class PaymentController {
     const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);
 
     if (amount <= 0) throw new BadRequestException('Invalid amount');
+    const idempotencyKey = this.normalizeIdempotencyKey(idempotencyKeyRaw || req.headers?.['idempotency-key']);
+    const reusableOrder = await this.findReusablePendingSubscriptionOrder({
+      userId,
+      tier,
+      billingInterval,
+      provider: 'stripe',
+      idempotencyKey,
+    });
+    if (reusableOrder?.paymentId && reusableOrder?.metadata?.checkoutUrl) {
+      return this.buildStripeInitResponse({
+        scope: 'subscription',
+        targetId: tier,
+        orderId: reusableOrder._id.toString(),
+        sessionId: reusableOrder.paymentId,
+        checkoutUrl: reusableOrder.metadata.checkoutUrl,
+        extra: {
+          channel,
+          interval: billingInterval,
+          idempotent: true,
+        },
+      });
+    }
 
+    const priceSelection = await this.resolveSubscriptionStripePrice({
+      plan,
+      tier,
+      interval: billingInterval,
+      amount,
+    });
+    const providerMoneyMetadata = this.buildProviderMoneyMetadata(priceSelection);
     const breakdown = await this.feeService.calculateForAmount(amount, userId);
     const pendingOrder = await this.orderModel.create({
       buyerId: new Types.ObjectId(userId),
@@ -2001,33 +1644,31 @@ export class PaymentController {
       contentType: TrackableContentType.SUBSCRIPTION,
       contentId: tier,
       amountDT: breakdown.amountDT,
+      businessCurrency: 'TND',
+      providerAmount: priceSelection.providerAmount,
+      providerCurrency: priceSelection.providerCurrency,
+      providerExchangeRate: priceSelection.providerExchangeRate,
       platformPercent: breakdown.platformPercent,
       platformFixedDT: breakdown.platformFixedDT,
       platformFeeDT: breakdown.platformFeeDT,
       creatorNetDT: breakdown.creatorNetDT,
       status: 'pending',
+      paymentMethod: 'stripe',
       metadata: this.buildPendingFulfillmentMetadata({
         channel,
         tier,
         billingInterval,
         provider: 'stripe',
+        providerPriceId: priceSelection.priceId,
+        providerPriceSource: priceSelection.source,
+        ...providerMoneyMetadata,
         amount,
         currency: 'TND',
+        ...(idempotencyKey ? { idempotencyKey } : {}),
         ...(Object.keys(clientContext).length > 0 ? { clientContext } : {}),
         ...this.resolveAffiliateAttribution(req),
       }),
     });
-
-    // Create Stripe price for the subscription
-    const priceResult = await this.stripe.createPrice({
-      amountDT: amount,
-      interval: billingInterval,
-      currency: 'TND',
-      productName: `${plan.name} Plan`,
-      productDescription: `Subscription to ${plan.name} plan`
-    });
-
-    if (!priceResult.success) throw new BadRequestException(priceResult.error);
 
     const defaultSuccessUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=subscription&tier=${tier}&provider=stripe&sessionId={CHECKOUT_SESSION_ID}`;
     const defaultFailUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=subscription&tier=${tier}&provider=stripe`;
@@ -2036,7 +1677,7 @@ export class PaymentController {
 
     const user = await this.userModel.findById(userId).select('email name');
     const session = await this.stripe.createLinkSubscriptionSession({
-      priceId: priceResult.priceId!,
+      priceId: priceSelection.priceId,
       successUrl,
       cancelUrl: failUrl,
       customerEmail: user?.email,
@@ -2046,14 +1687,19 @@ export class PaymentController {
         tier,
         billingInterval,
         provider: 'stripe',
-        providerPriceId: priceResult.priceId!,
+        providerPriceId: priceSelection.priceId,
+        providerPriceSource: priceSelection.source,
         amount: String(amount),
         currency: 'TND',
+        ...Object.fromEntries(Object.entries(providerMoneyMetadata).map(([key, value]) => [key, String(value)])),
         orderId: pendingOrder._id.toString(),
         channel,
         ...(Object.keys(clientContext).length > 0 ? { clientContext: JSON.stringify(clientContext) } : {}),
       },
-      trialPeriodDays: plan.trialDays
+      trialPeriodDays: plan.trialDays,
+      providerAmount: priceSelection.providerAmount,
+      providerCurrency: priceSelection.providerCurrency,
+      providerExchangeRate: priceSelection.providerExchangeRate,
     });
 
     if (!session.success) throw new BadRequestException(session.error);
@@ -2062,7 +1708,10 @@ export class PaymentController {
     pendingOrder.metadata = {
       ...(pendingOrder.metadata || {}),
       providerCheckoutSessionId: session.sessionId,
-      providerPriceId: priceResult.priceId!,
+      providerPriceId: priceSelection.priceId,
+      providerPriceSource: priceSelection.source,
+      ...providerMoneyMetadata,
+      checkoutUrl: session.url,
     };
     await pendingOrder.save();
 
@@ -2346,7 +1995,11 @@ export class PaymentController {
       trialEndsAt?: Date;
       cancelAtPeriodEnd?: boolean;
       paymentMethod?: { card?: { brand?: string; last4?: string } };
+      providerPriceId?: string;
       amountDT?: number;
+      providerAmount?: number;
+      providerCurrency?: string;
+      providerExchangeRate?: number;
     },
   ) {
     this.logger.log(`Granting access for order ${order._id} (Type: ${order.contentType})`);
@@ -2390,13 +2043,16 @@ export class PaymentController {
           providerCustomerId: stripePaymentDetails?.customerId,
           providerSubscriptionId: stripePaymentDetails?.subscriptionId,
           providerCheckoutSessionId: stripePaymentDetails?.sessionId || order.metadata?.providerCheckoutSessionId || order.paymentId,
-          providerPriceId: stripeSessionMetadata?.providerPriceId || order.metadata?.providerPriceId,
+          providerPriceId: stripePaymentDetails?.providerPriceId || stripeSessionMetadata?.providerPriceId || order.metadata?.providerPriceId,
           currentPeriodStart: stripePaymentDetails?.currentPeriodStart,
           currentPeriodEnd: stripePaymentDetails?.currentPeriodEnd,
           trialEndsAt: stripePaymentDetails?.trialEndsAt,
           status: this.normalizeStripeSubscriptionStatus(stripePaymentDetails?.subscriptionStatus),
           amount: Number(order.metadata?.amount || order.amountDT || stripePaymentDetails?.amountDT || 0),
           currency: order.metadata?.currency || stripeSessionMetadata?.currency || 'TND',
+          providerAmount: stripePaymentDetails?.providerAmount ?? order.providerAmount ?? order.metadata?.providerAmount,
+          providerCurrency: stripePaymentDetails?.providerCurrency ?? order.providerCurrency ?? order.metadata?.providerCurrency,
+          providerExchangeRate: stripePaymentDetails?.providerExchangeRate ?? order.providerExchangeRate ?? order.metadata?.providerExchangeRate,
           paymentBrand: stripePaymentDetails?.paymentMethod?.card?.brand,
           paymentLast4: stripePaymentDetails?.paymentMethod?.card?.last4,
           hasPaymentMethod: true,
@@ -2406,6 +2062,9 @@ export class PaymentController {
           provider: stripeSessionMetadata?.provider || order.metadata?.provider || order.paymentMethod || 'stripe',
           providerSubscriptionId: stripePaymentDetails?.subscriptionId || order.metadata?.providerSubscriptionId,
           providerInvoiceId: order.metadata?.providerInvoiceId,
+          providerAmount: stripePaymentDetails?.providerAmount ?? order.providerAmount ?? order.metadata?.providerAmount,
+          providerCurrency: stripePaymentDetails?.providerCurrency ?? order.providerCurrency ?? order.metadata?.providerCurrency,
+          providerExchangeRate: stripePaymentDetails?.providerExchangeRate ?? order.providerExchangeRate ?? order.metadata?.providerExchangeRate,
         }, session);
         break;
 
@@ -2578,6 +2237,9 @@ export class PaymentController {
             cancelAtPeriodEnd: verify.cancelAtPeriodEnd,
             paymentMethod: verify.paymentMethod,
             amountDT: verify.amountDT,
+            providerAmount: verify.providerAmount,
+            providerCurrency: verify.providerCurrency,
+            providerExchangeRate: verify.providerExchangeRate,
           });
           order = await this.paymentFulfillmentService.markCompleted(order, session);
           didCompleteFulfillment = true;
@@ -2801,7 +2463,8 @@ export class PaymentController {
       },
     });
 
-    if (await this.hasProcessedWebhookEvent('stripe', stripeEvent.id)) {
+    const claimStatus = await this.claimWebhookEvent('stripe', stripeEvent.id, stripeEvent.type);
+    if (claimStatus === 'duplicate') {
       this.logger.log(`Ignoring duplicate Stripe webhook event ${stripeEvent.id}`);
       await this.auditPaymentEvent({
         eventType: 'duplicate_event_ignored',
@@ -2844,15 +2507,32 @@ export class PaymentController {
 
                 try {
                   const stripeSubscription = typeof stripeSession.subscription === 'object' ? stripeSession.subscription : null;
+                  const stripeSubscriptionId =
+                    typeof stripeSession.subscription === 'string'
+                      ? stripeSession.subscription
+                      : stripeSession.subscription?.id;
+                  let stripeSubscriptionDetails: any = null;
+                  if (stripeSubscriptionId) {
+                    const details = await this.stripe.getSubscriptionDetails(stripeSubscriptionId);
+                    if (!details.success) {
+                      throw new BadRequestException(details.error || 'Unable to verify Stripe subscription state');
+                    }
+                    stripeSubscriptionDetails = details;
+                  }
                   await this.grantAccess(order, dbSession, stripeSession.metadata, {
                     sessionId: stripeSession.id,
-                    customerId: typeof stripeSession.customer === 'string' ? stripeSession.customer : stripeSession.customer?.id,
-                    subscriptionId: typeof stripeSession.subscription === 'string' ? stripeSession.subscription : stripeSession.subscription?.id,
-                    subscriptionStatus: stripeSubscription?.status,
-                    currentPeriodStart: stripeSubscription?.current_period_start ? new Date(stripeSubscription.current_period_start * 1000) : undefined,
-                    currentPeriodEnd: stripeSubscription?.current_period_end ? new Date(stripeSubscription.current_period_end * 1000) : undefined,
-                    trialEndsAt: stripeSubscription?.trial_end ? new Date(stripeSubscription.trial_end * 1000) : undefined,
-                    cancelAtPeriodEnd: stripeSubscription?.cancel_at_period_end,
+                    customerId: stripeSubscriptionDetails?.customerId || (typeof stripeSession.customer === 'string' ? stripeSession.customer : stripeSession.customer?.id),
+                    subscriptionId: stripeSubscriptionDetails?.subscriptionId || stripeSubscriptionId,
+                    subscriptionStatus: stripeSubscriptionDetails?.status || stripeSubscription?.status,
+                    currentPeriodStart: stripeSubscriptionDetails?.currentPeriodStart || (stripeSubscription?.current_period_start ? new Date(stripeSubscription.current_period_start * 1000) : undefined),
+                    currentPeriodEnd: stripeSubscriptionDetails?.currentPeriodEnd || (stripeSubscription?.current_period_end ? new Date(stripeSubscription.current_period_end * 1000) : undefined),
+                    trialEndsAt: stripeSubscriptionDetails?.trialEndsAt || (stripeSubscription?.trial_end ? new Date(stripeSubscription.trial_end * 1000) : undefined),
+                    cancelAtPeriodEnd: stripeSubscriptionDetails?.cancelAtPeriodEnd ?? stripeSubscription?.cancel_at_period_end,
+                    paymentMethod: stripeSubscriptionDetails?.paymentMethod,
+                    providerPriceId: stripeSubscriptionDetails?.providerPriceId,
+                    providerAmount: order.providerAmount ?? order.metadata?.providerAmount,
+                    providerCurrency: order.providerCurrency ?? order.metadata?.providerCurrency,
+                    providerExchangeRate: order.providerExchangeRate ?? order.metadata?.providerExchangeRate,
                   });
                   order = await this.paymentFulfillmentService.markCompleted(order, dbSession);
                   didCompleteFulfillment = true;
@@ -2896,7 +2576,8 @@ export class PaymentController {
           break;
       }
     } catch (error) {
-      this.webhookRetryService?.enqueue('stripe', {
+      await this.markWebhookEventFailed('stripe', stripeEvent.id, stripeEvent.type, error);
+      await this.webhookRetryService?.enqueue('stripe', {
         eventId: stripeEvent.id,
         eventType: stripeEvent.type,
       }, error);
@@ -2921,7 +2602,7 @@ export class PaymentController {
       throw new BadRequestException('No Stripe customer found');
     }
 
-    const returnUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`;
+    const returnUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/creator/billing`;
     const portal = await this.stripe.createCustomerPortalSession(
       subscription.providerCustomerId,
       returnUrl
@@ -3063,6 +2744,7 @@ export class PaymentController {
     if (!session.success) throw new BadRequestException(session.error);
 
     pendingOrder.paymentId = session.sessionId;
+    this.applyProviderMoneyToOrder(pendingOrder, session);
     await pendingOrder.save();
 
     return this.buildStripeInitResponse({
@@ -3081,1539 +2763,5 @@ export class PaymentController {
     });
   }
 
-  // ==================== MANUAL PAYMENT ENDPOINTS ====================
 
-  @Post('manual/init/subscription')
-  @ApiOperation({ summary: 'Submit manual transfer proof for a creator platform subscription' })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
-  async initManualSubscriptionPayment(
-    @Req() req: any,
-    @UploadedFile() file: Express.Multer.File,
-    @Body('tier') tier: string,
-    @Body('interval') interval: 'month' | 'year' = 'month',
-  ) {
-    this.assertPaymentProviderEnabled('manual');
-    if (!file) throw new BadRequestException('Payment proof file is required');
-
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const plan = await this.subscriptionService.getActivePlanOrBootstrap(tier);
-    if (!plan) throw new BadRequestException('Plan not found');
-    const billingInterval = this.normalizeBillingInterval(interval);
-    const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);
-    if (amount <= 0) throw new BadRequestException('Invalid amount');
-
-    const existing = await this.orderModel.findOne({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: new Types.ObjectId(userId),
-      paymentMethod: 'manual',
-      contentType: TrackableContentType.SUBSCRIPTION,
-      status: 'pending_verification',
-    }).select('_id').lean();
-    if (existing) {
-      throw new BadRequestException('A platform subscription proof is already pending review');
-    }
-
-    const uploadResult = await this.uploadService.processUploadedFile(file, file.filename, {
-      userId,
-      purpose: MediaPurpose.MANUAL_PAYMENT_PROOF,
-      entityType: TrackableContentType.SUBSCRIPTION,
-      entityId: tier,
-    });
-
-    const order = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: new Types.ObjectId(userId),
-      contentType: TrackableContentType.SUBSCRIPTION,
-      contentId: tier,
-      amountDT: amount,
-      platformPercent: 0,
-      platformFixedDT: 0,
-      platformFeeDT: 0,
-      creatorNetDT: amount,
-      status: 'pending_verification',
-      paymentMethod: 'manual',
-      paymentProof: uploadResult.url,
-      metadata: {
-        provider: 'manual',
-        tier,
-        billingInterval,
-        amount,
-        currency: 'TND',
-        fulfillmentStatus: 'pending',
-        fulfillmentUpdatedAt: new Date().toISOString(),
-      },
-    });
-
-    await this.auditPaymentEvent({
-      orderId: order._id?.toString?.(),
-      eventType: 'manual_platform_subscription_submitted',
-      provider: 'manual',
-      paymentMethod: 'manual',
-      nextStatus: order.status,
-      metadata: { tier, billingInterval, amount },
-    });
-
-    return {
-      success: true,
-      message: 'Subscription payment proof submitted for admin review',
-      orderId: order._id,
-    };
-  }
-
-  @Post('manual/init/community')
-  @ApiOperation({ summary: 'Initiate manual payment (transfer) for community membership' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
-  async initManualCommunityPayment(
-    @Body('communityId') communityId: string,
-    @Body('inviteCode') inviteCode: string | undefined,
-    @Req() req: any,
-    @UploadedFile() file: Express.Multer.File,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    if (!file) throw new BadRequestException('Payment proof file is required');
-
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const community = await this.communityModel.findById(communityId);
-    if (!community) throw new BadRequestException('Community not found');
-    const validatedInviteCode = await this.assertPrivateInviteAccess(community, inviteCode);
-
-    const price = community.fees_of_join || 0;
-    if (price <= 0) throw new BadRequestException('Free community');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.COMMUNITY, community._id.toString(), (buyer as any)?.email);
-      if (promo.valid) {
-        amount = promo.finalAmountDT;
-        discountDT = promo.discountDT;
-        appliedCode = promo.appliedCode;
-      }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, community.createur.toString());
-    const recurringMetadata = this.getCommunityRecurringMetadata(community, amount);
-    // Use the filename already assigned by Multer to avoid URL/file mismatch
-    const uploadResult = await this.uploadService.processUploadedFile(file, file.filename, {
-      userId,
-      purpose: MediaPurpose.MANUAL_PAYMENT_PROOF,
-      entityType: TrackableContentType.COMMUNITY,
-      entityId: community._id.toString(),
-    });
-
-    const order = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: community.createur,
-      communityId: community._id,
-      contentType: TrackableContentType.COMMUNITY,
-      contentId: community._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending_verification',
-      paymentMethod: 'manual',
-      paymentProof: uploadResult.url,
-      metadata: {
-        ...recurringMetadata,
-        provider: 'manual',
-        ...(validatedInviteCode ? { inviteCode: validatedInviteCode } : {}),
-      },
-    });
-
-    return {
-      success: true,
-      message: 'Payment submitted for verification',
-      orderId: order._id
-    };
-  }
-
-  @Post('manual/init/course')
-  @ApiOperation({ summary: 'Initiate manual payment (transfer) for course' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
-  async initManualCoursePayment(
-    @Body('courseId') courseId: string,
-    @Req() req: any,
-    @UploadedFile() file: Express.Multer.File,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    if (!file) throw new BadRequestException('Payment proof file is required');
-
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-
-    let cours: CoursDocument | null = null;
-    if (Types.ObjectId.isValid(courseId)) {
-      cours = await this.coursModel.findById(courseId);
-    }
-    if (!cours) {
-      cours = await this.coursModel.findOne({ id: courseId });
-    }
-    if (!cours) throw new BadRequestException('Course not found');
-
-    const price = cours.prix || 0;
-    if (price <= 0) throw new BadRequestException('Free course');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.COURSE, cours._id.toString(), (buyer as any)?.email);
-      if (promo.valid) {
-        amount = promo.finalAmountDT;
-        discountDT = promo.discountDT;
-        appliedCode = promo.appliedCode;
-      }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, cours.creatorId.toString());
-    const uploadResult = await this.uploadService.processUploadedFile(file, file.filename, {
-      userId,
-      purpose: MediaPurpose.MANUAL_PAYMENT_PROOF,
-      entityType: TrackableContentType.COURSE,
-      entityId: cours._id.toString(),
-    });
-
-    const order = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: cours.creatorId,
-      contentType: TrackableContentType.COURSE,
-      contentId: cours._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending_verification',
-      paymentMethod: 'manual',
-      paymentProof: uploadResult.url
-    });
-
-    return {
-      success: true,
-      message: 'Payment submitted for verification',
-      orderId: order._id
-    };
-  }
-
-  @Post('manual/init/challenge')
-  @ApiOperation({ summary: 'Initiate manual payment (transfer) for challenge' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
-  async initManualChallengePayment(
-    @Body('challengeId') challengeId: string,
-    @Req() req: any,
-    @UploadedFile() file: Express.Multer.File,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-
-    console.log('[Challenge Payment] Received challengeId:', challengeId);
-    console.log('[Challenge Payment] Body:', req.body);
-
-    if (!challengeId) {
-      throw new BadRequestException('Challenge ID is required');
-    }
-
-    // Try to find challenge by ObjectId first, then by id field
-    let challenge: ChallengeDocument | null = null;
-    if (Types.ObjectId.isValid(challengeId)) {
-      challenge = await this.challengeModel.findById(challengeId);
-    }
-    if (!challenge) {
-      challenge = await this.challengeModel.findOne({ id: challengeId });
-    }
-    if (!challenge) {
-      console.log('[Challenge Payment] Challenge not found with ID:', challengeId);
-      throw new BadRequestException('Challenge not found');
-    }
-
-    // Get the deposit amount from various possible locations
-    const price = challenge.depositAmount || challenge.pricing?.depositAmount || challenge.pricing?.participationFee || challenge.pricing?.price || (challenge as any).prix || 0;
-
-    console.log('[Challenge Payment] Challenge found:', challenge.title, 'Price:', price);
-
-    // For free challenges, just add the user as a participant
-    if (price <= 0) {
-      // Check if already participating
-      const isParticipating = challenge.participants?.some(p => p.userId?.toString() === userId);
-      if (isParticipating) {
-        throw new BadRequestException('You are already participating in this challenge');
-      }
-
-      // Add participant using the challenge method
-      challenge.addParticipant(new Types.ObjectId(userId));
-      await challenge.save();
-
-      console.log('[Challenge Payment] User joined free challenge successfully');
-      return { success: true, message: 'Successfully joined the free challenge!' };
-    }
-
-    // For paid challenges, require payment proof
-    if (!file) throw new BadRequestException('Payment proof file is required for paid challenges');
-
-    const existing = await this.orderModel.findOne({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: challenge.creatorId,
-      paymentMethod: 'manual',
-      contentType: TrackableContentType.CHALLENGE,
-      contentId: challenge._id.toString(),
-      status: { $in: ['pending_verification', 'paid'] },
-    }).select('_id status').exec();
-
-    if (existing) {
-      throw new BadRequestException('You already submitted a payment proof for this challenge. Please wait for verification.');
-    }
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.CHALLENGE, challenge._id.toString(), (buyer as any)?.email);
-      if (promo.valid) {
-        amount = promo.finalAmountDT;
-        discountDT = promo.discountDT;
-        appliedCode = promo.appliedCode;
-      }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, challenge.creatorId.toString());
-    const uploadResult = await this.uploadService.processUploadedFile(file, file.filename, {
-      userId,
-      purpose: MediaPurpose.MANUAL_PAYMENT_PROOF,
-      entityType: TrackableContentType.CHALLENGE,
-      entityId: challenge._id.toString(),
-    });
-
-    const order = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: challenge.creatorId,
-      contentType: TrackableContentType.CHALLENGE,
-      contentId: challenge._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending_verification',
-      paymentMethod: 'manual',
-      paymentProof: uploadResult.url
-    });
-
-    console.log('[Challenge Payment] Payment proof submitted, order ID:', order._id);
-    return { success: true, message: 'Payment proof submitted successfully. Please wait for creator verification.', orderId: order._id };
-  }
-
-  @Post('manual/init/event')
-  @ApiOperation({ summary: 'Initiate manual payment (transfer) for event' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
-  async initManualEventPayment(
-    @Body('eventId') eventId: string,
-    @Req() req: any,
-    @UploadedFile() file: Express.Multer.File,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    if (!file) throw new BadRequestException('Payment proof file is required');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const event = await this.eventModel.findById(eventId);
-    if (!event) throw new BadRequestException('Event not found');
-
-    const existing = await this.orderModel.findOne({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: event.creatorId,
-      paymentMethod: 'manual',
-      contentType: TrackableContentType.EVENT,
-      contentId: event._id.toString(),
-      status: { $in: ['pending_verification', 'paid'] },
-    }).select('_id status').exec();
-
-    if (existing) {
-      throw new BadRequestException('You already submitted a payment proof for this request. Please wait for verification.');
-    }
-
-    const price = event.pricing?.price || (event as any).prix || 0;
-    if (price <= 0) throw new BadRequestException('Free event');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.EVENT, event._id.toString(), (buyer as any)?.email);
-      if (promo.valid) {
-        amount = promo.finalAmountDT;
-        discountDT = promo.discountDT;
-        appliedCode = promo.appliedCode;
-      }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, event.creatorId.toString());
-    const uploadResult = await this.uploadService.processUploadedFile(file, file.filename, {
-      userId,
-      purpose: MediaPurpose.MANUAL_PAYMENT_PROOF,
-      entityType: TrackableContentType.EVENT,
-      entityId: event._id.toString(),
-    });
-
-    const order = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: event.creatorId,
-      contentType: TrackableContentType.EVENT,
-      contentId: event._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending_verification',
-      paymentMethod: 'manual',
-      paymentProof: uploadResult.url
-    });
-
-    return { success: true, message: 'Payment submitted for verification', orderId: order._id };
-  }
-
-  @Post('manual/init/product')
-  @ApiOperation({ summary: 'Initiate manual payment (transfer) for product' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
-  async initManualProductPayment(
-    @Body('productId') productId: string,
-    @Req() req: any,
-    @UploadedFile() file: Express.Multer.File,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    if (!file) throw new BadRequestException('Payment proof file is required');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    // Accept both Mongo _id and custom product.id
-    let product = await this.productModel.findById(productId);
-    if (!product) {
-      product = await this.productModel.findOne({ id: productId });
-    }
-    if (!product) throw new BadRequestException('Product not found');
-    const buyerFilter = this.buildBuyerIdFilter(userId);
-    const productIdCandidates = this.buildProductContentIdCandidates(product);
-    const existingPaidOrder = await this.findExistingPaidProductOrder(userId, product);
-    if (existingPaidOrder) {
-      throw new BadRequestException('Product already purchased. You already have lifetime access.');
-    }
-
-    const existing = await this.orderModel.findOne({
-      buyerId: buyerFilter,
-      contentType: TrackableContentType.PRODUCT,
-      contentId: { $in: productIdCandidates },
-      status: { $in: ['pending_verification', 'pending'] },
-    }).select('_id status').exec();
-
-    if (existing) {
-      throw new BadRequestException('You already submitted a payment proof for this request. Please wait for verification.');
-    }
-
-    const price = product.price || product.pricing?.price || 0;
-    if (price <= 0) throw new BadRequestException('Free product');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.PRODUCT, product._id.toString(), (buyer as any)?.email);
-      if (promo.valid) {
-        amount = promo.finalAmountDT;
-        discountDT = promo.discountDT;
-        appliedCode = promo.appliedCode;
-      }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, product.creatorId.toString());
-    const uploadResult = await this.uploadService.processUploadedFile(file, file.filename, {
-      userId,
-      purpose: MediaPurpose.MANUAL_PAYMENT_PROOF,
-      entityType: TrackableContentType.PRODUCT,
-      entityId: product._id.toString(),
-    });
-
-    const order = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: product.creatorId,
-      contentType: TrackableContentType.PRODUCT,
-      contentId: product._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending_verification',
-      paymentMethod: 'manual',
-      paymentProof: uploadResult.url
-    });
-
-    return { success: true, message: 'Payment submitted for verification', orderId: order._id };
-  }
-
-  @Post('manual/init/session')
-  @ApiOperation({ summary: 'Initiate manual payment (transfer) for session' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('proof', manualProofUploadOptions))
-  async initManualSessionPayment(
-    @Body('sessionId') sessionId: string,
-    @Body('slotId') slotId: string,
-    @Body('notes') notes: string,
-    @Req() req: any,
-    @UploadedFile() file: Express.Multer.File,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    if (!file) throw new BadRequestException('Payment proof file is required');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-
-    // Find session by custom id field first, then by _id
-    let session = await this.sessionModel.findOne({ id: sessionId });
-    if (!session) {
-      session = await this.sessionModel.findById(sessionId);
-    }
-    if (!session) throw new BadRequestException('Session not found');
-
-    const existing = await this.orderModel.findOne({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: session.creatorId,
-      paymentMethod: 'manual',
-      contentType: TrackableContentType.SESSION,
-      contentId: session._id.toString(),
-      status: { $in: ['pending_verification', 'paid'] },
-    }).select('_id status').exec();
-
-    if (existing) {
-      throw new BadRequestException('You already submitted a payment proof for this request. Please wait for verification.');
-    }
-
-    const price = session.price || session.pricing?.price || 0;
-    if (price <= 0) throw new BadRequestException('Free session');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.SESSION, session._id.toString(), (buyer as any)?.email);
-      if (promo.valid) {
-        amount = promo.finalAmountDT;
-        discountDT = promo.discountDT;
-        appliedCode = promo.appliedCode;
-      }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, session.creatorId.toString());
-    const uploadResult = await this.uploadService.processUploadedFile(file, file.filename, {
-      userId,
-      purpose: MediaPurpose.MANUAL_PAYMENT_PROOF,
-      entityType: TrackableContentType.SESSION,
-      entityId: session._id.toString(),
-    });
-
-    // If slotId is provided, reserve the slot (mark as pending)
-    let slotInfo: any = null;
-    if (slotId && session.availableSlots) {
-      const slot = session.availableSlots.find(s => s.id === slotId);
-      if (slot && slot.isAvailable) {
-        slot.isAvailable = false;
-        slot.bookedBy = new Types.ObjectId(userId);
-        slot.bookedAt = new Date();
-        slotInfo = {
-          slotId: slot.id,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-        };
-        await session.save();
-      }
-    }
-
-    const order = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: session.creatorId,
-      contentType: TrackableContentType.SESSION,
-      contentId: session._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending_verification',
-      paymentMethod: 'manual',
-      paymentProof: uploadResult.url,
-      metadata: slotInfo ? { slotId: slotInfo.slotId, slotStartTime: slotInfo.startTime, slotEndTime: slotInfo.endTime, notes } : { notes }
-    });
-
-    return {
-      success: true,
-      message: 'Payment submitted for verification. The slot has been reserved.',
-      orderId: order._id,
-      slot: slotInfo
-    };
-  }
-
-  @Get('manual/pending')
-  @ApiOperation({ summary: 'Get pending manual payments for the logged-in creator' })
-  @ApiQuery({ name: 'communityId', required: false, description: 'Filter by community' })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async getPendingManualPayments(@Req() req: any, @Query('communityId') communityId?: string) {
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const payments = await this.manualPaymentService.getPendingPaymentsForCreator(userId, { communityId });
-    const enriched = await this.enrichManualOrdersForDashboard(payments as any);
-    return { success: true, data: enriched };
-  }
-
-  @Get('manual/history')
-  @ApiOperation({ summary: 'Get manual payment proofs history for the logged-in creator' })
-  @ApiQuery({ name: 'status', required: false, description: 'Filter by order status (or "all")' })
-  @ApiQuery({ name: 'page', required: false, description: 'Page number (1-based)' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Page size (max 100)' })
-  @ApiQuery({ name: 'communityId', required: false, description: 'Filter by community' })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async getManualPaymentsHistory(
-    @Req() req: any,
-    @Query('status') status?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('communityId') communityId?: string,
-  ) {
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const result = await this.manualPaymentService.getManualPaymentsHistoryForCreator(userId, {
-      status,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-      communityId,
-    });
-    const enriched = await this.enrichManualOrdersForDashboard(result.items as any);
-    return { success: true, data: enriched, meta: result.meta };
-  }
-
-  @Post('manual/verify/:orderId')
-  @ApiOperation({ summary: 'Verify (approve or reject) a manual payment' })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async verifyManualPayment(
-    @Param('orderId') orderId: string,
-    @Body('action') action: 'approve' | 'reject',
-    @Req() req: any
-  ) {
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    if (!['approve', 'reject'].includes(action)) {
-      throw new BadRequestException('Invalid action. Must be "approve" or "reject"');
-    }
-
-    try {
-      const creatorFilter: any = Types.ObjectId.isValid(userId)
-        ? new Types.ObjectId(userId)
-        : userId;
-      const pendingOrder = await this.orderModel.findOne({
-        _id: orderId,
-        paymentMethod: 'manual',
-        status: 'pending_verification',
-        creatorId: creatorFilter,
-      });
-      if (!pendingOrder) {
-        throw new BadRequestException('Order not found or access denied');
-      }
-      if (pendingOrder.contentType === TrackableContentType.SUBSCRIPTION) {
-        throw new BadRequestException('Platform subscription manual proofs must be reviewed by an admin');
-      }
-
-      if (action === 'approve' && pendingOrder.contentType === TrackableContentType.COMMUNITY) {
-        const privateCommunity = await this.communityModel.findById(pendingOrder.contentId);
-        if (!privateCommunity) {
-          throw new BadRequestException('Community not found');
-        }
-        await this.assertPrivateInviteAccess(
-          privateCommunity,
-          (pendingOrder as any)?.metadata?.inviteCode,
-        );
-      }
-
-      const order = await this.manualPaymentService.verifyPayment(orderId, userId, action);
-      await this.auditPaymentEvent({
-        orderId: order._id?.toString?.(),
-        eventType: action === 'approve' ? 'manual_verification_completed' : 'manual_verification_rejected',
-        provider: 'manual',
-        paymentMethod: 'manual',
-        previousStatus: 'pending_verification',
-        nextStatus: order.status,
-      });
-
-      const buyer = await this.userModel.findById(order.buyerId).select('email name').exec();
-
-      // If approved, trigger content access granting logic if needed
-      if (action === 'approve') {
-        let didCompleteFulfillment = false;
-        let fulfilledOrder: any = order;
-        await this.runWithOptionalTransaction(async (dbSession) => {
-          const claim = await this.paymentFulfillmentService.claimForProcessing(
-            order._id.toString(),
-            'manual',
-            dbSession,
-          );
-          if (!claim.order) {
-            throw new BadRequestException('Order not found');
-          }
-
-          fulfilledOrder = claim.order;
-          if (claim.state === 'requires_booking' || claim.state === 'completed') {
-            return;
-          }
-          if (claim.state !== 'claimed') {
-            return;
-          }
-
-          try {
-            await this.grantAccess(fulfilledOrder, dbSession);
-            fulfilledOrder = await this.paymentFulfillmentService.markCompleted(fulfilledOrder, dbSession);
-            didCompleteFulfillment = true;
-          } catch (error: any) {
-            if (
-              fulfilledOrder.contentType === TrackableContentType.SESSION &&
-              this.isMissingScheduledAtError(error)
-            ) {
-              fulfilledOrder = await this.paymentFulfillmentService.markRequiresBooking(
-                fulfilledOrder,
-                dbSession,
-                {
-                  contentId: fulfilledOrder.metadata?.contentId || fulfilledOrder.contentId,
-                },
-              );
-              return;
-            }
-            await this.paymentFulfillmentService.markFailed(fulfilledOrder, error, dbSession);
-            throw error;
-          }
-        });
-
-        order.metadata = fulfilledOrder.metadata;
-        order.status = fulfilledOrder.status;
-
-        if (didCompleteFulfillment) {
-          await this.incrementProductSalesFromOrder(fulfilledOrder);
-          await this.affiliateCommissionService.onOrderPaid(fulfilledOrder).catch((e) => this.logger.error(`Affiliate onOrderPaid failed: ${e?.message}`));
-        }
-
-        await this.notificationService.createNotification({
-          recipient: order.buyerId.toString(),
-          type: 'manual_payment_approved',
-          title: 'Payment approved',
-          body: 'Your manual payment proof was approved. You now have access.',
-          data: {
-            orderId: order._id.toString(),
-            contentType: order.contentType,
-            contentId: order.contentId,
-          },
-        });
-      } else {
-        if (buyer?.email) {
-          const retryUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/`; // keep generic
-          await this.emailService.sendGenericEmail({
-            to: buyer.email,
-            subject: 'Manual payment rejected',
-            text: `Hello${buyer?.name ? ` ${buyer.name}` : ''},\n\nYour manual payment proof was rejected by the creator.\n\nYou can try again by submitting a new proof from the checkout flow.\n\nOrder: ${order._id.toString()}\nType: ${order.contentType}\n\nRetry: ${retryUrl}\n`,
-          });
-        }
-      }
-
-      return { success: true, message: `Payment ${action}ed successfully`, order };
-    } catch (error: any) {
-      throw new BadRequestException(error.message || 'Failed to verify payment');
-    }
-  }
-
-  // ==================== KONNECT PAYMENT ENDPOINTS ====================
-
-  private getKonnectWebhookUrl(): string {
-    const backendUrl = (process.env.BACKEND_URL || process.env.API_URL || 'https://api.chabaqa.io/api').replace(/\/+$/, '');
-    return `${backendUrl}/payment/konnect/webhook`;
-  }
-
-  private buildKonnectInitResponse(params: {
-    scope: string;
-    targetId: string;
-    orderId: string;
-    paymentRef?: string;
-    payUrl?: string;
-  }) {
-    return {
-      payUrl: params.payUrl,
-      paymentRef: params.paymentRef,
-      orderId: params.orderId,
-      provider: 'konnect',
-      scope: params.scope,
-      targetId: params.targetId,
-    };
-  }
-
-  @Post('konnect/init/community')
-  @ApiOperation({ summary: 'Initiate Konnect payment for community membership' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initKonnectCommunityPayment(
-    @Body('communityId') communityId: string,
-    @Body('inviteCode') inviteCode: string | undefined,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('konnect');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const community = await this.communityModel.findById(communityId);
-    if (!community) throw new BadRequestException('Communauté non trouvée');
-    const validatedInviteCode = await this.assertPrivateInviteAccess(community, inviteCode);
-
-    const price = community.fees_of_join || 0;
-    if (price <= 0) throw new BadRequestException('Communauté gratuite');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.COMMUNITY, community._id.toString(), (buyer as any)?.email);
-      if (promo.valid) {
-        amount = promo.finalAmountDT;
-        discountDT = promo.discountDT;
-        appliedCode = promo.appliedCode;
-      }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, community.createur.toString());
-    const recurringMetadata = this.getCommunityRecurringMetadata(community, amount);
-    const metadata: Record<string, any> = { provider: 'konnect', ...recurringMetadata };
-    if (validatedInviteCode) metadata.inviteCode = validatedInviteCode;
-
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: community.createur,
-      communityId: community._id,
-      contentType: TrackableContentType.COMMUNITY,
-      contentId: community._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-      metadata: this.buildPendingFulfillmentMetadata(metadata),
-    });
-
-    const user = await this.userModel.findById(userId).select('email name firstName lastName');
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=community&id=${communityId}&provider=konnect&paymentRef=PAYMENT_REF_PLACEHOLDER`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=community&id=${communityId}&provider=konnect`;
-
-    const init = await this.konnect.initPayment({
-      amountTND: amount,
-      description: `Join ${community.name}`,
-      orderId: pendingOrder._id.toString(),
-      successUrl,
-      failUrl,
-      webhookUrl: this.getKonnectWebhookUrl(),
-      firstName: (user as any)?.firstName || (user as any)?.name?.split(' ')[0] || '',
-      lastName: (user as any)?.lastName || (user as any)?.name?.split(' ').slice(1).join(' ') || '',
-      email: user?.email || '',
-    });
-    if (!init.success) throw new BadRequestException(init.error || 'Konnect payment init failed');
-
-    pendingOrder.paymentId = init.paymentRef;
-    await pendingOrder.save();
-
-    return this.buildKonnectInitResponse({
-      scope: 'community',
-      targetId: communityId,
-      orderId: pendingOrder._id.toString(),
-      paymentRef: init.paymentRef,
-      payUrl: init.payUrl,
-    });
-  }
-
-  @Post('konnect/init/course')
-  @ApiOperation({ summary: 'Initiate Konnect payment for course enrollment' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initKonnectCoursePayment(
-    @Body('courseId') courseId: string,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('konnect');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    let cours: CoursDocument | null = null;
-    if (Types.ObjectId.isValid(courseId)) {
-      cours = await this.coursModel.findById(courseId);
-    }
-    if (!cours) {
-      cours = await this.coursModel.findOne({ id: courseId });
-    }
-    if (!cours) throw new BadRequestException('Cours non trouvé');
-    const courseObjectId = cours._id;
-    const coursePublicId = cours.id || courseObjectId.toString();
-    const price = cours.prix || 0;
-    if (price <= 0) throw new BadRequestException('Cours gratuit');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.COURSE, cours._id.toString(), (buyer as any)?.email);
-      if (promo.valid) { amount = promo.finalAmountDT; discountDT = promo.discountDT; appliedCode = promo.appliedCode; }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, cours.creatorId.toString());
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: cours.creatorId,
-      contentType: TrackableContentType.COURSE,
-      contentId: courseObjectId.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-      metadata: this.buildPendingFulfillmentMetadata({ provider: 'konnect' }),
-    });
-
-    const user = await this.userModel.findById(userId).select('email name firstName lastName');
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=course&id=${coursePublicId}&provider=konnect&paymentRef=PAYMENT_REF_PLACEHOLDER`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=course&id=${coursePublicId}&provider=konnect`;
-
-    const init = await this.konnect.initPayment({
-      amountTND: amount,
-      description: cours.titre || 'Course',
-      orderId: pendingOrder._id.toString(),
-      successUrl,
-      failUrl,
-      webhookUrl: this.getKonnectWebhookUrl(),
-      firstName: (user as any)?.firstName || (user as any)?.name?.split(' ')[0] || '',
-      lastName: (user as any)?.lastName || (user as any)?.name?.split(' ').slice(1).join(' ') || '',
-      email: user?.email || '',
-    });
-    if (!init.success) throw new BadRequestException(init.error || 'Konnect payment init failed');
-
-    pendingOrder.paymentId = init.paymentRef;
-    await pendingOrder.save();
-
-    return this.buildKonnectInitResponse({
-      scope: 'course',
-      targetId: coursePublicId,
-      orderId: pendingOrder._id.toString(),
-      paymentRef: init.paymentRef,
-      payUrl: init.payUrl,
-    });
-  }
-
-  @Post('konnect/init/challenge')
-  @ApiOperation({ summary: 'Initiate Konnect payment for challenge participation' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initKonnectChallengePayment(
-    @Body('challengeId') challengeId: string,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('konnect');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const challenge = await this.challengeModel.findById(challengeId);
-    if (!challenge) throw new BadRequestException('Défi non trouvé');
-    const price = challenge.pricing?.participationFee || 0;
-    if (price <= 0) throw new BadRequestException('Défi gratuit');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.CHALLENGE, challenge._id.toString(), (buyer as any)?.email);
-      if (promo.valid) { amount = promo.finalAmountDT; discountDT = promo.discountDT; appliedCode = promo.appliedCode; }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, challenge.creatorId.toString());
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: challenge.creatorId,
-      contentType: TrackableContentType.CHALLENGE,
-      contentId: challenge._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-      metadata: this.buildPendingFulfillmentMetadata({ provider: 'konnect' }),
-    });
-
-    const user = await this.userModel.findById(userId).select('email name firstName lastName');
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=challenge&id=${challengeId}&provider=konnect&paymentRef=PAYMENT_REF_PLACEHOLDER`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=challenge&id=${challengeId}&provider=konnect`;
-
-    const init = await this.konnect.initPayment({
-      amountTND: amount,
-      description: challenge.title || 'Challenge',
-      orderId: pendingOrder._id.toString(),
-      successUrl,
-      failUrl,
-      webhookUrl: this.getKonnectWebhookUrl(),
-      firstName: (user as any)?.firstName || (user as any)?.name?.split(' ')[0] || '',
-      lastName: (user as any)?.lastName || (user as any)?.name?.split(' ').slice(1).join(' ') || '',
-      email: user?.email || '',
-    });
-    if (!init.success) throw new BadRequestException(init.error || 'Konnect payment init failed');
-
-    pendingOrder.paymentId = init.paymentRef;
-    await pendingOrder.save();
-
-    return this.buildKonnectInitResponse({
-      scope: 'challenge',
-      targetId: challengeId,
-      orderId: pendingOrder._id.toString(),
-      paymentRef: init.paymentRef,
-      payUrl: init.payUrl,
-    });
-  }
-
-  @Post('konnect/init/event')
-  @ApiOperation({ summary: 'Initiate Konnect payment for event ticket' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initKonnectEventPayment(
-    @Body('eventId') eventId: string,
-    @Body('ticketType') ticketType: string,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('konnect');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const event = await this.eventModel.findById(eventId);
-    if (!event) throw new BadRequestException('Événement non trouvé');
-    const alreadyRegistered = (event.attendees || []).some((attendee: any) => attendee?.userId?.toString() === userId);
-    if (alreadyRegistered) throw new BadRequestException('Vous êtes déjà inscrit à cet événement');
-
-    const ticket = event.tickets.find(t => t.type === ticketType);
-    if (!ticket || (ticket.price || 0) <= 0) throw new BadRequestException('Billet invalide ou gratuit');
-
-    let amount = ticket.price || 0;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, amount, TrackableContentType.EVENT, (event as any)._id.toString(), (buyer as any)?.email);
-      if (promo.valid) { amount = promo.finalAmountDT; discountDT = promo.discountDT; appliedCode = promo.appliedCode; }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, event.creatorId.toString());
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: event.creatorId,
-      contentType: TrackableContentType.EVENT,
-      contentId: (event as any)._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-      metadata: this.buildPendingFulfillmentMetadata({ provider: 'konnect', ticketType }),
-    });
-
-    const user = await this.userModel.findById(userId).select('email name firstName lastName');
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=event&id=${eventId}&provider=konnect&paymentRef=PAYMENT_REF_PLACEHOLDER`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=event&id=${eventId}&provider=konnect`;
-
-    const init = await this.konnect.initPayment({
-      amountTND: amount,
-      description: `${ticket.name || ticketType} - ${event.title || 'Event'}`,
-      orderId: pendingOrder._id.toString(),
-      successUrl,
-      failUrl,
-      webhookUrl: this.getKonnectWebhookUrl(),
-      firstName: (user as any)?.firstName || (user as any)?.name?.split(' ')[0] || '',
-      lastName: (user as any)?.lastName || (user as any)?.name?.split(' ').slice(1).join(' ') || '',
-      email: user?.email || '',
-    });
-    if (!init.success) throw new BadRequestException(init.error || 'Konnect payment init failed');
-
-    pendingOrder.paymentId = init.paymentRef;
-    await pendingOrder.save();
-
-    return this.buildKonnectInitResponse({
-      scope: 'event',
-      targetId: eventId,
-      orderId: pendingOrder._id.toString(),
-      paymentRef: init.paymentRef,
-      payUrl: init.payUrl,
-    });
-  }
-
-  @Post('konnect/init/product')
-  @ApiOperation({ summary: 'Initiate Konnect payment for product purchase' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initKonnectProductPayment(
-    @Body('productId') productId: string,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('konnect');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    let product = await this.productModel.findById(productId);
-    if (!product) product = await this.productModel.findOne({ id: productId });
-    if (!product) throw new BadRequestException('Produit non trouvé');
-
-    const existingPaidOrder = await this.findExistingPaidProductOrder(userId, product);
-    if (existingPaidOrder) throw new BadRequestException('Product already purchased. You already have lifetime access.');
-
-    const price = product.price || 0;
-    if (price <= 0) throw new BadRequestException('Produit gratuit');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.PRODUCT, product._id.toString(), (buyer as any)?.email);
-      if (promo.valid) { amount = promo.finalAmountDT; discountDT = promo.discountDT; appliedCode = promo.appliedCode; }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, product.creatorId.toString());
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: product.creatorId,
-      contentType: TrackableContentType.PRODUCT,
-      contentId: product._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-      metadata: this.buildPendingFulfillmentMetadata({ provider: 'konnect' }),
-    });
-
-    const user = await this.userModel.findById(userId).select('email name firstName lastName');
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=product&id=${productId}&provider=konnect&paymentRef=PAYMENT_REF_PLACEHOLDER`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=product&id=${productId}&provider=konnect`;
-
-    const init = await this.konnect.initPayment({
-      amountTND: amount,
-      description: product.title || 'Product',
-      orderId: pendingOrder._id.toString(),
-      successUrl,
-      failUrl,
-      webhookUrl: this.getKonnectWebhookUrl(),
-      firstName: (user as any)?.firstName || (user as any)?.name?.split(' ')[0] || '',
-      lastName: (user as any)?.lastName || (user as any)?.name?.split(' ').slice(1).join(' ') || '',
-      email: user?.email || '',
-    });
-    if (!init.success) throw new BadRequestException(init.error || 'Konnect payment init failed');
-
-    pendingOrder.paymentId = init.paymentRef;
-    await pendingOrder.save();
-
-    return this.buildKonnectInitResponse({
-      scope: 'product',
-      targetId: productId,
-      orderId: pendingOrder._id.toString(),
-      paymentRef: init.paymentRef,
-      payUrl: init.payUrl,
-    });
-  }
-
-  @Post('konnect/init/session')
-  @ApiOperation({ summary: 'Initiate Konnect payment for 1-to-1 session' })
-  @ApiQuery({ name: 'promoCode', required: false })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initKonnectSessionPayment(
-    @Body('sessionId') sessionId: string,
-    @Req() req: any,
-    @Query('promoCode') promoCode?: string,
-  ) {
-    this.assertPaymentProviderEnabled('konnect');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const session = await this.sessionModel.findById(sessionId);
-    if (!session) throw new BadRequestException('Session non trouvée');
-    const price = session.price || 0;
-    if (price <= 0) throw new BadRequestException('Session gratuite');
-
-    let amount = price;
-    let discountDT = 0;
-    let appliedCode: string | undefined;
-    if (promoCode) {
-      const buyer = await this.userModel.findById(userId).select('email');
-      const promo = await this.promoService.validateAndApply(promoCode, price, TrackableContentType.SESSION, session._id.toString(), (buyer as any)?.email);
-      if (promo.valid) { amount = promo.finalAmountDT; discountDT = promo.discountDT; appliedCode = promo.appliedCode; }
-    }
-
-    const breakdown = await this.feeService.calculateForAmount(amount, session.creatorId.toString());
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: session.creatorId,
-      contentType: TrackableContentType.SESSION,
-      contentId: session._id.toString(),
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      promoCode: appliedCode,
-      discountDT,
-      status: 'pending',
-      metadata: this.buildPendingFulfillmentMetadata({ provider: 'konnect' }),
-    });
-
-    const user = await this.userModel.findById(userId).select('email name firstName lastName');
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=session&id=${sessionId}&provider=konnect&paymentRef=PAYMENT_REF_PLACEHOLDER`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=session&id=${sessionId}&provider=konnect`;
-
-    const init = await this.konnect.initPayment({
-      amountTND: amount,
-      description: session.title || 'Session',
-      orderId: pendingOrder._id.toString(),
-      successUrl,
-      failUrl,
-      webhookUrl: this.getKonnectWebhookUrl(),
-      firstName: (user as any)?.firstName || (user as any)?.name?.split(' ')[0] || '',
-      lastName: (user as any)?.lastName || (user as any)?.name?.split(' ').slice(1).join(' ') || '',
-      email: user?.email || '',
-    });
-    if (!init.success) throw new BadRequestException(init.error || 'Konnect payment init failed');
-
-    pendingOrder.paymentId = init.paymentRef;
-    await pendingOrder.save();
-
-    return this.buildKonnectInitResponse({
-      scope: 'session',
-      targetId: sessionId,
-      orderId: pendingOrder._id.toString(),
-      paymentRef: init.paymentRef,
-      payUrl: init.payUrl,
-    });
-  }
-
-  @Post('konnect/init/subscription')
-  @ApiOperation({ summary: 'Initiate Konnect payment for creator subscription' })
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async initKonnectSubscription(
-    @Req() req: any,
-    @Body('tier') tier: string,
-    @Body('interval') interval: 'month' | 'year' = 'month',
-  ) {
-    this.assertPaymentProviderEnabled('konnect');
-    const userId = (req.user?._id || req.user?.sub || '').toString();
-    const plan = await this.subscriptionService.getActivePlanOrBootstrap(tier);
-    if (!plan) throw new BadRequestException('Plan introuvable');
-    const billingInterval = this.normalizeBillingInterval(interval);
-    const amount = this.subscriptionService.getPlanAmount(plan, billingInterval);
-    if (amount <= 0) throw new BadRequestException('Montant invalide');
-
-    const breakdown = await this.feeService.calculateForAmount(amount, userId);
-    const pendingOrder = await this.orderModel.create({
-      buyerId: new Types.ObjectId(userId),
-      creatorId: new Types.ObjectId(userId),
-      contentType: TrackableContentType.SUBSCRIPTION,
-      contentId: tier,
-      amountDT: breakdown.amountDT,
-      platformPercent: breakdown.platformPercent,
-      platformFixedDT: breakdown.platformFixedDT,
-      platformFeeDT: breakdown.platformFeeDT,
-      creatorNetDT: breakdown.creatorNetDT,
-      status: 'pending',
-      metadata: this.buildPendingFulfillmentMetadata({
-        provider: 'konnect',
-        tier,
-        billingInterval,
-        amount,
-        currency: 'TND',
-      }),
-    });
-
-    const user = await this.userModel.findById(userId).select('email name firstName lastName');
-    const successUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=subscription&tier=${tier}&provider=konnect&paymentRef=PAYMENT_REF_PLACEHOLDER`;
-    const failUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=subscription&tier=${tier}&provider=konnect`;
-
-    const init = await this.konnect.initPayment({
-      amountTND: amount,
-      description: `${plan.name || tier} Plan Subscription`,
-      orderId: pendingOrder._id.toString(),
-      successUrl,
-      failUrl,
-      webhookUrl: this.getKonnectWebhookUrl(),
-      firstName: (user as any)?.firstName || (user as any)?.name?.split(' ')[0] || '',
-      lastName: (user as any)?.lastName || (user as any)?.name?.split(' ').slice(1).join(' ') || '',
-      email: user?.email || '',
-    });
-    if (!init.success) throw new BadRequestException(init.error || 'Konnect payment init failed');
-
-    pendingOrder.paymentId = init.paymentRef;
-    await pendingOrder.save();
-
-    return this.buildKonnectInitResponse({
-      scope: 'subscription',
-      targetId: tier,
-      orderId: pendingOrder._id.toString(),
-      paymentRef: init.paymentRef,
-      payUrl: init.payUrl,
-    });
-  }
-
-  @Get('konnect/verify')
-  @ApiOperation({ summary: 'Verify Konnect payment status' })
-  @ApiQuery({ name: 'paymentRef', required: true })
-  async verifyKonnectPayment(@Query('paymentRef') paymentRef: string) {
-    this.assertPaymentProviderEnabled('konnect');
-    if (!paymentRef) throw new BadRequestException('paymentRef is required');
-
-    let order: any = await this.orderModel.findOne({ paymentId: paymentRef });
-    if (!order) throw new BadRequestException('Order not found for this payment reference');
-
-    const details = await this.konnect.getPaymentDetails(paymentRef);
-    if (!details.success) throw new BadRequestException(details.error || 'Failed to verify Konnect payment');
-
-    if (details.status === 'completed') {
-      await this.auditPaymentEvent({
-        orderId: order._id?.toString?.(),
-        eventType: 'provider_verification_completed',
-        provider: 'konnect',
-        eventId: paymentRef,
-        paymentMethod: details.paymentMethod || 'konnect',
-        previousStatus: order.status,
-        nextStatus: 'paid',
-      });
-
-      let didCompleteFulfillment = false;
-      await this.runWithOptionalTransaction(async (session) => {
-        const claim = await this.paymentFulfillmentService.claimForProcessing(
-          order._id.toString(),
-          details.paymentMethod || 'konnect',
-          session,
-        );
-        if (!claim.order) throw new BadRequestException('Order not found');
-        order = claim.order;
-
-        if (claim.state === 'requires_booking' || claim.state === 'completed') return;
-        if (claim.state !== 'claimed') return;
-
-        try {
-          await this.grantAccess(order, session);
-          order = await this.paymentFulfillmentService.markCompleted(order, session);
-          didCompleteFulfillment = true;
-        } catch (error: any) {
-          if (order.contentType === TrackableContentType.SESSION && this.isMissingScheduledAtError(error)) {
-            order = await this.paymentFulfillmentService.markRequiresBooking(order, session, {
-              contentId: order.metadata?.contentId || order.contentId,
-            });
-            return;
-          }
-          await this.paymentFulfillmentService.markFailed(order, error, session);
-          throw error;
-        }
-      });
-
-      if (didCompleteFulfillment) {
-        await this.incrementProductSalesFromOrder(order);
-        await this.affiliateCommissionService.onOrderPaid(order).catch((e) => this.logger.error(`Affiliate onOrderPaid failed: ${e?.message}`));
-      }
-
-      if (order.contentType === TrackableContentType.SESSION && order.metadata?.fulfillmentStatus === 'requires_booking') {
-        return this.paymentVerificationService.fromPayload('konnect', {
-          status: 'paid_action_required',
-          action: 'choose_session_slot',
-          message: 'Payment received. Please choose a session slot to finalize your booking.',
-          orderId: order._id,
-          sessionContentId: order.metadata?.contentId || order.contentId,
-          ...(await this.enrichOrderDetails(order)),
-        });
-      }
-
-      const enriched = await this.enrichOrderDetails(order);
-      return this.paymentVerificationService.fromPayload('konnect', { status: 'paid', orderId: order._id, ...enriched });
-    }
-
-    if (details.status === 'failed') {
-      if (order.status !== 'failed') {
-        order.status = 'failed';
-        await order.save();
-      }
-      return this.paymentVerificationService.fromPayload('konnect', { status: 'failed', orderId: order._id });
-    }
-
-    return this.paymentVerificationService.fromPayload('konnect', { status: 'pending', orderId: order._id });
-  }
-
-  @Get('konnect/webhook')
-  @ApiOperation({ summary: 'Konnect payment webhook (GET with payment_ref query param)' })
-  async konnectWebhook(@Query('payment_ref') paymentRef: string) {
-    this.assertPaymentProviderEnabled('konnect');
-    this.logger.log(`[Konnect Webhook] Received callback for payment_ref=${paymentRef}`);
-    if (!paymentRef) throw new BadRequestException('payment_ref is required');
-
-    const alreadyProcessed = await this.hasProcessedWebhookEvent('konnect', paymentRef);
-    if (alreadyProcessed) {
-      this.logger.log(`[Konnect Webhook] Already processed: ${paymentRef}`);
-      return { status: 'already_processed' };
-    }
-
-    const details = await this.konnect.getPaymentDetails(paymentRef);
-    if (!details.success) {
-      this.logger.warn(`[Konnect Webhook] Failed to fetch details for ${paymentRef}: ${details.error}`);
-      return { status: 'verification_failed' };
-    }
-
-    let order: any = await this.orderModel.findOne({ paymentId: paymentRef });
-    if (!order) {
-      this.logger.warn(`[Konnect Webhook] No order found for paymentRef=${paymentRef}`);
-      return { status: 'order_not_found' };
-    }
-
-    if (details.status === 'completed') {
-      await this.auditPaymentEvent({
-        orderId: order._id?.toString?.(),
-        eventType: 'webhook_payment_completed',
-        provider: 'konnect',
-        eventId: paymentRef,
-        paymentMethod: details.paymentMethod || 'konnect',
-        previousStatus: order.status,
-        nextStatus: 'paid',
-      });
-
-      let didCompleteFulfillment = false;
-      await this.runWithOptionalTransaction(async (session) => {
-        const claim = await this.paymentFulfillmentService.claimForProcessing(
-          order._id.toString(),
-          details.paymentMethod || 'konnect',
-          session,
-        );
-        if (!claim.order) return;
-        order = claim.order;
-
-        if (claim.state === 'requires_booking' || claim.state === 'completed') return;
-        if (claim.state !== 'claimed') return;
-
-        try {
-          await this.grantAccess(order, session);
-          order = await this.paymentFulfillmentService.markCompleted(order, session);
-          didCompleteFulfillment = true;
-        } catch (error: any) {
-          if (order.contentType === TrackableContentType.SESSION && this.isMissingScheduledAtError(error)) {
-            order = await this.paymentFulfillmentService.markRequiresBooking(order, session, {
-              contentId: order.metadata?.contentId || order.contentId,
-            });
-            return;
-          }
-          await this.paymentFulfillmentService.markFailed(order, error, session);
-          this.logger.error(`[Konnect Webhook] Fulfillment failed for order ${order._id}: ${error?.message}`);
-        }
-      });
-
-      if (didCompleteFulfillment) {
-        await this.incrementProductSalesFromOrder(order);
-        await this.affiliateCommissionService.onOrderPaid(order).catch((e) => this.logger.error(`Affiliate onOrderPaid failed: ${e?.message}`));
-      }
-
-      await this.markWebhookEventProcessed('konnect', paymentRef, 'payment_completed');
-      return { status: 'fulfilled' };
-    }
-
-    if (details.status === 'failed') {
-      if (order.status !== 'failed') {
-        order.status = 'failed';
-        await order.save();
-      }
-      await this.markWebhookEventProcessed('konnect', paymentRef, 'payment_failed');
-      return { status: 'payment_failed' };
-    }
-
-    return { status: 'pending' };
-  }
-
-  /**
-   * Mock-only endpoint: confirms a Konnect mock payment as succeeded or failed.
-   * Only works when KONNECT_MOCK_MODE=true. Used by the /konnect-mock-checkout frontend page.
-   * GET /api/payment/konnect/mock/confirm?paymentRef=xxx&outcome=success|fail
-   */
-  @Get('konnect/mock/confirm')
-  @ApiOperation({ summary: '[DEV MOCK] Confirm a Konnect mock payment as success or failure' })
-  @ApiQuery({ name: 'paymentRef', required: true })
-  @ApiQuery({ name: 'outcome', required: false, description: 'success (default) or fail' })
-  async confirmKonnectMockPayment(
-    @Query('paymentRef') paymentRef: string,
-    @Query('outcome') outcome: string = 'success',
-  ) {
-    if (isStrictProductionRuntime() || !isKonnectMockConfirmationEnabled() || !this.konnect.isMockMode) {
-      throw new BadRequestException('Konnect mock confirmation is disabled.');
-    }
-    if (!paymentRef) throw new BadRequestException('paymentRef is required');
-
-    const normalizedOutcome = String(outcome).toLowerCase() === 'fail' ? 'fail' : 'success';
-    const confirmed = this.konnect.confirmMockPayment(paymentRef, normalizedOutcome as 'success' | 'fail');
-
-    if (!confirmed) throw new BadRequestException('Could not confirm mock payment');
-
-    this.logger.log(`[Konnect Mock] Payment ${paymentRef} confirmed as ${normalizedOutcome}`);
-    return {
-      success: true,
-      paymentRef,
-      outcome: normalizedOutcome,
-      message: `Mock payment marked as ${normalizedOutcome}. Now call /payment/konnect/verify?paymentRef=${paymentRef} to complete fulfillment.`,
-    };
-  }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CheckCircle2, RefreshCw, Search, XCircle } from "lucide-react"
+import { ArrowLeft, RefreshCw, Search } from "lucide-react"
 import { toast } from "sonner"
 import { useAdminAuth } from "@/app/(admin)/providers/admin-auth-provider"
 import { DataTable, ColumnDef } from "@/app/(admin)/_components/data-table"
@@ -24,7 +24,6 @@ interface BillingAuditRow {
   providerSubscriptionId?: string
   amount: number
   currency: string
-  proofUrl?: string
   buyer?: { username?: string; name?: string; email?: string }
   creator?: { username?: string; name?: string; email?: string }
   createdAt: string
@@ -38,6 +37,23 @@ const formatDate = (value?: string) => {
   return date && Number.isFinite(date.getTime())
     ? new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date)
     : "-"
+}
+
+const extractBillingAuditRows = (response: any): BillingAuditRow[] => {
+  const candidates = [
+    response?.data?.items,
+    response?.data?.data,
+    response?.data?.billingAudit,
+    response?.data?.records,
+    response?.items,
+    response?.data,
+  ]
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate
+  }
+
+  return []
 }
 
 export default function BillingAuditPage() {
@@ -58,8 +74,7 @@ export default function BillingAuditPage() {
         ...(provider === "all" ? {} : { provider }),
         ...(status === "all" ? {} : { status }),
       })
-      const data = (response as any)?.data?.data || (response as any)?.data || []
-      setRows(Array.isArray(data) ? data : [])
+      setRows(extractBillingAuditRows(response))
     } catch (error) {
       console.error("[BillingAudit] Error:", error)
       toast.error("Failed to load billing audit")
@@ -98,16 +113,6 @@ export default function BillingAuditPage() {
         .some((value) => String(value).toLowerCase().includes(term)),
     )
   }, [query, rows])
-
-  const reviewManual = async (row: BillingAuditRow, action: "approve" | "reject") => {
-    try {
-      await adminApi.financial.reviewManualPlatformSubscription(row.orderId, action)
-      toast.success(action === "approve" ? "Manual subscription approved" : "Manual subscription rejected")
-      await loadAudit()
-    } catch (error: any) {
-      toast.error(error?.message || "Review failed")
-    }
-  }
 
   const refundPaidOrder = async (row: BillingAuditRow) => {
     if (!window.confirm(`Refund order ${row.orderId.slice(-10)} for ${formatMoney(row.amount, row.currency)}?`)) {
@@ -153,31 +158,13 @@ export default function BillingAuditPage() {
       id: "actions",
       header: "Actions",
       cell: (row) => {
-        const canReview = row.contentType === "subscription" && row.provider === "manual" && row.status === "pending_verification"
         const canRefund = row.status === "paid" && row.provider === "stripe" && row.paymentId
         return (
           <div className="flex items-center gap-2">
-            {row.proofUrl && (
-              <Button variant="outline" size="sm" asChild>
-                <a href={row.proofUrl} target="_blank" rel="noreferrer">Proof</a>
-              </Button>
-            )}
             {canRefund && (
               <Button variant="outline" size="sm" onClick={() => void refundPaidOrder(row)}>
                 Refund
               </Button>
-            )}
-            {canReview && (
-              <>
-                <Button size="sm" onClick={() => reviewManual(row, "approve")} className="gap-1">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Approve
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => reviewManual(row, "reject")} className="gap-1">
-                  <XCircle className="h-4 w-4" />
-                  Reject
-                </Button>
-              </>
             )}
           </div>
         )
@@ -198,7 +185,7 @@ export default function BillingAuditPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold">Billing Audit</h1>
-            <p className="mt-1 text-muted-foreground">Trace checkout state, webhooks, provider IDs, invoices, and manual proof reviews.</p>
+            <p className="mt-1 text-muted-foreground">Trace Stripe checkout state, webhooks, provider IDs, and invoices.</p>
           </div>
         </div>
         <Button variant="outline" onClick={loadAudit} className="gap-2">
@@ -220,14 +207,10 @@ export default function BillingAuditPage() {
         <select value={provider} onChange={(event) => setProvider(event.target.value)} className="h-11 rounded-lg border bg-background px-3 text-sm font-medium">
           <option value="all">All providers</option>
           <option value="stripe">Stripe</option>
-          <option value="konnect">Konnect</option>
-          <option value="flouci">Flouci</option>
-          <option value="manual">Manual</option>
         </select>
         <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-11 rounded-lg border bg-background px-3 text-sm font-medium">
           <option value="all">All statuses</option>
           <option value="pending">Pending</option>
-          <option value="pending_verification">Pending verification</option>
           <option value="paid">Paid</option>
           <option value="cancelled">Cancelled</option>
           <option value="refunded">Refunded</option>

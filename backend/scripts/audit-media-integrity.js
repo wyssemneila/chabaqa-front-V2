@@ -88,15 +88,6 @@ async function auditChallenges(db, result) {
   result.scanned.challenges = docs.length;
 }
 
-async function auditOrders(db, result) {
-  const col = db.collection('orders');
-  const docs = await col.find({}, { projection: { paymentProof: 1 } }).toArray();
-  for (const doc of docs) {
-    addMissing(result, 'orders', doc._id, 'paymentProof', doc.paymentProof);
-  }
-  result.scanned.orders = docs.length;
-}
-
 async function auditMessages(db, result) {
   const col = db.collection('messages');
   const docs = await col.find({}, { projection: { attachments: 1 } }).toArray();
@@ -139,7 +130,6 @@ async function main() {
 
   await auditCourses(db, result);
   await auditChallenges(db, result);
-  await auditOrders(db, result);
   await auditMessages(db, result);
   await auditTopupRequests(db, result);
 
