@@ -50,6 +50,8 @@ const PUBLIC_ROUTES = [
   '/contact',
 ]
 
+const HEALTH_ROUTES = new Set(['/health', '/ping'])
+
 // Admin only routes
 const ADMIN_ROUTES = [
   '/admin',
@@ -341,6 +343,10 @@ export async function authMiddleware(request: NextRequest) {
     pathname.startsWith('/favicon.ico') ||
     pathname.includes('.')
   ) {
+    return applySecurityHeaders(NextResponse.next(), pathname)
+  }
+
+  if (HEALTH_ROUTES.has(pathname)) {
     return applySecurityHeaders(NextResponse.next(), pathname)
   }
 
