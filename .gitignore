@@ -26,6 +26,9 @@ output-*.png
 frontend/output/
 .deploy-backups/
 
+# Private VPS deploy runbook (contains real secrets — never commit)
+docs/VPS_PRODUCTION_DEPLOY.md
+
 # Local verification artifacts
 email-marketing-ui-check.png
 ruvector.db
