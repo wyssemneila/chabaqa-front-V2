@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Target, Trophy, Clock, Award, FileText, Upload, MessageSquare, ListTodo } from "lucide-react"
 import ResourceList from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/[challengeId]/components/ResourceList"
 import SubmitProjectModal from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/[challengeId]/components/SubmitProjectModal"
+import { AiCoachWidget } from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/[challengeId]/components/ai-coach-widget"
 import { useState } from "react"
 
 interface CurrentTaskProps {
@@ -30,6 +31,7 @@ export default function CurrentTask({
   onSubmissionCreated,
 }: CurrentTaskProps) {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false)
+  const [isCoachOpen, setIsCoachOpen] = useState(false)
 
   // Determine the current task based on selection or progression order.
   const currentTask =
@@ -167,11 +169,23 @@ export default function CurrentTask({
                   ? "Submitted (Pending Review)"
                   : "Submit Project"}
           </Button>
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            onClick={() => setIsCoachOpen((o) => !o)}
+            disabled={isTaskLocked}
+          >
             <MessageSquare className="h-4 w-4 mr-2" />
-            Get Help
+            {isCoachOpen ? "Hide Coach" : "Get Help"}
           </Button>
         </div>
+
+        <AiCoachWidget
+          challengeId={challengeId}
+          taskId={currentTask.id}
+          taskTitle={currentTask.title}
+          open={isCoachOpen}
+          onOpenChange={setIsCoachOpen}
+        />
 
         <SubmitProjectModal
           isOpen={isSubmitModalOpen}

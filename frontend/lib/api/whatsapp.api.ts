@@ -431,4 +431,37 @@ export const whatsappApi = {
             ),
         );
     },
+
+    async getAiStatus(
+        communityId: string,
+    ): Promise<{ enabled: boolean; autoReplyEnabled: boolean }> {
+        return unwrapData(
+            await apiClient.get(
+                `/whatsapp-campaigns/community/${communityId}/ai-status`,
+            ),
+        );
+    },
+
+    async generateBroadcastDraft(
+        communityId: string,
+        data: {
+            goal: string;
+            audience?: string;
+            tone?: string;
+            context?: string;
+        },
+    ): Promise<{
+        message: string;
+        variants: string[];
+        model: string;
+        skipped: boolean;
+        reason?: string;
+    }> {
+        return unwrapData(
+            await apiClient.post(
+                `/whatsapp-campaigns/community/${communityId}/ai-broadcast-draft`,
+                data,
+            ),
+        );
+    },
 };

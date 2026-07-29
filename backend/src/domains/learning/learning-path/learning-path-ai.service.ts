@@ -95,6 +95,7 @@ export class LearningPathAiService {
     goals: string,
     candidates: LearningPathAiCandidate[],
     limit: number,
+    learnerProfile?: string,
   ): Promise<LearningPathAiResult[] | null> {
     if (!this.hasApiKey()) {
       this.logger.warn('Learning path AI key missing, falling back to heuristic ranking');
@@ -111,12 +112,17 @@ export class LearningPathAiService {
       index,
     }));
 
+    const profileLine =
+      learnerProfile && learnerProfile.trim()
+        ? `\nLearner profile:\n${learnerProfile.trim()}`
+        : '';
+
     const prompt = [
       'You are an AI learning path ranker.',
       'Given learner goals and a candidate list, return a JSON array ranking the best items.',
       'Only use provided candidates. Do not invent items.',
       'Return JSON array like: [{"id":"...","rank":1,"reason":"short rationale"}, ...]',
-      `Goals: ${goals}`,
+      `Goals: ${goals}${profileLine}`,
       `Limit: ${limit}`,
       `Candidates: ${JSON.stringify(list)}`,
     ].join('\n\n');

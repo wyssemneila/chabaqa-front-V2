@@ -87,6 +87,8 @@ export function ContentTab({
   const [editChapterId, setEditChapterId] = useState<string | null>(null)
   const [editChapterVideoUrlError, setEditChapterVideoUrlError] = useState<string | null>(null)
   const [editChapterFormError, setEditChapterFormError] = useState<string | null>(null)
+  const [transcriptStatus, setTranscriptStatus] = useState<"idle" | "loading" | "done" | "error" | "disabled">("idle")
+  const [transcriptMessage, setTranscriptMessage] = useState<string | null>(null)
   const [editChapter, setEditChapter] = useState({
     title: "",
     content: "",
@@ -167,6 +169,39 @@ export function ContentTab({
     }
   }
 
+  const generateChapterTranscript = async (force = false) => {
+    if (!editChapterSectionId || !editChapterId) return
+    setTranscriptStatus("loading")
+    setTranscriptMessage(null)
+    try {
+      const result = await coursesApi.generateChapterTranscript(
+        courseId,
+        editChapterSectionId,
+        editChapterId,
+        { force },
+      )
+      if (!result.enabled) {
+        setTranscriptStatus("disabled")
+        setTranscriptMessage("Transcription is not configured on this server.")
+        return
+      }
+      if (result.skipped && result.transcript.length > 0) {
+        setTranscriptStatus("done")
+        setTranscriptMessage(`Using cached transcript (${result.transcript.length} segments).`)
+      } else if (result.transcript.length > 0) {
+        setTranscriptStatus("done")
+        setTranscriptMessage(`Generated transcript with ${result.transcript.length} segments.`)
+        if (onRefreshCourse) await onRefreshCourse()
+      } else {
+        setTranscriptStatus("error")
+        setTranscriptMessage("No transcript generated. The video may be a YouTube/Vimeo link or too large.")
+      }
+    } catch (err: any) {
+      setTranscriptStatus("error")
+      setTranscriptMessage(err?.message || "Failed to generate transcript.")
+    }
+  }
+
   const handleAddSection = () => {
     void onAddSection({ titre: newSection.title, description: newSection.description })
     setNewSection({ title: "", description: "" })
@@ -200,6 +235,8 @@ export function ContentTab({
     })
     setEditChapterVideoUrlError(getCreatorVideoUrlError(chapter.videoUrl || ""))
     setEditChapterFormError(null)
+    setTranscriptStatus(Array.isArray(chapter.transcript) && chapter.transcript.length > 0 ? "done" : "idle")
+    setTranscriptMessage(Array.isArray(chapter.transcript) && chapter.transcript.length > 0 ? `Cached transcript (${chapter.transcript.length} segments).` : null)
     setIsEditChapterOpen(true)
   }
 
@@ -387,6 +424,34 @@ export function ContentTab({
                   />
                   {editChapterVideoUrlError ? (
                     <p className="text-xs text-red-500">{editChapterVideoUrlError}</p>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={transcriptStatus === "loading" || !editChapter.videoUrl}
+                      onClick={() => void generateChapterTranscript(false)}
+                      className="h-8 gap-1.5"
+                    >
+                      {transcriptStatus === "loading" ? "Generating..." : "Generate AI transcript"}
+                    </Button>
+                    {transcriptStatus === "done" ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void generateChapterTranscript(true)}
+                        className="h-8"
+                      >
+                        Regenerate
+                      </Button>
+                    ) : null}
+                  </div>
+                  {transcriptMessage ? (
+                    <p className={`text-xs ${transcriptStatus === "error" || transcriptStatus === "disabled" ? "text-red-500" : "text-muted-foreground"}`}>
+                      {transcriptMessage}
+                    </p>
                   ) : null}
                 </div>
                 <div className="space-y-2">

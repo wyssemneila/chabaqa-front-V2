@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -25,6 +25,7 @@ import { FeeModule } from '@/shared/modules/fee.module';
 import { PromoModule } from '@/shared/modules/promo.module';
 import { ChapterAccessModule } from '@/shared/modules/chapter-access.module';
 import { AchievementModule } from '@/domains/shared/achievement/achievement.module';
+import { AiModule } from '@/domains/shared/ai/ai.module';
 
 @Module({
   imports: [
@@ -72,7 +73,8 @@ import { AchievementModule } from '@/domains/shared/achievement/achievement.modu
     FeeModule,
     PromoModule,
     ChapterAccessModule,
-    AchievementModule
+    AchievementModule,
+    forwardRef(() => AiModule)
   ],
   controllers: [CoursController],
   providers: [

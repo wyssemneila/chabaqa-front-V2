@@ -5,9 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { FileText as FileTextIcon, Download as DownloadIcon, Video, Code, Link as LinkIcon, FileType, Wrench, Star, Sparkles } from "lucide-react"
+import { FileText as FileTextIcon, Download as DownloadIcon, Video, Code, Link as LinkIcon, FileType, Wrench, Star, Sparkles, Captions } from "lucide-react"
 import { CourseReviewsSection } from "@/components/reviews/course-reviews-section"
 import { FloatingAiTutorSheet } from "./ai-tutor-widget"
+import { TranscriptTracker, type TranscriptSegment } from "./transcript-tracker"
 
 interface ChapterTabsProps {
   activeTab: string
@@ -21,6 +22,7 @@ interface ChapterTabsProps {
   courseId?: string
   onRefreshCourse?: () => Promise<void>
   isTheaterMode?: boolean
+  onVideoSeek?: (ms: number) => void
 }
 
 const getResourceIcon = (type: string) => {
@@ -56,12 +58,14 @@ export default function ChapterTabs({
   courseId,
   onRefreshCourse,
   isTheaterMode = false,
+  onVideoSeek,
 }: ChapterTabsProps) {
   const chapterResources = currentChapter?.resources || []
   const chapterNotes = currentChapter?.notes || ''
   const chapterContent = currentChapter?.content || ''
   const [isAiTutorOpen, setIsAiTutorOpen] = React.useState(false)
   const canUseAiTutor = Boolean(courseId && currentChapter?.id)
+  const chapterTranscript: TranscriptSegment[] = Array.isArray(currentChapter?.transcript) ? currentChapter.transcript : []
   const surfaceClassName = isTheaterMode
     ? "border-white/90 bg-white/92 text-slate-950 shadow-[0_18px_48px_-32px_rgba(51,65,85,0.45)] backdrop-blur"
     : "border shadow-sm"
@@ -115,12 +119,17 @@ export default function ChapterTabs({
       />
     ) : null}
     <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList className={cn("grid h-auto w-full grid-cols-5 gap-1 p-1.5", isTheaterMode ? "border border-white/80 bg-white/80 text-slate-600 shadow-sm backdrop-blur" : "bg-muted/50")}>
+      <TabsList className={cn("grid h-auto w-full gap-1 p-1.5", isTheaterMode ? "border border-white/80 bg-white/80 text-slate-600 shadow-sm backdrop-blur" : "bg-muted/50", chapterTranscript.length ? "grid-cols-6" : "grid-cols-5")}>
         <TabsTrigger value="content" className={tabTriggerClassName}>Content</TabsTrigger>
         <TabsTrigger value="ai-tutor" className={cn(tabTriggerClassName, "gap-1")}><Sparkles className="h-3 w-3 md:h-4 md:w-4 text-purple-500" /> AI</TabsTrigger>
         <TabsTrigger value="notes" className={tabTriggerClassName}>Notes</TabsTrigger>
         <TabsTrigger value="resources" className={tabTriggerClassName}>Resources</TabsTrigger>
         <TabsTrigger value="reviews" className={tabTriggerClassName}>Reviews</TabsTrigger>
+        {chapterTranscript.length ? (
+          <TabsTrigger value="transcript" className={cn(tabTriggerClassName, "gap-1")}>
+            <Captions className="h-3 w-3 md:h-4 md:w-4 text-cyan-500" /> Transcript
+          </TabsTrigger>
+        ) : null}
       </TabsList>
 
       <TabsContent value="content" className="mt-4 md:mt-6">
@@ -150,6 +159,19 @@ export default function ChapterTabs({
           </CardContent>
         </Card>
       </TabsContent>
+
+      {chapterTranscript.length ? (
+        <TabsContent value="transcript" className="mt-4 md:mt-6">
+          <Card className={surfaceClassName}>
+            <CardContent className="px-4 py-4 md:px-6 md:py-6">
+              <TranscriptTracker
+                segments={chapterTranscript}
+                onSeek={onVideoSeek ?? undefined}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      ) : null}
 
       <TabsContent value="ai-tutor" className="mt-4 md:mt-6">
         {canUseAiTutor ? (

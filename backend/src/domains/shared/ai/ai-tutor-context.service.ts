@@ -8,6 +8,8 @@ import {
   CoursDocument,
 } from '@/infrastructure/database/schemas/learning/course.schema';
 import type { ChapterContextBundle, TutorSource } from '@/domains/shared/ai/ai-tutor.types';
+import { SemanticRetrievalService } from '@/domains/shared/ai/embeddings/semantic-retrieval.service';
+import { TranscriptionService } from '@/domains/shared/ai/transcription/transcription.service';
 
 type ResolvedChapter = {
   chapter: {
@@ -18,6 +20,7 @@ type ResolvedChapter = {
     content?: string;
     notes?: string;
     aiTutorEnabled?: boolean;
+    transcript?: Array<{ text: string; startMs: number; endMs: number }>;
   };
   section: { titre?: string; title?: string };
 };
@@ -26,10 +29,14 @@ type ResolvedChapter = {
 export class AiTutorContextService {
   private readonly contextCharLimit: number;
   private readonly maxSources: number;
+  private readonly enrichmentEnabled: boolean;
+  private readonly transcriptEnabled: boolean;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly coursService: CoursService,
+    private readonly semanticRetrieval: SemanticRetrievalService,
+    private readonly transcriptionService: TranscriptionService,
     @InjectModel(Cours.name) private readonly coursModel: Model<CoursDocument>,
   ) {
     this.contextCharLimit = this.parseNumberConfig(
@@ -39,6 +46,12 @@ export class AiTutorContextService {
       80000,
     );
     this.maxSources = this.parseNumberConfig('AI_TUTOR_MAX_SOURCES', 5, 1, 12);
+    this.enrichmentEnabled =
+      (this.configService.get<string>('AI_TUTOR_ENRICHMENT') ?? 'true') !==
+      'false';
+    this.transcriptEnabled =
+      (this.configService.get<string>('AI_TUTOR_TRANSCRIPT') ?? 'true') !==
+      'false';
   }
 
   private parseNumberConfig(
@@ -78,6 +91,17 @@ export class AiTutorContextService {
     const notes = String(chapter.notes ?? '');
 
     const sources = this.buildSources(chapterTitle, content, notes);
+    const transcriptSources = this.buildTranscriptSources(chapter);
+    const baseWithTranscript = [...sources, ...transcriptSources].slice(
+      0,
+      this.maxSources,
+    );
+    const enrichedSources = await this.enrichWithCommunityKnowledge(
+      baseWithTranscript,
+      (courseDoc as any)?.communityId as string | undefined,
+      chapterTitle,
+      content,
+    );
     const contextText = this.truncateContext(
       [
         `Course: ${course.titre}`,
@@ -85,7 +109,7 @@ export class AiTutorContextService {
         `Chapter: ${chapterTitle}`,
         '',
         'Numbered sources:',
-        ...sources.map((s) => `[${s.id}] ${s.label}\n${s.excerpt}`),
+        ...enrichedSources.map((s) => `[${s.id}] ${s.label}\n${s.excerpt}`),
       ].join('\n'),
     );
 
@@ -96,9 +120,94 @@ export class AiTutorContextService {
       chapterTitle,
       sectionTitle,
       contextText,
-      sources,
+      sources: enrichedSources,
       aiTutorEnabled: chapterAiEnabled,
     };
+  }
+
+  /**
+   * Convert transcript segments into tutor sources with [mm:ss] timestamps
+   * so the tutor can cite "at [00:42]" and the video player can seek there.
+   * Groups segments into ~800-char chunks to stay within source limits.
+   */
+  private buildTranscriptSources(chapter: ResolvedChapter['chapter']): TutorSource[] {
+    if (!this.transcriptEnabled || !chapter.transcript?.length) return [];
+    const segments = chapter.transcript;
+    const chunks: Array<{ startMs: number; text: string }> = [];
+    let current = { startMs: segments[0].startMs, text: '' };
+
+    for (const seg of segments) {
+      if (current.text.length + seg.text.length > 800 && current.text) {
+        chunks.push(current);
+        current = { startMs: seg.startMs, text: seg.text };
+      } else {
+        current.text = `${current.text} ${seg.text}`.trim();
+      }
+    }
+    if (current.text) chunks.push(current);
+
+    const label = `${chapter.titre ?? chapter.title ?? 'Chapter'} — Video transcript`;
+    return chunks.slice(0, 3).map((chunk, i) => {
+      const stamp = this.transcriptionService.formatTimestamp(chunk.startMs);
+      return {
+        id: `t${i + 1}`,
+        label: `${label} [${stamp}]`,
+        excerpt: chunk.text.slice(0, 800),
+      };
+    });
+  }
+
+  /**
+   * Augment chapter sources with related community knowledge (posts,
+   * resources, other chapters) found via semantic retrieval. Disabled by
+   * default when embeddings are off. Skips the current chapter to avoid
+   * duplication and respects AI_TUTOR_MAX_SOURCES.
+   */
+  private async enrichWithCommunityKnowledge(
+    baseSources: TutorSource[],
+    communityId: string | undefined,
+    chapterTitle: string,
+    chapterContent: string,
+  ): Promise<TutorSource[]> {
+    if (
+      !this.enrichmentEnabled ||
+      !this.semanticRetrieval.isAvailable() ||
+      !communityId ||
+      baseSources.length >= this.maxSources
+    ) {
+      return baseSources;
+    }
+    const query = `${chapterTitle}\n${chapterContent}`.trim().slice(0, 1000);
+    if (!query) return baseSources;
+    const docs = await this.semanticRetrieval
+      .retrieve({
+        communityId,
+        query,
+        limit: this.maxSources - baseSources.length,
+        visibility: ['member', 'public'],
+        minScore: 0.2,
+      })
+      .catch(() => null);
+    if (!docs || docs.length === 0) return baseSources;
+
+    const existingExcerpts = new Set(
+      baseSources.map((s) => s.excerpt.slice(0, 80)),
+    );
+    const extra: TutorSource[] = [];
+    let index = baseSources.length + 1;
+    for (const doc of docs) {
+      if (extra.length + baseSources.length >= this.maxSources) break;
+      const excerpt = String(doc.extractedText || '').slice(0, 800);
+      if (!excerpt || existingExcerpts.has(excerpt.slice(0, 80))) continue;
+      existingExcerpts.add(excerpt.slice(0, 80));
+      extra.push({
+        id: `s${index}`,
+        label: String(doc.title || doc.sourceType || 'Community knowledge'),
+        excerpt,
+      });
+      index += 1;
+    }
+    return [...baseSources, ...extra];
   }
 
   private findChapter(course: any, chapterId: string): ResolvedChapter | null {

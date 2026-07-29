@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AiService } from '@/domains/shared/ai/ai.service';
 import { AiController } from '@/domains/shared/ai/ai.controller';
 import { AiSettingsController } from './ai-settings.controller';
@@ -16,6 +16,9 @@ import { AiCofounderController } from './cofounder/ai-cofounder.controller';
 import { AiCofounderService } from './cofounder/ai-cofounder.service';
 import { AiLaunchPlanService } from './cofounder/ai-launch-plan.service';
 import { AiPublishService } from './ai-publish.service';
+import { EmbeddingService } from './embeddings/embedding.service';
+import { SemanticRetrievalService } from './embeddings/semantic-retrieval.service';
+import { TranscriptionService } from './transcription/transcription.service';
 import { ConfigModule } from '@nestjs/config';
 import { CoursModule } from '@/domains/learning/course/cours.module';
 import { ChapterAccessModule } from '@/shared/modules/chapter-access.module';
@@ -52,6 +55,11 @@ import {
   AiActionLog,
   AiActionLogSchema,
 } from '@/infrastructure/database/schemas/ai/ai-action-log.schema';
+import {
+  LearnerProfile,
+  LearnerProfileSchema,
+} from '@/infrastructure/database/schemas/ai/learner-profile.schema';
+import { LearnerProfileService } from '@/domains/shared/ai/learner/learner-profile.service';
 import { Post, PostSchema } from '@/infrastructure/database/schemas/content/post.schema';
 import { Resource, ResourceSchema } from '@/infrastructure/database/schemas/content/resource.schema';
 import { Product, ProductSchema } from '@/infrastructure/database/schemas/commerce/product.schema';
@@ -60,7 +68,7 @@ import { Event, EventSchema } from '@/infrastructure/database/schemas/commerce/e
 @Module({
   imports: [
     ConfigModule,
-    CoursModule,
+    forwardRef(() => CoursModule),
     ChapterAccessModule,
     MongooseModule.forFeature([
       { name: AiChapterConversation.name, schema: AiChapterConversationSchema },
@@ -71,6 +79,7 @@ import { Event, EventSchema } from '@/infrastructure/database/schemas/commerce/e
       { name: AiConversation.name, schema: AiConversationSchema },
       { name: AiLaunchPlan.name, schema: AiLaunchPlanSchema },
       { name: AiActionLog.name, schema: AiActionLogSchema },
+      { name: LearnerProfile.name, schema: LearnerProfileSchema },
       { name: Post.name, schema: PostSchema },
       { name: Resource.name, schema: ResourceSchema },
       { name: Product.name, schema: ProductSchema },
@@ -97,6 +106,10 @@ import { Event, EventSchema } from '@/infrastructure/database/schemas/commerce/e
     AiCofounderService,
     AiLaunchPlanService,
     AiPublishService,
+    EmbeddingService,
+    SemanticRetrievalService,
+    TranscriptionService,
+    LearnerProfileService,
   ],
   exports: [
     AiTutorService,
@@ -104,6 +117,10 @@ import { Event, EventSchema } from '@/infrastructure/database/schemas/commerce/e
     AiCreateService,
     AiUsageService,
     AiAgentChatService,
+    EmbeddingService,
+    SemanticRetrievalService,
+    TranscriptionService,
+    LearnerProfileService,
   ],
 })
 export class AiModule {}

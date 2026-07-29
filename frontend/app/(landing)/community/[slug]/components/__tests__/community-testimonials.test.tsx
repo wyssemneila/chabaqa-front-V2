@@ -7,7 +7,7 @@ describe('CommunityTestimonials', () => {
     const { container } = render(
       <CommunityTestimonials
         community={{ name: 'Test Community', category: 'Education' }}
-        testimonialsContent={{ testimonials: [], visible: true }}
+        testimonialsContent={{ title: '', subtitle: '', visible: true, showRatings: false, testimonials: [] }}
       />,
     )
 

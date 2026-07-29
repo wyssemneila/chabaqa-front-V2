@@ -28,13 +28,17 @@ import {
   WhatsappCampaignQueryDto,
 } from '@/domains/communication/whatsapp/dto/whatsapp-campaign.dto';
 import { WhatsappService } from '@/domains/communication/whatsapp/whatsapp.service';
+import { WhatsappAiService } from '@/domains/communication/whatsapp/whatsapp-ai.service';
 
 @Controller('whatsapp-campaigns')
 @UseGuards(JwtAuthGuard)
 @ApiTags('WhatsApp Campaigns')
 @ApiBearerAuth()
 export class WhatsappController {
-  constructor(private readonly whatsappService: WhatsappService) {}
+  constructor(
+    private readonly whatsappService: WhatsappService,
+    private readonly whatsappAiService: WhatsappAiService,
+  ) {}
 
   @Post()
   @UseGuards(CommunityPermissionGuard)
@@ -191,6 +195,39 @@ export class WhatsappController {
   @ApiOperation({ summary: 'List WhatsApp automations for a community' })
   listAutomations(@Request() req, @Param('communityId') communityId: string) {
     return this.whatsappService.listAutomations(req.user._id, communityId);
+  }
+
+  @Post('community/:communityId/ai-broadcast-draft')
+  @UseGuards(CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.MARKETING_MANAGE)
+  @CommunityIdFrom({ type: 'param', name: 'communityId' })
+  @ApiOperation({
+    summary: 'Draft a WhatsApp broadcast message with AI',
+    description: 'Generates a broadcast message + 2 variants from a goal, audience, and tone using the configured LLM. Returns skipped:true if AI is disabled.',
+  })
+  async aiBroadcastDraft(
+    @Param('communityId') communityId: string,
+    @Body() dto: { goal: string; audience?: string; tone?: string; context?: string },
+  ) {
+    return this.whatsappAiService.generateBroadcastDraft({
+      communityId,
+      goal: dto.goal,
+      audience: dto.audience,
+      tone: dto.tone,
+      context: dto.context,
+    });
+  }
+
+  @Get('community/:communityId/ai-status')
+  @UseGuards(CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.MARKETING_MANAGE)
+  @CommunityIdFrom({ type: 'param', name: 'communityId' })
+  @ApiOperation({ summary: 'Check WhatsApp AI feature availability' })
+  aiStatus() {
+    return {
+      enabled: this.whatsappAiService.isEnabled(),
+      autoReplyEnabled: this.whatsappAiService.isAutoReplyEnabled(),
+    };
   }
 
   @Post('community/:communityId/automations')

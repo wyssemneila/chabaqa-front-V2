@@ -2285,6 +2285,39 @@ export class CoursService {
   }
 
   /**
+   * Mettre à jour le transcript d'un chapitre (généré par AI).
+   * Stocke les segments timestampés utilisés par le tutor et le lecteur.
+   */
+  async mettreAJourTranscript(
+    coursId: string,
+    sectionId: string,
+    chapitreId: string,
+    transcript: Array<{ text: string; startMs: number; endMs: number }>,
+    userId: string,
+  ): Promise<CoursResponseDto> {
+    try {
+      const cours = await this.resolveCourseDocument(coursId);
+      await this.verifierAdminCommunaute(userId, cours.communityId.toString());
+
+      const section = cours.sections.find((s) => s.id === sectionId);
+      if (!section) throw new NotFoundException('Section non trouvée dans ce cours');
+
+      const chapitre = section.chapitres.find((c) => c.id === chapitreId);
+      if (!chapitre) throw new NotFoundException('Chapitre non trouvé dans cette section');
+
+      chapitre.transcript = (transcript || []).slice(0, 2000);
+      const coursEnregistre = await cours.save();
+      await this.invalidateCourseCaches(cours.creatorId?.toString?.());
+      return await this.transformerEnReponse(coursEnregistre);
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new BadRequestException('Erreur lors de la mise à jour du transcript');
+    }
+  }
+
+  /**
    * Ajouter une ressource à un chapitre
    * @param coursId ID du cours
    * @param sectionId ID de la section

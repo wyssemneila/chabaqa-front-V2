@@ -70,6 +70,26 @@ export type SimplifyAskResponse = {
   model?: string;
 };
 
+export type LearnerProfile = {
+  _id?: string;
+  userId?: string;
+  skillLevel: string;
+  goals: string;
+  preferredLearningStyle: string;
+  weakTopics: string[];
+  interests: string[];
+  preferredLanguage: string;
+};
+
+export type LearnerProfileInput = {
+  skillLevel?: string;
+  goals?: string;
+  preferredLearningStyle?: string;
+  weakTopics?: string[];
+  interests?: string[];
+  preferredLanguage?: string;
+};
+
 export type AskChapterResponse =
   | ChatAskResponse
   | SummaryAskResponse
@@ -430,5 +450,15 @@ export const aiApi = {
   createWithMe: async (payload: CreateWithAiPayload) => {
     const response = await apiClient.post<any>("/ai/create-with-me", payload);
     return unwrapPayload<AiCreateWithMeResponse>(response);
+  },
+
+  getLearnerProfile: async () => {
+    const response = await apiClient.get<any>("/ai/learner-profile");
+    return unwrapPayload<LearnerProfile>(response);
+  },
+
+  updateLearnerProfile: async (payload: Partial<LearnerProfileInput>) => {
+    const response = await apiClient.patch<any>("/ai/learner-profile", payload);
+    return unwrapPayload<LearnerProfile>(response);
   },
 };

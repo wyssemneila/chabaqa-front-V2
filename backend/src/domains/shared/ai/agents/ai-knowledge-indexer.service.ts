@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import {
@@ -15,9 +15,12 @@ import { Post, PostDocument } from '@/infrastructure/database/schemas/content/po
 import { Resource } from '@/infrastructure/database/schemas/content/resource.schema';
 import { Product, ProductDocument } from '@/infrastructure/database/schemas/commerce/product.schema';
 import { Event, EventDocument } from '@/infrastructure/database/schemas/commerce/event.schema';
+import { EmbeddingService } from '@/domains/shared/ai/embeddings/embedding.service';
 
 @Injectable()
 export class AiKnowledgeIndexerService {
+  private readonly logger = new Logger(AiKnowledgeIndexerService.name);
+
   constructor(
     @InjectModel(Community.name)
     private readonly communityModel: Model<CommunityDocument>,
@@ -33,6 +36,7 @@ export class AiKnowledgeIndexerService {
     private readonly productModel: Model<ProductDocument>,
     @InjectModel(Event.name)
     private readonly eventModel: Model<EventDocument>,
+    private readonly embeddings: EmbeddingService,
   ) {}
 
   private asText(value: any): string {
@@ -55,6 +59,17 @@ export class AiKnowledgeIndexerService {
   }): Promise<number> {
     const text = this.asText(params.extractedText).trim();
     if (!text) return 0;
+    let embedding: number[] | undefined = undefined;
+    if (this.embeddings.isEnabled()) {
+      try {
+        const vec = await this.embeddings.embedQuery(text);
+        if (Array.isArray(vec) && vec.length > 0) embedding = vec;
+      } catch (error: any) {
+        this.logger.warn(
+          `embedding failed for ${params.sourceType}:${params.sourceId} — ${error?.message || error}`,
+        );
+      }
+    }
     await this.knowledgeModel.updateOne(
       {
         communityId: params.communityId,
@@ -70,7 +85,13 @@ export class AiKnowledgeIndexerService {
           extractedText: text.slice(0, 50000),
           visibility: params.visibility || 'member',
           contentHash: createHash('sha256').update(text).digest('hex'),
+          ...(embedding ? { embedding } : {}),
         },
+        // Clear the embedding when embeddings are disabled so stale vectors
+        // don't stay behind after a reindex.
+        ...(this.embeddings.isEnabled()
+          ? {}
+          : { $unset: { embedding: '' } }),
       },
       { upsert: true },
     );

@@ -127,6 +127,17 @@ export class CourseChapter {
   })
   aiTutorEnabled?: boolean;
 
+  /** Video transcript segments with timestamps, populated by TranscriptionService. */
+  @Prop({
+    type: [{
+      text: { type: String, required: true },
+      startMs: { type: Number, required: true },
+      endMs: { type: Number, required: true },
+    }],
+    default: undefined,
+  })
+  transcript?: Array<{ text: string; startMs: number; endMs: number }>;
+
   @Prop({
     type: [CourseResourceSchema],
     default: []

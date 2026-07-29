@@ -14,6 +14,7 @@ import { ArabicAutoTranslate } from "@/components/arabic-auto-translate"
 import { PwaServiceWorker } from "@/components/pwa-service-worker"
 import { GlobalImageErrorHandler } from "@/components/media/global-image-error-handler"
 import LoadingScreen from "@/components/ui/LoadingScreen"
+import { ThemeProvider } from "@/components/theme-provider"
 import { DEFAULT_LOCALE, getLocaleDirection, isAppLocale, LOCALE_COOKIE } from "@/lib/i18n/config"
 import { getMessagesForLocale } from "@/lib/i18n/messages"
 import {
@@ -107,10 +108,6 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
-        {/* Preconnect to external domains for performance */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        
         {/* Language alternates */}
         <link rel="alternate" hrefLang="x-default" href={appBaseUrl} />
         
@@ -126,13 +123,14 @@ export default async function RootLayout({
         className={`${inter.variable} ${tajawal.variable} ${locale === "ar" ? "font-arabic" : "font-latin"}`}
         suppressHydrationWarning
       >
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <a href="#main-content" className="skip-to-content">Skip to content</a>
           <LoadingScreen />
           <NextIntlClientProvider locale={locale} messages={messages}>
           <ReactQueryProvider>
             <ExtensionErrorGuard />
             <GlobalImageErrorHandler />
-            <div id="main-content">{children}</div>
+            <div id="main-content" tabIndex={-1} className="outline-none">{children}</div>
             <PwaServiceWorker />
             <ArabicAutoTranslate />
             <Ga4ScriptGate />
@@ -145,6 +143,7 @@ export default async function RootLayout({
             </Script>
           </ReactQueryProvider>
           </NextIntlClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

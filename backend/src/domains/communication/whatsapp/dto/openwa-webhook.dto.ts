@@ -22,6 +22,18 @@ export class OpenWaWebhookDto {
   id?: string;
 
   @IsOptional()
+  @IsString()
+  timestamp?: string;
+
+  @IsOptional()
+  @IsString()
+  idempotencyKey?: string;
+
+  @IsOptional()
+  @IsString()
+  deliveryId?: string;
+
+  @IsOptional()
   @IsObject()
   data?: Record<string, any>;
 }

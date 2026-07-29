@@ -139,6 +139,8 @@ const SECURITY_HEADERS: Array<[string, string]> = [
         'ws://127.0.0.1:8082',
         'ws://127.0.0.1:8083',
         'ws://192.168.56.1:8082',
+        'https://*.ingest.sentry.io',
+        'https://*.ingest.de.sentry.io',
       ].join(' '),
       [
         "frame-src 'self'",
@@ -169,6 +171,10 @@ const SECURITY_HEADERS: Array<[string, string]> = [
 // Creator routes
 const CREATOR_ROUTES = [
   '/creator',
+]
+const CREATOR_ONBOARDING_ROUTES = [
+  '/creator/create-community',
+  '/creator/onboarding',
 ]
 
 function allowsThirdPartyEmbeds(path: string): boolean {
@@ -500,15 +506,25 @@ export async function authMiddleware(request: NextRequest) {
       loginUrl.pathname = withLocale(locale, '/signin')
       loginUrl.searchParams.set('redirect', pathname)
       return redirect(loginUrl)
-    } else {
-      // User is authenticated but not creator/admin
-      logAuthFailure('role_mismatch', {
-        path: normalizedPath,
-        requiredRole: 'creator|admin',
-        actualRole: userRole || 'unknown',
-      })
-      return redirect(new URL(withLocale(locale, '/dashboard'), getExternalUrl(request)))
     }
+
+    // Allow authenticated non-creator users to access onboarding routes (e.g. create community)
+    const isOnboardingRoute = CREATOR_ONBOARDING_ROUTES.some(route => normalizedPath.startsWith(route))
+    if (isOnboardingRoute) {
+      const requestHeaders = new Headers(request.headers)
+      requestHeaders.set('x-user-id', user?.sub as string)
+      requestHeaders.set('x-user-email', user?.email as string)
+      requestHeaders.set('x-user-role', user?.role as string)
+      return continueWithHeaders(requestHeaders)
+    }
+
+    // User is authenticated but not creator/admin
+    logAuthFailure('role_mismatch', {
+      path: normalizedPath,
+      requiredRole: 'creator|admin',
+      actualRole: userRole || 'unknown',
+    })
+    return redirect(new URL(withLocale(locale, '/dashboard'), getExternalUrl(request)))
   }
 
   if (isValidToken && user) {

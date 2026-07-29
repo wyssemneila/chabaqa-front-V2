@@ -284,10 +284,16 @@ export const buildModeSystemPrompt = (
   contextText: string,
   sourceIds: string[],
   quizCount: number,
+  learnerProfile?: string,
 ): string => {
   const sourceList = sourceIds.length
     ? `Valid source IDs: ${sourceIds.join(', ')}`
     : 'No numbered sources available.';
+
+  const profileBlock =
+    learnerProfile && learnerProfile.trim()
+      ? `\n\nLearner profile:\n${learnerProfile.trim()}\nAdapt explanations to this learner when relevant.`
+      : '';
 
   const base = `You are a teaching assistant for "${courseTitle}", chapter "${chapterTitle}".
 Use ONLY the provided chapter context. If information is missing, say so clearly.
@@ -296,7 +302,7 @@ Return ONLY valid JSON. No markdown fences.
 ${sourceList}
 
 Chapter context:
-${contextText}`;
+${contextText}${profileBlock}`;
 
   switch (mode) {
     case 'summary':

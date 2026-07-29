@@ -188,6 +188,7 @@ export interface CourseChapter {
   order: number;
   isFree: boolean;
   createdAt: string;
+  transcript?: Array<{ text: string; startMs: number; endMs: number }>;
 }
 
 export interface CourseEnrollment {

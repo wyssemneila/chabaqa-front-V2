@@ -164,12 +164,17 @@ export class OpenWaClientService {
     sessionId: string,
     webhook: OpenWaWebhookPayload,
   ): Promise<any> {
+    const secret = String(webhook.secret || '').trim() || undefined;
+    // OpenWA strips custom headers matching x-openwa-* / content-type, and
+    // signs with X-OpenWA-Signature when `secret` is set. We also send a
+    // non-reserved shared-secret header so Chabaqa can verify without raw body.
     return this.request<any>({
       method: 'POST',
       url: `/sessions/${encodeURIComponent(sessionId)}/webhooks`,
       data: {
         url: webhook.url,
-        secret: webhook.secret,
+        secret,
+        headers: secret ? { 'X-Webhook-Secret': secret } : undefined,
         events: webhook.events || [
           'message.received',
           'message.sent',

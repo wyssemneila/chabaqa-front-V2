@@ -61,6 +61,12 @@ export interface CreateChapterData {
   notes?: string;
 }
 
+export interface TranscriptSegment {
+  text: string;
+  startMs: number;
+  endMs: number;
+}
+
 export const normalizeCourseResponse = (response: any): any => {
   if (!response) return response;
   if (response?.cours) return response.cours;
@@ -269,6 +275,17 @@ export const coursesApi = {
   // Upload chapter video (direct)
   uploadChapterVideo: async (courseId: string, sectionId: string, chapterId: string, file: File): Promise<any> => {
     return apiClient.uploadFile(`/cours/${courseId}/sections/${sectionId}/chapitres/${chapterId}/upload-video`, file, 'file');
+  },
+
+  // Generate (or fetch cached) AI transcript for a chapter video
+  generateChapterTranscript: async (
+    courseId: string,
+    sectionId: string,
+    chapterId: string,
+    options: { force?: boolean } = {},
+  ): Promise<{ transcript: TranscriptSegment[]; skipped: boolean; enabled: boolean }> => {
+    const query = options.force ? '?force=1' : '';
+    return apiClient.post(`/cours/${courseId}/sections/${sectionId}/chapters/${chapterId}/transcribe${query}`, {});
   },
 
   // Delete chapter

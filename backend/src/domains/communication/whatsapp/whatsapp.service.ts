@@ -47,6 +47,7 @@ import {
   WhatsappWebhookEventDocument,
 } from '@/infrastructure/database/schemas/communication/whatsapp-webhook-event.schema';
 import { PolicyService } from '@/shared/services/policy.service';
+import { WhatsappAiService } from '@/domains/communication/whatsapp/whatsapp-ai.service';
 
 @Injectable()
 export class WhatsappService {
@@ -66,6 +67,7 @@ export class WhatsappService {
     private readonly sessionService: WhatsappSessionService,
     private readonly queueService: WhatsappQueueService,
     private readonly policyService: PolicyService,
+    private readonly whatsappAiService: WhatsappAiService,
   ) {}
 
   async importContacts(
@@ -800,6 +802,7 @@ export class WhatsappService {
       payload.data?.messageId ||
       payload.data?.id;
     const idempotencyKey =
+      payload.idempotencyKey ||
       payload.id ||
       this.buildWebhookIdempotencyKey(eventType, sessionId, messageId, payload);
 
@@ -1083,6 +1086,55 @@ export class WhatsappService {
         $inc: { repliedCount: 1 },
       },
     );
+
+    await this.maybeSendAiAutoReply({
+      sessionId,
+      chatId,
+      text,
+      contact,
+      session,
+    });
+  }
+
+  /**
+   * Best-effort AI auto-reply to an inbound WhatsApp message. Non-throwing:
+   * any failure is logged and the inbound flow continues unaffected.
+   */
+  private async maybeSendAiAutoReply(args: {
+    sessionId?: string;
+    chatId: string;
+    text: string;
+    contact: WhatsappContactDocument;
+    session: any;
+  }): Promise<void> {
+    try {
+      if (!this.whatsappAiService.isAutoReplyEnabled()) return;
+      if (!args.text || args.text.length < 2) return;
+
+      const result = await this.whatsappAiService.generateAutoReply({
+        communityId: String(args.contact.communityId),
+        contactName: args.contact.name,
+        inboundMessage: args.text,
+      });
+      if (result.skipped || !result.reply) return;
+
+      const openwaSessionId =
+        args.session?.openwaSessionId || args.sessionId;
+      if (!openwaSessionId) return;
+
+      await this.openWaClient.sendText(
+        openwaSessionId,
+        args.chatId,
+        result.reply,
+      );
+      this.logger.log(
+        `AI auto-reply sent to ${args.chatId} (${result.model})`,
+      );
+    } catch (error: any) {
+      this.logger.warn(
+        `AI auto-reply failed: ${error?.message || error}`,
+      );
+    }
   }
 
   private extractWebhookChatId(payload?: any): string | undefined {

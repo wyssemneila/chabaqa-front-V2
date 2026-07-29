@@ -16,11 +16,17 @@ import {
   UpdateCourseTutorSettingsDto,
 } from '@/domains/shared/ai/dto/tutor-settings.dto';
 import { CreateWithAiDto } from '@/domains/shared/ai/dto/create-with-ai.dto';
+import { LearnerProfileService } from '@/domains/shared/ai/learner/learner-profile.service';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('AI')
 @Controller('ai')
 @UseGuards(AuthGuard('jwt'))
 export class AiController {
-  constructor(private readonly aiService: AiService) {}
+  constructor(
+    private readonly aiService: AiService,
+    private readonly learnerProfileService: LearnerProfileService,
+  ) {}
 
   @Post('courses/:courseId/chapters/:chapterId/ask')
   async askQuestion(
@@ -90,5 +96,27 @@ export class AiController {
       req?.user?._id,
       body.aiTutorEnabled ?? true,
     );
+  }
+
+  // ============ LEARNER PROFILE ============
+
+  @Get('learner-profile')
+  @ApiOperation({ summary: 'Get the current user cross-course AI learner profile' })
+  async getLearnerProfile(@Request() req: any) {
+    const profile = await this.learnerProfileService.get(String(req?.user?._id));
+    return profile || { skillLevel: '', goals: '', preferredLearningStyle: '', weakTopics: [], interests: [], preferredLanguage: '' };
+  }
+
+  @Patch('learner-profile')
+  @ApiOperation({ summary: 'Create or update the current user AI learner profile' })
+  async updateLearnerProfile(@Body() body: any, @Request() req: any) {
+    return this.learnerProfileService.upsert(String(req?.user?._id), {
+      skillLevel: body.skillLevel,
+      goals: body.goals,
+      preferredLearningStyle: body.preferredLearningStyle,
+      weakTopics: body.weakTopics,
+      interests: body.interests,
+      preferredLanguage: body.preferredLanguage,
+    });
   }
 }

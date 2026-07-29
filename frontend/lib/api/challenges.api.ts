@@ -397,4 +397,18 @@ export const challengesApi = {
   ): Promise<ApiSuccessResponse<any>> => {
     return apiClient.post<ApiSuccessResponse<any>>(`/challenges/${id}/rewards/distribute`, data);
   },
+
+  // -------------------------------------------------------------------------
+  // AI Coach
+  // -------------------------------------------------------------------------
+
+  getAiHint: async (challengeId: string, taskId: string): Promise<{ hint: string }> => {
+    const res = await apiClient.get<any>(`/challenges/${challengeId}/tasks/${taskId}/ai-hint`);
+    return (res?.data?.data ?? res?.data ?? res) as { hint: string };
+  },
+
+  getAiSubmissionFeedback: async (submissionId: string): Promise<{ aiFeedback: string | null }> => {
+    const res = await apiClient.post<any>(`/challenges/submissions/${submissionId}/ai-feedback`, {});
+    return (res?.data?.data ?? res?.data ?? res) as { aiFeedback: string | null };
+  },
 };

@@ -48,6 +48,7 @@ import type {
   TutorSource,
 } from '@/domains/shared/ai/ai-tutor.types';
 import { ChapterAccessService } from '@/shared/services/chapter-access.service';
+import { LearnerProfileService } from '@/domains/shared/ai/learner/learner-profile.service';
 
 @Injectable()
 export class AiTutorService {
@@ -72,6 +73,7 @@ export class AiTutorService {
     @InjectModel(Cours.name)
     private readonly coursModel: Model<CoursDocument>,
     private readonly chapterAccessService: ChapterAccessService,
+    private readonly learnerProfileService: LearnerProfileService,
   ) {
     const aiProvider = (
       this.configService.get<string>('AI_PROVIDER') || 'OPENROUTER'
@@ -246,6 +248,10 @@ export class AiTutorService {
     );
 
     const sourceIds = this.contextService.getSourceIdSet(ctx.sources);
+    const learnerProfile =
+      await this.learnerProfileService.get(userObjectId.toString());
+    const learnerProfileSummary =
+      this.learnerProfileService.buildProfileSummary(learnerProfile);
     const systemPrompt = buildModeSystemPrompt(
       normalizedMode,
       ctx.courseTitle,
@@ -253,6 +259,7 @@ export class AiTutorService {
       ctx.contextText,
       [...sourceIds],
       this.quizQuestionCount,
+      learnerProfileSummary,
     );
 
     const quizMaxTokens = Math.min(

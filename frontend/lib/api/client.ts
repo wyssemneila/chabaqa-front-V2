@@ -96,35 +96,6 @@ class ApiClient {
         console.warn('Failed to load error message mapping:', importError);
       }
 
-      // For 401 errors on /auth/me, don't redirect - allow graceful handling
-      // Only redirect for other 401 errors on protected resources
-      if (response.status === 401 && typeof window !== 'undefined') {
-        // Check if this is a protected route that requires login
-        const protectedRoutes = ['/creator', '/dashboard', '/settings', '/profile', '/admin'];
-        const currentPath = window.location.pathname.replace(/^\/(?:en|ar)(?=\/|$)/, '') || '/';
-        const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
-
-        // Only redirect if on a protected route
-        if (isProtectedRoute && !response.url.includes('/auth/me') && !response.url.includes('/auth/refresh')) {
-          // Clear auth state before redirecting to avoid stale state issues
-          try {
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('user');
-            sessionStorage.clear();
-            // Clear cookies
-            document.cookie = 'accessToken=; Path=/; Max-Age=0; SameSite=Lax';
-            document.cookie = 'accessToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax';
-          } catch (clearError) {
-            console.warn('Failed to clear auth state on 401:', clearError);
-          }
-          const locale = window.location.pathname.startsWith('/ar') ? 'ar' : 'en';
-          window.location.href = `/${locale}/signin`;
-        }
-      }
-
       throw error;
     }
     

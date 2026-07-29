@@ -24,6 +24,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci --legacy-peer-deps && npm install passport --legacy-peer-deps && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
+COPY src/domains/communication/email-templates ./dist/src/domains/communication/email-templates
 COPY public ./public
 RUN mkdir -p uploads hls-output
 

@@ -139,8 +139,11 @@ class TokenManager {
    * Get current access token
    */
   getAccessToken(): string | null {
-    if (!this.accessToken && typeof window !== 'undefined') {
-      this.accessToken = localStorage.getItem('accessToken');
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('accessToken');
+      if (stored !== this.accessToken) {
+        this.accessToken = stored;
+      }
     }
     return this.accessToken;
   }

@@ -6,14 +6,18 @@ import { Cours, CoursDocument } from '@/infrastructure/database/schemas/learning
 import { Event, EventDocument } from '@/infrastructure/database/schemas/commerce/event.schema';
 import { Product, ProductDocument } from '@/infrastructure/database/schemas/commerce/product.schema';
 import { Post, PostDocument } from '@/infrastructure/database/schemas/content/post.schema';
+import { SemanticRetrievalService } from '@/domains/shared/ai/embeddings/semantic-retrieval.service';
 
 type SearchType = 'all' | 'community' | 'course' | 'product' | 'event' | 'post';
+type SearchMode = 'keyword' | 'semantic';
 
 type SearchParams = {
   q: string;
   type: string;
   page: number;
   limit: number;
+  mode?: string;
+  communityId?: string;
 };
 
 @Injectable()
@@ -26,6 +30,7 @@ export class SearchService {
     @InjectModel(Event.name) private readonly eventModel: Model<EventDocument>,
     @InjectModel(Product.name) private readonly productModel: Model<ProductDocument>,
     @InjectModel(Post.name) private readonly postModel: Model<PostDocument>,
+    private readonly semanticRetrieval: SemanticRetrievalService,
   ) {}
 
   async search(params: SearchParams) {
@@ -33,8 +38,14 @@ export class SearchService {
     if (q.length < 2) throw new BadRequestException('Search query must be at least 2 characters');
 
     const type = this.normalizeType(params.type);
+    const mode = this.normalizeMode(params.mode);
     const page = Math.max(1, Number(params.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(params.limit) || 12));
+    const communityId = params.communityId ? String(params.communityId) : undefined;
+
+    if (mode === 'semantic' && this.semanticRetrieval.isAvailable()) {
+      return this.searchSemantic(q, type, page, limit, communityId);
+    }
 
     const external = await this.searchExternal(q, type, page, limit).catch((error) => {
       this.logger.warn(`External search failed, falling back to MongoDB: ${error?.message || error}`);
@@ -49,8 +60,13 @@ export class SearchService {
     return {
       engine: this.getEngineName(),
       configured: Boolean(process.env.MEILI_HOST || process.env.TYPESENSE_HOST),
+      semantic: this.semanticRetrieval.isAvailable(),
       fallback: 'mongodb',
     };
+  }
+
+  private normalizeMode(mode?: string): SearchMode {
+    return mode === 'semantic' ? 'semantic' : 'keyword';
   }
 
   private normalizeType(type: string): SearchType {
@@ -169,5 +185,55 @@ export class SearchService {
       .select('id title excerpt content thumbnail communityId authorId createdAt')
       .skip(skip).limit(limit).lean().exec()
       .then((items) => items.map((item) => ({ ...item, type: 'post', content: undefined })));
+  }
+
+  /**
+   * Optional semantic search mode using pre-computed vector embeddings.
+   * Reuses SemanticRetrievalService to query AiKnowledgeDocument by cosine
+   * similarity, then rehydrates results by type.
+   */
+  private async searchSemantic(
+    q: string,
+    type: SearchType,
+    page: number,
+    limit: number,
+    communityId?: string,
+  ) {
+    try {
+      const results = await this.semanticRetrieval.retrieve({
+        query: q,
+        communityId,
+        limit: limit * 2,
+        visibility: communityId ? ['member', 'public'] : ['public'],
+        minScore: 0.1,
+        filters: type !== 'all' ? { docType: type } : undefined,
+      });
+
+      const enriched = await Promise.all(
+        results.map(async (doc) => {
+          const id = String(doc.documentId || doc._id);
+          switch (doc.docType) {
+            case 'community':
+              return this.communityModel.findById(id).lean().exec().then((r) => r && { ...r, type: 'community' });
+            case 'course':
+              return this.courseModel.findById(id).lean().exec().then((r) => r && { ...r, type: 'course' });
+            case 'product':
+              return this.productModel.findById(id).lean().exec().then((r) => r && { ...r, type: 'product' });
+            case 'event':
+              return this.eventModel.findById(id).lean().exec().then((r) => r && { ...r, type: 'event' });
+            case 'post':
+              return this.postModel.findById(id).lean().exec().then((r) => r && { ...r, type: 'post', content: undefined });
+            default:
+              return { _id: id, type: doc.docType, title: doc.title || doc.label };
+          }
+        }),
+      );
+
+      const data = enriched.filter(Boolean).slice((page - 1) * limit, page * limit);
+      return { engine: 'semantic', data, total: data.length, page, limit };
+    } catch (error: any) {
+      this.logger.warn(`Semantic search failed: ${error?.message || error}`);
+      return this.searchMongo(q, type, page, limit);
+    }
   }
 }
