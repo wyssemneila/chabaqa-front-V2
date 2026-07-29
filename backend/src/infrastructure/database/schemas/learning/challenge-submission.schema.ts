@@ -41,6 +41,10 @@ export class ChallengeSubmission {
 
   @Prop({ type: Number, default: 0 })
   pointsAwarded: number;
+
+  /** Instant AI coach feedback generated on submission (review-before-override). */
+  @Prop({ trim: true })
+  aiFeedback?: string;
 }
 
 export const ChallengeSubmissionSchema = SchemaFactory.createForClass(ChallengeSubmission);

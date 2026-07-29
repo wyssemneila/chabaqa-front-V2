@@ -171,6 +171,10 @@ services:
             NODE_ENV: production
             OPENWA_API_KEY: ${OPENWA_API_KEY:-}
             API_MASTER_KEY: ${OPENWA_API_KEY:-}
+            # Allow Docker-internal webhook delivery to the Nest backend.
+            # OpenWA SSRF protection blocks private hosts by default.
+            SSRF_ALLOWED_HOSTS: chabaqa-backend,backend,localhost
+            WEBHOOK_SSRF_PROTECT: "true"
         volumes:
             - openwa-data:/app/data
         restart: unless-stopped
@@ -335,6 +339,7 @@ services:
                 NEXT_PUBLIC_APP_URL: https://chabaqa.io
                 API_INTERNAL_URL: http://chabaqa-backend:3000/api
                 NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+                NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.1}
                 SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
         ports:
             - "127.0.0.1:8083:8083"

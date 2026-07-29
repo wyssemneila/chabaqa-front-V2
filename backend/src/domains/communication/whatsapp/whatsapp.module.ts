@@ -28,6 +28,7 @@ import {
 import { PolicyModule } from '@/shared/modules/policy.module';
 import { SecurityModule } from '@/shared/modules/security.module';
 import { OpenWaClientService } from '@/domains/communication/whatsapp/openwa-client.service';
+import { WhatsappAiService } from '@/domains/communication/whatsapp/whatsapp-ai.service';
 import { WhatsappAudienceService } from '@/domains/communication/whatsapp/whatsapp-audience.service';
 import { WhatsappController } from '@/domains/communication/whatsapp/whatsapp.controller';
 import { WhatsappProcessor } from '@/domains/communication/whatsapp/whatsapp.processor';
@@ -54,12 +55,13 @@ import { WhatsappWebhookController } from '@/domains/communication/whatsapp/what
   controllers: [WhatsappController, WhatsappSessionController, WhatsappWebhookController],
   providers: [
     OpenWaClientService,
+    WhatsappAiService,
     WhatsappAudienceService,
     WhatsappProcessor,
     WhatsappQueueService,
     WhatsappService,
     WhatsappSessionService,
   ],
-  exports: [WhatsappService, WhatsappSessionService],
+  exports: [WhatsappService, WhatsappSessionService, WhatsappAiService],
 })
 export class WhatsappModule {}

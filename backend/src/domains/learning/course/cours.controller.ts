@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Query, UseGuards, Req, Patch, Delete, Put, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, UseGuards, Req, Patch, Delete, Put, UseInterceptors, UploadedFile, NotFoundException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiQuery, ApiParam, ApiBody, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CoursContentService } from '@/domains/learning/course/services/cours-content.service';
@@ -21,6 +21,7 @@ import { UpdateCoursDto, UpdateSectionDto, UpdateChapitreDto } from '@/domains/l
 import { HttpCacheInterceptor } from '@/shared/interceptors/cache.interceptor';
 import { CacheTTL, CacheDuration } from '@/shared/decorators/cache-ttl.decorator';
 import { UpdateIncrementalWatchTimeDto } from '@/shared/dto/update-watch-time.dto';
+import { TranscriptionService } from '@/domains/shared/ai/transcription/transcription.service';
 
 interface AuthenticatedUser {
 	_id: string;
@@ -63,6 +64,7 @@ export class CoursController {
 		private readonly coursTrackingService: CoursTrackingService,
 		private readonly coursProgressionService: CoursProgressionService,
 			private readonly coursNotesService: CoursNotesService,
+		private readonly transcriptionService: TranscriptionService,
 		) { }
 
 		private getRequestUserId(req: any): string {
@@ -1205,6 +1207,47 @@ export class CoursController {
 	) {
 		const user = req.user as AuthenticatedUser;
 		return await this.coursProgressionService.unlockChapterManually(id, chapterId, userId, user._id);
+	}
+
+	// ============ CHAPTER TRANSCRIPT ============
+
+	@UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+	@RequireCommunityPermission(CommunityPermission.CONTENT_MANAGE)
+	@CommunityIdFrom({ type: 'entity', modelName: 'Cours', paramName: 'id' })
+	@ApiBearerAuth('JWT-auth')
+	@Post(':id/sections/:sectionId/chapters/:chapterId/transcribe')
+	@ApiOperation({
+		summary: 'Generate a timestamped transcript for a chapter video',
+		description: 'Transcribes the chapter video (direct URL only) and stores timestamped segments used by the AI tutor and the transcript tracker. Returns the generated (or cached) segments.',
+	})
+	@ApiParam({ name: 'id', description: 'Course ID', type: 'string' })
+	@ApiParam({ name: 'sectionId', description: 'Section ID', type: 'string' })
+	@ApiParam({ name: 'chapterId', description: 'Chapter ID', type: 'string' })
+	@ApiQuery({ name: 'force', required: false, type: Boolean, description: 'Re-run transcription even if a transcript already exists.' })
+	@ApiResponse({ status: 200, description: 'Transcript generated', schema: { type: 'object' } })
+	@ApiResponse({ status: 404, description: 'Course or chapter not found' })
+	async generateChapterTranscript(
+		@Param('id') id: string,
+		@Param('sectionId') sectionId: string,
+		@Param('chapterId') chapterId: string,
+		@Query('force') force: string | undefined,
+		@Req() req,
+	) {
+		const user = req.user as AuthenticatedUser;
+		const course = await this.coursContentService.obtenirCours(id, user._id);
+		const section = (course as any).sections?.find((s: any) => s.id === sectionId);
+		const chapter = section?.chapitres?.find((c: any) => c.id === chapterId);
+		if (!chapter) throw new NotFoundException('Chapter not found in this section');
+
+		const result = await this.transcriptionService.transcribeChapter(id, chapterId, {
+			force: force === '1' || force === 'true',
+		});
+
+		return {
+			transcript: result.segments,
+			skipped: result.skipped,
+			enabled: this.transcriptionService.isEnabled(),
+		};
 	}
 
 	// ============ USER NOTES ENDPOINTS ============

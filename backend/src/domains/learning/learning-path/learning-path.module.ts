@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { LearningPathController } from '@/domains/learning/learning-path/learning-path.controller';
 import { LearningPathService } from '@/domains/learning/learning-path/learning-path.service';
 import { LearningPathAiService } from '@/domains/learning/learning-path/learning-path-ai.service';
+import { AiModule } from '@/domains/shared/ai/ai.module';
 import {
   LearningPathRecommendation,
   LearningPathRecommendationSchema,
@@ -15,6 +16,7 @@ import { Resource, ResourceSchema } from '@/infrastructure/database/schemas/cont
 @Module({
   imports: [
     ConfigModule,
+    forwardRef(() => AiModule),
     MongooseModule.forFeature([
       { name: LearningPathRecommendation.name, schema: LearningPathRecommendationSchema },
       { name: 'CourseEnrollment', schema: CourseEnrollmentSchema },

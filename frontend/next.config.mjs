@@ -60,6 +60,8 @@ const contentSecurityPolicy = [
     'ws://127.0.0.1:8080',
     'ws://127.0.0.1:8082',
     'ws://192.168.56.1:8082',
+    'https://*.ingest.sentry.io',
+    'https://*.ingest.de.sentry.io',
   ].join(' '),
   [
     "frame-src 'self'",
@@ -93,7 +95,6 @@ const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   experimental: {
-    cpus: 1,
     optimizePackageImports: ['lucide-react'],
   },
   images: {

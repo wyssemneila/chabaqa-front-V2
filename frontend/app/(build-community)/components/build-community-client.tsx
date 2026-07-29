@@ -29,9 +29,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { communitiesApi, type CreateCommunityData } from "@/lib/api/communities.api"
 import { ImageUpload } from "@/app/(dashboard)/components/image-upload"
 import { storageApi } from "@/lib/api"
+import { useAuthContext } from "@/app/providers/auth-provider"
 
 export default function CommunityPage() {
   const router = useRouter()
+  const { updateAuth } = useAuthContext()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
     name: "",
@@ -144,11 +146,8 @@ export default function CommunityPage() {
         console.log("Community created successfully:", response.data)
 
         // If the backend returned a new token (role upgrade), apply it immediately
-        // Note: BuildCommunityClient doesn't have access to AuthContext directly here 
-        // because it's not using the hook, but we can handle it or let the next page load handle it.
         if (response.accessToken && response.user) {
-          localStorage.setItem('accessToken', response.accessToken)
-          localStorage.setItem('user', JSON.stringify(response.user))
+          updateAuth(response.accessToken, response.user)
         }
 
         // Redirect to community selector after short delay

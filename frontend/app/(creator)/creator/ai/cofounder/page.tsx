@@ -4,28 +4,26 @@ import { useState } from 'react'
 import { CreatorAiPageShell } from '@/components/creator-dashboard/creator-ai-page-shell'
 import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
 import { aiCofounderApi } from '@/lib/api/ai-agents.api'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  IOSCard,
+  IOSCardContent,
+  IOSCardDescription,
+  IOSCardHeader,
+  IOSCardTitle,
+  IOSInput,
+  IOSLabel,
+  IOSTextarea,
+  IOSButton,
+  IOSText,
+  IOSBadge,
+} from '@/components/ui/ios'
 import { toast } from 'sonner'
-
-function ResultPanel({ title, data }: { title: string; data: unknown }) {
-  if (data == null) return null
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <pre className="max-h-96 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100 whitespace-pre-wrap">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      </CardContent>
-    </Card>
-  )
-}
+import {
+  CofounderBuildResult,
+  CofounderFixFunnelResult,
+  CofounderGrowResult,
+  CofounderRawResult,
+} from '@/components/ai/cofounder-result-cards'
 
 export default function AiCofounderPage() {
   const { selectedCommunityId, selectedCommunity, isLoading: communityLoading } = useCreatorCommunity()
@@ -98,68 +96,131 @@ export default function AiCofounderPage() {
       topbarTitle="AI Cofounder"
       topbarSubtitle={selectedCommunity?.name || selectedCommunity?.nom || 'Community growth tools'}
       title="AI cofounder actions"
-      description="Run live cofounder workflows against the production AI cofounder API. Results are shown exactly as returned by the backend."
+      description="Run cofounder workflows to draft a community, grow an existing one, or fix your funnel. Results are parsed into reviewable cards — copy any block to use it elsewhere."
     >
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Build a new community draft</CardTitle>
-            <CardDescription>Use this before you have a community selected to generate positioning and launch ideas.</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <IOSCard>
+          <IOSCardHeader>
+            <IOSCardTitle className="text-[22px]">Build a new community draft</IOSCardTitle>
+            <IOSCardDescription>
+              Use this before you have a community selected to generate positioning and launch ideas.
+            </IOSCardDescription>
+          </IOSCardHeader>
+          <IOSCardContent>
             <form className="space-y-4" onSubmit={handleBuildCommunity}>
-              <div className="space-y-2">
-                <Label htmlFor="niche">Niche</Label>
-                <Input id="niche" value={niche} onChange={(e) => setNiche(e.target.value)} placeholder="e.g. Product design for founders" required />
+              <div>
+                <IOSLabel htmlFor="niche">Niche</IOSLabel>
+                <IOSInput
+                  id="niche"
+                  value={niche}
+                  onChange={(e) => setNiche(e.target.value)}
+                  placeholder="e.g. Product design for founders"
+                  required
+                  clearable
+                  onClear={() => setNiche('')}
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="audience">Audience</Label>
-                <Input id="audience" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="Who is this for?" required />
+              <div>
+                <IOSLabel htmlFor="audience">Audience</IOSLabel>
+                <IOSInput
+                  id="audience"
+                  value={audience}
+                  onChange={(e) => setAudience(e.target.value)}
+                  placeholder="Who is this for?"
+                  required
+                  clearable
+                  onClear={() => setAudience('')}
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="promise">Promise</Label>
-                <Textarea id="promise" value={promise} onChange={(e) => setPromise(e.target.value)} placeholder="What outcome do members get?" rows={4} required />
+              <div>
+                <IOSLabel htmlFor="promise">Promise</IOSLabel>
+                <IOSTextarea
+                  id="promise"
+                  value={promise}
+                  onChange={(e) => setPromise(e.target.value)}
+                  placeholder="What outcome do members get?"
+                  rows={4}
+                  required
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="price">Optional price (TND)</Label>
-                <Input id="price" type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} />
+              <div>
+                <IOSLabel htmlFor="price">Optional price (TND)</IOSLabel>
+                <IOSInput
+                  id="price"
+                  type="number"
+                  min="0"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                />
               </div>
-              <Button type="submit" disabled={loadingAction === 'build'}>
+              <IOSButton type="submit" disabled={loadingAction === 'build'}>
                 {loadingAction === 'build' ? 'Generating…' : 'Generate community draft'}
-              </Button>
+              </IOSButton>
             </form>
-          </CardContent>
-        </Card>
+          </IOSCardContent>
+        </IOSCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Improve an existing community</CardTitle>
-            <CardDescription>
+        <IOSCard>
+          <IOSCardHeader>
+            <IOSCardTitle className="text-[22px]">Improve an existing community</IOSCardTitle>
+            <IOSCardDescription>
               {selectedCommunityId
                 ? 'These actions use the currently selected community from the creator workspace.'
                 : 'Select a community in the creator context to run growth and funnel fixes.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Button type="button" onClick={() => void handleGrow()} disabled={!selectedCommunityId || loadingAction === 'grow'}>
+            </IOSCardDescription>
+          </IOSCardHeader>
+          <IOSCardContent className="flex flex-wrap gap-2">
+            <IOSButton
+              type="button"
+              onClick={() => void handleGrow()}
+              disabled={!selectedCommunityId || loadingAction === 'grow'}
+            >
               {loadingAction === 'grow' ? 'Running…' : 'Grow community'}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => void handleFixFunnel()} disabled={!selectedCommunityId || loadingAction === 'funnel'}>
+            </IOSButton>
+            <IOSButton
+              type="button"
+              variant="outline"
+              onClick={() => void handleFixFunnel()}
+              disabled={!selectedCommunityId || loadingAction === 'funnel'}
+            >
               {loadingAction === 'funnel' ? 'Running…' : 'Fix funnel'}
-            </Button>
-          </CardContent>
-        </Card>
+            </IOSButton>
+          </IOSCardContent>
+        </IOSCard>
 
-        <ResultPanel title="Build community result" data={buildResult} />
-        <ResultPanel title="Grow community result" data={growResult} />
-        <ResultPanel title="Fix funnel result" data={funnelResult} />
+        {buildResult != null ? (
+          <section className="space-y-3">
+            <IOSText size="title3" weight="semibold">Build community result</IOSText>
+            <CofounderBuildResult data={buildResult} />
+            <CofounderRawResult data={buildResult} label="Developer view (raw JSON)" />
+          </section>
+        ) : null}
+        {growResult != null ? (
+          <section className="space-y-3">
+            <IOSText size="title3" weight="semibold">Grow community result</IOSText>
+            <CofounderGrowResult data={growResult} />
+            <CofounderRawResult data={growResult} label="Developer view (raw JSON)" />
+          </section>
+        ) : null}
+        {funnelResult != null ? (
+          <section className="space-y-3">
+            <IOSText size="title3" weight="semibold">Fix funnel result</IOSText>
+            <CofounderFixFunnelResult data={funnelResult} />
+            <CofounderRawResult data={funnelResult} label="Developer view (raw JSON)" />
+          </section>
+        ) : null}
 
         {!selectedCommunityId && !communityLoading ? (
-          <Card>
-            <CardContent className="pt-6 text-sm text-muted-foreground">
-              Community-specific cofounder actions are disabled until a community is selected.
-            </CardContent>
-          </Card>
+          <IOSCard>
+            <IOSCardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <IOSBadge variant="outline" size="md">Community required</IOSBadge>
+              </div>
+              <IOSText size="footnote" color="secondary" className="mt-2 block">
+                Community-specific cofounder actions are disabled until a community is selected.
+              </IOSText>
+            </IOSCardContent>
+          </IOSCard>
         ) : null}
       </div>
     </CreatorAiPageShell>

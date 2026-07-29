@@ -11,6 +11,7 @@ import {
 import { Cours, CoursDocument, CourseEnrollmentDocument } from '@/infrastructure/database/schemas/learning/course.schema';
 import { Challenge, ChallengeDocument } from '@/infrastructure/database/schemas/learning/challenge.schema';
 import { Resource, ResourceDocument } from '@/infrastructure/database/schemas/content/resource.schema';
+import { LearnerProfileService } from '@/domains/shared/ai/learner/learner-profile.service';
 
 const MAX_CANDIDATES = 30;
 
@@ -37,6 +38,7 @@ export class LearningPathService {
     private readonly challengeModel: Model<ChallengeDocument>,
     @InjectModel(Resource.name)
     private readonly resourceModel: Model<ResourceDocument>,
+    private readonly learnerProfileService: LearnerProfileService,
   ) {}
 
   async getRecommendations(userId: string, input: LearningPathRequestDto) {
@@ -79,7 +81,14 @@ export class LearningPathService {
       score: item.score,
     }));
 
-    const aiRanked = await this.aiService.rerank(normalizedGoals, aiCandidates, limit);
+    const aiRanked = await this.aiService.rerank(
+      normalizedGoals,
+      aiCandidates,
+      limit,
+      await this.learnerProfileService.buildProfileSummary(
+        await this.learnerProfileService.get(userId),
+      ),
+    );
     const finalItems = this.mergeRanking(scored, aiRanked, limit);
 
     await this.recommendationModel.updateOne(

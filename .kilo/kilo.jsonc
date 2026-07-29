@@ -2,5 +2,6 @@
   "$schema": "https://app.kilo.ai/config.json",
   "commit_message": {
     "prompt": "make the name of the commit professional and witout kilo name on it"
-  }
+  },
+  "snapshot": false
 }

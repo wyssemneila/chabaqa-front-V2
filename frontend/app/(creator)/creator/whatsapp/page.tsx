@@ -7,6 +7,7 @@ import { useDashPrefs } from "@/hooks/use-dash-prefs";
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context";
 import { useWhatsappPage } from "@/hooks/creator-dashboard/use-whatsapp-page";
 import { useWhatsappSession } from "@/hooks/creator-dashboard/use-whatsapp-session";
+import { whatsappApi } from "@/lib/api/whatsapp.api";
 import type {
     WhatsappAutomation,
     WhatsappAutomationTrigger,
@@ -27,6 +28,7 @@ import {
     QrCode,
     RefreshCcw,
     Send,
+    Sparkles,
     Trash2,
     Unplug,
     Upload,
@@ -531,6 +533,7 @@ function CampaignComposer({
     onClose,
     onCreate,
     onPreview,
+    communityId,
 }: {
     open: boolean;
     onClose: () => void;
@@ -541,6 +544,7 @@ function CampaignComposer({
         scheduledAt?: string;
     }) => Promise<void>;
     onPreview: (audience: WhatsappAudienceType) => Promise<any>;
+    communityId?: string;
 }) {
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
@@ -550,8 +554,44 @@ function CampaignComposer({
     const [saving, setSaving] = useState(false);
     const [preview, setPreview] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
+    const [aiGoal, setAiGoal] = useState("");
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState<string | null>(null);
+    const [aiVariants, setAiVariants] = useState<string[]>([]);
 
     if (!open) return null;
+
+    const generateAiDraft = async () => {
+        if (!communityId) {
+            setAiError("Select a community first.");
+            return;
+        }
+        if (!aiGoal.trim()) {
+            setAiError("Describe the goal of your broadcast first.");
+            return;
+        }
+        setAiLoading(true);
+        setAiError(null);
+        setAiVariants([]);
+        try {
+            const res = await whatsappApi.generateBroadcastDraft(communityId, {
+                goal: aiGoal.trim(),
+                audience,
+            });
+            if (res.skipped) {
+                setAiError(res.reason || "AI is not configured on this server.");
+            } else if (res.message) {
+                setBody(res.message);
+                setAiVariants(res.variants || []);
+            } else {
+                setAiError("AI did not return a draft. Try again.");
+            }
+        } catch (e: any) {
+            setAiError(e?.message || "Failed to generate draft");
+        } finally {
+            setAiLoading(false);
+        }
+    };
 
     const submit = async () => {
         setError(null);
@@ -720,6 +760,76 @@ function CampaignComposer({
                             }}
                         />
                     </label>
+                    {aiVariants.length > 0 && (
+                        <div className="grid gap-2">
+                            <span
+                                className="text-[11px] font-semibold"
+                                style={{ color: "var(--t3)" }}
+                            >
+                                Short variants (tap to use)
+                            </span>
+                            {aiVariants.map((variant, i) => (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => setBody(variant)}
+                                    className="text-left rounded-xl p-3 text-[12px]"
+                                    style={{
+                                        border: "1px solid var(--bd)",
+                                        background: "var(--bg)",
+                                        color: "var(--t2)",
+                                    }}
+                                >
+                                    {variant}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <label className="grid gap-1">
+                        <span
+                            className="text-[12px] font-semibold flex items-center gap-1.5"
+                            style={{ color: "var(--t2)" }}
+                        >
+                            <Sparkles className="w-3.5 h-3.5 text-[#8e78fb]" />
+                            Draft with AI (optional)
+                        </span>
+                        <textarea
+                            value={aiGoal}
+                            onChange={(e) => setAiGoal(e.target.value)}
+                            rows={2}
+                            placeholder="e.g. Remind members about the new course launch and offer a 20% discount"
+                            className="rounded-xl px-3 py-2 text-[13px] outline-none resize-none"
+                            style={{
+                                border: "1px solid var(--bd)",
+                                background: "var(--bg)",
+                                color: "var(--t1)",
+                            }}
+                        />
+                    </label>
+                    <button
+                        onClick={generateAiDraft}
+                        disabled={aiLoading || !communityId}
+                        className="h-9 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                        style={{
+                            background: "rgba(142,120,251,.12)",
+                            color: "#8e78fb",
+                        }}
+                    >
+                        {aiLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Sparkles className="w-4 h-4" />
+                        )}{" "}
+                        Generate AI draft
+                    </button>
+                    {aiError && (
+                        <p
+                            className="text-[12px]"
+                            style={{ color: "#dc2626" }}
+                        >
+                            {aiError}
+                        </p>
+                    )}
                     <label className="grid gap-1">
                         <span
                             className="text-[12px] font-semibold"
@@ -1490,6 +1600,7 @@ export default function WhatsAppPage() {
                 onClose={() => setDrawerOpen(false)}
                 onCreate={page.createCampaign}
                 onPreview={page.previewAudience}
+                communityId={communityId || undefined}
             />
         </>
     );

@@ -12,8 +12,12 @@ export class WhatsappWebhookController {
   @ApiOperation({ summary: 'Receive OpenWA webhook events' })
   handleWebhook(
     @Body() dto: OpenWaWebhookDto,
-    @Headers('x-openwa-webhook-secret') secret?: string,
+    @Headers('x-webhook-secret') webhookSecret?: string,
+    @Headers('x-openwa-webhook-secret') legacySecret?: string,
   ) {
-    return this.whatsappService.handleOpenWaWebhook(dto, secret);
+    return this.whatsappService.handleOpenWaWebhook(
+      dto,
+      webhookSecret || legacySecret,
+    );
   }
 }

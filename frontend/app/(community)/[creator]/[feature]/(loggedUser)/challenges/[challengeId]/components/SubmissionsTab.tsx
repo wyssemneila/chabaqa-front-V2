@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, CheckCircle, Clock3, ExternalLink, Image as ImageIcon, MessageCircle, RefreshCcw, XCircle } from "lucide-react"
+import { AlertCircle, CheckCircle, Clock3, ExternalLink, Image as ImageIcon, MessageCircle, RefreshCcw, Sparkles, XCircle } from "lucide-react"
 import Image from "next/image"
 
 interface SubmissionsTabProps {
@@ -154,6 +154,16 @@ export default function SubmissionsTab({ challengeTasks, submissions, submission
                               Feedback from Reviewer
                             </div>
                             <p className="text-sm text-yellow-700">{submission.feedback}</p>
+                          </div>
+                        )}
+
+                        {submission.aiFeedback && !submission.feedback && (
+                          <div className="mt-2 p-3 bg-purple-50 border border-purple-100 rounded-md">
+                            <div className="flex items-center text-sm font-semibold text-purple-800 mb-1">
+                              <Sparkles className="h-4 w-4 mr-1" />
+                              AI Coach Feedback
+                            </div>
+                            <p className="text-sm text-purple-700">{submission.aiFeedback}</p>
                           </div>
                         )}
                         

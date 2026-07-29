@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { BookOpen, Clock, Users, Star, Zap, Globe, Lock, Settings, Eye } from 'lucide-react'
+import { BookOpen, Clock, Users, Star, Zap, Globe, Lock, Settings } from 'lucide-react'
 import { resolveImageUrl } from '@/lib/resolve-image-url'
 
 export interface CourseCardData {
@@ -129,15 +129,6 @@ export function CourseCard({ course }: { course: CourseCardData }) {
           </span>
 
           <div className="flex items-center gap-2">
-            <Link
-              href={`/creator/courses/${id}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all"
-              style={{ border: '1.5px solid var(--bd)', color: 'var(--t2)', background: 'transparent' }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg)'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
-            >
-              <Eye className="w-3.5 h-3.5" /> View
-            </Link>
             <Link
               href={`/creator/courses/${id}/manage`}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold text-white transition-all hover:opacity-90"

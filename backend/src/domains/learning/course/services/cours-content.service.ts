@@ -111,6 +111,16 @@ export class CoursContentService {
     return this.coursService.uploadChapterVideo(coursId, sectionId, chapitreId, file, userId);
   }
 
+  mettreAJourTranscript(
+    coursId: string,
+    sectionId: string,
+    chapitreId: string,
+    transcript: Array<{ text: string; startMs: number; endMs: number }>,
+    userId: string,
+  ) {
+    return this.coursService.mettreAJourTranscript(coursId, sectionId, chapitreId, transcript, userId);
+  }
+
   verifierPermissionsCours(coursId: string, userId: string) {
     return this.coursService.verifierPermissionsCours(coursId, userId);
   }

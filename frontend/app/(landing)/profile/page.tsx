@@ -40,6 +40,7 @@ import { ProfileDetails } from "@/components/profile/ProfileDetails"
 import { getUserProfileHandle } from "@/lib/profile-handle"
 import { SOCIAL_PLATFORMS, cleanSocialLinks, type SocialPlatform, type UserSocialLinks } from "@/lib/social-links"
 import { SocialMediaSidebar } from "@/components/profile/SocialMediaSidebar"
+import { LearnerProfileCard } from "@/components/ai/learner-profile-card"
 
 const resolveCommunityId = (community: any): string => {
   return String(
@@ -1801,11 +1802,14 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
                 )}
               </div>
             </div>
-            <SocialMediaSidebar
-              entries={socialEntries}
-              isOwnProfile={isOwnProfile}
-              editHref={`/profile/${profileHandle}/edit`}
-            />
+            <div className="flex flex-col gap-6">
+              {isOwnProfile && <LearnerProfileCard />}
+              <SocialMediaSidebar
+                entries={socialEntries}
+                isOwnProfile={isOwnProfile}
+                editHref={`/profile/${profileHandle}/edit`}
+              />
+            </div>
           </div>
         </div>
       </main>

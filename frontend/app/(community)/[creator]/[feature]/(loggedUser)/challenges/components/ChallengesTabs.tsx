@@ -2,10 +2,9 @@
 
 import { useMemo } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Search, Filter, Zap } from "lucide-react"
+import { Search, Zap } from "lucide-react"
 import ChallengeCard from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/components/challenge-card"
 import { getChallengeStatus } from "@/app/(community)/[creator]/[feature]/(loggedUser)/challenges/components/challenge-status"
 interface Challenge {
@@ -87,7 +86,7 @@ export default function ChallengesTabs({
           </TabsTrigger>
         </TabsList>
 
-        {/* Search + Filter */}
+        {/* Search */}
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -98,9 +97,6 @@ export default function ChallengesTabs({
               className="pl-10"
             />
           </div>
-          <Button variant="outline" size="icon" className="sm:flex-shrink-0">
-            <Filter className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 

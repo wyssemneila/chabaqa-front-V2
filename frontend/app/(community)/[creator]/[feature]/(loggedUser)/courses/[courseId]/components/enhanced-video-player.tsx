@@ -583,6 +583,31 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
     seekNativeVideo(Number(videoEl.currentTime || 0) + deltaSeconds)
   }, [seekNativeVideo])
 
+  // Allow external components (e.g. transcript tracker) to request a seek
+  // by dispatching a `chabaqa:video-seek` CustomEvent with { seconds }.
+  useEffect(() => {
+    const onSeekRequest = (event: Event) => {
+      const seconds = Number((event as CustomEvent).detail?.seconds)
+      if (!Number.isFinite(seconds) || seconds < 0) return
+
+      const yt = youtubeApiRef.current
+      const vimeoWin = vimeoIframeRef.current?.contentWindow
+      if (yt?.seekTo) {
+        yt.seekTo(seconds, true)
+        setWatchTime(seconds)
+        showControlsTemporarily(true)
+      } else if (vimeoWin) {
+        vimeoWin.postMessage(JSON.stringify({ method: 'setCurrentTime', value: seconds }), '*')
+        setWatchTime(seconds)
+        showControlsTemporarily(true)
+      } else {
+        seekNativeVideo(seconds)
+      }
+    }
+    window.addEventListener('chabaqa:video-seek', onSeekRequest as EventListener)
+    return () => window.removeEventListener('chabaqa:video-seek', onSeekRequest as EventListener)
+  }, [seekNativeVideo, showControlsTemporarily])
+
   const setNativeVolume = useCallback((nextVolume: number) => {
     const videoEl = htmlVideoRef.current
     if (!videoEl) return

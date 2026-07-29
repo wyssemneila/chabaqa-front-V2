@@ -48,6 +48,7 @@ import { CommunityPermissionGuard } from '@/domains/community/access/community-p
 import { RequireCommunityPermission, CommunityIdFrom } from '@/domains/community/access/community-permission.decorator';
 import { CommunityPermission } from '@/shared/permissions';
 import { PlanFeatureGuard, RequireFeature } from '@/shared/guards/plan-feature.guard';
+import { ChallengeAiCoachService } from '@/domains/learning/challenge/challenge-ai-coach.service';
 
 const resolveRequestIpAddress = (req: any): string | undefined => {
   const forwarded = req?.headers?.['x-forwarded-for'];
@@ -79,7 +80,10 @@ const enrichTrackingMetadata = (req: any, metadata?: any) => {
 @Controller('challenges')
 @UseInterceptors(HttpCacheInterceptor)
 export class ChallengeController {
-  constructor(private readonly challengeService: ChallengeService) { }
+  constructor(
+    private readonly challengeService: ChallengeService,
+    private readonly challengeCoach: ChallengeAiCoachService,
+  ) { }
 
   private getRequestUserId(req: any): string {
     return (
@@ -952,5 +956,41 @@ export class ChallengeController {
   ): Promise<{ message: string }> {
     const userId = req.user._id || req.user.userId;
     return this.challengeService.unlockTaskManually(id, taskId, targetUserId, userId);
+  }
+
+  // ============ AI COACH ENDPOINTS ============
+
+  @Get(':id/tasks/:taskId/ai-hint')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get an AI coach hint for a task',
+    description: 'Returns a short, encouraging nudge toward the next step without giving away the full answer. Scoped to the task + community knowledge.',
+  })
+  @ApiParam({ name: 'id', description: 'Challenge ID or slug', type: 'string' })
+  @ApiParam({ name: 'taskId', description: 'Task ID', type: 'string' })
+  @ApiResponse({ status: 200, description: 'Hint generated', schema: { example: { hint: 'Start by…' } } })
+  @ApiResponse({ status: 404, description: 'Challenge or task not found' })
+  async getAiHint(
+    @Param('id') id: string,
+    @Param('taskId') taskId: string,
+  ): Promise<{ hint: string }> {
+    return this.challengeCoach.getHint(id, taskId);
+  }
+
+  @Post('submissions/:id/ai-feedback')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Generate AI coach feedback for a submission',
+    description: 'Produces instant, non-binding feedback stored on the submission. Creator review still overrides the AI verdict.',
+  })
+  @ApiParam({ name: 'id', description: 'Submission ID', type: 'string' })
+  @ApiResponse({ status: 200, description: 'Feedback generated', schema: { example: { aiFeedback: '…' } } })
+  @ApiResponse({ status: 404, description: 'Submission not found' })
+  async getAiSubmissionFeedback(
+    @Param('id') submissionId: string,
+  ): Promise<{ aiFeedback: string | null }> {
+    return this.challengeCoach.reviewSubmission(submissionId);
   }
 }

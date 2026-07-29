@@ -147,6 +147,7 @@ describe('OpenWaClientService', () => {
         data: expect.objectContaining({
           url: 'https://app.example.com/api/whatsapp/openwa/webhook',
           secret: 'secret',
+          headers: { 'X-Webhook-Secret': 'secret' },
           events: expect.arrayContaining([
             'message.ack',
             'session.authenticated',

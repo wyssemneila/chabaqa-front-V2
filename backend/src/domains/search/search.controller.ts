@@ -11,13 +11,17 @@ export class SearchController {
   @ApiOperation({ summary: 'Cross-entity search across communities, courses, products, events, and posts' })
   @ApiQuery({ name: 'q', required: true })
   @ApiQuery({ name: 'type', required: false, enum: ['all', 'community', 'course', 'product', 'event', 'post'] })
+  @ApiQuery({ name: 'mode', required: false, enum: ['keyword', 'semantic'] })
+  @ApiQuery({ name: 'communityId', required: false, type: String })
   async search(
     @Query('q') q: string,
     @Query('type') type = 'all',
+    @Query('mode') mode = 'keyword',
+    @Query('communityId') communityId?: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number,
   ) {
-    return this.searchService.search({ q, type, page, limit });
+    return this.searchService.search({ q, type, mode, communityId, page, limit });
   }
 
   @Get('health')

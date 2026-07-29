@@ -15,6 +15,7 @@ import {
   AiKnowledgeDocument,
   AiKnowledgeDocumentDocument,
 } from '@/infrastructure/database/schemas/ai/ai-knowledge-document.schema';
+import { SemanticRetrievalService } from '@/domains/shared/ai/embeddings/semantic-retrieval.service';
 
 @Injectable()
 export class AiAgentChatService {
@@ -22,6 +23,7 @@ export class AiAgentChatService {
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly semanticRetrieval: SemanticRetrievalService,
     @InjectModel(AiAgent.name)
     private readonly aiAgentModel: Model<AiAgentDocument>,
     @InjectModel(AiConversation.name)
@@ -109,6 +111,22 @@ export class AiAgentChatService {
   }
 
   private async retrieveKnowledge(communityId: string, message: string) {
+    // Semantic retrieval first (embeddings). Falls back to keyword regex when
+    // embeddings are unavailable or return no matches.
+    if (this.semanticRetrieval.isAvailable()) {
+      const semantic = await this.semanticRetrieval
+        .retrieve({
+          communityId,
+          query: message,
+          limit: Number(
+            this.configService.get<string>('AI_AGENT_MAX_CONTEXT_DOCS') || 8,
+          ),
+          visibility: ['member', 'public'],
+        })
+        .catch(() => null);
+      if (semantic && semantic.length > 0) return semantic;
+    }
+
     const terms = message
       .split(/\s+/)
       .filter((term) => term.length > 3)

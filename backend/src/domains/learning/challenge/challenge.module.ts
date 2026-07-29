@@ -16,6 +16,8 @@ import { ChallengeSubmission, ChallengeSubmissionSchema } from '@/infrastructure
 import { AnalyticsDaily, AnalyticsDailySchema } from '@/infrastructure/database/schemas/analytics/analytics-daily.schema';
 import { Ga4Module } from '@/domains/analytics/ga4/ga4.module';
 import { CacheModule } from '@/infrastructure/cache/cache.module';
+import { AiModule } from '@/domains/shared/ai/ai.module';
+import { ChallengeAiCoachService } from '@/domains/learning/challenge/challenge-ai-coach.service';
 
 @Module({
   imports: [
@@ -35,9 +37,10 @@ import { CacheModule } from '@/infrastructure/cache/cache.module';
     UploadModule,
     Ga4Module,
     CacheModule,
+    AiModule,
   ],
   controllers: [ChallengeController],
-  providers: [ChallengeService],
+  providers: [ChallengeService, ChallengeAiCoachService],
   exports: [ChallengeService],
 })
 export class ChallengeModule { }

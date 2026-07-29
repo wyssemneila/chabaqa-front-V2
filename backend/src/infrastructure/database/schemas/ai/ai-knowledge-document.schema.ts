@@ -59,3 +59,14 @@ AiKnowledgeDocumentSchema.index(
   { unique: true },
 );
 AiKnowledgeDocumentSchema.index({ communityId: 1, visibility: 1 });
+// Supports the semantic-retrieval filter (embedding present) used by
+// SemanticRetrievalService. Partial so docs without embeddings are excluded.
+AiKnowledgeDocumentSchema.index(
+  { communityId: 1, visibility: 1 },
+  {
+    partialFilterExpression: {
+      embedding: { $exists: true, $not: { $size: 0 } },
+    },
+    name: 'community_semantic',
+  },
+);
