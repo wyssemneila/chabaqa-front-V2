@@ -331,6 +331,11 @@ function isProtectedRoute(path: string): boolean {
 }
 
 export async function authMiddleware(request: NextRequest) {
+  // #region agent log
+  if (request.nextUrl.pathname.includes('/creator') || request.nextUrl.pathname.includes('/signin')) {
+    fetch('http://127.0.0.1:7555/ingest/ce618bb9-320f-41a2-9d8d-85cf57061fcc',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'230092'},body:JSON.stringify({sessionId:'230092',runId:'pre-fix',hypothesisId:'H2,H3',location:'auth.middleware.ts:authMiddleware',message:'Middleware processing auth route',data:{pathname:request.nextUrl.pathname,hasAccessCookie:Boolean(readCookieValue(request,USER_ACCESS_COOKIE)),hasJwtSecret:Boolean(process.env.JWT_SECRET)},timestamp:Date.now()})}).catch(()=>{});
+  }
+  // #endregion
   const { pathname } = request.nextUrl
   const preferredLocale = readCookieValue(request, LOCALE_COOKIE)
   const isPreferredSupported =
@@ -409,8 +414,14 @@ export async function authMiddleware(request: NextRequest) {
 
     try {
       const { payload } = await jwtVerify(token, secret)
+      // #region agent log
+      fetch('http://127.0.0.1:7555/ingest/ce618bb9-320f-41a2-9d8d-85cf57061fcc',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'230092'},body:JSON.stringify({sessionId:'230092',runId:'pre-fix',hypothesisId:'H2,H3',location:'auth.middleware.ts:verifyTokenSuccess',message:'Middleware JWT verification succeeded',data:{path:normalizedPath,role:String(payload?.role||''),cookieName},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       return { user: payload, isValidToken: true }
-    } catch {
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7555/ingest/ce618bb9-320f-41a2-9d8d-85cf57061fcc',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'230092'},body:JSON.stringify({sessionId:'230092',runId:'pre-fix',hypothesisId:'H2,H3',location:'auth.middleware.ts:verifyTokenFailure',message:'Middleware JWT verification failed',data:{path:normalizedPath,cookieName,errorName:error instanceof Error?error.name:'unknown'},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       logAuthFailure('invalid_token', {
         path: normalizedPath,
         cookieName,

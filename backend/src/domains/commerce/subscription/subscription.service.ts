@@ -152,10 +152,7 @@ export class SubscriptionService {
       whatsappMessagesPerMonth: plan.limits.whatsappMessagesPerMonth,
       analyticsLookbackDays: plan.limits.analyticsLookbackDays,
       sessionBookingsPerMonth: plan.limits.sessionBookingsPerMonth,
-      aiAgentsMax: plan.limits.aiAgentsMax,
-      aiCofounderRunsPerMonth: plan.limits.aiCofounderRunsPerMonth,
-      aiKnowledgeReindexPerMonth: plan.limits.aiKnowledgeReindexPerMonth,
-      aiStaffChatTurnsPerMonth: plan.limits.aiStaffChatTurnsPerMonth,
+      creatorFieldGenerationsPerMonth: plan.limits.creatorFieldGenerationsPerMonth,
     };
   }
 
@@ -1458,12 +1455,12 @@ export class SubscriptionService {
         creatorId: new Types.ObjectId(creatorId as any) 
       });
 
-      if (!subscription) {
-        throw new NotFoundException('No subscription found');
-      }
-
-      const periodStart = startDate || subscription.currentPeriodStart;
-      const periodEnd = endDate || subscription.currentPeriodEnd;
+      const starterPlan = !subscription ? await this.planModel.findOne({ tier: PlanTier.STARTER }).lean() : null;
+      const fallbackLimits: any = starterPlan?.limits || {};
+      const now = new Date();
+      const periodStart = startDate || subscription?.currentPeriodStart || new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const periodEnd = endDate || subscription?.currentPeriodEnd || new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+      const limit = (key: string, fallback: number) => Number((subscription as any)?.[key] ?? fallbackLimits[key] ?? fallback);
 
       const creatorObjectId = new Types.ObjectId(creatorId as any);
       const [communities, publishedCourses, storage, staffAdminCount, explicitUsage, emailUsage, whatsappUsage] = await Promise.all([
@@ -1496,7 +1493,7 @@ export class SubscriptionService {
 
       const usageSummary: UsageSummaryDto = {
         customerId: creatorId.toString(),
-        subscriptionId: subscription._id.toString(),
+        subscriptionId: subscription?._id?.toString() || 'starter-default',
         periodStart: periodStart.toISOString(),
         periodEnd: periodEnd.toISOString(),
         communitiesCreated,
@@ -1509,22 +1506,10 @@ export class SubscriptionService {
         automationsTriggered,
         whatsappMessagesSent: whatsappSent,
         planLimits: {
-          communitiesMax: subscription.communitiesMax,
-          membersMax: subscription.membersMax,
-          coursesActivationMax: subscription.coursesActivationMax,
-          storageGB: subscription.storageGB,
-          adminsMax: subscription.adminsMax,
-          emailCampaignRecipientsPerMonth: subscription.emailCampaignRecipientsPerMonth,
-          whatsappMessagesPerMonth: subscription.whatsappMessagesPerMonth,
-          analyticsLookbackDays: subscription.analyticsLookbackDays,
-          sessionBookingsPerMonth: subscription.sessionBookingsPerMonth,
+          communitiesMax: limit('communitiesMax', 1), membersMax: limit('membersMax', 100), coursesActivationMax: limit('coursesActivationMax', 3), storageGB: limit('storageGB', 5), adminsMax: limit('adminsMax', 1), emailCampaignRecipientsPerMonth: limit('emailCampaignRecipientsPerMonth', 0), whatsappMessagesPerMonth: limit('whatsappMessagesPerMonth', 0), analyticsLookbackDays: limit('analyticsLookbackDays', 30), sessionBookingsPerMonth: limit('sessionBookingsPerMonth', 0),
         },
         usagePercentages: {
-          communities: this.percent(communities.length, subscription.communitiesMax),
-          members: this.percent(membersAdded, subscription.membersMax),
-          courses: this.percent(publishedCourses, subscription.coursesActivationMax),
-          storage: this.percent(storageUsedGB, subscription.storageGB),
-          admins: this.percent(Math.max(adminsFromCommunityArrays, staffAdminCount), subscription.adminsMax)
+          communities: this.percent(communities.length, limit('communitiesMax', 1)), members: this.percent(membersAdded, limit('membersMax', 100)), courses: this.percent(publishedCourses, limit('coursesActivationMax', 3)), storage: this.percent(storageUsedGB, limit('storageGB', 5)), admins: this.percent(Math.max(adminsFromCommunityArrays, staffAdminCount), limit('adminsMax', 1))
         }
       };
 

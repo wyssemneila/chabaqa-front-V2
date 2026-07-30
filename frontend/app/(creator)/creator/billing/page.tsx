@@ -127,7 +127,7 @@ export default function CreatorBillingPage() {
   }, [tier])
 
   const paymentModal = usePaymentProviderModal({
-    initStripe: () => subscriptionApi.initStripePayment(tierToApi[checkoutTier], billing === 'yearly' ? 'year' : 'month'),
+    initStripe: (key) => subscriptionApi.initStripePayment(tierToApi[checkoutTier], billing === 'yearly' ? 'year' : 'month', key),
     onError: (err) => {
       setActionError(err instanceof Error ? err.message : 'Unable to start checkout.')
     },
@@ -288,6 +288,8 @@ export default function CreatorBillingPage() {
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        isLoading={paymentModal.isLoading}
+        error={paymentModal.error}
         title={`Start ${PLANS[checkoutTier].name}`}
         description={`Use secure checkout to start the ${PLANS[checkoutTier].name} ${billing === 'yearly' ? 'yearly' : 'monthly'} plan with the 7-day trial included.`}
       />

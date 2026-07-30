@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "lucide-react"
 import { ImageUpload } from "@/app/(dashboard)/components/image-upload"
+import { CreatorWritingAssist } from '@/components/creator-dashboard/creator-writing-assist'
 
 interface BasicInfoStepProps {
   formData: {
@@ -30,7 +31,7 @@ export function BasicInfoStep({ formData, handleInputChange, validationErrors = 
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="title">Session Title *</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="title">Session Title *</Label><CreatorWritingAssist value={formData.title} onApply={v=>handleInputChange('title',v)} surface="session" field="title" context="A one-to-one coaching session" maxCharacters={120}/></div>
           <Input
             id="title"
             placeholder="e.g., 1-on-1 Code Review Session"
@@ -44,7 +45,7 @@ export function BasicInfoStep({ formData, handleInputChange, validationErrors = 
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Session Description *</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="description">Session Description *</Label><CreatorWritingAssist value={formData.description} onApply={v=>handleInputChange('description',v)} surface="session" field="description" context={`Session title: ${formData.title}`} maxCharacters={1200}/></div>
           <Textarea
             id="description"
             placeholder="Describe what participants will get from this session..."
@@ -75,7 +76,7 @@ export function BasicInfoStep({ formData, handleInputChange, validationErrors = 
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="requirements">Prerequisites/Requirements</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="requirements">Prerequisites/Requirements</Label><CreatorWritingAssist value={formData.requirements} onApply={v=>handleInputChange('requirements',v)} surface="session" field="requirements" context={`Session title: ${formData.title}`} maxCharacters={600}/></div>
           <Textarea
             id="requirements"
             placeholder="What should participants prepare or know beforehand?"

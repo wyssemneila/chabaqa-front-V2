@@ -65,7 +65,7 @@ export async function generateMetadata({ params }: CommunityDetailsPageProps): P
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ")
     : "Community"
-  let title = `${normalizedName} Community`
+  let title = `${normalizedName}`
   let description = `Join ${normalizedName} on Chabaqa to access premium content, sessions, events, and creator resources.`
 
   try {
@@ -81,7 +81,7 @@ export async function generateMetadata({ params }: CommunityDetailsPageProps): P
       const community = json?.data || json
       normalizedName = String(community?.name || normalizedName)
       const settings = normalizeCommunitySettings(community?.settings, normalizedName)
-      title = settings.metaTitle.trim() || `${normalizedName} Community`
+      title = settings.metaTitle.trim() || `${normalizedName}`
       description =
         settings.metaDescription.trim() ||
         normalizeDisplayText(community?.description) ||

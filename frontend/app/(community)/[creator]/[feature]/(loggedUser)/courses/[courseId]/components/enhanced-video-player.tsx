@@ -1851,7 +1851,7 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
             allowFullScreen
             className="absolute inset-0 w-full h-full"
           />
-        ) : (
+        ) : platform === 'upload' ? (
           <iframe
             src={videoUrl}
             title={currentChapter.title}
@@ -1859,6 +1859,10 @@ const EnhancedVideoPlayerInner = React.memo(function EnhancedVideoPlayer({
             allowFullScreen
             className="absolute inset-0 w-full h-full"
           />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-950 px-6 text-center text-sm text-white/70">
+            This video link is not supported. Ask the creator to add a valid public YouTube link or upload a video.
+          </div>
         )}
 
         {/* Watch time indicator (for tracking confirmation) - Only show when advancing BEYOND high-water mark */}

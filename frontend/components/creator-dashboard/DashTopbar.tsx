@@ -22,7 +22,7 @@ export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
     : '/creator/communities'
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 px-4 sm:px-7"
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 px-4 sm:px-7"
       style={{ background: 'var(--white)', borderBottom: '1px solid var(--bd)' }}>
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>{title}</h1>

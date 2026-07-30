@@ -113,14 +113,6 @@ export class AiSettings {
   @Prop({ type: String, default: 'openrouter' })
   providerOverride: string;
 
-  @Prop({ type: Boolean, default: true })
-  agentsEnabled: boolean;
-
-  @Prop({ type: Types.ObjectId, ref: 'AiAgent' })
-  defaultConciergeAgentId?: Types.ObjectId;
-
-  @Prop({ type: Boolean, default: true })
-  cofounderEnabled: boolean;
 }
 
 export const AiSettingsSchema = SchemaFactory.createForClass(AiSettings);

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
  * subtle active background on press, matching iOS list behavior.
  */
 export interface IOSListRowProps
-  extends React.HTMLAttributes<HTMLElement> {
+  extends Omit<React.HTMLAttributes<HTMLElement>, 'title'> {
   icon?: React.ReactNode
   iconBg?: string
   title?: React.ReactNode

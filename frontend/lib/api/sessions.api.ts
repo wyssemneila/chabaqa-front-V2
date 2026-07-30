@@ -289,11 +289,11 @@ export const sessionsApi = {
   },
 
   // Initiate Stripe Link payment for session
-  initStripePayment: async (sessionId: string, bookingDto: BookSessionData, promoCode?: string): Promise<any> => {
+  initStripePayment: async (sessionId: string, bookingDto: BookSessionData, promoCode?: string, idempotencyKey?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/session?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/session`;
-    return apiClient.post<any>(endpoint, { sessionId, bookingDto });
+    return apiClient.post<any>(endpoint, { sessionId, bookingDto }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
   },
 
   // Finalize booking for already-paid session orders

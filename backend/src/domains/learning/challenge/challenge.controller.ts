@@ -49,6 +49,7 @@ import { RequireCommunityPermission, CommunityIdFrom } from '@/domains/community
 import { CommunityPermission } from '@/shared/permissions';
 import { PlanFeatureGuard, RequireFeature } from '@/shared/guards/plan-feature.guard';
 import { ChallengeAiCoachService } from '@/domains/learning/challenge/challenge-ai-coach.service';
+import { parsePagination, parsePositiveInteger } from '@/shared/utils/pagination.util';
 
 const resolveRequestIpAddress = (req: any): string | undefined => {
   const forwarded = req?.headers?.['x-forwarded-for'];
@@ -134,9 +135,10 @@ export class ChallengeController {
     @Query('difficulty') difficulty?: string,
     @Query('isActive') isActive?: boolean
   ): Promise<ChallengeListResponseDto> {
+    const pagination = parsePagination(page, limit);
     return this.challengeService.findAll(
-      page,
-      limit,
+      pagination.page,
+      pagination.limit,
       communitySlug,
       category,
       difficulty,
@@ -163,7 +165,8 @@ export class ChallengeController {
     @Query('limit') limit: number = 10,
     @Query('communitySlug') communitySlug?: string
   ): Promise<ChallengeListResponseDto> {
-    return this.challengeService.findFreeChallenges(page, limit, communitySlug);
+    const pagination = parsePagination(page, limit);
+    return this.challengeService.findFreeChallenges(pagination.page, pagination.limit, communitySlug);
   }
 
   @Get('premium')
@@ -177,7 +180,8 @@ export class ChallengeController {
     @Query('limit') limit: number = 10,
     @Query('communitySlug') communitySlug?: string
   ): Promise<ChallengeListResponseDto> {
-    return this.challengeService.findPremiumChallenges(page, limit, communitySlug);
+    const pagination = parsePagination(page, limit);
+    return this.challengeService.findPremiumChallenges(pagination.page, pagination.limit, communitySlug);
   }
 
   @Get('user/my-participations')
@@ -292,12 +296,13 @@ export class ChallengeController {
     @Query('communityId') communityId?: string,
     @Request() req?: any,
   ) {
+    const pagination = parsePagination(page, limit);
     const requesterId = this.getRequestUserId(req);
     const visibilityScope = requesterId && requesterId === userId ? 'owner' : 'public';
     return await this.challengeService.getChallengesByUser(
       userId,
-      Number(page) || 1,
-      Number(limit) || 10,
+      pagination.page,
+      pagination.limit,
       type,
       communityId,
       visibilityScope,
@@ -463,7 +468,10 @@ export class ChallengeController {
     @Param('id') id: string,
     @Query('limit') limit: number = 50
   ) {
-    return this.challengeService.getChallengeLeaderboard(id, limit);
+    return this.challengeService.getChallengeLeaderboard(
+      id,
+      parsePositiveInteger(limit, 50, 'limit', 100),
+    );
   }
 
   @Get(':id/submissions')
@@ -635,11 +643,13 @@ export class ChallengeController {
   // ============================================================
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Récupérer un défi par son ID' })
   @ApiResponse({ status: 200, description: 'Défi récupéré avec succès', type: ChallengeResponseDto })
   @ApiResponse({ status: 404, description: 'Défi non trouvé' })
-  async findOne(@Param('id') id: string): Promise<ChallengeResponseDto> {
-    return this.challengeService.findOne(id);
+  async findOne(@Param('id') id: string, @Request() req: any): Promise<ChallengeResponseDto> {
+    const userId = req.user?._id || req.user?.userId || req.user?.sub || req.user?.id;
+    return this.challengeService.findOne(id, userId);
   }
 
   // ============================================================

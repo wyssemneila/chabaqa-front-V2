@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useMemo } from "react"
 import { SafeImage } from "@/components/media/safe-image"
 import { type ImageProps } from "next/image"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
@@ -19,36 +19,13 @@ export function ExploreSafeImage({ src, fallbackSrc, alt, ...props }: ExploreSaf
     () => resolveImageUrl(typeof src === "string" ? src : "") || "",
     [src],
   )
-  const [safeSrc, setSafeSrc] = useState(resolvedFallback)
-
-  useEffect(() => {
-    const isGenericPlaceholder = /\/(?:placeholder|placeholder-logo)(?:[.-]|$)/i.test(resolvedSource)
-    if (!resolvedSource || resolvedSource === resolvedFallback || isGenericPlaceholder) {
-      setSafeSrc(resolvedFallback)
-      return
-    }
-
-    let cancelled = false
-    setSafeSrc(resolvedFallback)
-
-    const probe = new window.Image()
-    probe.onload = () => {
-      if (!cancelled) setSafeSrc(resolvedSource)
-    }
-    probe.onerror = () => {
-      if (!cancelled) setSafeSrc(resolvedFallback)
-    }
-    probe.src = resolvedSource
-
-    return () => {
-      cancelled = true
-    }
-  }, [resolvedFallback, resolvedSource])
+  const isGenericPlaceholder = /\/(?:placeholder|placeholder-logo)(?:[.-]|$)/i.test(resolvedSource)
+  const initialSource = resolvedSource && !isGenericPlaceholder ? resolvedSource : resolvedFallback
 
   return (
     <SafeImage
       {...props}
-      src={safeSrc}
+      src={initialSource}
       fallbackSrc={resolvedFallback}
       alt={alt}
     />

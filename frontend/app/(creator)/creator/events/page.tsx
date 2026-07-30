@@ -6,6 +6,8 @@ import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import { useCreatorEventsPage } from '@/hooks/creator-dashboard/use-creator-dashboard-data'
 import { eventsApi } from '@/lib/api'
+import { toast } from 'sonner'
+import { useState } from 'react'
 import {
   Plus, Calendar, Globe, MapPin, Layers2,
   Ticket, Users, Tag, Pencil, Trash2,
@@ -38,11 +40,20 @@ export default function EventsPage() {
   const { lang } = useDashPrefs()
 
   const { data: events, loading, error, refetch } = useCreatorEventsPage()
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const deleteEvent = async (id: string) => {
     if (!window.confirm('Delete this event?')) return
-    await eventsApi.delete(id)
-    refetch()
+    setDeletingId(id)
+    try {
+      await eventsApi.delete(id)
+      toast.success('Event deleted')
+      refetch()
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not delete the event.')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const T = {
@@ -106,7 +117,7 @@ export default function EventsPage() {
               <div className="flex items-center justify-center py-32">
                 <div className="w-8 h-8 rounded-full border-2 border-[var(--p3)] border-t-[var(--p)] animate-spin" />
               </div>
-            ) : events.length === 0 ? (
+            ) : error ? null : events.length === 0 ? (
               /* Empty state */
               <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
                 style={{ borderColor:'var(--bd)', background:'var(--white)' }}>
@@ -178,7 +189,8 @@ export default function EventsPage() {
                               style={{ background:'var(--bg)', color:'var(--t3)' }}>
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => deleteEvent(eventId)}
+                             <button onClick={() => deleteEvent(eventId)}
+                               disabled={deletingId === eventId}
                               aria-label="Delete event"
                               className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity"
                               style={{ background:'rgba(239,68,68,.08)', color:'#ef4444' }}>

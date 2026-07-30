@@ -17,11 +17,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
   const { loading, isAuthenticated } = useAuthContext()
   const normalizedPathname = pathname.replace(/^\/(en|ar)(?=\/)/, "")
-  const isAiDashboard =
-    normalizedPathname === "/creator/ai" ||
-    normalizedPathname.startsWith("/creator/ai/")
   const isWideDashboard =
-    isAiDashboard ||
     normalizedPathname === "/creator/analytics" ||
     normalizedPathname === "/creator/marketing/emails"
 

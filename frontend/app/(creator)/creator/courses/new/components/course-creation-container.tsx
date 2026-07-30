@@ -26,10 +26,6 @@ import {
   validateCoursePublish,
   getCreatorCreateTemplate,
 } from "@/lib/creator-content"
-import {
-  useAiDraftPrefill,
-  mapAiDraftToCourseForm,
-} from "@/lib/ai-draft-prefill"
 
 interface CourseChapterForm {
   id: string
@@ -155,8 +151,6 @@ export function CourseCreationContainer() {
   })
   const appliedTemplateRef = useRef(false)
 
-  const aiCourseDraft = useAiDraftPrefill("course")
-
   useEffect(() => {
     if (appliedTemplateRef.current) return
     const template = getCreatorCreateTemplate("course", searchParams.get("template"))
@@ -174,18 +168,6 @@ export function CourseCreationContainer() {
       sections: Array.isArray(template.data.sections) && template.data.sections.length ? template.data.sections : prev.sections,
     }))
   }, [searchParams])
-
-  // Pre-fill from a "Create with AI" draft when ?aiDraft=1 is present.
-  useEffect(() => {
-    if (!aiCourseDraft) return
-    const mapped = mapAiDraftToCourseForm(aiCourseDraft.response.draft)
-    setFormData((prev) => ({
-      ...prev,
-      ...mapped,
-      // Always keep the draft unpublished — review before publish.
-      isPublished: false,
-    }))
-  }, [aiCourseDraft])
 
   const restoreDraft = () => {
     const values = draftStorage.storedValues

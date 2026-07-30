@@ -7,6 +7,7 @@ import { productsCommunityApi, ProductWithDetails, ProductPurchase } from "@/lib
 import { getMe } from "@/lib/api/user.api"
 import { useToast } from "@/components/ui/use-toast"
 import { trackingApi } from "@/lib/api/tracking.api"
+import { hasProductAccess } from "@/lib/product-access"
 
 function normalizeId(value: any): string {
   if (!value) return ""
@@ -62,8 +63,7 @@ export default function ProductPage() {
         const currentUserId = normalizeId(currentUser?._id || currentUser?.id)
         const creatorId = normalizeId(productData?.creator?.id || (productData as any)?.creator?._id || (productData as any)?.creatorId || (productData as any)?.creator)
         const creatorView = Boolean(currentUserId && creatorId && currentUserId === creatorId)
-        const hasAccess =
-          creatorView || Boolean(purchaseData) || Number(productData?.price || 0) === 0
+        const hasAccess = hasProductAccess(productData?.price, purchaseData, creatorView)
 
         if (!hasAccess && creator && feature) {
           toast({

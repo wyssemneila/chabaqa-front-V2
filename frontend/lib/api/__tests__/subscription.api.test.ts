@@ -36,11 +36,15 @@ describe('subscriptionApi hardening helpers', () => {
 
     await subscriptionApi.initStripePayment(PlanTier.PRO, 'year')
 
-    expect(apiClient.post).toHaveBeenCalledWith('/payment/stripe-link/init/subscription', {
-      tier: PlanTier.PRO,
-      interval: 'year',
-      idempotencyKey: expect.stringMatching(/^subscription:stripe:pro:year:/),
-    })
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/payment/stripe-link/init/subscription',
+      {
+        tier: PlanTier.PRO,
+        interval: 'year',
+        idempotencyKey: expect.stringMatching(/^subscription:stripe:pro:year:/),
+      },
+      { headers: undefined },
+    )
     expect(apiClient.post).toHaveBeenCalledTimes(1)
   })
 

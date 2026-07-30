@@ -111,7 +111,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
   }
 
   private isPaidOrderRequired(): boolean {
-    return String(process.env.PAYMENTS_REQUIRE_PAID_ORDER || '').toLowerCase() === 'true';
+    const configured = process.env.PAYMENTS_REQUIRE_PAID_ORDER;
+    if (configured !== undefined) return String(configured).toLowerCase() === 'true';
+    return !['test', 'development'].includes(String(process.env.NODE_ENV || '').toLowerCase());
   }
 
   private buildPaymentRequiredException(params: {

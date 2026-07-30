@@ -28,6 +28,20 @@ export function formatCurrency(
   }).format(value)
 }
 
+export function normalizeCurrencyCode(value?: string | null): "TND" | "USD" | "EUR" {
+  const normalized = String(value || "TND").trim().toUpperCase()
+  if (normalized === "DT") return "TND"
+  if (normalized === "USD" || normalized === "EUR") return normalized
+  return "TND"
+}
+
+export function formatMoney(value: number, currency?: string | null, locale?: string | null): string {
+  return formatCurrency(Number.isFinite(value) ? value : 0, normalizeCurrencyCode(currency), locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
+}
+
 export function formatDate(
   value: DateLike,
   locale?: string | null,

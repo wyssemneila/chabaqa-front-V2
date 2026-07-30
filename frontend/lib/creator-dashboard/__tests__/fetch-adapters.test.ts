@@ -7,6 +7,7 @@ import {
   mapProduct,
   mapSession,
   unwrapArray,
+  unwrapRequiredArray,
 } from '../fetch-adapters'
 
 describe('creator dashboard fetch adapters', () => {
@@ -19,6 +20,11 @@ describe('creator dashboard fetch adapters', () => {
     expect(unwrapArray({ results: [{ id: 'a' }] })).toHaveLength(1)
     expect(unwrapArray({ data: { docs: [{ id: 'a' }] } })).toHaveLength(1)
     expect(unwrapArray({ data: { data: { items: [{ id: 'a' }] } } })).toHaveLength(1)
+  })
+
+  it('rejects malformed list envelopes instead of treating them as empty', () => {
+    expect(unwrapRequiredArray({ data: { courses: [] } })).toEqual([])
+    expect(() => unwrapRequiredArray({ data: { message: 'ok' } })).toThrow('invalid list response')
   })
 
   it('maps mixed backend content shapes into V2 cards', () => {
@@ -58,12 +64,12 @@ describe('creator dashboard fetch adapters', () => {
     expect(mapSession({ id: 's1', title: 'Mentoring', price: 0, isActive: true, availableSlots: 4 })).toMatchObject({
       _id: 's1',
       priceType: 'free',
-      isPublished: true,
+      isActive: true,
       totalSlots: 4,
     })
     expect(mapSession({ id: 's2', title: 'Coaching', status: 'live' })).toMatchObject({
       _id: 's2',
-      isPublished: true,
+      isActive: true,
     })
 
     expect(mapBooking({ id: 'b1', userName: 'Louay', scheduledAt: '2026-06-07T10:00:00.000Z', status: 'cancelled' })).toMatchObject({

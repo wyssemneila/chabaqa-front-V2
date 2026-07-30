@@ -21,7 +21,10 @@ export async function refreshTokenAction(): Promise<{ success: boolean; error?: 
       }),
     })
 
-    const result = await response.json()
+    const contentType = response.headers.get('content-type') || ''
+    const result = contentType.includes('application/json')
+      ? await response.json().catch(() => ({}))
+      : { message: (await response.text().catch(() => '')).trim() || 'Service indisponible' }
     const payload = result?.data || result || {}
     const accessToken = payload.access_token || payload.accessToken
 

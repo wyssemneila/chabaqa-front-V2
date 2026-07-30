@@ -1,8 +1,9 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import type { ExploreItem } from '@/lib/explore-data'
 import { TYPE_CONFIG } from '@/lib/explore-data'
 import { useTranslations } from 'next-intl'
+import { ExploreSafeImage } from './explore-safe-image'
+import { getExploreAvatarFallback, getExploreImageFallback } from '@/lib/explore-image-fallbacks'
 
 function fmt(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `${n}`
@@ -21,6 +22,8 @@ export function ExploreListRow({ item }: ExploreListRowProps) {
   const type = TYPE_CONFIG[item.type]
   const itemType = item.type
   const t = useTranslations('landing.explore')
+  const imageFallback = getExploreImageFallback(item)
+  const avatarFallback = getExploreAvatarFallback(item)
 
   // Resolve href based on membership
   let href: string
@@ -60,7 +63,7 @@ export function ExploreListRow({ item }: ExploreListRowProps) {
     <Link href={href} className="block">
       <article className="group flex gap-4 bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-[0_8px_32px_rgba(142,120,251,.13)] hover:-translate-y-[2px] transition-all duration-300 p-3">
         <div className="relative flex-shrink-0 w-[140px] sm:w-[180px] rounded-xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
-          <Image src={item.banner} alt={item.title} fill className="object-cover" sizes="180px" />
+          <ExploreSafeImage src={item.banner} fallbackSrc={imageFallback} alt={item.title} fill className="object-cover" sizes="180px" />
           <div className="absolute top-2 end-2 flex gap-1">
             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${item.price === 'free' ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-white' : 'bg-black/60 text-white'}`}>
               {item.price === 'free' ? t('priceLabels.free') : `${item.price} ${item.currency}`}
@@ -81,7 +84,7 @@ export function ExploreListRow({ item }: ExploreListRowProps) {
             <div className="flex items-center gap-1.5">
               <div className="relative w-5 h-5 rounded-full overflow-hidden flex-shrink-0 ring-1 ring-gray-200">
                 {item.creatorAvatar
-                  ? <Image src={item.creatorAvatar} alt={item.creator} fill className="object-cover" sizes="20px" />
+                  ? <ExploreSafeImage src={item.creatorAvatar} fallbackSrc={avatarFallback} alt={item.creator} fill className="object-cover" sizes="20px" />
                   : <div className="w-full h-full flex items-center justify-center text-[7px] font-black text-white" style={{ background: item.creatorColor }}>{item.creatorInitials}</div>
                 }
               </div>

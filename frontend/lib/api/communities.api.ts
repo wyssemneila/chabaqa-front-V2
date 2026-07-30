@@ -429,6 +429,7 @@ export const communitiesApi = {
     communityId: string,
     promoCode?: string,
     inviteCode?: string,
+    idempotencyKey?: string,
   ): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/community?promoCode=${encodeURIComponent(promoCode)}`
@@ -437,6 +438,6 @@ export const communitiesApi = {
     return apiClient.post<any>(endpoint, {
       communityId,
       ...(inviteCode ? { inviteCode } : {}),
-    });
+    }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
   },
 };

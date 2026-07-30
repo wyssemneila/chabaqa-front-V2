@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, RefreshCw, XCircle } from 'lucide-react';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
+import { buildPaymentRetryHref } from '@/lib/payment-retry';
 
 const scopeLabels: Record<string, string> = {
   community: 'community access',
@@ -17,12 +18,6 @@ const scopeLabels: Record<string, string> = {
   subscription: 'creator plan',
 };
 
-const buildSafeBackHref = (scope: string | null, courseId: string | null) => {
-  if (scope === 'subscription') return '/creator/billing';
-  if (scope === 'chapter' && courseId) return `/dashboard?courseId=${encodeURIComponent(courseId)}`;
-  return '/dashboard';
-};
-
 export default function PaymentFailedContent() {
   const searchParams = useSearchParams();
   const scope = searchParams.get('scope');
@@ -31,7 +26,7 @@ export default function PaymentFailedContent() {
   const provider = searchParams.get('provider') || 'payment provider';
   const courseId = searchParams.get('courseId');
   const label = scopeLabels[String(scope || '')] || 'checkout';
-  const backHref = buildSafeBackHref(scope, courseId);
+  const backHref = buildPaymentRetryHref(scope, id, courseId, tier);
   const reference = id || tier || courseId;
 
   return (
@@ -54,7 +49,7 @@ export default function PaymentFailedContent() {
               <AlertTriangle className="h-4 w-4" />
               What to do next
             </div>
-            <p>Try checkout again, or return safely and choose another payment method.</p>
+            <p>Try Stripe checkout again, or return safely without changing access.</p>
             {reference && (
               <p className="mt-3 break-all font-mono text-xs text-amber-800">Reference: {reference}</p>
             )}

@@ -32,7 +32,7 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
   const communitySlug = community?.slug
 
   const paymentModal = usePaymentProviderModal({
-    initStripe: () => (communitiesApi as any).initStripePayment(communityId),
+    initStripe: (key) => (communitiesApi as any).initStripePayment(communityId, undefined, undefined, key),
   })
 
   const formatPrice = (price: number, type: string) => {
@@ -74,6 +74,8 @@ export function JoinCommunityModal({ community, onClose }: JoinCommunityModalPro
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        isLoading={paymentModal.isLoading}
+        error={paymentModal.error}
       />
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl p-0">

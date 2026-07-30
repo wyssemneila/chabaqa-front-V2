@@ -10,7 +10,7 @@ const LiveSupportWidget = dynamic(
 )
 
 export const metadata: Metadata = {
-  title: "Build Community - Chabaqa",
+  title: "Build Community",
   description: "Create and customize your community with our step-by-step builder",
   keywords: ["community", "build", "create", "social", "platform"],
   robots: noIndexRobots,

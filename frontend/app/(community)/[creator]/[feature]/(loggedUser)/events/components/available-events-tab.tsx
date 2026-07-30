@@ -37,7 +37,7 @@ export default function AvailableEventsTab({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const paymentModal = usePaymentProviderModal({
-    initStripe: () => (eventsApi as any).initStripePayment(String(selectedEvent?.id), String(selectedTicket), promoCode.trim() || undefined),
+    initStripe: (key) => (eventsApi as any).initStripePayment(String(selectedEvent?.id), String(selectedTicket), promoCode.trim() || undefined, key),
     onError: (err: any) => toast({ title: "Payment failed", description: err?.message || "Please try again.", variant: "destructive" }),
   });
 
@@ -159,6 +159,8 @@ export default function AvailableEventsTab({
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        isLoading={paymentModal.isLoading}
+        error={paymentModal.error}
       />
     <TabsContent value="available" className="space-y-6">
       {targetEventNotice && (

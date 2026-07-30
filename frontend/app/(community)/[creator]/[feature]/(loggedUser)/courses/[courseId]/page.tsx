@@ -58,7 +58,7 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
   })
 
   const coursePagePaymentModal = usePaymentProviderModal({
-    initStripe: () => (coursesApi as any).initStripePayment(String(course?.mongoId || courseId), undefined),
+    initStripe: (key) => (coursesApi as any).initStripePayment(String(course?.mongoId || courseId), undefined, key),
     onError: (err: any) => toast({ title: "Checkout failed", description: err?.message || "Please try again.", variant: "destructive" }),
   })
 
@@ -498,6 +498,8 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
         open={coursePagePaymentModal.isOpen}
         onOpenChange={coursePagePaymentModal.close}
         onSelect={coursePagePaymentModal.handleSelect}
+        isLoading={coursePagePaymentModal.isLoading}
+        error={coursePagePaymentModal.error}
       />
       <CoursePlayer
         creatorSlug={creator}

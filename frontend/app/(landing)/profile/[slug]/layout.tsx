@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: ProfileLayoutProps): Promise<
   const handle = decodeURIComponent(slug || "").trim()
   const user = handle ? await fetchPublicProfile(handle) : null
   const name = displayNameFor(user, handle || "Creator")
-  const title = `${name} on Chabaqa`
+  const title = `${name}`
   const description =
     typeof user?.bio === "string" && user.bio.trim()
       ? user.bio.trim().slice(0, 155)

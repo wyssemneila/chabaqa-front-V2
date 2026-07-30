@@ -36,6 +36,8 @@ import { SessionModule } from '@/domains/commerce/session/session.module';
 import { ProductModule } from '@/domains/commerce/product/product.module';
 import { AffiliateModule } from '@/domains/community/affiliate/affiliate.module';
 import { EmailModule } from '@/domains/communication/email/email.module';
+import { Entitlement, EntitlementSchema } from '@/infrastructure/database/schemas/commerce/entitlement.schema';
+import { EntitlementService } from '@/shared/services/entitlement.service';
 
 @Global()
 @Module({
@@ -55,6 +57,7 @@ import { EmailModule } from '@/domains/communication/email/email.module';
       { name: Session.name, schema: SessionSchema },
       { name: ProcessedWebhookEvent.name, schema: ProcessedWebhookEventSchema },
       { name: PaymentAuditLog.name, schema: PaymentAuditLogSchema },
+      { name: Entitlement.name, schema: EntitlementSchema },
     ]),
     NotificationModule,
     CoursModule,
@@ -74,6 +77,7 @@ import { EmailModule } from '@/domains/communication/email/email.module';
     PaymentFulfillmentService,
     PaymentAuditService,
     PaymentVerificationService,
+    EntitlementService,
   ],
   exports: [
     StripePaymentService,
@@ -82,6 +86,7 @@ import { EmailModule } from '@/domains/communication/email/email.module';
     PaymentFulfillmentService,
     PaymentAuditService,
     PaymentVerificationService,
+    EntitlementService,
   ],
 })
 export class PaymentModule { }

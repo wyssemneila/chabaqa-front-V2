@@ -15,6 +15,7 @@ export type Explore = {
   tags: string[]
   verified: boolean
   price: number
+  currency?: string
   priceType: 'free' | 'paid' | 'monthly' | 'yearly' | 'hourly'
   image: string
   featured: boolean

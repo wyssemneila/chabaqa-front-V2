@@ -13,6 +13,7 @@ import {
   PlayCircle, 
   Lock 
 } from "lucide-react"
+import { getEmbeddableVideoUrl } from "@/lib/utils/video-source"
 
 interface VideoPlayerProps {
   creatorSlug: string
@@ -39,13 +40,15 @@ export default function VideoPlayer({
   formatTime,
   onEnrollNow
 }: VideoPlayerProps) {
+  const embeddableVideoUrl = getEmbeddableVideoUrl(currentChapter?.videoUrl)
+
   return (
     <Card className="border-0 shadow-sm overflow-hidden">
       <div className="relative bg-black aspect-video">
-        {currentChapter?.videoUrl && isChapterAccessible(currentChapter.id) ? (
+        {embeddableVideoUrl && isChapterAccessible(currentChapter.id) ? (
           <>
             <iframe
-              src={currentChapter.videoUrl}
+              src={embeddableVideoUrl}
               title={currentChapter.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen

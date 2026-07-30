@@ -169,7 +169,7 @@ export function ReviewPublishStep({ formData, handleInputChange }: ReviewPublish
                             <span>{chapter.title || `Chapter ${chapterIndex + 1}`}</span>
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground">
-                            {!chapter.isPreview && chapter.price ? <span>${chapter.price}</span> : null}
+                            {!chapter.isPreview && chapter.price ? <span>{chapter.price} TND</span> : null}
                             {chapter.duration ? <span>{chapter.duration}m</span> : null}
                           </div>
                         </div>

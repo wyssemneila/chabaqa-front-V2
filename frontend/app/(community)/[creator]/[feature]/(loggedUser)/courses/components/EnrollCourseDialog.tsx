@@ -48,7 +48,7 @@ export default function EnrollCourseDialog({
   }, [course])
 
   const paymentModal = usePaymentProviderModal({
-    initStripe: () => (coursesApi as any).initStripePayment(resolvedCourseId, promoCode.trim() || undefined),
+    initStripe: (key) => (coursesApi as any).initStripePayment(resolvedCourseId, promoCode.trim() || undefined, key),
     onError: (err: any) => toast({ title: "Payment failed", description: err?.message || "Please try again.", variant: "destructive" }),
   })
 
@@ -114,6 +114,8 @@ export default function EnrollCourseDialog({
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        isLoading={paymentModal.isLoading}
+        error={paymentModal.error}
       />
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>

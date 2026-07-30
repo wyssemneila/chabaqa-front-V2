@@ -118,58 +118,6 @@ export interface AiSettings {
   supportAgentEnabled: boolean;
   learningPathsEnabled: boolean;
   providerOverride: string;
-  agentsEnabled: boolean;
-  defaultConciergeAgentId?: string;
-  cofounderEnabled: boolean;
-}
-
-export interface AiUsage {
-  used: number;
-  limit: number;
-  percentage: number;
-  isPro: boolean;
-  planName: string;
-}
-
-export type AiCreateDraftType =
-  | "course"
-  | "challenge"
-  | "event"
-  | "product"
-  | "session";
-
-export interface CreateWithAiPayload {
-  type: AiCreateDraftType;
-  idea: string;
-  audience: string;
-  outcome: string;
-  niche?: string;
-  difficulty?: "beginner" | "intermediate" | "advanced";
-  monetization?: "free" | "paid";
-  price?: number;
-  currency?: "USD" | "EUR" | "TND";
-  language?: string;
-  includes?: string[];
-}
-
-export interface AiCreateWithMeResponse {
-  type: AiCreateDraftType;
-  draft: Record<string, any>;
-  landingPage: {
-    headline: string;
-    subheadline: string;
-    bullets: string[];
-    faq: Array<{ question: string; answer: string }>;
-  };
-  launchCampaign: {
-    subject: string;
-    preview: string;
-    emailBody: string;
-    dmScript: string;
-  };
-  reviewChecklist: string[];
-  model?: string;
-  promptVersion?: string;
 }
 
 export type AskChapterPayload = {
@@ -437,19 +385,6 @@ export const aiApi = {
       settings,
     );
     return unwrapPayload<AiSettings>(response);
-  },
-
-  getUsage: async (communityId: string) => {
-    const response = await apiClient.get<any>(
-      `/communities/${communityId}/ai/usage`,
-    );
-    const data = unwrapPayload<AiUsage>(response);
-    return data;
-  },
-
-  createWithMe: async (payload: CreateWithAiPayload) => {
-    const response = await apiClient.post<any>("/ai/create-with-me", payload);
-    return unwrapPayload<AiCreateWithMeResponse>(response);
   },
 
   getLearnerProfile: async () => {

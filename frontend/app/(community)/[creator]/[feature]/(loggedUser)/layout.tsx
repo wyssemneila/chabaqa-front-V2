@@ -4,7 +4,7 @@ import { noIndexRobots } from "@/lib/seo-config"
 
 export const metadata: Metadata = {
   title: {
-    default: "Chabaqa - Turn your passion into business",
+    default: "Community",
     template: "%s | Chabaqa"
   },
   description: "A full-featured creator platform for building and managing communities",
@@ -13,14 +13,14 @@ export const metadata: Metadata = {
   creator: "Chabaqa",
   openGraph: {
     type: "website",
-    locale: "TN-216",
-    title: "Chabaqa - Turn your passion into business",
+    locale: "en_US",
+    title: "Chabaqa - Community Platform for Creators",
     description: "A full-featured creator platform for building and managing communities",
     siteName: "Chabaqa"
   },
   twitter: {
     card: "summary_large_image",
-    title: "Chabaqa - Turn your passion into business",
+    title: "Chabaqa - Community Platform for Creators",
     description: "A full-featured creator platform for building and managing communities"
   },
   robots: noIndexRobots,

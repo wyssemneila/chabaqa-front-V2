@@ -143,7 +143,7 @@ restore_legacy_host_mongo_if_needed() {
 backup_compose_mongo
 
 echo "[deploy] building images"
-docker compose build --pull
+DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose build
 
 cleanup_legacy_pm2_apps() {
   local removed=0

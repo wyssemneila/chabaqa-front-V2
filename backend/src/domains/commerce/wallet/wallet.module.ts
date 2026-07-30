@@ -11,6 +11,7 @@ import { Community, CommunitySchema } from '@/infrastructure/database/schemas/co
 import { Product, ProductSchema } from '@/infrastructure/database/schemas/commerce/product.schema';
 import { Challenge, ChallengeSchema } from '@/infrastructure/database/schemas/learning/challenge.schema';
 import { UploadModule } from '@/domains/shared/upload/upload.module';
+import { AdminGuard } from '@/domains/auth/guards/admin.guard';
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ import { UploadModule } from '@/domains/shared/upload/upload.module';
     UploadModule,
   ],
   controllers: [WalletController, WalletAdminController],
-  providers: [WalletService],
+  providers: [WalletService, AdminGuard],
   exports: [WalletService],
 })
 export class WalletModule {}

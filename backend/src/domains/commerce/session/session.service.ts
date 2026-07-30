@@ -117,7 +117,9 @@ export class SessionService {
   }
 
   private isPaidOrderRequired(): boolean {
-    return String(process.env.PAYMENTS_REQUIRE_PAID_ORDER || '').toLowerCase() === 'true';
+    const configured = process.env.PAYMENTS_REQUIRE_PAID_ORDER;
+    if (configured !== undefined) return String(configured).toLowerCase() === 'true';
+    return !['test', 'development'].includes(String(process.env.NODE_ENV || '').toLowerCase());
   }
 
   private buildPaymentRequiredException(params: {
@@ -453,11 +455,9 @@ export class SessionService {
       : String(creatorId);
     const communityCreatorId = community.createur?.toString();
 
-    // Vérifier que l'utilisateur est le créateur de la communauté
-    // DISABLED FOR TESTING - TODO: Re-enable before production
-    // if (communityCreatorId !== normalizedCreatorId) {
-    //   throw new ForbiddenException('Seul le créateur de la communauté peut créer des sessions');
-    // }
+    if (communityCreatorId !== normalizedCreatorId) {
+      throw new ForbiddenException('Seul le créateur de la communauté peut créer des sessions');
+    }
 
     // Générer un ID unique pour la session
     const sessionId = new Types.ObjectId().toString();
@@ -506,7 +506,10 @@ export class SessionService {
     isActive?: boolean,
     creatorId?: string
   ): Promise<SessionListResponseDto> {
-    const query: any = {};
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Pagination invalide');
+    }
+    const query: any = { isActive: true };
 
     // Filtres - support both communitySlug and communityId
     if (communityId) {
@@ -525,11 +528,12 @@ export class SessionService {
       query.category = category;
     }
 
-    if (isActive !== undefined) {
-      query.isActive = isActive;
-    }
+    if (isActive !== undefined) query.isActive = isActive;
 
     if (creatorId) {
+      if (!Types.ObjectId.isValid(creatorId)) {
+        throw new BadRequestException('Identifiant de créateur invalide');
+      }
       query.creatorId = new Types.ObjectId(creatorId);
     }
 
@@ -575,8 +579,11 @@ export class SessionService {
   /**
    * Récupérer une session par son ID
    */
-  async findOne(id: string): Promise<SessionResponseDto> {
+  async findOne(id: string, currentUserId?: string): Promise<SessionResponseDto> {
     const session = await this.resolveSessionDocument(id);
+    if (!session.isActive && session.creatorId.toString() !== String(currentUserId || '')) {
+      throw new NotFoundException('Session non trouvée');
+    }
     await session.populate('creatorId', 'name email profile_picture photo_profil');
 
     // Look up community by _id (convert string to ObjectId if needed)
@@ -609,7 +616,7 @@ export class SessionService {
     }
 
     const sessions = await this.sessionModel
-      .find({ communityId: community._id.toString() })
+      .find({ communityId: community._id.toString(), isActive: true })
       .populate('creatorId', 'name email profile_picture photo_profil')
       .sort({ createdAt: -1 })
       .exec();
@@ -635,11 +642,9 @@ export class SessionService {
     console.log(`   Request User ID: ${requestUserId}`);
     console.log(`   Match: ${sessionCreatorId === requestUserId}`);
 
-    // DISABLED FOR TESTING - Creator check
-    // Vérifier que l'utilisateur est le créateur de la session
-    // if (sessionCreatorId !== requestUserId) {
-    //   throw new ForbiddenException('Seul le créateur de la session peut la modifier');
-    // }
+    if (sessionCreatorId !== requestUserId) {
+      throw new ForbiddenException('Seul le créateur de la session peut la modifier');
+    }
 
     // Gating: require active subscription to activate sessions
     if (updateSessionDto.isActive === true && session.isActive !== true) {
@@ -671,11 +676,9 @@ export class SessionService {
   async remove(id: string, userId: string): Promise<void> {
     const session = await this.resolveSessionDocument(id);
 
-    // DISABLED FOR TESTING - Creator check
-    // Vérifier que l'utilisateur est le créateur de la session
-    // if (session.creatorId.toString() !== userId) {
-    //   throw new ForbiddenException('Seul le créateur de la session peut la supprimer');
-    // }
+    if (session.creatorId.toString() !== String(userId || '')) {
+      throw new ForbiddenException('Seul le créateur de la session peut la supprimer');
+    }
 
     await this.sessionModel.deleteOne({ _id: session._id });
     await this.invalidateSessionCaches(session.creatorId.toString());

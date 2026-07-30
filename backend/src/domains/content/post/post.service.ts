@@ -396,6 +396,9 @@ export class PostService {
     search?: string,
     userId?: string,
   ): Promise<PostListResponseDto> {
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Pagination invalide');
+    }
     this.logDebug('🔍 [POST-SERVICE] FindAll called with:', { page, limit, communityId, authorId, tags, search });
 
     const query: any = { isPublished: true };
@@ -406,6 +409,9 @@ export class PostService {
       this.logDebug('🏘️ [POST-SERVICE] Filtering by community:', communityId);
     }
     if (authorId) {
+      if (!Types.ObjectId.isValid(authorId)) {
+        throw new BadRequestException('Identifiant auteur invalide');
+      }
       query.authorId = new Types.ObjectId(authorId);
     }
     if (tags && tags.length > 0) {
@@ -539,10 +545,10 @@ export class PostService {
    * Récupérer un post par son ID
    */
   async findOne(id: string): Promise<PostResponseDto> {
-    const post = await this.postModel
-      .findOne({ id })
-      .populate('authorId', 'name email profile_picture photo_profil')
-      .exec();
+    const resolved = await this.resolvePostByIdentifier(id);
+    const post = resolved
+      ? await resolved.populate('authorId', 'name email profile_picture photo_profil')
+      : null;
 
     if (!post) {
       throw new NotFoundException('Post non trouvé');
@@ -1167,19 +1173,17 @@ export class PostService {
     this.logDebug('🏘️ [POST-SERVICE] Finding posts for community:', communityId);
     this.logDebug('📄 [POST-SERVICE] Pagination:', { page, limit });
 
-    try {
-      // First, let's check if any posts exist at all
-      const totalPosts = await this.postModel.countDocuments({});
-      const communityPosts = await this.postModel.countDocuments({ communityId });
+    const totalPosts = await this.postModel.countDocuments({});
+    const communityPosts = await this.postModel.countDocuments({ communityId });
 
-      this.logDebug('📊 [POST-SERVICE] Database stats:', {
+    this.logDebug('📊 [POST-SERVICE] Database stats:', {
         totalPosts,
         communityPosts,
         communityId
       });
 
       // If no posts exist, return empty result
-      if (totalPosts === 0) {
+    if (totalPosts === 0) {
         this.logDebug('ℹ️ [POST-SERVICE] No posts in database, returning empty result');
         return {
           posts: [],
@@ -1190,25 +1194,11 @@ export class PostService {
             totalPages: 0,
           },
         };
-      }
-
-      const result = await this.findAll(page, limit, communityId, undefined, undefined, undefined, userId);
-      this.logDebug('✅ [POST-SERVICE] Found posts:', result.posts.length);
-      return result;
-    } catch (error) {
-      this.logError('❌ [POST-SERVICE] Error in findByCommunity:', error);
-
-      // Return empty result instead of throwing
-      return {
-        posts: [],
-        pagination: {
-          page,
-          limit,
-          total: 0,
-          totalPages: 0,
-        },
-      };
     }
+
+    const result = await this.findAll(page, limit, communityId, undefined, undefined, undefined, userId);
+    this.logDebug('✅ [POST-SERVICE] Found posts:', result.posts.length);
+    return result;
   }
 
   /**

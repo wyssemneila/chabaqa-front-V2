@@ -104,34 +104,39 @@ export function CreatorCreateShell({
   ) : null
 
   return (
-    <div className={cn("mx-auto max-w-6xl space-y-6 p-5 pb-32", className)}>
+    <div
+      className={cn(
+        "mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-5",
+        className,
+      )}
+    >
       {mobileMode === "blocked" && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 md:hidden">
           This create flow needs a larger screen. You can review status here, then finish on desktop.
         </div>
       )}
-      <header className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <header className="overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
         <div className="flex flex-col gap-4 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             <Button
               variant="ghost"
               size="icon"
               asChild
-              className="mt-0.5 h-9 w-9 shrink-0 border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
+              className="mt-0.5 h-9 w-9 shrink-0 border border-border bg-muted text-foreground hover:bg-accent"
             >
               <Link href={backHref} aria-label={backLabel}>
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold leading-tight tracking-normal text-gray-950 md:text-[28px]">
+              <h1 className="text-2xl font-semibold leading-tight tracking-normal text-foreground md:text-[28px]">
                 {title}
               </h1>
               {description && (
                 <p className="mt-1 max-w-2xl text-sm leading-5 text-muted-foreground">{description}</p>
               )}
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="max-w-full rounded-md border-gray-200 bg-gray-50 text-gray-900">
+                <Badge variant="outline" className="max-w-full rounded-md border-border bg-muted text-foreground">
                   <span className="truncate">{communityName || "No community selected"}</span>
                 </Badge>
                 {communityMeta && (
@@ -155,7 +160,7 @@ export function CreatorCreateShell({
                 "flex w-fit items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium",
                 autosaveStatus === "error"
                   ? "border-red-200 bg-red-50 text-red-700"
-                  : "border-gray-200 bg-gray-50 text-gray-600",
+                  : "border-border bg-muted text-muted-foreground",
               )}
             >
               {autosaveStatus === "saved" ? (
@@ -175,8 +180,8 @@ export function CreatorCreateShell({
       </div>
 
       {actions.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-gray-200 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur md:left-64">
-          <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <div className="rounded-lg border border-border bg-card p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
             {actions.map((action) => (
               <Button
                 key={action.label}

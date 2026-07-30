@@ -259,7 +259,7 @@ export default function ChallengeDetailsTab({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Total Rewards</span>
-              <span className="font-semibold text-green-600">${totalRewards}</span>
+              <span className="font-semibold text-green-600">{totalRewards} TND</span>
             </div>
           </CardContent>
         </EnhancedCard>

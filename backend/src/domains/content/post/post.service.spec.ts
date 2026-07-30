@@ -52,6 +52,12 @@ describe('PostService share flow', () => {
     process.env.FRONTEND_URL = 'https://chabaqa.io';
   });
 
+  it('propagates community listing database errors', async () => {
+    mockPostModel.countDocuments = jest.fn().mockRejectedValue(new Error('database unavailable'));
+
+    await expect(service.findByCommunity('community-1')).rejects.toThrow('database unavailable');
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
     delete process.env.FRONTEND_URL;

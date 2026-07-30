@@ -66,7 +66,7 @@ export function CreatorCoursesPerformance({ allCourses = [], topCourses = [] }: 
                 <h4 className="font-medium truncate">{course.title}</h4>
                 <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                   <span>{course.enrollments} enrollments</span>
-                  <span>${Number(course.revenue ?? 0).toLocaleString()} revenue</span>
+                  <span>{Number(course.revenue ?? 0).toLocaleString()} TND revenue</span>
                   {typeof toFiniteNumber(course.rating) === "number" && (
                     <div className="flex items-center">
                       <Star className="h-3 w-3 mr-1 text-yellow-500" />

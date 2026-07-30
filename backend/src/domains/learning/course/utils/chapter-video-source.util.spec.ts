@@ -1,5 +1,6 @@
 import {
   extractYouTubeVideoId,
+  getYouTubeEmbedUrl,
   isSupportedChapterVideoUrl,
   isUploadVideoUrl,
   isYouTubeVideoUrl,
@@ -23,6 +24,7 @@ describe('chapter-video-source.util', () => {
       expect(extractYouTubeVideoId(url)).toBe(youtubeId);
       expect(isYouTubeVideoUrl(url)).toBe(true);
       expect(isSupportedChapterVideoUrl(url)).toBe(true);
+      expect(getYouTubeEmbedUrl(url)).toBe(`https://www.youtube-nocookie.com/embed/${youtubeId}`);
     }
   });
 
@@ -50,6 +52,7 @@ describe('chapter-video-source.util', () => {
 
     for (const url of urls) {
       expect(isSupportedChapterVideoUrl(url)).toBe(false);
+      expect(getYouTubeEmbedUrl(url)).toBeNull();
     }
   });
 });

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { BookOpen } from "lucide-react"
 import { ThumbnailUpload } from "./thumbnail-upload"
+import { CreatorWritingAssist } from '@/components/creator-dashboard/creator-writing-assist'
 
 interface BasicInfoStepProps {
   formData: {
@@ -29,7 +30,7 @@ export function BasicInfoStep({ formData, handleInputChange, validationErrors = 
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="title">Course Title *</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="title">Course Title *</Label><CreatorWritingAssist value={formData.title} onApply={v=>handleInputChange('title',v)} surface="course" field="title" context="An online course for community members" maxCharacters={120}/></div>
           <Input
             id="title"
             placeholder="e.g., Complete Web Development Bootcamp"
@@ -43,7 +44,7 @@ export function BasicInfoStep({ formData, handleInputChange, validationErrors = 
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">What will members learn? *</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="description">What will members learn? *</Label><CreatorWritingAssist value={formData.description} onApply={v=>handleInputChange('description',v)} surface="course" field="description" context={`Course title: ${formData.title}`} maxCharacters={1200}/></div>
           <Textarea
             id="description"
             placeholder="Describe the promise of this course in a few sentences..."

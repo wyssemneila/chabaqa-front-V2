@@ -48,6 +48,8 @@ export default function PurchaseCard({
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        isLoading={paymentModal.isLoading}
+        error={paymentModal.error}
       />
     <Card className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <CardHeader className="pb-3 sm:pb-4">

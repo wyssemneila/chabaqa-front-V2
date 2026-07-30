@@ -6,16 +6,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // In a real app, you'd fetch the challenge data here
   // For now, we'll use generic metadata
   return {
-    title: "Join Challenge - Chabaqa",
+    title: "Join Challenge",
     description: "Transform your life with this amazing challenge. Join thousands of participants achieving their goals.",
     openGraph: {
-      title: "Join Challenge - Chabaqa",
+      title: "Join Challenge",
       description: "Transform your life with this amazing challenge. Join thousands of participants achieving their goals.",
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: "Join Challenge - Chabaqa",
+      title: "Join Challenge",
       description: "Transform your life with this amazing challenge. Join thousands of participants achieving their goals.",
     },
   }

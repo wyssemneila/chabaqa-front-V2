@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Query, UseGuards, Req, Patch, Delete, Put, UseInterceptors, UploadedFile, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, UseGuards, Req, Patch, Delete, Put, UseInterceptors, UploadedFile, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiQuery, ApiParam, ApiBody, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CoursContentService } from '@/domains/learning/course/services/cours-content.service';
@@ -22,6 +22,7 @@ import { HttpCacheInterceptor } from '@/shared/interceptors/cache.interceptor';
 import { CacheTTL, CacheDuration } from '@/shared/decorators/cache-ttl.decorator';
 import { UpdateIncrementalWatchTimeDto } from '@/shared/dto/update-watch-time.dto';
 import { TranscriptionService } from '@/domains/shared/ai/transcription/transcription.service';
+import { parsePagination, parsePositiveInteger } from '@/shared/utils/pagination.util';
 
 interface AuthenticatedUser {
 	_id: string;
@@ -131,7 +132,8 @@ export class CoursController {
 		@Query('niveau') niveau?: string,
 		@Query('search') search?: string
 	) {
-		return this.coursContentService.getCourses(page, limit, category, niveau, search);
+		const pagination = parsePagination(page, limit);
+		return this.coursContentService.getCourses(pagination.page, pagination.limit, category, niveau, search);
 	}
 
 	// ============ CRÉATION DE COURS ============
@@ -309,11 +311,16 @@ export class CoursController {
 		@Query('published') published = 'true',
 		@Req() req,
 	) {
-		const userId = req.user?._id;
+		const pagination = parsePagination(page, limit);
+		const userId = req.user?._id || req.user?.userId || req.user?.sub || req.user?.id;
+		const requestedDrafts = published === 'false';
+		if (requestedDrafts && !userId) {
+			throw new ForbiddenException('Authentication required to view unpublished courses');
+		}
 		const result = await this.coursContentService.obtenirCoursParCommunaute(
 			slug,
-			Number(page) || 1,
-			Number(limit) || 10,
+			pagination.page,
+			pagination.limit,
 			published !== 'false',
 			userId,
 		);
@@ -345,8 +352,9 @@ export class CoursController {
 		@Query('limit') limit = '10',
 		@Req() req,
 	) {
+		const pagination = parsePagination(page, limit);
 		const user = req.user as AuthenticatedUser;
-		return await this.coursEnrollmentService.obtenirCoursInscrit(user._id, Number(page) || 1, Number(limit) || 10);
+		return await this.coursEnrollmentService.obtenirCoursInscrit(user._id, pagination.page, pagination.limit);
 	}
 
 	@UseGuards(JwtAuthGuard)
@@ -362,11 +370,12 @@ export class CoursController {
 		@Query('limit') limit = '10',
 		@Query('communityId') communityId?: string,
 	) {
+		const pagination = parsePagination(page, limit);
 		const user = req.user as AuthenticatedUser;
 		const result = await this.coursContentService.obtenirCoursParCreateur(
 			user._id,
-			Number(page) || 1,
-			Number(limit) || 10,
+			pagination.page,
+			pagination.limit,
 			communityId,
 		);
 
@@ -434,12 +443,13 @@ export class CoursController {
 		@Query('type') type: 'enrolled' | 'created' | 'all' = 'all',
 		@Req() req: any,
 	) {
+		const pagination = parsePagination(page, limit);
 		const requesterId = this.getRequestUserId(req);
 		const visibilityScope = requesterId && requesterId === userId ? 'owner' : 'public';
 		return await this.coursContentService.obtenirCoursParUtilisateur(
 			userId,
-			Number(page) || 1,
-			Number(limit) || 10,
+			pagination.page,
+			pagination.limit,
 			type,
 			visibilityScope,
 		);
@@ -548,7 +558,9 @@ export class CoursController {
 
 	// ============ GESTION DES CHAPITRES ============
 
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+	@RequireCommunityPermission(CommunityPermission.CONTENT_MANAGE)
+	@CommunityIdFrom({ type: 'entity', modelName: 'Cours', paramName: 'coursId' })
 	@ApiBearerAuth('JWT-auth')
 	@Patch(':coursId/sections/:sectionId/chapitres/:chapitreId')
 	@ApiOperation({ summary: 'Mettre à jour un chapitre' })
@@ -563,7 +575,9 @@ export class CoursController {
 		return await this.coursContentService.updateChapitre(coursId, sectionId, chapitreId, dto, user._id);
 	}
 
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+	@RequireCommunityPermission(CommunityPermission.CONTENT_MANAGE)
+	@CommunityIdFrom({ type: 'entity', modelName: 'Cours', paramName: 'coursId' })
 	@ApiBearerAuth('JWT-auth')
 	@Post(':coursId/sections/:sectionId/add-chapitre')
 	@ApiOperation({ summary: 'Ajouter un chapitre à une section spécifique' })
@@ -577,7 +591,9 @@ export class CoursController {
 		return await this.coursContentService.ajouterChapitreASection(coursId, sectionId, dto, user._id);
 	}
 
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+	@RequireCommunityPermission(CommunityPermission.CONTENT_MANAGE)
+	@CommunityIdFrom({ type: 'entity', modelName: 'Cours', paramName: 'coursId' })
 	@ApiBearerAuth('JWT-auth')
 	@Delete(':coursId/sections/:sectionId/chapitres/:chapitreId')
 	@ApiOperation({ summary: 'Supprimer un chapitre' })
@@ -593,7 +609,9 @@ export class CoursController {
 
 	// ============ GESTION DES RESSOURCES ============
 
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+	@RequireCommunityPermission(CommunityPermission.CONTENT_MANAGE)
+	@CommunityIdFrom({ type: 'entity', modelName: 'Cours', paramName: 'coursId' })
 	@ApiBearerAuth('JWT-auth')
 	@Post(':coursId/sections/:sectionId/chapitres/:chapitreId/ressources')
 	@ApiOperation({ summary: 'Ajouter une ressource à un chapitre' })
@@ -610,7 +628,9 @@ export class CoursController {
 
 	// ============ GESTION DES MÉDIAS ============
 
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+	@RequireCommunityPermission(CommunityPermission.CONTENT_MANAGE)
+	@CommunityIdFrom({ type: 'entity', modelName: 'Cours', paramName: 'id' })
 	@ApiBearerAuth('JWT-auth')
 	@Put(':id/thumbnail')
 	@ApiOperation({ summary: 'Mettre à jour le thumbnail d\'un cours' })
@@ -623,7 +643,9 @@ export class CoursController {
 		return await this.coursContentService.mettreAJourThumbnail(id, thumbnailUrl, user._id);
 	}
 
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+	@RequireCommunityPermission(CommunityPermission.CONTENT_MANAGE)
+	@CommunityIdFrom({ type: 'entity', modelName: 'Cours', paramName: 'coursId' })
 	@ApiBearerAuth('JWT-auth')
 	@Put(':coursId/sections/:sectionId/chapitres/:chapitreId/video')
 	@ApiOperation({ summary: 'Mettre à jour l\'URL vidéo d\'un chapitre' })
@@ -638,7 +660,9 @@ export class CoursController {
 		return await this.coursContentService.mettreAJourVideoUrl(coursId, sectionId, chapitreId, videoUrl, user._id);
 	}
 
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+	@RequireCommunityPermission(CommunityPermission.CONTENT_MANAGE)
+	@CommunityIdFrom({ type: 'entity', modelName: 'Cours', paramName: 'coursId' })
 	@ApiBearerAuth('JWT-auth')
 	@Post(':coursId/sections/:sectionId/chapitres/:chapitreId/upload-video')
 	@UseInterceptors(FileInterceptor('file'))
@@ -1051,8 +1075,9 @@ export class CoursController {
 	})
 	@ApiResponse({ status: 401, description: 'Non autorisé' })
 	async getUserProgress(@Query('page') page = '1', @Query('limit') limit = '10', @Req() req) {
+		const pagination = parsePagination(page, limit);
 		const user = req.user as AuthenticatedUser;
-		return await this.coursProgressionService.getUserCoursProgress(user._id, Number(page) || 1, Number(limit) || 10);
+		return await this.coursProgressionService.getUserCoursProgress(user._id, pagination.page, pagination.limit);
 	}
 
 	@UseGuards(JwtAuthGuard)
@@ -1088,7 +1113,10 @@ export class CoursController {
 	@ApiResponse({ status: 401, description: 'Non autorisé' })
 	async getUserRecentActions(@Query('limit') limit = '20', @Req() req): Promise<any> {
 		const user = req.user as AuthenticatedUser;
-		return await this.coursProgressionService.getUserCoursRecentActions(user._id, Number(limit) || 20);
+		return await this.coursProgressionService.getUserCoursRecentActions(
+			user._id,
+			parsePositiveInteger(limit, 20, 'limit', 100),
+		);
 	}
 
 	// ============ SEQUENTIAL PROGRESSION ENDPOINTS ============

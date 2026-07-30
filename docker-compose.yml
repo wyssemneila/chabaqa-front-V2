@@ -346,6 +346,7 @@ services:
         env_file:
             - ./frontend/.env
         environment:
+            JWT_SECRET: ${JWT_SECRET}
             API_INTERNAL_URL: http://chabaqa-backend:3000/api
             NEXT_PUBLIC_API_URL: https://chabaqa.io/api
             NEXT_PUBLIC_APP_URL: https://chabaqa.io

@@ -248,7 +248,7 @@ export default function EventDetailsTab({ event, onUpdateEvent }: EventDetailsTa
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Total Revenue</span>
-              <span className="font-semibold text-green-600">${totalRevenue.toFixed(2)}</span>
+              <span className="font-semibold text-green-600">{totalRevenue.toFixed(2)} TND</span>
             </div>
           </CardContent>
         </EnhancedCard>

@@ -308,10 +308,10 @@ export function CourseContentStep({
                                 {uploadingChapterIds[chapter.id] ? (
                                   <p className="text-xs text-muted-foreground mt-1">Uploading...</p>
                                 ) : null}
-                                <Label className="text-xs mt-2 block">Video URL (YouTube or /uploads/...)</Label>
+                                <Label className="text-xs mt-2 block">Video URL (public YouTube or /uploads/...)</Label>
                                 <Input
                                   type="url"
-                                  placeholder="https://www.youtube.com/watch?v=..."
+                                  placeholder="https://youtu.be/dQw4w9WgXcQ"
                                   value={chapter.videoUrl || ""}
                                   onChange={(e) => {
                                     const nextVideoUrl = e.target.value
@@ -326,7 +326,7 @@ export function CourseContentStep({
                                 {chapterVideoError ? (
                                   <p className="text-xs text-red-500 mt-1">{chapterVideoError}</p>
                                 ) : chapter.videoUrl ? (
-                                  <p className="text-xs text-muted-foreground mt-1 break-all">{chapter.videoUrl}</p>
+                                  <p className="text-xs text-emerald-600 mt-1">Valid video link. Chabaqa will convert YouTube links to the secure embed format.</p>
                                 ) : null}
                               </div>
                             </div>

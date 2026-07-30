@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { noIndexRobots } from "@/lib/seo-config"
 
 export const metadata: Metadata = {
-  title: "Admin | Chabaqa",
+  title: "Admin",
   robots: noIndexRobots,
 }
 

@@ -1,10 +1,16 @@
 name: Deploy Production
 
 on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: deploy-production
@@ -36,17 +42,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Verify latest CI on main is green
+      - name: Verify CI passed
         env:
-          GH_TOKEN: ${{ github.token }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          TRIGGER: ${{ github.event_name }}
         run: |
-          set -euo pipefail
-          conclusion="$(gh run list --workflow=ci.yml --branch=main --limit=1 --json conclusion --jq '.[0].conclusion // empty')"
-          if [ "$conclusion" != "success" ]; then
-            echo "Latest CI run on main did not succeed (conclusion=${conclusion:-none}). Fix CI before deploying."
+          if [ "$TRIGGER" = "workflow_run" ] && [ "$CONCLUSION" != "success" ]; then
+            echo "CI workflow did not succeed (conclusion=${CONCLUSION}). Deploy cancelled."
             exit 1
           fi
-          echo "Latest CI on main: success"
+          echo "CI check passed (conclusion=${CONCLUSION})"
 
       - name: Validate deployment secrets
         env:

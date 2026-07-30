@@ -43,7 +43,8 @@ export class SemanticRetrievalService {
     limit?: number;
     visibility?: ('member' | 'public' | 'staff')[];
     minScore?: number;
-  }): Promise<AiKnowledgeDocumentDocument[] | null> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }): Promise<any[] | null> {
     if (!this.embeddings.isEnabled()) return null;
 
     const queryEmbedding = await this.embeddings.embedQuery(params.query);

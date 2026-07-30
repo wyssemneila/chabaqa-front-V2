@@ -2,7 +2,6 @@ import type React from "react"
 import type { Metadata } from "next"
 import dynamic from "next/dynamic"
 import { AuthProvider } from "../providers/auth-provider"
-import { generateAlternateLanguages } from "@/lib/seo-config"
 
 const LiveSupportWidget = dynamic(
   () => import("@/components/live-support/live-support-widget").then(mod => ({ default: mod.LiveSupportWidget })),
@@ -10,10 +9,6 @@ const LiveSupportWidget = dynamic(
 )
 
 export const metadata: Metadata = {
-  title: "Chabaqa - Turn your passion into business",
-  description:
-    "Build and monetize your community with courses, sessions, events, challenges, and digital products on Chabaqa.",
-  alternates: generateAlternateLanguages(""),
   icons: {
     icon: "/favicon.ico",
     apple: "/favicon.ico",

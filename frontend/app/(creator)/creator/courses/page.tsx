@@ -179,7 +179,7 @@ export default function CoursesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                   {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
                 </div>
-              ) : filtered.length === 0 ? (
+              ) : error ? null : filtered.length === 0 ? (
                 <div className="rounded-2xl flex flex-col items-center justify-center py-20 text-center"
                   style={{ background: 'var(--white)', border: '1.5px dashed var(--bd)' }}>
                   <div className="w-16 h-16 rounded-3xl flex items-center justify-center mb-4"

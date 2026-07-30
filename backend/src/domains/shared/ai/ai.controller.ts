@@ -15,7 +15,6 @@ import {
   UpdateChapterTutorSettingsDto,
   UpdateCourseTutorSettingsDto,
 } from '@/domains/shared/ai/dto/tutor-settings.dto';
-import { CreateWithAiDto } from '@/domains/shared/ai/dto/create-with-ai.dto';
 import { LearnerProfileService } from '@/domains/shared/ai/learner/learner-profile.service';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
@@ -42,11 +41,6 @@ export class AiController {
       req?.user?._id,
       body.mode || 'chat',
     );
-  }
-
-  @Post('create-with-me')
-  async createWithMe(@Body() body: CreateWithAiDto) {
-    return this.aiService.createWithAi(body);
   }
 
   @Get('courses/:courseId/chapters/:chapterId/history')

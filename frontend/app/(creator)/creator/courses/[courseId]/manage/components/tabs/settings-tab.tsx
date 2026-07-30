@@ -9,7 +9,6 @@ import { api } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
-import Link from "next/link"
 import { Sparkles } from "lucide-react"
 
 interface SettingsTabProps {
@@ -67,13 +66,7 @@ export function SettingsTab({ courseId, initialSettings }: SettingsTabProps) {
             </div>
             <Switch checked={aiTutorEnabled} onCheckedChange={handleToggleAiTutor} />
           </div>
-          <p className="text-sm text-muted-foreground">
-            Community-wide controls:{" "}
-            <Link href="/creator/ai" className="font-medium text-teal-700 underline">
-              Chabaqa AI hub
-            </Link>
-            . View learner questions in the AI Tutor tab.
-          </p>
+          <p className="text-sm text-muted-foreground">View learner questions and learning gaps in the AI Tutor tab.</p>
         </CardContent>
       </EnhancedCard>
 

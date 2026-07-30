@@ -26,6 +26,7 @@ interface TimelineItem {
 }
 
 function PillPopup({ title, desc, image, side }: { title: string; desc: string; image: string; side: 'left' | 'right' }) {
+  const [imgError, setImgError] = useState(false)
   return (
     <div
       role="tooltip"
@@ -35,7 +36,15 @@ function PillPopup({ title, desc, image, side }: { title: string; desc: string; 
       }`}
     >
       <div style={{ aspectRatio: '16/9', width: '100%', overflow: 'hidden', position: 'relative' }}>
-        <Image src={image} alt={title} fill className="object-cover" sizes="300px" />
+        {!imgError ? (
+          <Image src={image} alt={title} fill className="object-cover" sizes="300px" onError={() => setImgError(true)} />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#8e78fb]/20 to-[#47c7ea]/20 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-[#8e78fb]/30 flex items-center justify-center">
+              <span className="text-[#8e78fb] text-lg font-bold">{title.charAt(0)}</span>
+            </div>
+          </div>
+        )}
       </div>
       <div className="p-3 pb-4 px-4">
         <div className="text-[13px] font-extrabold text-gray-900 mb-1">{title}</div>
@@ -356,16 +365,17 @@ export function Hero() {
         <div className="flex items-center gap-2 sm:gap-3 justify-center" style={{ animation: 'fadeDown .7s .4s ease both' }}>
           <div className="flex" aria-hidden="true">
             {[
-              '/profile/637781117_883560937847524_881110216935920072_n.jpg',
-              '/profile/637821498_903865835718612_2266197064791773063_n.jpg',
-              '/profile/639077524_1227592362783256_5641138724717692722_n.jpg',
-              '/profile/642635919_768841262950142_5195117104642339597_n.jpg',
-            ].map((src, i) => (
+              { color: '#8e78fb', initial: 'M' },
+              { color: '#47c7ea', initial: 'S' },
+              { color: '#ff9b28', initial: 'A' },
+              { color: '#f65887', initial: 'L' },
+            ].map((item, i) => (
               <div
-                key={src}
-                className="relative w-6 h-6 sm:w-8 sm:h-8 rounded-full border-[2px] sm:border-[2.5px] border-white -ml-1.5 sm:-ml-2 first:ml-0 overflow-hidden"
+                key={i}
+                className="relative w-6 h-6 sm:w-8 sm:h-8 rounded-full border-[2px] sm:border-[2.5px] border-white -ml-1.5 sm:-ml-2 first:ml-0 overflow-hidden flex items-center justify-center text-[10px] sm:text-xs font-bold text-white"
+                style={{ backgroundColor: item.color }}
               >
-                <Image src={src} alt={`Creator ${i + 1}`} fill className="object-cover" sizes="32px" />
+                {item.initial}
               </div>
             ))}
           </div>

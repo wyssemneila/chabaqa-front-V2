@@ -6,6 +6,8 @@ import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import { useCreatorProductsPage } from '@/hooks/creator-dashboard/use-creator-dashboard-data'
 import { productsApi } from '@/lib/api'
+import { toast } from 'sonner'
+import { useState } from 'react'
 import type { CreatorProductCard } from '@/lib/creator-dashboard/fetch-adapters'
 import { Plus, Package, Pencil, Trash2, ShieldCheck, FileArchive, DollarSign, Tag } from 'lucide-react'
 
@@ -13,11 +15,20 @@ export default function ProductsPage() {
   const router = useRouter()
   const { lang } = useDashPrefs()
   const { data: products, loading, error, refetch } = useCreatorProductsPage()
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const del = async (id: string) => {
     if (!window.confirm('Delete this product?')) return
-    await productsApi.delete(id)
-    refetch()
+    setDeletingId(id)
+    try {
+      await productsApi.delete(id)
+      toast.success('Product deleted')
+      refetch()
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not delete the product.')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const priceLabel = (p: CreatorProductCard) => {
@@ -63,7 +74,7 @@ export default function ProductsPage() {
               <div className="flex items-center justify-center py-32">
                 <div className="w-8 h-8 rounded-full border-2 border-[var(--p3)] border-t-[var(--p)] animate-spin" />
               </div>
-            ) : products.length === 0 ? (
+            ) : error ? null : products.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
                 style={{ borderColor:'var(--bd)', background:'var(--white)' }}>
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
@@ -121,6 +132,7 @@ export default function ProductsPage() {
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button onClick={() => del(p.id)}
+                            disabled={deletingId === p.id}
                             aria-label="Delete product"
                             className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
                             style={{ background:'rgba(239,68,68,.08)', color:'#ef4444' }}>

@@ -196,7 +196,7 @@ export class TranscriptionService {
   ): Promise<TranscriptSegment[]> {
     if (!this.client) return [];
     try {
-      const file = new File([audioBuffer], 'audio.mp4', {
+      const file = new File([new Uint8Array(audioBuffer)], 'audio.mp4', {
         type: 'audio/mp4',
       });
       const res = await this.client.audio.transcriptions.create({

@@ -46,7 +46,7 @@ const getApiBaseUrl = () => {
     return process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
   }
 
-  return process.env.NEXT_PUBLIC_API_URL || '/api';
+  return '/api';
 };
 
 class ApiClient {
@@ -182,10 +182,10 @@ class ApiClient {
     return this.handleResponse<T>(response);
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<T> {
+  async post<T>(endpoint: string, data?: any, options?: { headers?: HeadersInit }): Promise<T> {
     const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
-      headers: this.getHeaders(false, true),
+      headers: { ...this.getHeaders(false, true), ...options?.headers },
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
