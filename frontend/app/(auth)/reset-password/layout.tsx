@@ -2,7 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Reset Password - Chabaqa",
+  title: "Reset Password",
   description: "Create a new password for your Chabaqa account.",
 }
 

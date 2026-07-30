@@ -6,6 +6,8 @@ import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import { useCreatorChallengesPage } from '@/hooks/creator-dashboard/use-creator-dashboard-data'
 import { challengesApi } from '@/lib/api'
+import { toast } from 'sonner'
+import { useState } from 'react'
 import {
   Plus, Trophy,
   Users, Calendar, Clock, Pencil, Trash2, Layers,
@@ -22,11 +24,20 @@ export default function ChallengesPage() {
   const router = useRouter()
   const { lang } = useDashPrefs()
   const { data: challenges, loading, error, refetch } = useCreatorChallengesPage()
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const del = async (id: string) => {
     if (!window.confirm('Delete this challenge?')) return
-    await challengesApi.delete(id)
-    refetch()
+    setDeletingId(id)
+    try {
+      await challengesApi.delete(id)
+      toast.success('Challenge deleted')
+      refetch()
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not delete the challenge.')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   return (
@@ -65,7 +76,7 @@ export default function ChallengesPage() {
                   Could not load the live challenge list. <button onClick={refetch} className="font-bold underline">Retry</button>
                 </div>
               )}
-              {challenges.length === 0 ? (
+              {!error && challenges.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
                 style={{ borderColor: 'var(--bd)', background: 'var(--white)' }}>
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
@@ -125,6 +136,7 @@ export default function ChallengesPage() {
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => del(ch.mongoId || ch.id)}
+                              disabled={deletingId === (ch.mongoId || ch.id)}
                               aria-label="Delete challenge"
                               className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
                               style={{ background: 'rgba(239,68,68,.08)', color: '#ef4444' }}>

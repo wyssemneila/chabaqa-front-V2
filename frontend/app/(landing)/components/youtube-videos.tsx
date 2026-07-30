@@ -3,8 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { siteData } from '@/lib/data'
-
-const CARD_W = 318
+import { InfiniteSlider } from '@/components/ui/infinite-slider'
 
 const TAG_STYLES: Record<string, { bg: string; border: string; color: string }> = {
   'Getting Started': { bg: '#ede9ff', border: '#c4b8fd', color: '#8e78fb' },
@@ -22,24 +21,8 @@ export function YouTubeVideos() {
   // Get videos from centralized data
   const VIDEOS = siteData.videos
 
-  const [cur, setCur] = useState(0)
   const [modal, setModal] = useState<{ id: string; title: string } | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
-  const trackRef = useRef<HTMLDivElement>(null)
-  const isDown = useRef(false)
-  const startX = useRef(0)
-  const scrollL = useRef(0)
-  const programmatic = useRef(false)
-
-  function scrollTo(i: number) {
-    const idx = ((i % VIDEOS.length) + VIDEOS.length) % VIDEOS.length
-    setCur(idx)
-    programmatic.current = true
-    trackRef.current?.scrollTo({ left: idx * CARD_W, behavior: 'smooth' })
-    setTimeout(() => {
-      programmatic.current = false
-    }, 600)
-  }
 
   function openModal(id: string, title: string) {
     setModal({ id, title })
@@ -54,29 +37,6 @@ export function YouTubeVideos() {
     document.body.style.overflow = ''
   }, [])
 
-  const onMouseDown = (e: React.MouseEvent) => {
-    isDown.current = true
-    startX.current = e.pageX - (trackRef.current?.offsetLeft ?? 0)
-    scrollL.current = trackRef.current?.scrollLeft ?? 0
-  }
-  const onMouseLeave = () => {
-    isDown.current = false
-  }
-  const onMouseUp = () => {
-    isDown.current = false
-  }
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!isDown.current) return
-    e.preventDefault()
-    const x = e.pageX - (trackRef.current?.offsetLeft ?? 0)
-    if (trackRef.current) trackRef.current.scrollLeft = scrollL.current - (x - startX.current) * 1.5
-  }
-  const onScroll = () => {
-    if (!trackRef.current || programmatic.current) return
-    const i = Math.round(trackRef.current.scrollLeft / CARD_W)
-    if (i !== cur) setCur(i)
-  }
-
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeModal()
@@ -84,23 +44,6 @@ export function YouTubeVideos() {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [])
-
-  useEffect(() => {
-    const section = sectionRef.current
-    if (!section) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault()
-        scrollTo(cur - 1)
-      }
-      if (e.key === 'ArrowRight') {
-        e.preventDefault()
-        scrollTo(cur + 1)
-      }
-    }
-    section.addEventListener('keydown', handler)
-    return () => section.removeEventListener('keydown', handler)
-  }, [cur])
 
   const total = '06'
 
@@ -117,17 +60,8 @@ export function YouTubeVideos() {
         </div>
 
         {/* Scrollable track */}
-        <div className="overflow-hidden">
-          <div
-            ref={trackRef}
-            className="flex gap-[18px] overflow-x-auto snap-x snap-mandatory scroll-smooth cursor-grab active:cursor-grabbing select-none px-6 md:px-10 pb-4 justify-center md:justify-center"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            onMouseDown={onMouseDown}
-            onMouseLeave={onMouseLeave}
-            onMouseUp={onMouseUp}
-            onMouseMove={onMouseMove}
-            onScroll={onScroll}
-          >
+        <div className="relative overflow-hidden">
+          <InfiniteSlider gap={18} duration={42} durationOnHover={90} className="pb-4">
             {VIDEOS.map((v, idx) => {
               const tItem = items[idx] ?? { num: v.num, tag: v.tag, title: '', desc: '' }
               const tag = TAG_STYLES[v.tag] ?? TAG_STYLES['Getting Started']
@@ -172,30 +106,11 @@ export function YouTubeVideos() {
                 </button>
               )
             })}
-          </div>
+          </InfiniteSlider>
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-white via-white/75 to-transparent sm:w-14" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-white via-white/75 to-transparent sm:w-14" />
         </div>
 
-        {/* Nav arrows */}
-        <div className="flex items-center justify-center gap-2 sm:gap-3 mt-6 sm:mt-8">
-          <button
-            onClick={() => scrollTo(cur - 1)}
-            aria-label="Previous"
-            className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg sm:rounded-xl border border-gray-200 text-gray-600 hover:text-[#8e78fb] hover:border-[#c4b8fd] hover:bg-[#ede9ff] transition-all"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" className="sm:w-4 sm:h-4">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <button
-            onClick={() => scrollTo(cur + 1)}
-            aria-label="Next"
-            className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg sm:rounded-xl border border-gray-200 text-gray-600 hover:text-[#8e78fb] hover:border-[#c4b8fd] hover:bg-[#ede9ff] transition-all"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" className="sm:w-4 sm:h-4">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </div>
       </section>
 
       {/* Modal */}

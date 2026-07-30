@@ -17,9 +17,9 @@ export class SearchController {
     @Query('q') q: string,
     @Query('type') type = 'all',
     @Query('mode') mode = 'keyword',
-    @Query('communityId') communityId?: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number,
+    @Query('communityId') communityId?: string,
   ) {
     return this.searchService.search({ q, type, mode, communityId, page, limit });
   }

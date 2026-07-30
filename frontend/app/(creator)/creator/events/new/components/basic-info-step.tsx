@@ -12,6 +12,7 @@ import { CalendarIcon, Upload, X, ImageIcon } from "lucide-react"
 import { storageApi } from "@/lib/api/storage.api"
 import { useToast } from "@/hooks/use-toast"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
+import { CreatorWritingAssist } from '@/components/creator-dashboard/creator-writing-assist'
 
 interface BasicInfoStepProps {
   formData: any
@@ -127,7 +128,7 @@ export function BasicInfoStep({ formData, handleInputChange, errors = {} }: Basi
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="title">Event Title *</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="title">Event Title *</Label><CreatorWritingAssist value={formData.title} onApply={v=>handleInputChange('title',v)} surface="event" field="title" context={`Event category: ${formData.category || 'General'}`} maxCharacters={120}/></div>
           <Input
             id="title"
             placeholder="e.g., Annual Tech Conference"
@@ -141,7 +142,7 @@ export function BasicInfoStep({ formData, handleInputChange, errors = {} }: Basi
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Event Description *</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="description">Event Description *</Label><CreatorWritingAssist value={formData.description} onApply={v=>handleInputChange('description',v)} surface="event" field="description" context={`Event title: ${formData.title}`} maxCharacters={1200}/></div>
           <Textarea
             id="description"
             placeholder="Describe what attendees can expect from this event..."

@@ -271,7 +271,7 @@ export class UserService {
       const filename = avatarUrl.slice(markerIndex + marker.length);
       if (!filename) return;
 
-      await this.uploadService.deleteFile(filename, FileType.IMAGE);
+      await this.uploadService.deleteFile(filename, FileType.IMAGE, String((user as any)._id || ''));
       console.log('✅ [DELETE ACCOUNT] Local avatar file deleted');
     } catch (error: any) {
       console.warn(`⚠️ [DELETE ACCOUNT] Could not delete avatar file: ${error?.message || 'unknown error'}`);

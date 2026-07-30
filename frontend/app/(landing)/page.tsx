@@ -20,7 +20,7 @@ import {
   seoConfig,
 } from "@/lib/seo-config"
 
-const homeTitle = seoConfig.defaultTitle
+const homeTitle = "All-in-One Community Platform for Creators"
 const homeDescription = seoConfig.defaultDescription
 
 export const metadata: Metadata = {

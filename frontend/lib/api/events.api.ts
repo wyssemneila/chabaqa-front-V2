@@ -142,12 +142,12 @@ export const eventsApi = {
     return apiClient.post<ApiSuccessResponse<void>>(endpoint, { ticketType });
   },
 
-  initStripePayment: async (eventId: string, ticketType: string, promoCode?: string): Promise<any> => {
+  initStripePayment: async (eventId: string, ticketType: string, promoCode?: string, idempotencyKey?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/event?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/event`;
 
-    return apiClient.post<any>(endpoint, { eventId, ticketType });
+    return apiClient.post<any>(endpoint, { eventId, ticketType }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
   },
 
   // Unregister from event

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { siteData } from '@/lib/data'
 import { JSX } from 'react/jsx-runtime';
@@ -76,6 +76,36 @@ function FeatureIcon({ id, color, size = 16 }: { id: string; color: string; size
   return icons[id] || icons.community
 }
 
+function FeatureVideo({ src, active }: { src: string; active: string }) {
+  const [hasError, setHasError] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  const handleError = useCallback(() => {
+    setHasError(true)
+  }, [])
+
+  useEffect(() => {
+    setHasError(false)
+  }, [active])
+
+  if (hasError) return null
+
+  return (
+    <video
+      ref={videoRef}
+      key={active}
+      src={src}
+      autoPlay
+      loop
+      muted
+      playsInline
+      preload="metadata"
+      className="absolute inset-0 w-full h-full object-cover"
+      onError={handleError}
+    />
+  )
+}
+
 export function Features() {
   const t = useTranslations('landing.features')
   const items = t.raw('items') as { id: string; name: string; desc: string }[]
@@ -139,16 +169,7 @@ export function Features() {
             </div>
             <div className="relative aspect-video" style={{ background: `linear-gradient(135deg,${featureColors.iconBg},#f7f7fe)` }}>
               {feature.video && (
-                <video
-                  key={active}
-                  src={feature.video}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="metadata"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
+                <FeatureVideo src={feature.video} active={active} />
               )}
             </div>
           </div>
@@ -191,16 +212,7 @@ export function Features() {
             </div>
             <div className="relative aspect-video" style={{ background: `linear-gradient(135deg,${featureColors.iconBg},#f7f7fe)` }}>
               {feature.video && (
-                <video
-                  key={active}
-                  src={feature.video}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="metadata"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
+                <FeatureVideo src={feature.video} active={active} />
               )}
             </div>
           </div>

@@ -51,7 +51,7 @@ export default function ChallengeSelectionModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const paymentModal = usePaymentProviderModal({
-    initStripe: () => (challengesApi as any).initStripePayment(String(challenge?.id || challenge?._id), promoCode.trim() || undefined),
+    initStripe: (key) => (challengesApi as any).initStripePayment(String(challenge?.id || challenge?._id), promoCode.trim() || undefined, key),
     onError: (err: any) => toast({ title: "Payment failed", description: err?.message || "Please try again.", variant: "destructive" }),
   })
 
@@ -102,6 +102,8 @@ export default function ChallengeSelectionModal({
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        isLoading={paymentModal.isLoading}
+        error={paymentModal.error}
       />
     <Dialog open={!!challenge} onOpenChange={() => setSelectedChallenge(null)}>
       <DialogContent className="w-[95vw] max-w-2xl sm:w-full p-0 overflow-hidden border-0 shadow-2xl">

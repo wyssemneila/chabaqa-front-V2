@@ -14,6 +14,7 @@ import { useCallback, useRef, useState } from "react"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
+import { CreatorWritingAssist } from '@/components/creator-dashboard/creator-writing-assist'
 
 interface BasicInfoStepProps {
   formData: {
@@ -101,7 +102,7 @@ export function BasicInfoStep({ formData, setFormData, validationErrors = {} }: 
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="title">Challenge Title *</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="title">Challenge Title *</Label><CreatorWritingAssist value={formData.title} onApply={v=>handleInputChange('title',v)} surface="challenge" field="title" context={`Challenge category: ${formData.category || 'General'}`} maxCharacters={120}/></div>
           <Input
             id="title"
             placeholder="e.g., 30-Day Coding Challenge"
@@ -115,7 +116,7 @@ export function BasicInfoStep({ formData, setFormData, validationErrors = {} }: 
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Challenge Description *</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="description">Challenge Description *</Label><CreatorWritingAssist value={formData.description} onApply={v=>handleInputChange('description',v)} surface="challenge" field="description" context={`Challenge title: ${formData.title}`} maxCharacters={1200}/></div>
           <Textarea
             id="description"
             placeholder="Describe what participants will achieve in this challenge..."

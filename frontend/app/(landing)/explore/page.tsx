@@ -20,7 +20,7 @@ const EXPLORE_LIST_FETCH_OPTIONS = { cache: "no-store" as const }
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 export const metadata: Metadata = {
-  title: "Explore Communities, Courses, Events and Sessions",
+  title: "Explore Communities, Courses & Events",
   description:
     "Discover top communities, courses, challenges, products, events, and 1-to-1 sessions on Chabaqa.",
   keywords: generateKeywords([
@@ -184,7 +184,13 @@ function resolveCreatorSlug(source: any, creatorName: string): string | undefine
 // Transform API Community to Explore format
 function transformCommunityToExplore(community: Community): ExploreItem {
   const primaryImage = resolveImageUrl(
-    (community as any).coverImage || (community as any).banner || community.image || (community as any).logo,
+    (community as any).coverUrl ||
+      (community as any).coverImage ||
+      (community as any).photo_de_couverture ||
+      (community as any).banner ||
+      community.image ||
+      (community as any).settings?.heroBackground ||
+      (community as any).logo,
   )
 
   const avatar = resolveImageUrl(
@@ -210,7 +216,7 @@ function transformCommunityToExplore(community: Community): ExploreItem {
     creatorColor: '#8e78fb',
     banner: primaryImage,
     price: normalizePrice((community as any).price) > 0 ? normalizePrice((community as any).price) : 'free',
-    currency: 'TND',
+    currency: String((community as any).pricing?.currency || (community as any).currency || 'TND').toUpperCase(),
     members: membersCount,
     rating: (community as any).averageRating || community.rating || 0,
     ratingCount: normalizeCount((community as any).ratingCount, 0),
@@ -252,7 +258,7 @@ async function transformCourseToExplore(course: Course): Promise<ExploreItem> {
     creatorColor: '#47c7ea',
     banner: image,
     price: normalizePrice((course as any).price || (course as any).prix) > 0 ? normalizePrice((course as any).price || (course as any).prix) : 'free',
-    currency: 'TND',
+    currency: String((course as any).currency || (course as any).devise || (course as any).pricing?.currency || 'TND').toUpperCase(),
     members: enrollmentCount,
     rating: (course as any).averageRating || course.rating || 0,
     ratingCount: normalizeCount((course as any).ratingCount, 0),
@@ -293,7 +299,7 @@ async function transformChallengeToExplore(challenge: Challenge): Promise<Explor
     creatorColor: '#ff9b28',
     banner: image,
     price: normalizePrice((challenge as any).pricing?.participationFee) > 0 ? normalizePrice((challenge as any).pricing?.participationFee) : 'free',
-    currency: 'TND',
+    currency: String((challenge as any).pricing?.currency || (challenge as any).currency || 'TND').toUpperCase(),
     members: participantCount,
     rating: (challenge as any).averageRating || (challenge as any).rating || 0,
     ratingCount: normalizeCount((challenge as any).ratingCount, 0),
@@ -335,7 +341,7 @@ async function transformProductToExplore(product: Product): Promise<ExploreItem>
     creatorColor: '#8e78fb',
     banner: image,
     price: normalizePrice((product as any).price || product.price),
-    currency: 'TND',
+    currency: String((product as any).currency || 'TND').toUpperCase(),
     members: salesCount,
     rating: normalizePrice((product as any).averageRating ?? product.rating),
     ratingCount: normalizeCount((product as any).ratingCount, 0),
@@ -379,7 +385,7 @@ async function transformSessionToExplore(session: Session): Promise<ExploreItem>
     creatorColor: '#f65887',
     banner: image,
     price: normalizePrice((session as any).price),
-    currency: 'TND',
+    currency: String((session as any).currency || 'TND').toUpperCase(),
     members: bookingCount,
     rating: (session as any).averageRating || (session as any).rating || 0,
     ratingCount: normalizeCount((session as any).ratingCount, 0),
@@ -423,7 +429,7 @@ async function transformEventToExplore(event: Event): Promise<ExploreItem> {
     creatorColor: '#8e78fb',
     banner: image,
     price: normalizePrice((event as any).price) > 0 ? normalizePrice((event as any).price) : 'free',
-    currency: 'TND',
+    currency: String((event as any).pricing?.currency || (event as any).currency || 'TND').toUpperCase(),
     members: attendeeCount,
     rating: (event as any).averageRating || (event as any).rating || 0,
     ratingCount: normalizeCount((event as any).ratingCount, 0),

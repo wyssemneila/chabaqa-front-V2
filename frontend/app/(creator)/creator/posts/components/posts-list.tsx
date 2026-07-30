@@ -42,7 +42,7 @@ export function PostsList({ posts, onPostDeleted, onEdit }: PostsListProps) {
       console.error("Delete error:", error)
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to delete post",
+        description: error?.message || error?.response?.data?.message || "Failed to delete post",
         variant: "destructive",
       })
     } finally {
@@ -53,8 +53,10 @@ export function PostsList({ posts, onPostDeleted, onEdit }: PostsListProps) {
   return (
     <>
       <div className="space-y-4">
-        {posts.map((post) => (
-          <div key={post.id} className="border rounded-lg p-4 hover:bg-gray-50 transition">
+        {posts.map((post) => {
+          const postId = String((post as any).id || (post as any)._id || '')
+          return (
+          <div key={postId} className="border rounded-lg p-4 hover:bg-gray-50 transition">
             {/* Header */}
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
@@ -76,7 +78,7 @@ export function PostsList({ posts, onPostDeleted, onEdit }: PostsListProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setDeletePostId(post.id)}
+                  onClick={() => setDeletePostId(postId)}
                 >
                   <Trash2 className="h-4 w-4 text-red-600" />
                 </Button>
@@ -113,7 +115,8 @@ export function PostsList({ posts, onPostDeleted, onEdit }: PostsListProps) {
               </div>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Delete Confirmation Dialog */}

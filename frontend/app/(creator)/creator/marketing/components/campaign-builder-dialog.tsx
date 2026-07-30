@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { CreatorWritingAssist } from '@/components/creator-dashboard/creator-writing-assist'
 import { useToast } from "@/components/ui/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { challengesApi, coursesApi, emailCampaignsApi, eventsApi, productsApi, sessionsApi } from "@/lib/api"
@@ -1246,7 +1247,7 @@ export function CampaignBuilderDialog(props: {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="campaign-subject">Subject line</Label>
+                  <div className="flex items-center justify-between"><Label htmlFor="campaign-subject">Subject line</Label><CreatorWritingAssist value={subject} onApply={v=>{setSubject(v);if(!titleEdited)setTitle(v)}} surface="campaign" field="subject" context={`Campaign title: ${title}; campaign type: ${kind}`} maxCharacters={120}/></div>
                   <Input
                     id="campaign-subject"
                     ref={subjectRef}
@@ -1261,7 +1262,7 @@ export function CampaignBuilderDialog(props: {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="campaign-content">Email content</Label>
+                  <div className="flex items-center justify-between"><Label htmlFor="campaign-content">Email content</Label><CreatorWritingAssist value={content} onApply={setContent} surface="campaign" field="content" context={`Subject: ${subject}; campaign title: ${title}; preserve merge tokens`} maxCharacters={4000}/></div>
                   <Textarea
                     id="campaign-content"
                     ref={contentRef}

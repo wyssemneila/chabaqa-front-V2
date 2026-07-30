@@ -9,8 +9,6 @@ import {
   Query,
   UseGuards,
   Request,
-  ParseIntPipe,
-  DefaultValuePipe,
   UseInterceptors
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
@@ -20,11 +18,13 @@ import { UpdateEventDto } from '@/domains/commerce/event/dto/update-event.dto';
 import { EventResponseDto, EventListResponseDto, EventStatsResponseDto } from '@/domains/commerce/event/dto/event-response.dto';
 import { EventQrTokenResponseDto } from '@/domains/commerce/event/dto/event-qr-token.dto';
 import { JwtAuthGuard } from '@/domains/auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '@/domains/auth/guards/optional-jwt-auth.guard';
 import { HttpCacheInterceptor } from '@/shared/interceptors/cache.interceptor';
 import { CommunityPermissionGuard } from '@/domains/community/access/community-permission.guard';
 import { RequireCommunityPermission, CommunityIdFrom } from '@/domains/community/access/community-permission.decorator';
 import { CommunityPermission } from '@/shared/permissions';
 import { PlanFeatureGuard, RequireFeature } from '@/shared/guards/plan-feature.guard';
+import { parsePagination } from '@/shared/utils/pagination.util';
 
 @ApiTags('Events')
 @Controller('events')
@@ -64,8 +64,8 @@ export class EventController {
   @ApiQuery({ name: 'search', required: false, type: String, description: 'Terme de recherche' })
   @ApiResponse({ status: 200, description: 'Liste des événements récupérée avec succès', type: EventListResponseDto })
   async findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
     @Query('communityId') communityId?: string,
     @Query('category') category?: string,
     @Query('type') type?: string,
@@ -73,12 +73,13 @@ export class EventController {
     @Query('isPublished') isPublished?: string | boolean,
     @Query('search') search?: string
   ): Promise<{ success: boolean; data: EventListResponseDto }> {
+    const pagination = parsePagination(page, limit);
     const parsedIsActive = this.parseBooleanQuery(isActive);
     const parsedIsPublished = this.parseBooleanQuery(isPublished);
 
     const events = await this.eventService.findAll(
-      page,
-      limit,
+      pagination.page,
+      pagination.limit,
       communityId,
       category,
       type,
@@ -180,11 +181,13 @@ export class EventController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Récupérer un événement par ID' })
   @ApiResponse({ status: 200, description: 'Événement récupéré avec succès', type: EventResponseDto })
   @ApiResponse({ status: 404, description: 'Événement non trouvé' })
-  async findOne(@Param('id') id: string): Promise<{ success: boolean; data: EventResponseDto }> {
-    const event = await this.eventService.findOne(id);
+  async findOne(@Param('id') id: string, @Request() req): Promise<{ success: boolean; data: EventResponseDto }> {
+    const userId = req.user?._id || req.user?.userId || req.user?.sub || req.user?.id;
+    const event = await this.eventService.findOne(id, userId);
     return { success: true, data: event };
   }
 
@@ -197,18 +200,19 @@ export class EventController {
   @ApiResponse({ status: 200, description: 'Événements de la communauté récupérés avec succès', type: EventListResponseDto })
   async findByCommunity(
     @Param('communityId') communityId: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
     @Query('isActive') isActive?: string | boolean,
     @Query('isPublished') isPublished?: string | boolean,
   ): Promise<{ success: boolean; data: EventListResponseDto }> {
+    const pagination = parsePagination(page, limit);
     const parsedIsActive = this.parseBooleanQuery(isActive);
     const parsedIsPublished = this.parseBooleanQuery(isPublished);
 
     const events = await this.eventService.findByCommunity(
       communityId,
-      page,
-      limit,
+      pagination.page,
+      pagination.limit,
       parsedIsActive ?? true,
       parsedIsPublished ?? true,
     );
@@ -216,6 +220,7 @@ export class EventController {
   }
 
   @Get('creator/:creatorId')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Récupérer les événements d\'un créateur' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Numéro de page' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Nombre d\'éléments par page' })
@@ -223,11 +228,21 @@ export class EventController {
   @ApiResponse({ status: 200, description: 'Événements du créateur récupérés avec succès', type: EventListResponseDto })
   async findByCreator(
     @Param('creatorId') creatorId: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
-    @Query('communityId') communityId?: string
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('communityId') communityId?: string,
+    @Request() req?: any,
   ): Promise<{ success: boolean; data: EventListResponseDto }> {
-    const events = await this.eventService.findByCreator(creatorId, page, limit, communityId);
+    const pagination = parsePagination(page, limit, 50);
+    const requesterId = req?.user?._id || req?.user?.userId || req?.user?.sub || req?.user?.id;
+    const visibilityScope = String(requesterId || '') === String(creatorId) ? 'owner' : 'public';
+    const events = await this.eventService.findByCreator(
+      creatorId,
+      pagination.page,
+      pagination.limit,
+      communityId,
+      visibilityScope,
+    );
     return { success: true, data: events };
   }
 

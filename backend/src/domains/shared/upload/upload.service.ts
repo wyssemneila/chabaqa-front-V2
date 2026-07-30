@@ -444,17 +444,30 @@ export class UploadService {
   /**
    * Supprimer un fichier uploadé
    */
-  async deleteFile(filename: string, fileType: FileType): Promise<boolean> {
+  async deleteFile(filename: string, fileType: FileType, requesterId: string): Promise<boolean> {
     try {
+      const storageKey = `${fileType}/${filename}`.replace(/\\/g, '/');
+      const mediaAsset = await this.mediaAssetModel.findOne({
+        $or: [{ storageKey }, { filename }],
+        status: { $ne: MediaAssetStatus.DELETED },
+      });
+      if (!mediaAsset) return false;
+      if (!mediaAsset.uploadedBy || String(mediaAsset.uploadedBy) !== String(requesterId || '')) {
+        throw new ForbiddenException('Vous ne pouvez supprimer que vos propres fichiers');
+      }
+
       const fs = require('fs').promises;
       const filePath = join(this.getDestinationPath(fileType), filename);
 
       if (existsSync(filePath)) {
         await fs.unlink(filePath);
-        return true;
       }
-      return false;
+      mediaAsset.status = MediaAssetStatus.DELETED;
+      mediaAsset.deletedAt = new Date();
+      await mediaAsset.save();
+      return true;
     } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
       console.error('Erreur lors de la suppression du fichier:', error);
       return false;
     }

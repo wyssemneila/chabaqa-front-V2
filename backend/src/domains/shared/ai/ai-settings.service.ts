@@ -33,8 +33,6 @@ export class AiSettingsService {
         supportAgentEnabled: false,
         learningPathsEnabled: true,
         providerOverride: 'openrouter',
-        agentsEnabled: true,
-        cofounderEnabled: true,
       },
     };
   }
@@ -56,18 +54,9 @@ export class AiSettingsService {
       throw new UnauthorizedException('Only admins can update AI settings');
     }
 
-    const { defaultConciergeAgentId, ...settingsUpdate } = updateDto;
-
     community.aiSettings = {
       ...community.aiSettings,
-      ...settingsUpdate,
-      ...(defaultConciergeAgentId
-        ? {
-            defaultConciergeAgentId: new Types.ObjectId(
-              defaultConciergeAgentId,
-            ),
-          }
-        : {}),
+      ...updateDto,
     };
 
     await community.save();

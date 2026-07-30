@@ -10,10 +10,11 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '@/domains/auth/jwt-auth.guard';
+import { AdminGuard } from '@/domains/auth/guards/admin.guard';
 import { WalletService } from '@/domains/commerce/wallet/wallet.service';
 
 @Controller('admin/wallet')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, AdminGuard)
 export class WalletAdminController {
   constructor(private readonly walletService: WalletService) {}
 

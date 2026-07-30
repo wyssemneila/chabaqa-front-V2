@@ -39,10 +39,11 @@ export function CheckoutForm({
   const normalizedInviteCode = typeof inviteCode === "string" ? inviteCode.trim() : ""
 
   const paymentModal = usePaymentProviderModal({
-    initStripe: () => (communitiesApi as any).initStripePayment(
+    initStripe: (key) => (communitiesApi as any).initStripePayment(
       community?.id,
       promoCode || undefined,
       normalizedInviteCode || undefined,
+      key,
     ),
   })
 
@@ -66,12 +67,7 @@ export function CheckoutForm({
       return 0
     }
 
-    const feesOfJoin = toNumber(pricing?.fees_of_join)
-    const directPrice = toNumber(pricing?.price)
-    const nestedPrice = toNumber(pricing?.pricing?.price)
-
-    // Different endpoints may populate only one price field; use the highest valid value.
-    return Math.max(feesOfJoin, directPrice, nestedPrice, 0)
+    return toNumber(pricing?.pricing?.price ?? pricing?.fees_of_join ?? pricing?.price)
   }, [pricing])
 
   const currency: string = useMemo(() => {
@@ -217,6 +213,8 @@ export function CheckoutForm({
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        isLoading={paymentModal.isLoading}
+        error={paymentModal.error}
       />
       <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">

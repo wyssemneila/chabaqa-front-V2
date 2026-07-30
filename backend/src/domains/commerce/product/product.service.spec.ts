@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ProductService } from '@/domains/commerce/product/product.service';
 
 describe('ProductService publish hardening', () => {
@@ -252,5 +252,48 @@ describe('ProductService by-user listing', () => {
     await service.findByCreator(creatorUserId, 1, 12, undefined, 'public');
 
     expect(productModel.find).toHaveBeenCalledWith(expect.objectContaining({ isPublished: true }));
+  });
+
+  it('rejects malformed creator IDs before constructing an ObjectId', async () => {
+    const { service, productModel } = makeListingService();
+
+    await expect(service.findByCreator('not-an-object-id')).rejects.toBeInstanceOf(BadRequestException);
+    expect(productModel.find).not.toHaveBeenCalled();
+  });
+});
+
+describe('ProductService ID consistency', () => {
+  it('updates products addressed by Mongo _id', async () => {
+    const creatorId = '507f1f77bcf86cd799439011';
+    const mongoId = '507f1f77bcf86cd799439012';
+    const product: any = {
+      _id: mongoId,
+      id: 'custom-id',
+      creatorId: { toString: () => creatorId },
+      communityId: 'community-id',
+      isPublished: false,
+      save: jest.fn().mockResolvedValue(null),
+    };
+    product.save.mockResolvedValue(product);
+    const productModel: any = {
+      findOne: jest.fn().mockResolvedValueOnce(null),
+      findById: jest.fn().mockResolvedValueOnce(product).mockReturnValueOnce({
+        populate: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(product) }),
+      }),
+    };
+    const service = new ProductService(
+      productModel,
+      { findOne: jest.fn().mockResolvedValue(null) } as any,
+      {} as any, {} as any, {} as any, {} as any, {} as any,
+      { hasActiveSubscription: jest.fn() } as any,
+      {} as any, {} as any,
+    );
+    jest.spyOn(service as any, 'transformToResponseDto').mockResolvedValue({ id: 'custom-id' });
+
+    await service.update(mongoId, { title: 'Updated' } as any, creatorId);
+
+    expect(productModel.findById).toHaveBeenCalledWith(mongoId);
+    expect(product.title).toBe('Updated');
+    expect(product.save).toHaveBeenCalled();
   });
 });

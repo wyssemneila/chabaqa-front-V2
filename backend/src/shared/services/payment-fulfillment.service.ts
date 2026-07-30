@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Order, OrderDocument } from '@/infrastructure/database/schemas/commerce/order.schema';
 import { PaymentAuditService } from '@/shared/services/payment-audit.service';
+import { EntitlementService } from '@/shared/services/entitlement.service';
 
 type ClaimState = 'claimed' | 'completed' | 'requires_booking' | 'processing' | 'missing' | 'unclaimed';
 
@@ -11,6 +12,7 @@ export class PaymentFulfillmentService {
   constructor(
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
     private readonly paymentAuditService: PaymentAuditService,
+    private readonly entitlementService: EntitlementService,
   ) {}
 
   async claimForProcessing(
@@ -107,6 +109,7 @@ export class PaymentFulfillmentService {
     order.status = 'paid';
     order.metadata = nextMetadata;
     await order.save(session ? { session } : undefined);
+    await this.entitlementService.activateForOrder(order, session);
     await this.paymentAuditService.log(
       {
         orderId: order._id,

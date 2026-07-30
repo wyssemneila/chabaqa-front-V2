@@ -105,7 +105,7 @@ const PRIVACY_SECTIONS = [
 ] as const
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Chabaqa",
+  title: "Privacy Policy",
   description:
     "Read Chabaqa's Privacy Policy to understand how we collect, use, protect, and process personal data across our platform.",
   alternates: generateAlternateLanguages("/privacy-policy"),

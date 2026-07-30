@@ -42,6 +42,7 @@ export class EventService {
    * Checks if user is the event creator OR a community admin
    */
   private async canModifyEvent(event: EventDocument, userId: string): Promise<boolean> {
+    if (!Types.ObjectId.isValid(userId)) return false;
     // Check if user is the event creator (try multiple formats)
     const isCreator = event.creatorId.toString() === userId || 
                      event.creatorId.toString() === new Types.ObjectId(userId).toString();
@@ -108,7 +109,9 @@ export class EventService {
   }
 
   private isPaidOrderRequired(): boolean {
-    return String(process.env.PAYMENTS_REQUIRE_PAID_ORDER || '').toLowerCase() === 'true';
+    const configured = process.env.PAYMENTS_REQUIRE_PAID_ORDER;
+    if (configured !== undefined) return String(configured).toLowerCase() === 'true';
+    return !['test', 'development'].includes(String(process.env.NODE_ENV || '').toLowerCase());
   }
 
   private buildPaymentRequiredException(params: {
@@ -613,10 +616,14 @@ export class EventService {
     isActive?: boolean,
     isPublished?: boolean,
     search?: string,
-    creatorId?: string
+    creatorId?: string,
+    visibilityScope: 'owner' | 'public' = 'public',
   ): Promise<EventListResponseDto> {
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Pagination invalide');
+    }
     const skip = (page - 1) * limit;
-    const filter: any = {};
+    const filter: any = visibilityScope === 'owner' ? {} : { isActive: true, isPublished: true };
 
     if (communityId) {
       filter.communityId = Types.ObjectId.isValid(communityId)
@@ -629,13 +636,14 @@ export class EventService {
     if (type) {
       filter.type = type;
     }
-    if (isActive !== undefined) {
+    if (visibilityScope === 'owner' && isActive !== undefined) {
       filter.isActive = isActive;
     }
-    if (isPublished !== undefined) {
+    if (visibilityScope === 'owner' && isPublished !== undefined) {
       filter.isPublished = isPublished;
     }
     if (creatorId) {
+      if (!Types.ObjectId.isValid(creatorId)) throw new BadRequestException('Identifiant de créateur invalide');
       filter.creatorId = new Types.ObjectId(creatorId);
     }
     if (search) {
@@ -674,10 +682,15 @@ export class EventService {
   /**
    * Récupérer un événement par ID
    */
-  async findOne(id: string): Promise<EventResponseDto> {
+  async findOne(id: string, currentUserId?: string): Promise<EventResponseDto> {
     const event = await this.findPopulatedEventByIdentifier(id);
 
     if (!event) {
+      throw new NotFoundException('Événement non trouvé');
+    }
+
+    const eventCreatorId = String((event.creatorId as any)?._id || event.creatorId || '');
+    if ((!event.isPublished || !event.isActive) && eventCreatorId !== String(currentUserId || '')) {
       throw new NotFoundException('Événement non trouvé');
     }
 
@@ -704,7 +717,8 @@ export class EventService {
     creatorId: string,
     page: number = 1,
     limit: number = 10,
-    communityId?: string
+    communityId?: string,
+    visibilityScope: 'owner' | 'public' = 'public',
   ): Promise<EventListResponseDto> {
     return this.findAll(
       page,
@@ -715,7 +729,8 @@ export class EventService {
       undefined,
       undefined,
       undefined,
-      creatorId
+      creatorId,
+      visibilityScope,
     );
   }
 
@@ -730,6 +745,11 @@ export class EventService {
 
     // Vérifier que l'utilisateur peut modifier l'événement
     await this.verifyCanModifyEvent(event, userId);
+
+    const requestsPublishing = updateEventDto.isPublished === true && event.isPublished !== true;
+    if (requestsPublishing) {
+      this.assertEventReadyForPublication(event, updateEventDto);
+    }
 
     // Vérifier la gating pour publication/activation si applicable
     if ((updateEventDto.isActive !== undefined && updateEventDto.isActive && !event.isActive) ||
@@ -1283,14 +1303,8 @@ export class EventService {
       }
     }
 
-    // Validate event has required data before publishing
     if (!event.isPublished) {
-      if (!event.tickets || event.tickets.length === 0) {
-        throw new BadRequestException('L\'événement doit avoir au moins un type de billet avant d\'être publié');
-      }
-      if (!event.startDate) {
-        throw new BadRequestException('L\'événement doit avoir une date de début avant d\'être publié');
-      }
+      this.assertEventReadyForPublication(event);
     }
 
     event.isPublished = !event.isPublished;
@@ -1307,6 +1321,17 @@ export class EventService {
       message: `Événement ${event.isPublished ? 'publié' : 'dépublié'} avec succès`,
       isPublished: event.isPublished
     };
+  }
+
+  private assertEventReadyForPublication(event: EventDocument, update?: UpdateEventDto): void {
+    const tickets = update?.tickets ?? event.tickets;
+    const startDate = update?.startDate ?? event.startDate;
+    if (!tickets || tickets.length === 0) {
+      throw new BadRequestException('L\'événement doit avoir au moins un type de billet avant d\'être publié');
+    }
+    if (!startDate) {
+      throw new BadRequestException('L\'événement doit avoir une date de début avant d\'être publié');
+    }
   }
 
   /**

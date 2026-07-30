@@ -243,12 +243,12 @@ export const challengesApi = {
     return apiClient.post<ApiSuccessResponse<Challenge>>('/challenges/join', { challengeId });
   },
 
-  initStripePayment: async (challengeId: string, promoCode?: string): Promise<any> => {
+  initStripePayment: async (challengeId: string, promoCode?: string, idempotencyKey?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/challenge?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/challenge`;
 
-    return apiClient.post<any>(endpoint, { challengeId });
+    return apiClient.post<any>(endpoint, { challengeId }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
   },
 
   // Leave challenge

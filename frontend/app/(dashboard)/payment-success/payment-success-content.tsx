@@ -39,6 +39,7 @@ export default function PaymentSuccessContent() {
   const [error, setError] = useState<string | null>(null);
   const [verificationData, setVerificationData] = useState<VerificationResponse | null>(null);
   const [journeyStage, setJourneyStage] = useState<JourneyStage>('verifying');
+  const [verificationRun, setVerificationRun] = useState(0);
 
   const sessionId = searchParams.get('sessionId');
   const orderIdParam = searchParams.get('orderId');
@@ -91,11 +92,20 @@ export default function PaymentSuccessContent() {
               ? localStorage.getItem('accessToken') || localStorage.getItem('token') || ''
               : '';
 
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), 10000);
           const response = await fetch(verifyUrl, {
             method: 'GET',
             credentials: 'include',
             headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+            signal: controller.signal,
           });
+          window.clearTimeout(timeout);
+
+          if (response.status === 401) {
+            router.replace(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+            return;
+          }
 
           lastResponseOk = response.ok;
           lastData = await response.json().catch(() => null);
@@ -120,6 +130,10 @@ export default function PaymentSuccessContent() {
           scope === 'event' && !normalizedPayment.success && isAlreadyRegisteredEventMessage(errorMessage);
 
         if (normalizedPayment.success && status === 'paid') {
+          const clean = new URLSearchParams(searchParams.toString());
+          clean.delete('sessionId');
+          clean.delete('orderId');
+          window.history.replaceState(null, '', `${window.location.pathname}${clean.size ? `?${clean}` : ''}`);
           setJourneyStage('ready');
           setVerified(true);
           return;
@@ -187,7 +201,7 @@ export default function PaymentSuccessContent() {
     return () => {
       cancelled = true;
     };
-  }, [buildVerifyUrl, id, router, scope, toast]);
+  }, [buildVerifyUrl, id, router, scope, searchParams, toast, verificationRun]);
 
   const paymentData = useMemo(() => verificationData?.data || verificationData || {}, [verificationData]);
   const normalizedPayment = useMemo(() => toPaymentViewModel(verificationData), [verificationData]);
@@ -407,7 +421,7 @@ export default function PaymentSuccessContent() {
                 Keep this page reference. Access will unlock automatically after Stripe confirms the payment.
               </p>
               <div className="space-y-3">
-                <button onClick={() => window.location.reload()} className="block w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700">Check Again</button>
+                <button onClick={() => { setLoading(true); setError(null); setVerificationRun((run) => run + 1); }} className="block w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700">Check Again</button>
                 <Link href="/dashboard" className="block w-full rounded-xl bg-gray-100 px-4 py-3 font-semibold text-gray-900 transition hover:bg-gray-200">Back to Dashboard</Link>
               </div>
             </div>
@@ -425,7 +439,7 @@ export default function PaymentSuccessContent() {
                 </details>
               )}
               <div className="space-y-3">
-                <button onClick={() => window.location.reload()} className="block w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700">Retry Verification</button>
+                <button onClick={() => { setLoading(true); setError(null); setVerificationRun((run) => run + 1); }} className="block w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700">Retry Verification</button>
                 <Link href="/dashboard" className="block w-full rounded-xl bg-gray-100 px-4 py-3 font-semibold text-gray-900 transition hover:bg-gray-200">Back to Dashboard</Link>
               </div>
             </div>

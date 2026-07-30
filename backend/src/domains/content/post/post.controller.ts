@@ -13,6 +13,7 @@ import {
   Logger,
   NotFoundException,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -39,6 +40,7 @@ import { HttpCacheInterceptor } from '@/shared/interceptors/cache.interceptor';
 import { CommunityPermissionGuard } from '@/domains/community/access/community-permission.guard';
 import { RequireCommunityPermission, CommunityIdFrom } from '@/domains/community/access/community-permission.decorator';
 import { CommunityPermission } from '@/shared/permissions';
+import { parsePagination } from '@/shared/utils/pagination.util';
 
 @ApiTags('Posts')
 @Controller('posts')
@@ -201,12 +203,13 @@ export class PostController {
     @Query('userId') userId?: string,
     @Request() req?: any,
   ): Promise<{ success: boolean; data: PostListResponseDto }> {
+    const pagination = parsePagination(page, limit);
     const tagsArray = tags ? tags.split(',') : undefined;
     // Try to get userId from query param, or from authenticated user
     const effectiveUserId = this.resolveRequestUserId(req, userId);
     const posts = await this.postService.findAll(
-      page || 1,
-      limit || 10,
+      pagination.page,
+      pagination.limit,
       communityId,
       authorId,
       tagsArray,
@@ -231,12 +234,13 @@ export class PostController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<{ success: boolean; data: PostListResponseDto }> {
+    const pagination = parsePagination(page, limit, 20);
     const userId = this.resolveRequestUserId(req);
     if (!userId) throw new UnauthorizedException();
     const bookmarks = await this.postService.getUserBookmarks(
       userId,
-      page || 1,
-      limit || 20,
+      pagination.page,
+      pagination.limit,
     );
     return { success: true, data: bookmarks };
   }
@@ -260,12 +264,13 @@ export class PostController {
     @Query('currentUserId') currentUserId?: string,
     @Request() req?: any,
   ): Promise<{ success: boolean; data: PostListResponseDto }> {
+    const pagination = parsePagination(page, limit);
     // Try to get currentUserId from query param, or from authenticated user
     const effectiveUserId = this.resolveRequestUserId(req, currentUserId);
     const posts = await this.postService.findByUser(
       userId,
-      page || 1,
-      limit || 10,
+      pagination.page,
+      pagination.limit,
       communityId,
       effectiveUserId,
     );
@@ -289,53 +294,28 @@ export class PostController {
     @Query('userId') userId?: string,
     @Request() req?: any,
   ): Promise<{ success: boolean; data: PostListResponseDto }> {
+    const pagination = parsePagination(page, limit);
     this.logDebug('Find posts by community request', {
       communityId,
-      page: page || 1,
-      limit: limit || 10,
+      page: pagination.page,
+      limit: pagination.limit,
       userId
     });
 
-    try {
-      // Validate input parameters
-      if (!communityId || communityId.trim() === '') {
-        throw new Error('Community ID is required');
-      }
-
-      // Try to get userId from query param, or from authenticated user
-      const effectiveUserId = this.resolveRequestUserId(req, userId);
-
-      const posts = await this.postService.findByCommunity(
-        communityId.trim(),
-        page || 1,
-        limit || 10,
-        effectiveUserId,
-      );
-      this.logDebug('Successfully found posts by community', { count: posts.posts.length });
-      return { success: true, data: posts };
-    } catch (error: any) {
-      this.logError('Error in findByCommunity', {
-        error: error.message,
-        stack: error.stack,
-        communityId,
-        page,
-        limit
-      });
-      
-      // Return a graceful error response instead of throwing
-      return {
-        success: false,
-        data: {
-          posts: [],
-          pagination: {
-            page: page || 1,
-            limit: limit || 10,
-            total: 0,
-            totalPages: 0,
-          },
-        },
-      };
+    if (!communityId || communityId.trim() === '') {
+      throw new BadRequestException('Community ID is required');
     }
+
+    const effectiveUserId = this.resolveRequestUserId(req, userId);
+
+    const posts = await this.postService.findByCommunity(
+      communityId.trim(),
+      pagination.page,
+      pagination.limit,
+      effectiveUserId,
+    );
+    this.logDebug('Successfully found posts by community', { count: posts.posts.length });
+    return { success: true, data: posts };
   }
 
   @Get(':id')

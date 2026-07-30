@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { AiTutorService } from '@/domains/shared/ai/ai-tutor.service';
 import { AiTutorAnalyticsService } from '@/domains/shared/ai/ai-tutor-analytics.service';
 import type { AiTutorMode } from '@/domains/shared/ai/ai-tutor.types';
-import { AiCreateService } from '@/domains/shared/ai/ai-create.service';
-import { CreateWithAiDto } from '@/domains/shared/ai/dto/create-with-ai.dto';
 
 /** Thin facade delegating to AiTutorService for backward compatibility. */
 @Injectable()
@@ -11,7 +9,6 @@ export class AiService {
   constructor(
     private readonly tutorService: AiTutorService,
     private readonly analyticsService: AiTutorAnalyticsService,
-    private readonly createService: AiCreateService,
   ) {}
 
   getChapterHistory(courseId: string, chapterId: string, userId: string) {
@@ -64,7 +61,4 @@ export class AiService {
     return this.analyticsService.getCourseTutorInsights(courseId, userId);
   }
 
-  createWithAi(input: CreateWithAiDto) {
-    return this.createService.generateDraft(input);
-  }
 }

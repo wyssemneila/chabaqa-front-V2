@@ -10,6 +10,10 @@ export interface PaymentViewModel {
   fulfillmentStatus?: string
   actionRequired?: string
   message?: string
+  businessAmount?: number
+  businessCurrency?: string
+  providerAmount?: number
+  providerCurrency?: string
   [key: string]: any
 }
 
@@ -40,5 +44,11 @@ export function toPaymentViewModel(response: any): PaymentViewModel {
     fulfillmentStatus: payload.fulfillmentStatus,
     actionRequired: payload.actionRequired || payload.action,
     message: payload.message,
+    businessAmount: Number.isFinite(Number(payload.businessAmount ?? payload.amountDT))
+      ? Number(payload.businessAmount ?? payload.amountDT)
+      : undefined,
+    businessCurrency: payload.businessCurrency || 'TND',
+    providerAmount: Number.isFinite(Number(payload.providerAmount)) ? Number(payload.providerAmount) : undefined,
+    providerCurrency: payload.providerCurrency,
   }
 }

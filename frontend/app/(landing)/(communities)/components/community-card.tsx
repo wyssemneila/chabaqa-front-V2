@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl"
 import { getUserProfileHref } from "@/lib/profile-handle"
 import { getExploreAvatarFallback, getExploreImageFallback } from "@/lib/explore-image-fallbacks"
 import { ExploreSafeImage } from "@/app/(landing)/(communities)/components/explore-safe-image"
+import { formatMoney } from "@/lib/i18n/format"
 
 type ItemType = "community" | "course" | "challenge" | "product" | "oneToOne" | "event"
 
@@ -41,11 +42,11 @@ export function CommunityCard({ community, viewMode = "grid", accessAware = fals
   const formatPrice = (price: number | undefined, type: string) => {
     const p = typeof price === "number" && Number.isFinite(price) ? price : 0
     if (type === "free" || p === 0) return t("priceLabels.free")
-    if (type === "paid") return `$${p}`
-    if (type === "monthly") return `$${p}/mo`
-    if (type === "yearly") return `$${p}/yr`
-    if (type === "hourly") return `$${p}/hr`
-    return `$${p}`
+    const formatted = formatMoney(p, community.currency || "TND")
+    if (type === "monthly") return `${formatted}/mo`
+    if (type === "yearly") return `${formatted}/yr`
+    if (type === "hourly") return `${formatted}/hr`
+    return formatted
   }
 
   // Get type-specific styling and CTA text

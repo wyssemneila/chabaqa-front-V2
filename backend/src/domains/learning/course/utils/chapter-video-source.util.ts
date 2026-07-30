@@ -92,6 +92,11 @@ export function isYouTubeVideoUrl(value: unknown): boolean {
   return Boolean(extractYouTubeVideoId(value));
 }
 
+export function getYouTubeEmbedUrl(value: unknown): string | null {
+  const videoId = extractYouTubeVideoId(value);
+  return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : null;
+}
+
 export function isSupportedChapterVideoUrl(value: unknown): boolean {
   return isUploadVideoUrl(value) || isYouTubeVideoUrl(value);
 }

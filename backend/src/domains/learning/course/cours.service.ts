@@ -115,7 +115,9 @@ export class CoursService {
   }
 
   private isPaidOrderRequired(): boolean {
-    return String(process.env.PAYMENTS_REQUIRE_PAID_ORDER || '').toLowerCase() === 'true';
+    const configured = process.env.PAYMENTS_REQUIRE_PAID_ORDER;
+    if (configured !== undefined) return String(configured).toLowerCase() === 'true';
+    return !['test', 'development'].includes(String(process.env.NODE_ENV || '').toLowerCase());
   }
 
   private buildPaymentRequiredException(params: {
@@ -558,6 +560,9 @@ export class CoursService {
   }
 
   async getCourses(page: number = 1, limit: number = 10, category?: string, niveau?: string, search?: string) {
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Pagination invalide');
+    }
     const query: any = { isPublished: true };
 
     if (category) {
@@ -1019,6 +1024,10 @@ export class CoursService {
       await this.verifierMembreCommunaute(userId, community.slug);
     }
 
+    if (!seulementsPublies && String(community.createur || '') !== String(userId || '')) {
+      throw new ForbiddenException('Seul le créateur de la communauté peut voir les cours non publiés');
+    }
+
     // 3. Construire les filtres avec l'ID de la communauté
     const filtres: any = { communityId: community._id.toString() };
     if (seulementsPublies) {
@@ -1152,6 +1161,12 @@ export class CoursService {
     type: 'enrolled' | 'created' | 'all' = 'all',
     visibilityScope: 'owner' | 'public' = 'owner',
   ) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Identifiant utilisateur invalide');
+    }
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Pagination invalide');
+    }
     console.log('🔧 DEBUG - obtenirCoursParUtilisateur');
     console.log(`   👤 User ID: ${userId}`);
     console.log(`   📄 Page: ${page}, Limit: ${limit}, Type: ${type}, Scope: ${visibilityScope}`);
@@ -2735,7 +2750,7 @@ export class CoursService {
    * @param userId ID de l'utilisateur
    * @returns Message de confirmation
    */
-  async inscrireAuCours(coursId: string, userId: string, promoCode?: string, session: any = null): Promise<{ message: string; enrollment: any }> {
+  async inscrireAuCours(coursId: string, userId: string, promoCode?: string, session: any = null, paidFulfillment = false): Promise<{ message: string; enrollment: any }> {
     console.log('🔧 DEBUG - Début inscrireAuCours');
     console.log(`   📋 Cours ID: ${coursId}`);
     console.log(`   👤 User ID: ${userId}`);
@@ -2771,8 +2786,17 @@ export class CoursService {
       const userObjectId = new Types.ObjectId(userId);
       console.log('   ✅ Standalone enrollment autorisé (pas d\'exigence de membership)');
 
-      // 3. Enrollment is independent from course-level payment.
-      // Chapter-level access/payment is enforced separately by chapter entitlement checks.
+      const coursePrice = Number(cours.prix || 0);
+      if (coursePrice > 0 && !paidFulfillment) {
+        throw this.buildPaymentRequiredException({
+          contentType: TrackableContentType.COURSE,
+          contentId: cours.id || cours._id.toString(),
+          amount: coursePrice,
+          currency: (cours as any).devise || 'TND',
+          initEndpoint: '/payment/stripe-link/init/course',
+          message: 'A paid Stripe order is required before enrolling in this course.',
+        });
+      }
 
       // 4. Vérifier si l'utilisateur n'est pas déjà inscrit
       const inscriptionExistante = await this.courseEnrollmentModel.findOne({
@@ -2846,7 +2870,7 @@ export class CoursService {
         throw error;
       }
 
-      if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof BadRequestException) {
+      if (error instanceof HttpException) {
         throw error;
       }
 

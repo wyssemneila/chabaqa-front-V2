@@ -1,4 +1,4 @@
-import { IsBoolean, IsMongoId, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class UpdateAiSettingsDto {
   @IsOptional()
@@ -17,15 +17,4 @@ export class UpdateAiSettingsDto {
   @IsString()
   providerOverride?: string;
 
-  @IsOptional()
-  @IsBoolean()
-  agentsEnabled?: boolean;
-
-  @IsOptional()
-  @IsMongoId()
-  defaultConciergeAgentId?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  cofounderEnabled?: boolean;
 }

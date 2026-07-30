@@ -21,6 +21,7 @@ import {
   mapProduct,
   mapSession,
   unwrapArray,
+  unwrapRequiredArray,
   unwrapData,
   type CreatorBookingCard,
   type CreatorChallengeCard,
@@ -79,7 +80,7 @@ function useCreatorApiList<T>(
 
       try {
         const response = await loader(creatorId)
-        const list = unwrapArray(response).map(mapper)
+        const list = unwrapRequiredArray(response).map(mapper)
         if (!alive) return
         setData(list)
         setStatus('success')
@@ -157,10 +158,10 @@ export function useCreatorSessionsPage() {
         ])
 
         const nextSessions = sessionsResponse.status === 'fulfilled'
-          ? unwrapArray(sessionsResponse.value).map(mapSession)
+          ? unwrapRequiredArray(sessionsResponse.value).map(mapSession)
           : []
         const nextBookings = bookingsResponse.status === 'fulfilled'
-          ? unwrapArray(bookingsResponse.value).map(mapBooking)
+          ? unwrapRequiredArray(bookingsResponse.value).map(mapBooking)
           : []
 
         if (!alive) return

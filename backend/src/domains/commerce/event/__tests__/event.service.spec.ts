@@ -215,6 +215,26 @@ describe('EventService - Property-Based Tests', () => {
     });
   });
 
+  describe('public visibility', () => {
+    it('does not allow public filters to remove active and published constraints', async () => {
+      const query: any = {
+        populate: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        exec: (jest.fn() as any).mockResolvedValue([]),
+      };
+      (mockEventModel.find as any).mockReturnValue(query);
+      (mockEventModel.countDocuments as any).mockResolvedValue(0);
+
+      await service.findAll(1, 10, undefined, undefined, undefined, false, false);
+
+      expect(mockEventModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({ isActive: true, isPublished: true }),
+      );
+    });
+  });
+
   describe('Property 6: Speaker ID Preservation', () => {
     it('should preserve speaker IDs when updating', async () => {
       await fc.assert(

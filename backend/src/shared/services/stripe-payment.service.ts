@@ -11,6 +11,7 @@ export interface LinkCheckoutSession {
   providerAmount?: number;
   providerCurrency?: string;
   providerExchangeRate?: number;
+  paymentIntentId?: string;
   error?: string;
 }
 
@@ -348,6 +349,7 @@ export class StripePaymentService {
     status?: string;
     checkoutStatus?: string | null;
     paymentIntentStatus?: string;
+    paymentIntentId?: string;
     amountDT?: number;
     providerAmount?: number;
     providerCurrency?: string;
@@ -437,6 +439,7 @@ export class StripePaymentService {
         status,
         checkoutStatus: session.status,
         paymentIntentStatus: paymentIntent?.status,
+        paymentIntentId: paymentIntent?.id,
         amountDT: typeof session.amount_total === 'number' ? session.amount_total / 100 : paymentIntent ? paymentIntent.amount / 100 : undefined,
         providerAmount: typeof session.amount_total === 'number' ? session.amount_total / 100 : paymentIntent ? paymentIntent.amount / 100 : undefined,
         providerCurrency: (session.currency || paymentIntent?.currency || '').toUpperCase() || undefined,

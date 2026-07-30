@@ -1,6 +1,7 @@
 import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from './client';
 import type { ApiGetOptions } from './client';
 import type { Product, ProductVariant, ProductFile } from './types';
+import { mediaApi } from './media.api';
 
 export interface CreateProductVariantData {
   name: string;
@@ -98,7 +99,18 @@ export const productsApi = {
 
   // Upload product file
   uploadFile: async (id: string, file: File): Promise<ApiSuccessResponse<ProductFile>> => {
-    return apiClient.uploadFile<ApiSuccessResponse<ProductFile>>(`/products/${id}/files`, file);
+    const asset = await mediaApi.uploadSmart(file, {
+      purpose: 'product_file',
+      entityType: 'Product',
+      entityId: id,
+      visibility: 'private',
+    });
+    return apiClient.post<ApiSuccessResponse<ProductFile>>(`/products/${id}/files`, {
+      name: file.name,
+      url: asset.url,
+      type: file.type || asset.mediaType,
+      size: `${file.size}`,
+    });
   },
 
   // Add product file metadata
@@ -160,14 +172,17 @@ export const productsApi = {
 
   // Submit product review
   submitReview: async (productId: string, data: { rating: number; comment?: string }): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.post<ApiSuccessResponse<any>>(`/products/${productId}/reviews`, data);
+    return apiClient.post<ApiSuccessResponse<any>>(`/products/${productId}/reviews`, {
+      rating: data.rating,
+      message: data.comment,
+    });
   },
 
   // Initiate Stripe Link payment for product
-  initStripePayment: async (productId: string, promoCode?: string): Promise<any> => {
+  initStripePayment: async (productId: string, promoCode?: string, idempotencyKey?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/product?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/product`;
-    return apiClient.post(endpoint, { productId });
+    return apiClient.post(endpoint, { productId }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
   },
 };

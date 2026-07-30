@@ -1,13 +1,19 @@
 const FALLBACK_SOCKET_ORIGIN = "http://localhost:3000"
 
 export function resolveSocketBaseUrl(apiUrl?: string): string {
-  const browserFallback =
-    typeof window !== "undefined" && window.location?.origin
-      ? window.location.origin
-      : FALLBACK_SOCKET_ORIGIN
+  const configuredSocketUrl = (process.env.NEXT_PUBLIC_SOCKET_URL || "").trim()
+  if (configuredSocketUrl) {
+    try {
+      return new URL(configuredSocketUrl).origin
+    } catch {
+      // Fall back to deriving it from the API URL.
+    }
+  }
+
+  const browserFallback = FALLBACK_SOCKET_ORIGIN
 
   const raw = (apiUrl || "").trim()
-  if (!raw) return browserFallback
+  if (!raw || raw.startsWith('/')) return browserFallback
 
   const withoutApiSuffix = raw.replace(/\/api\/?$/, "")
   if (!withoutApiSuffix || withoutApiSuffix === "http" || withoutApiSuffix === "https") {

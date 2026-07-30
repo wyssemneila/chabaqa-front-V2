@@ -12,11 +12,11 @@ export default function CreateEventPage() {
         ::-webkit-scrollbar-thumb{background:var(--p3);border-radius:10px}
       `}</style>
 
-      <div className="flex h-screen overflow-hidden" style={{ background:'var(--bg)' }}>
+      <div className="flex h-screen h-dvh overflow-hidden" style={{ background:'var(--bg)' }}>
         <DashSidebar />
-        <div className="md:ml-[220px] flex-1 flex flex-col h-screen overflow-hidden">
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:ml-[220px]">
           <DashTopbar title="Create Event" subtitle="New event for your community" />
-          <main id="main-content" className="flex-1 flex flex-col overflow-hidden" style={{ animation:'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-contain" style={{ animation:'dashFadeUp .4s ease both' }}>
             <EventCreationContainer />
           </main>
         </div>

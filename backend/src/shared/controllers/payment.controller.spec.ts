@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { PaymentController } from '@/shared/controllers/payment.controller';
 
 describe('PaymentController webhook hardening', () => {
@@ -21,6 +21,8 @@ describe('PaymentController webhook hardening', () => {
     const stripe = {
       createWebhookEvent: overrides.createWebhookEvent || jest.fn(),
       getSubscriptionDetails: overrides.getSubscriptionDetails || jest.fn(),
+      verifyLinkPayment: jest.fn(),
+      refundPayment: jest.fn(),
       getPriceDetails: jest.fn().mockResolvedValue({
         success: true,
         priceId: 'price_stable',
@@ -72,6 +74,7 @@ describe('PaymentController webhook hardening', () => {
       {} as any,
       { resolveAttributionFromRequest: jest.fn().mockReturnValue({}) } as any,
       { onOrderPaid: jest.fn().mockResolvedValue(null) } as any,
+      { revokeForOrder: jest.fn().mockResolvedValue(undefined) } as any,
       overrides.webhookRetryService as any,
     );
     (controller as any).processedWebhookEventModel = processedWebhookEventModel;
@@ -325,6 +328,43 @@ describe('PaymentController webhook hardening', () => {
     await expect(
       controller.getOrderState(orderId, { user: { _id: attackerId } }),
     ).rejects.toThrow('You are not allowed to view this order');
+  });
+
+  it('uses exact origins for checkout redirect allowlisting', () => {
+    const { controller } = buildController();
+    const previous = process.env.PAYMENTS_REDIRECT_ALLOWLIST;
+    process.env.PAYMENTS_REDIRECT_ALLOWLIST = 'https://app.example.com';
+    expect((controller as any).resolveCheckoutRedirectUrl('', 'https://app.example.com/paid')).toBe('https://app.example.com/paid');
+    expect(() => (controller as any).resolveCheckoutRedirectUrl('', 'https://app.example.com.evil.test/paid'))
+      .toThrow(BadRequestException);
+    if (previous === undefined) delete process.env.PAYMENTS_REDIRECT_ALLOWLIST;
+    else process.env.PAYMENTS_REDIRECT_ALLOWLIST = previous;
+  });
+
+  it('binds Stripe verification to the authenticated order buyer', async () => {
+    const order = { buyerId: '64a1b2c3d4e5f6789abcdef0' };
+    const { controller, stripe } = buildController({
+      orderFindOne: jest.fn().mockResolvedValue(order),
+    });
+    (stripe as any).verifyLinkPayment.mockResolvedValue({ success: true, status: 'pending' });
+    await expect(controller.verifyStripeLink('cs_test', {
+      user: { _id: '64a1b2c3d4e5f6789abcdef1' },
+    })).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('refunds the Stripe payment intent rather than checkout session id', async () => {
+    const order = {
+      buyerId: 'buyer', creatorId: 'creator', status: 'paid', paymentMethod: 'stripe',
+      paymentId: 'cs_test', paymentIntentId: 'pi_test', metadata: {},
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const { controller, stripe } = buildController({
+      orderFindById: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(order) }),
+    });
+    (stripe as any).refundPayment.mockResolvedValue({ success: true });
+    (controller as any).affiliateCommissionService = { onOrderRefunded: jest.fn().mockResolvedValue(undefined) };
+    await controller.refundOrder('64a1b2c3d4e5f6789abcdef0', {}, { user: { _id: 'admin' } });
+    expect((stripe as any).refundPayment).toHaveBeenCalledWith('pi_test');
   });
 
 

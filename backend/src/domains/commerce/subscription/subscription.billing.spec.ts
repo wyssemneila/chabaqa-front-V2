@@ -215,10 +215,6 @@ describe('SubscriptionService billing records', () => {
         whatsappMessagesPerMonth: 1000,
         analyticsLookbackDays: 365,
         sessionBookingsPerMonth: 100,
-        aiAgentsMax: 1,
-        aiCofounderRunsPerMonth: 1,
-        aiKnowledgeReindexPerMonth: 1,
-        aiStaffChatTurnsPerMonth: 100,
       },
     }));
 
@@ -248,10 +244,6 @@ describe('SubscriptionService billing records', () => {
         whatsappMessagesPerMonth: 1000,
         analyticsLookbackDays: 365,
         sessionBookingsPerMonth: 100,
-        aiAgentsMax: 1,
-        aiCofounderRunsPerMonth: 1,
-        aiKnowledgeReindexPerMonth: 1,
-        aiStaffChatTurnsPerMonth: 100,
       },
     }));
 

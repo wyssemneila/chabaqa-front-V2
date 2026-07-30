@@ -72,13 +72,7 @@ export function AiTutorInsightsTab({ courseId }: AiTutorInsightsTabProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Community-wide AI settings live in{" "}
-            <Link href="/creator/ai" className="font-medium text-teal-700 underline">
-              Chabaqa AI
-            </Link>
-            .
-          </p>
+          <p className="text-sm text-muted-foreground">Tutor settings are managed from this course&apos;s Settings tab.</p>
         </CardContent>
       </EnhancedCard>
 

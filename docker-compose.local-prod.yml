@@ -3,3 +3,10 @@ services:
     ports: !override []
   redis:
     ports: !override []
+  # keep ports for backend/frontend/minio so we can reach them locally
+  node-exporter:
+    ports: !override []
+  cadvisor:
+    ports: !override []
+  blackbox-exporter:
+    ports: !override []

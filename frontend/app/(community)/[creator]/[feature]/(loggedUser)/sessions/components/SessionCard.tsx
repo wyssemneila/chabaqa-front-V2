@@ -258,11 +258,11 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
   }, [selectedDate, selectedTime])
 
   const paymentModal = usePaymentProviderModal({
-    initStripe: () => sessionsApi.initStripePayment(String(session?.id), {
+    initStripe: (key) => sessionsApi.initStripePayment(String(session?.id), {
       scheduledAt: scheduledAt || new Date().toISOString(),
       notes: bookingNotes.trim() || undefined,
       slotId: selectedSlotId || undefined,
-    }, promoCode.trim() || undefined),
+    }, promoCode.trim() || undefined, key),
   })
 
   const handleTimeSelect = (slotId: string, time: string) => {
@@ -393,6 +393,8 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        isLoading={paymentModal.isLoading}
+        error={paymentModal.error}
       />
     <Card key={session.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
       <div className="h-40 w-full overflow-hidden rounded-t-lg bg-muted">

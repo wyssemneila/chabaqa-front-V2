@@ -74,7 +74,9 @@ export class ChallengeService {
   }
 
   private isPaidOrderRequired(): boolean {
-    return String(process.env.PAYMENTS_REQUIRE_PAID_ORDER || '').toLowerCase() === 'true';
+    const configured = process.env.PAYMENTS_REQUIRE_PAID_ORDER;
+    if (configured !== undefined) return String(configured).toLowerCase() === 'true';
+    return !['test', 'development'].includes(String(process.env.NODE_ENV || '').toLowerCase());
   }
 
   private buildPaymentRequiredException(params: {
@@ -289,6 +291,12 @@ export class ChallengeService {
     communityId?: string,
     visibilityScope: 'owner' | 'public' = 'owner',
   ) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Invalid pagination');
+    }
     console.log('🔧 DEBUG - getChallengesByUser');
     console.log(`   👤 User ID: ${userId}`);
     console.log(`   📄 Page: ${page}, Limit: ${limit}, Type: ${type}, Scope: ${visibilityScope}`);
@@ -1136,16 +1144,18 @@ export class ChallengeService {
     difficulty?: string,
     isActive?: boolean,
   ): Promise<ChallengeListResponseDto> {
-    const query: any = {};
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Invalid pagination');
+    }
+    const query: any = { isActive: true };
 
     // Filtres
     if (communitySlug) {
       const community = await this.communityModel.findOne({
         slug: communitySlug,
       });
-      if (community) {
-        query.communityId = community.id;
-      }
+      if (!community) throw new NotFoundException('Communauté non trouvée');
+      query.communityId = community.id;
     }
 
     if (category) {
@@ -1201,7 +1211,7 @@ export class ChallengeService {
   /**
    * Récupérer un défi par son ID
    */
-  async findOne(id: string): Promise<ChallengeResponseDto> {
+  async findOne(id: string, currentUserId?: string): Promise<ChallengeResponseDto> {
     // Try to find by MongoDB _id first, then by custom id field
     let challenge: ChallengeDocument | null = null;
 
@@ -1220,6 +1230,11 @@ export class ChallengeService {
     }
 
     if (!challenge) {
+      throw new NotFoundException('Défi non trouvé');
+    }
+
+    const challengeCreatorId = String((challenge.creatorId as any)?._id || challenge.creatorId || '');
+    if (!challenge.isActive && challengeCreatorId !== String(currentUserId || '')) {
       throw new NotFoundException('Défi non trouvé');
     }
 
@@ -1259,7 +1274,7 @@ export class ChallengeService {
     }
 
     const challenges = await this.challengeModel
-      .find({ communityId: community.id })
+      .find({ communityId: community.id, isActive: true })
       .populate('creatorId', 'name email avatar profile_picture photo_profil')
       .sort({ createdAt: -1 })
       .exec();

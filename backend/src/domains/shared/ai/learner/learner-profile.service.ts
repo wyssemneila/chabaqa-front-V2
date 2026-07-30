@@ -33,7 +33,8 @@ export class LearnerProfileService {
 
   async get(userId: string): Promise<LearnerProfileDocument | null> {
     if (!Types.ObjectId.isValid(userId)) return null;
-    return this.profileModel.findOne({ userId: new Types.ObjectId(userId) }).lean().exec();
+    const profile = await this.profileModel.findOne({ userId: new Types.ObjectId(userId) }).lean().exec();
+    return profile as unknown as LearnerProfileDocument | null;
   }
 
   async upsert(userId: string, input: UpsertLearnerProfileInput): Promise<LearnerProfileDocument> {

@@ -102,7 +102,7 @@ const TERMS_SECTIONS = [
 ] as const
 
 export const metadata: Metadata = {
-  title: "Terms of Service | Chabaqa",
+  title: "Terms of Service",
   description:
     "Read Chabaqa's Terms of Service covering platform access, account responsibilities, payments, content standards, and legal terms.",
   alternates: generateAlternateLanguages("/terms-of-service"),

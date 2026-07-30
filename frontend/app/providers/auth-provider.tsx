@@ -120,10 +120,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
 
   const isAuthenticated = !!user
+  const browserApiBase = '/api'
 
   const fetchMe = useCallback(async () => {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+      const apiBase = browserApiBase
       let token = localStorage.getItem('accessToken') || localStorage.getItem('access_token')
       const hasStoredUser = Boolean(localStorage.getItem('user'))
       if (!token && hasBrowserRefreshSession()) {
@@ -220,27 +221,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
         ? redirectParam
         : null
+    let destination: string
     if (safeRedirect && safeRedirect !== localizeHref(pathname || '/', '/signin')) {
-      router.push(localizeHref(pathname || '/', safeRedirect))
-      return
+      destination = localizeHref(pathname || '/', safeRedirect)
+    } else {
+      const role = user.role?.toLowerCase()
+      destination = role === 'creator'
+        ? localizeHref(pathname || '/', '/creator/dashboard')
+        : role === 'admin'
+          ? localizeHref(pathname || '/', '/admin')
+          : localizeHref(pathname || '/', '/explore')
     }
 
-    const role = user.role?.toLowerCase()
-    if (role === 'creator') {
-      router.push(localizeHref(pathname || '/', '/creator/dashboard'))
-    } else if (role === 'admin') {
-      router.push(localizeHref(pathname || '/', '/admin'))
-    } else {
-      router.push(localizeHref(pathname || '/', '/explore'))
-    }
-  }, [router, pathname])
+    // Use a document navigation after login so the middleware receives the
+    // freshly written accessToken cookie on the first protected-page request.
+    window.location.assign(destination)
+  }, [pathname])
 
   const login = useCallback(async (payload: { email: string; password: string; rememberMe?: boolean }) => {
     try {
       setError(null)
       // Use configured API URL or fallback to APP_URL/api, then localhost
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 
-                     (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api` : "http://localhost:3000/api")
+      const apiBase = browserApiBase
       
       const normalizedPayload = {
         email: String(payload.email || '').trim().toLowerCase(),
@@ -263,7 +265,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Unable to connect to server. Please check your internet connection or try again later.');
       }
 
-      const data = await res.json()
+      const contentType = res.headers.get('content-type') || ''
+      const data = contentType.includes('application/json')
+        ? await res.json().catch(() => ({}))
+        : { message: (await res.text().catch(() => '')).trim() || 'Authentication service unavailable' }
 
       const responseData = data.data || data
 
@@ -301,8 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verify2FA = useCallback(async (payload: { email: string; verificationCode: string }) => {
     try {
       setError(null)
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ||
-        (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api` : "http://localhost:3000/api")
+      const apiBase = browserApiBase
 
       const res = await fetch(`${apiBase}/auth/verify-2fa`, {
         method: 'POST',
@@ -314,7 +318,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }),
       })
 
-      const data = await res.json()
+      const contentType = res.headers.get('content-type') || ''
+      const data = contentType.includes('application/json')
+        ? await res.json().catch(() => ({}))
+        : { message: (await res.text().catch(() => '')).trim() || 'Verification service unavailable' }
       if (!res.ok) {
         throw new Error(extractErrorMessage(data))
       }
@@ -335,8 +342,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [finalizeAuthenticatedSession])
 
   const resend2FA = useCallback(async (email: string) => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ||
-      (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api` : "http://localhost:3000/api")
+    const apiBase = browserApiBase
     const res = await fetch(`${apiBase}/auth/resend-2fa`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -419,24 +425,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token: `Bearer ${accessToken}`,
       },
       transports: ["websocket", "polling"],
+      autoConnect: false,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
     })
     presenceSocketRef.current = socket
+    socket.connect()
 
     return () => {
-      socket.disconnect()
       if (presenceSocketRef.current === socket) {
         presenceSocketRef.current = null
       }
+      // Defer cleanup by one tick. React Strict Mode mounts and immediately
+      // unmounts effects in development; synchronous disconnect otherwise
+      // aborts the WebSocket while its handshake is still in progress.
+      window.setTimeout(() => socket.disconnect(), 0)
     }
   }, [isAuthenticated, user?._id, token])
 
   const register = useCallback(async (payload: any) => {
     try {
       setError(null)
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+      const apiBase = browserApiBase
       
       let res;
       try {
@@ -487,8 +498,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentToken = localStorage.getItem('accessToken') || localStorage.getItem('access_token')
     
     // 2. Call the backend logout endpoints FIRST (while we still have the token)
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 
-                   (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api` : "http://localhost:3000/api")
+    const apiBase = browserApiBase
     
     const authHeaders: HeadersInit = currentToken 
       ? { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' }

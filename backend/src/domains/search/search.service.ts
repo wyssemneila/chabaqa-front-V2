@@ -44,7 +44,7 @@ export class SearchService {
     const communityId = params.communityId ? String(params.communityId) : undefined;
 
     if (mode === 'semantic' && this.semanticRetrieval.isAvailable()) {
-      return this.searchSemantic(q, type, page, limit, communityId);
+      return this.searchSemantic(q, type, page, limit, communityId || '');
     }
 
     const external = await this.searchExternal(q, type, page, limit).catch((error) => {
@@ -197,7 +197,7 @@ export class SearchService {
     type: SearchType,
     page: number,
     limit: number,
-    communityId?: string,
+    communityId: string,
   ) {
     try {
       const results = await this.semanticRetrieval.retrieve({
@@ -206,14 +206,17 @@ export class SearchService {
         limit: limit * 2,
         visibility: communityId ? ['member', 'public'] : ['public'],
         minScore: 0.1,
-        filters: type !== 'all' ? { docType: type } : undefined,
       });
+
+      if (!results || results.length === 0) {
+        return this.searchMongo(q, type, page, limit);
+      }
 
       const enriched = await Promise.all(
         results.map(async (doc) => {
-          const id = String(doc.documentId || doc._id);
-          switch (doc.docType) {
-            case 'community':
+          const id = String(doc.sourceId || doc._id);
+          switch (doc.sourceType) {
+            case 'community_page':
               return this.communityModel.findById(id).lean().exec().then((r) => r && { ...r, type: 'community' });
             case 'course':
               return this.courseModel.findById(id).lean().exec().then((r) => r && { ...r, type: 'course' });
@@ -224,7 +227,7 @@ export class SearchService {
             case 'post':
               return this.postModel.findById(id).lean().exec().then((r) => r && { ...r, type: 'post', content: undefined });
             default:
-              return { _id: id, type: doc.docType, title: doc.title || doc.label };
+              return { _id: id, type: doc.sourceType, title: doc.title };
           }
         }),
       );

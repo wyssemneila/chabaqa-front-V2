@@ -61,6 +61,12 @@ export class Order {
   paymentId?: string;
 
   @Prop({ type: String })
+  paymentIntentId?: string;
+
+  @Prop({ type: String })
+  idempotencyKey?: string;
+
+  @Prop({ type: String })
   paymentMethod?: string; // e.g. 'stripe'
 
   @Prop({ type: String, default: 'pending' })
@@ -75,6 +81,10 @@ OrderSchema.index({ creatorId: 1, createdAt: -1 });
 OrderSchema.index({ buyerId: 1, createdAt: -1 });
 OrderSchema.index({ contentType: 1, contentId: 1 });
 OrderSchema.index({ paymentId: 1 }, { unique: true, sparse: true });
+OrderSchema.index(
+  { buyerId: 1, paymentMethod: 1, idempotencyKey: 1 },
+  { unique: true, sparse: true },
+);
 OrderSchema.index({ communityId: 1 });
 
 

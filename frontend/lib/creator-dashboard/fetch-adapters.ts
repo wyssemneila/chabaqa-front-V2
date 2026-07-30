@@ -77,7 +77,7 @@ export interface CreatorSessionCard {
   duration: number
   priceType: 'free' | 'paid'
   price?: number
-  isPublished: boolean
+  isActive: boolean
   availabilityDays: number
   totalSlots: number
 }
@@ -134,6 +134,24 @@ const asArray = (raw: any): any[] => {
 }
 
 export const unwrapArray = asArray
+
+export const unwrapRequiredArray = (raw: any): any[] => {
+  const list = asArray(raw)
+  if (list.length > 0 || Array.isArray(raw)) return list
+
+  const hasListShape = [
+    raw?.data,
+    raw?.data?.data,
+    raw?.items,
+    raw?.results,
+    raw?.docs,
+    ...['communities', 'courses', 'cours', 'challenges', 'events', 'products', 'sessions', 'posts', 'bookings']
+      .flatMap((key) => [raw?.[key], raw?.data?.[key], raw?.data?.data?.[key]]),
+  ].some(Array.isArray)
+
+  if (!hasListShape) throw new Error('The server returned an invalid list response.')
+  return list
+}
 
 export const unwrapData = <T = any>(raw: any, fallback: T): T => {
   if (raw?.data?.data !== undefined) return raw.data.data as T
@@ -382,7 +400,7 @@ export const mapSession = (item: any): CreatorSessionCard => {
     duration: number(item?.duration),
     priceType: number(item?.price) > 0 ? 'paid' : 'free',
     price: number(item?.price),
-    isPublished: bool(item?.isPublished, item?.published, item?.isActive, item?.status),
+    isActive: bool(item?.isActive, item?.status),
     availabilityDays: number(item?.availabilityDays, item?.availableDays),
     totalSlots: number(item?.totalSlots, item?.availableSlots),
   }

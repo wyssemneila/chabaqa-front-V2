@@ -27,6 +27,7 @@ import { OptionalJwtAuthGuard } from '@/domains/auth/guards/optional-jwt-auth.gu
 import { HttpCacheInterceptor } from '@/shared/interceptors/cache.interceptor';
 import { CacheDuration, CacheTTL } from '@/shared/decorators/cache-ttl.decorator';
 import { PlanFeatureGuard, RequireFeature } from '@/shared/guards/plan-feature.guard';
+import { parsePagination } from '@/shared/utils/pagination.util';
 
 @ApiTags('Sessions')
 @Controller('sessions')
@@ -56,7 +57,7 @@ export class SessionController {
     @Body() createSessionDto: CreateSessionDto,
     @Request() req: any
   ): Promise<SessionResponseDto> {
-    const userId = req.user._id || req.user.userId;
+    const userId = this.getRequestUserId(req);
     return this.sessionService.create(createSessionDto, userId);
   }
 
@@ -81,9 +82,10 @@ export class SessionController {
     @Query('isActive') isActive?: boolean,
     @Query('creatorId') creatorId?: string
   ): Promise<SessionListResponseDto> {
+    const pagination = parsePagination(page, limit);
     return this.sessionService.findAll(
-      page,
-      limit,
+      pagination.page,
+      pagination.limit,
       communitySlug,
       communityId,
       category,
@@ -106,11 +108,12 @@ export class SessionController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Récupérer une session par son ID' })
   @ApiResponse({ status: 200, description: 'Session récupérée avec succès', type: SessionResponseDto })
   @ApiResponse({ status: 404, description: 'Session non trouvée' })
-  async findOne(@Param('id') id: string): Promise<SessionResponseDto> {
-    return this.sessionService.findOne(id);
+  async findOne(@Param('id') id: string, @Request() req: any): Promise<SessionResponseDto> {
+    return this.sessionService.findOne(id, this.getRequestUserId(req));
   }
 
   @Patch(':id')
@@ -126,7 +129,7 @@ export class SessionController {
     @Body() updateSessionDto: UpdateSessionDto,
     @Request() req: any
   ): Promise<SessionResponseDto> {
-    const userId = req.user._id || req.user.userId;
+    const userId = this.getRequestUserId(req);
     return this.sessionService.update(id, updateSessionDto, userId);
   }
 
@@ -139,7 +142,7 @@ export class SessionController {
   @ApiResponse({ status: 403, description: 'Accès non autorisé' })
   @ApiResponse({ status: 404, description: 'Session non trouvée' })
   async remove(@Param('id') id: string, @Request() req: any): Promise<void> {
-    const userId = req.user._id || req.user.userId;
+    const userId = this.getRequestUserId(req);
     return this.sessionService.remove(id, userId);
   }
 
@@ -323,11 +326,12 @@ export class SessionController {
     @Query('sessionId') sessionId?: string,
     @Query('search') search?: string,
   ): Promise<CreatorBookingsResponseDto> {
+    const pagination = parsePagination(page, limit, 20);
     const userId = req.user._id || req.user.userId || req.user.sub;
     console.log(`[getCreatorBookings] Fetching bookings for creator: ${userId}`);
     const result = await this.sessionService.getCreatorBookings(userId, {
-      page: page || 1,
-      limit: limit || 20,
+      page: pagination.page,
+      limit: pagination.limit,
       status,
       timeFilter: timeFilter || 'all',
       sessionId,
@@ -397,6 +401,7 @@ export class SessionController {
     @Query('communityId') communityId?: string,
     @Request() req?: any,
   ) {
+    const pagination = parsePagination(page, limit);
     const requesterId = this.getRequestUserId(req);
     const requestedUserId = String(userId || '').trim();
     const resolvedUserId = requestedUserId.toLowerCase() === 'me' ? requesterId : requestedUserId;
@@ -408,8 +413,8 @@ export class SessionController {
     const visibilityScope = requesterId && requesterId === resolvedUserId ? 'owner' : 'public';
     return await this.sessionService.getSessionsByUser(
       resolvedUserId,
-      Number(page) || 1, 
-      Number(limit) || 10,
+      pagination.page,
+      pagination.limit,
       type,
       timeFilter,
       communityId,

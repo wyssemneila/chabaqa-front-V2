@@ -840,6 +840,32 @@ html {
 
 /* ── Dark mode brand token overrides live in @layer base above (single source of truth) ── */
 
+/* Creator dashboard compatibility layer for legacy light-only Tailwind utilities. */
+.dark .creator-theme .bg-white:not([data-preview-theme="light"]):not([data-preview-theme="light"] *) {
+  background-color: var(--white) !important;
+}
+.dark .creator-theme .bg-gray-50:not([data-preview-theme="light"] *),
+.dark .creator-theme .bg-gray-100:not([data-preview-theme="light"] *),
+.dark .creator-theme .bg-slate-50:not([data-preview-theme="light"] *),
+.dark .creator-theme .bg-slate-100:not([data-preview-theme="light"] *) {
+  background-color: var(--bg) !important;
+}
+.dark .creator-theme :is(.text-gray-950,.text-gray-900,.text-gray-800,.text-gray-700,.text-slate-950,.text-slate-900,.text-slate-800,.text-slate-700):not([data-preview-theme="light"] *) {
+  color: var(--t1) !important;
+}
+.dark .creator-theme :is(.text-gray-600,.text-gray-500,.text-gray-400,.text-slate-600,.text-slate-500,.text-slate-400):not([data-preview-theme="light"] *) {
+  color: var(--t2) !important;
+}
+.dark .creator-theme :is(.border-gray-100,.border-gray-200,.border-gray-300,.border-slate-100,.border-slate-200,.border-slate-300):not([data-preview-theme="light"] *) {
+  border-color: var(--bd) !important;
+}
+.dark .creator-theme :is(input,textarea,select):not([data-preview-theme="light"] *) {
+  color-scheme: dark;
+}
+[data-preview-theme="light"] {
+  color-scheme: light;
+}
+
 /* ── Landing Page Animations ─────────────────────────────────────────── */
 @keyframes blobMove {
   0%, 100% { transform: translate(0, 0) scale(1); }

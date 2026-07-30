@@ -13,6 +13,7 @@ import { useProductForm } from "./product-form-context"
 import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
+import { CreatorWritingAssist } from '@/components/creator-dashboard/creator-writing-assist'
 
 const categories = [
   "E-books",
@@ -75,7 +76,7 @@ export function BasicInfoStep() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="title">Product Name *</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="title">Product Name *</Label><CreatorWritingAssist value={formData.title} onApply={v=>handleInputChange('title',v)} surface="product" field="title" context="A digital product for community members" maxCharacters={120}/></div>
           <Input
             id="title"
             placeholder="e.g., Ultimate Photoshop Toolkit"
@@ -89,7 +90,7 @@ export function BasicInfoStep() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Product Description *</Label>
+          <div className="flex items-center justify-between"><Label htmlFor="description">Product Description *</Label><CreatorWritingAssist value={formData.description} onApply={v=>handleInputChange('description',v)} surface="product" field="description" context={`Product name: ${formData.title}`} maxCharacters={1200}/></div>
           <Textarea
             id="description"
             placeholder="Describe what customers will get with this product..."

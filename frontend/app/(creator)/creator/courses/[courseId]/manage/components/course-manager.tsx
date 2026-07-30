@@ -17,6 +17,7 @@ import { AnalyticsTab } from "./tabs/analytics-tab"
 import { SettingsTab } from "./tabs/settings-tab"
 import { AiTutorInsightsTab } from "./tabs/ai-tutor-insights-tab"
 import { getCreatorVideoUrlError, normalizeVideoUrl } from "@/lib/utils/video-source"
+import { extractApiError } from "@/lib/api/error-parser"
 
 export function CourseManager({ courseId }: { courseId: string }) {
   const router = useRouter()
@@ -26,13 +27,15 @@ export function CourseManager({ courseId }: { courseId: string }) {
   const [isLoading, setIsLoading] = useState(false)
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState("")
 
   const fetchCourse = async () => {
+    setFetchError("")
     try {
       const rawResponse = await coursesApi.getCoursById(courseId)
       const response = normalizeCourseResponse(rawResponse)
 
-      console.log("Fetched course data:", response)
+      if (!response || typeof response !== "object") throw new Error("The server returned an invalid course response.")
 
       const resolvedMongoId = String(response.mongoId || response._id || response.id || "")
       const resolvedPublicId = response.id && response.id !== resolvedMongoId ? String(response.id) : undefined
@@ -101,7 +104,9 @@ export function CourseManager({ courseId }: { courseId: string }) {
       setCourse(transformedCourse)
     } catch (error) {
       console.error('Failed to fetch course:', error)
-      toast.error("Failed to load course details")
+      const message = extractApiError(error).globalMessage || "Failed to load course details"
+      setFetchError(message)
+      toast.error(message)
       // Only redirect on actual error, not just empty data
       if ((error as any)?.response?.status === 404) {
          router.push('/creator/courses')
@@ -225,12 +230,14 @@ export function CourseManager({ courseId }: { courseId: string }) {
   const handleSave = async () => {
     if (!course) return
     const targetId = course.mongoId || course.id
+    const price = formData.price === "" ? 0 : Number(formData.price)
+    if (!Number.isFinite(price) || price < 0) { toast.error("Enter a valid non-negative course price"); return }
     setIsLoading(true)
     try {
       await coursesApi.update(targetId, {
         titre: formData.title,
         description: formData.description,
-        prix: formData.price === "" ? 0 : Number(formData.price),
+        prix: price,
         devise: formData.currency,
         category: formData.category,
         niveau: formData.level,
@@ -332,6 +339,8 @@ export function CourseManager({ courseId }: { courseId: string }) {
     const chapterTitle = payload.title?.trim() || ""
     const chapterContent = payload.content?.trim() || ""
     const videoUrlError = getCreatorVideoUrlError(normalizedVideoUrl)
+    const duration = payload.duration === "" ? 0 : Number(payload.duration)
+    const price = payload.price === "" ? 0 : Number(payload.price)
 
     if (!chapterTitle) {
       toast.error("Chapter title is required")
@@ -347,15 +356,16 @@ export function CourseManager({ courseId }: { courseId: string }) {
       toast.error(videoUrlError)
       return
     }
+    if (!Number.isFinite(duration) || duration < 0 || !Number.isFinite(price) || price < 0) { toast.error("Enter valid non-negative chapter numbers"); return }
 
     try {
       await coursesApi.updateChapter(targetId, sectionId, chapterId, {
         titre: chapterTitle,
         description: chapterContent,
         videoUrl: normalizedVideoUrl || undefined,
-        duree: payload.duration ? toHHMM(Number(payload.duration)) : undefined,
+        duree: payload.duration ? toHHMM(duration) : undefined,
         isPaid: !Boolean(payload.isPreview),
-        prix: payload.isPreview ? 0 : payload.price === "" ? 0 : Number(payload.price),
+        prix: payload.isPreview ? 0 : price,
         notes: payload.notes || undefined,
       })
       await fetchCourse()
@@ -382,6 +392,8 @@ export function CourseManager({ courseId }: { courseId: string }) {
     const chapterContent = String(payload.content || "").trim()
     const normalizedVideoUrl = normalizeVideoUrl(payload.videoUrl)
     const videoUrlError = getCreatorVideoUrlError(normalizedVideoUrl)
+    const duration = payload.duration === "" ? 0 : Number(payload.duration)
+    const price = payload.price === "" ? 0 : Number(payload.price)
 
     if (!chapterTitle) {
       toast.error("Chapter title is required")
@@ -397,6 +409,7 @@ export function CourseManager({ courseId }: { courseId: string }) {
       toast.error(videoUrlError)
       return
     }
+    if (!Number.isFinite(duration) || duration < 0 || !Number.isFinite(price) || price < 0) { toast.error("Enter valid non-negative chapter numbers"); return }
     
     try {
       await coursesApi.createChapter(targetId, sectionId, {
@@ -404,9 +417,9 @@ export function CourseManager({ courseId }: { courseId: string }) {
         content: chapterContent,
         videoUrl: normalizedVideoUrl || undefined,
         isPaid: !Boolean(payload.isPreview),
-        price: payload.isPreview ? 0 : Number(payload.price || 0),
+        price: payload.isPreview ? 0 : price,
         order: nextOrder,
-        duration: payload.duration ? Number(payload.duration) : 0,
+        duration,
         notes: payload.notes || undefined,
       })
       await fetchCourse()
@@ -419,6 +432,10 @@ export function CourseManager({ courseId }: { courseId: string }) {
 
   if (loading) {
     return <PageState variant="loading" compact />
+  }
+
+  if (fetchError && !course) {
+    return <PageState variant="error" title="Course could not be loaded" description={fetchError} actions={[{ label: "Retry", onClick: () => { setLoading(true); void fetchCourse().finally(() => setLoading(false)) } }, { label: "Back to courses", onClick: () => router.push("/creator/courses") }]} />
   }
 
   if (!course) {

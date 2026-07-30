@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Chabaqa Status',
+  title: "Status",
   description: 'Current operational status of Chabaqa services',
 }
 

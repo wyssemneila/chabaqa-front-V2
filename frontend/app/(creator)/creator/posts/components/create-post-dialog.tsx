@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Plus, Image as ImageIcon, Video, Link as LinkIcon, Smile, Loader2, X } from "lucide-react"
 import type { Post } from "@/lib/api/types"
+import { CreatorWritingAssist } from '@/components/creator-dashboard/creator-writing-assist'
 
 // Common emojis for quick access
 const COMMON_EMOJIS = ["😀", "😂", "😍", "🎉", "🔥", "👍", "❤️", "🚀", "✨", "💯"]
@@ -400,7 +401,7 @@ export function CreatePostDialog({
         <div className="space-y-4">
           {/* Content */}
           <div>
-            <label className="text-sm font-medium">Content *</label>
+            <div className="flex items-center justify-between"><label className="text-sm font-medium">Content *</label><CreatorWritingAssist value={content} onApply={setContent} surface="post" field="content" context={`Post title: ${title || 'community update'}; tags: ${tags.join(', ')}`} maxCharacters={3000}/></div>
             <Textarea
               placeholder="Share your progress, ask questions, or celebrate wins..."
               value={content}

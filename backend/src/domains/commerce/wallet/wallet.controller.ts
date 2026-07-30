@@ -10,6 +10,8 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  GoneException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '@/domains/auth/jwt-auth.guard';
@@ -249,6 +251,16 @@ export class WalletController {
     @Body('creatorId') creatorId: string,
     @Body('description') description?: string,
   ) {
+    if (process.env.PAYMENTS_ENABLE_WALLET_FALLBACK !== 'true') {
+      throw new GoneException('Wallet purchases are disabled. Use Stripe checkout.');
+    }
+
+    // Wallet checkout cannot safely accept client supplied pricing or ownership.
+    throw new ServiceUnavailableException(
+      'Wallet purchases are unavailable until authoritative server-side pricing is implemented.',
+    );
+
+    /* istanbul ignore next */
     console.log('🔍 [PURCHASE] Request body:', req.body);
     console.log('🔍 [PURCHASE] Parsed params:', { contentType, contentId, amount, creatorId, description });
     console.log('🔍 [PURCHASE] User:', this.getUserId(req));

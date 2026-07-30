@@ -499,12 +499,12 @@ export const subscriptionApi = {
   /**
    * Initiate Stripe Link payment for subscription
    */
-  initStripePayment: async (tier: PlanTier, interval: 'month' | 'year' = 'month'): Promise<any> => {
+  initStripePayment: async (tier: PlanTier, interval: 'month' | 'year' = 'month', idempotencyKey?: string): Promise<any> => {
     return apiClient.post('/payment/stripe-link/init/subscription', {
       tier,
       interval,
       idempotencyKey: createSubscriptionIdempotencyKey('stripe', tier, interval),
-    });
+    }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
   },
 
   createStripeCustomerPortal: async (): Promise<ApiSuccessResponse<{ portalUrl: string }> | { portalUrl: string }> => {

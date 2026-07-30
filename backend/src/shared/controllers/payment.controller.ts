@@ -37,6 +37,8 @@ import { AffiliateAttributionService } from '@/domains/community/affiliate/affil
 import { AffiliateCommissionService } from '@/domains/community/affiliate/affiliate-commission.service';
 import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
+import { AdminGuard } from '@/domains/auth/guards/admin.guard';
+import { EntitlementService } from '@/shared/services/entitlement.service';
 
 
 @ApiTags('Payments')
@@ -72,6 +74,7 @@ export class PaymentController {
     @InjectModel(Plan.name) private planModel: Model<PlanDocument>,
     private readonly affiliateAttributionService: AffiliateAttributionService,
     private readonly affiliateCommissionService: AffiliateCommissionService,
+    private readonly entitlementService: EntitlementService,
     @Optional() private readonly webhookRetryService?: WebhookRetryService,
   ) { }
 
@@ -79,6 +82,15 @@ export class PaymentController {
     const raw = process.env[name];
     if (raw === undefined || raw === null || raw === '') return defaultValue;
     return ['1', 'true', 'yes', 'on'].includes(String(raw).trim().toLowerCase());
+  }
+
+  private normalizeCatalogCurrency(value: unknown): 'TND' {
+    const currency = String(value || 'TND').trim().toUpperCase();
+    if (currency === 'DT') return 'TND';
+    if (currency !== 'TND') {
+      throw new BadRequestException(`Unsupported catalog currency ${currency}. Chabaqa catalog prices must be in TND.`);
+    }
+    return 'TND';
   }
 
   private normalizePaymentChannel(raw?: string): 'web' | 'mobile' {
@@ -256,7 +268,13 @@ export class PaymentController {
       const parsed = new URL(normalizedOverride);
       const absolute = parsed.toString();
       const allowedPrefixes = this.getRedirectAllowlistPrefixes();
-      const isAllowed = allowedPrefixes.some((prefix) => absolute.startsWith(prefix));
+      const isAllowed = allowedPrefixes.some((allowed) => {
+        try {
+          return parsed.origin === new URL(allowed).origin;
+        } catch {
+          return false;
+        }
+      });
       if (!isAllowed) {
         throw new BadRequestException(
           `Redirect URL is not allowed. Allowed prefixes: ${allowedPrefixes.join(', ')}`,
@@ -292,6 +310,52 @@ export class PaymentController {
     const value = String(raw || '').trim();
     if (!value) return undefined;
     return value.slice(0, 128);
+  }
+
+  private getRequestIdempotencyKey(req: any): string | undefined {
+    return this.normalizeIdempotencyKey(req?.headers?.['idempotency-key'] || req?.body?.idempotencyKey);
+  }
+
+  private async findReusablePendingContentOrder(params: {
+    userId: string;
+    contentType: TrackableContentType;
+    contentId: string;
+    idempotencyKey?: string;
+  }): Promise<any | null> {
+    if (!params.idempotencyKey) return null;
+    return this.orderModel.findOne({
+      buyerId: new Types.ObjectId(params.userId),
+      contentType: params.contentType,
+      contentId: params.contentId,
+      paymentMethod: 'stripe',
+      status: 'pending',
+      idempotencyKey: params.idempotencyKey,
+      'metadata.checkoutUrl': { $exists: true, $ne: '' },
+    }).sort({ createdAt: -1 });
+  }
+
+  private buildReusableStripeInitResponse(order: any, scope: string, targetId: string, extra?: Record<string, any>) {
+    return this.buildStripeInitResponse({
+      scope,
+      targetId,
+      orderId: order._id.toString(),
+      sessionId: order.paymentId,
+      checkoutUrl: order.metadata.checkoutUrl,
+      extra: { ...(extra || {}), idempotent: true },
+    });
+  }
+
+  private async persistStripeCheckout(order: any, session: any): Promise<void> {
+    order.paymentId = session.sessionId;
+    if (session.paymentIntentId) order.paymentIntentId = session.paymentIntentId;
+    order.paymentMethod = 'stripe';
+    this.applyProviderMoneyToOrder(order, session);
+    order.metadata = {
+      ...(order.metadata || {}),
+      providerCheckoutSessionId: session.sessionId,
+      checkoutUrl: session.url,
+    };
+    await order.save();
   }
 
   private async findReusablePendingSubscriptionOrder(params: {
@@ -788,6 +852,11 @@ export class PaymentController {
         contentType: (order as any).contentType,
         contentId: (order as any).contentId,
         amountDT: (order as any).amountDT,
+        businessAmount: (order as any).amountDT,
+        businessCurrency: (order as any).businessCurrency || 'TND',
+        providerAmount: (order as any).providerAmount,
+        providerCurrency: (order as any).providerCurrency,
+        providerExchangeRate: (order as any).providerExchangeRate,
         metadata: (order as any).metadata || {},
         ...enriched,
       },
@@ -796,7 +865,7 @@ export class PaymentController {
 
   @Post('order/:orderId/refund')
   @ApiOperation({ summary: 'Request/process a full refund for a paid Stripe order' })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()
   async refundOrder(
     @Param('orderId') orderId: string,
@@ -813,20 +882,13 @@ export class PaymentController {
       throw new BadRequestException('Order not found');
     }
 
-    const isBuyer = String((order as any).buyerId || '') === userId;
-    const isCreator = String((order as any).creatorId || '') === userId;
-    const isAdmin = Boolean(req.user?.isAdmin || req.user?.role === 'admin');
-    if (!isBuyer && !isCreator && !isAdmin) {
-      throw new ForbiddenException('You are not allowed to refund this order');
-    }
-
     if ((order as any).status !== 'paid') {
       throw new BadRequestException('Only paid orders can be refunded');
     }
 
-    const paymentId = String((order as any).paymentId || '');
+    const paymentId = String((order as any).paymentIntentId || '');
     if (!paymentId) {
-      throw new BadRequestException('Order has no provider payment id to refund');
+      throw new BadRequestException('Order has no Stripe payment intent to refund');
     }
 
     const provider = String((order as any).paymentMethod || 'stripe').toLowerCase();
@@ -861,6 +923,7 @@ export class PaymentController {
       },
     };
     await order.save();
+    await this.entitlementService.revokeForOrder(orderId, reason);
 
     await this.affiliateCommissionService.onOrderRefunded(orderId).catch((error) => {
       this.logger.warn(`Affiliate refund reversal failed for order ${orderId}: ${error?.message || error}`);
@@ -905,7 +968,8 @@ export class PaymentController {
     if (!community) throw new BadRequestException('Community not found');
     const validatedInviteCode = await this.assertPrivateInviteAccess(community, inviteCode);
 
-    const price = community.fees_of_join || 0;
+    const price = Number((community as any).pricing?.price ?? community.fees_of_join ?? (community as any).price ?? 0);
+    const businessCurrency = this.normalizeCatalogCurrency((community as any).pricing?.currency || (community as any).currency);
     if (price <= 0) throw new BadRequestException('Free community');
 
     let amount = price;
@@ -922,6 +986,11 @@ export class PaymentController {
     }
 
     const breakdown = await this.feeService.calculateForAmount(amount, community.createur.toString());
+    const idempotencyKey = this.getRequestIdempotencyKey(req);
+    const reusableOrder = await this.findReusablePendingContentOrder({
+      userId, contentType: TrackableContentType.COMMUNITY, contentId: community._id.toString(), idempotencyKey,
+    });
+    if (reusableOrder) return this.buildReusableStripeInitResponse(reusableOrder, 'community', communityId, { channel });
     const recurringMetadata = this.getCommunityRecurringMetadata(community, amount);
     const metadata: Record<string, any> = {
       channel,
@@ -940,6 +1009,7 @@ export class PaymentController {
       contentType: TrackableContentType.COMMUNITY,
       contentId: community._id.toString(),
       amountDT: breakdown.amountDT,
+      businessCurrency,
       platformPercent: breakdown.platformPercent,
       platformFixedDT: breakdown.platformFixedDT,
       platformFeeDT: breakdown.platformFeeDT,
@@ -947,6 +1017,8 @@ export class PaymentController {
       promoCode: appliedCode,
       discountDT,
       status: 'pending',
+      paymentMethod: 'stripe',
+      idempotencyKey,
       metadata: this.buildPendingFulfillmentMetadata(metadata),
     });
 
@@ -973,8 +1045,8 @@ export class PaymentController {
     if (recurringMetadata.isRecurring) {
       const priceResult = await this.stripe.createPrice({
         amountDT: amount,
+        currency: businessCurrency,
         interval: recurringMetadata.billingInterval,
-        currency: recurringMetadata.currency,
         productName: `${community.name} membership`,
         productDescription: `Recurring community membership for ${community.name}`,
       });
@@ -1004,7 +1076,7 @@ export class PaymentController {
         lineItems: [{
           name: `Join ${community.name}`,
           description: `Community membership for ${community.name}`,
-          amount: amount,
+         amount: amount,
           quantity: 1
         }]
       });
@@ -1012,13 +1084,7 @@ export class PaymentController {
 
     if (!session.success) throw new BadRequestException(session.error);
 
-    pendingOrder.paymentId = session.sessionId;
-    this.applyProviderMoneyToOrder(pendingOrder, session);
-    pendingOrder.metadata = {
-      ...(pendingOrder.metadata || {}),
-      providerCheckoutSessionId: session.sessionId,
-    };
-    await pendingOrder.save();
+    await this.persistStripeCheckout(pendingOrder, session);
 
     return this.buildStripeInitResponse({
       scope: 'community',
@@ -1079,6 +1145,11 @@ export class PaymentController {
     }
 
     const breakdown = await this.feeService.calculateForAmount(amount, cours.creatorId.toString());
+    const idempotencyKey = this.getRequestIdempotencyKey(req);
+    const reusableOrder = await this.findReusablePendingContentOrder({
+      userId, contentType: TrackableContentType.COURSE, contentId: cours._id.toString(), idempotencyKey,
+    });
+    if (reusableOrder) return this.buildReusableStripeInitResponse(reusableOrder, 'course', coursePublicId, { channel });
     const pendingOrder = await this.orderModel.create({
       buyerId: new Types.ObjectId(userId),
       creatorId: cours.creatorId,
@@ -1092,6 +1163,8 @@ export class PaymentController {
       promoCode: appliedCode,
       discountDT,
       status: 'pending',
+      paymentMethod: 'stripe',
+      idempotencyKey,
       metadata: this.buildPendingFulfillmentMetadata({
         channel,
         ...(Object.keys(clientContext).length > 0 ? { clientContext } : {}),
@@ -1129,9 +1202,7 @@ export class PaymentController {
 
     if (!session.success) throw new BadRequestException(session.error);
 
-    pendingOrder.paymentId = session.sessionId;
-    this.applyProviderMoneyToOrder(pendingOrder, session);
-    await pendingOrder.save();
+    await this.persistStripeCheckout(pendingOrder, session);
 
     return this.buildStripeInitResponse({
       scope: 'course',
@@ -1187,6 +1258,11 @@ export class PaymentController {
     }
 
     const breakdown = await this.feeService.calculateForAmount(amount, challenge.creatorId.toString());
+    const idempotencyKey = this.getRequestIdempotencyKey(req);
+    const reusableOrder = await this.findReusablePendingContentOrder({
+      userId, contentType: TrackableContentType.CHALLENGE, contentId: challenge._id.toString(), idempotencyKey,
+    });
+    if (reusableOrder) return this.buildReusableStripeInitResponse(reusableOrder, 'challenge', challengeId, { channel });
     const pendingOrder = await this.orderModel.create({
       buyerId: new Types.ObjectId(userId),
       creatorId: challenge.creatorId,
@@ -1200,6 +1276,8 @@ export class PaymentController {
       promoCode: appliedCode,
       discountDT,
       status: 'pending',
+      paymentMethod: 'stripe',
+      idempotencyKey,
       metadata: this.buildPendingFulfillmentMetadata({
         channel,
         ...(Object.keys(clientContext).length > 0 ? { clientContext } : {}),
@@ -1237,9 +1315,7 @@ export class PaymentController {
 
     if (!session.success) throw new BadRequestException(session.error);
 
-    pendingOrder.paymentId = session.sessionId;
-    this.applyProviderMoneyToOrder(pendingOrder, session);
-    await pendingOrder.save();
+    await this.persistStripeCheckout(pendingOrder, session);
 
     return this.buildStripeInitResponse({
       scope: 'challenge',
@@ -1299,6 +1375,11 @@ export class PaymentController {
     }
 
     const breakdown = await this.feeService.calculateForAmount(amount, event.creatorId.toString());
+    const idempotencyKey = this.getRequestIdempotencyKey(req);
+    const reusableOrder = await this.findReusablePendingContentOrder({
+      userId, contentType: TrackableContentType.EVENT, contentId: event._id.toString(), idempotencyKey,
+    });
+    if (reusableOrder) return this.buildReusableStripeInitResponse(reusableOrder, 'event', eventId, { channel });
     const pendingOrder = await this.orderModel.create({
       buyerId: new Types.ObjectId(userId),
       creatorId: event.creatorId,
@@ -1312,6 +1393,8 @@ export class PaymentController {
       promoCode: appliedCode,
       discountDT,
       status: 'pending',
+      paymentMethod: 'stripe',
+      idempotencyKey,
       metadata: this.buildPendingFulfillmentMetadata({
         ticketType,
         channel,
@@ -1351,9 +1434,7 @@ export class PaymentController {
 
     if (!session.success) throw new BadRequestException(session.error);
 
-    pendingOrder.paymentId = session.sessionId;
-    this.applyProviderMoneyToOrder(pendingOrder, session);
-    await pendingOrder.save();
+    await this.persistStripeCheckout(pendingOrder, session);
 
     return this.buildStripeInitResponse({
       scope: 'event',
@@ -1392,6 +1473,7 @@ export class PaymentController {
     }
 
     const price = product.price || 0;
+    const businessCurrency = this.normalizeCatalogCurrency((product as any).currency);
     if (price <= 0) throw new BadRequestException('Free product');
 
     let amount = price;
@@ -1408,12 +1490,18 @@ export class PaymentController {
     }
 
     const breakdown = await this.feeService.calculateForAmount(amount, product.creatorId.toString());
+    const idempotencyKey = this.getRequestIdempotencyKey(req);
+    const reusableOrder = await this.findReusablePendingContentOrder({
+      userId, contentType: TrackableContentType.PRODUCT, contentId: product._id.toString(), idempotencyKey,
+    });
+    if (reusableOrder) return this.buildReusableStripeInitResponse(reusableOrder, 'product', productId, { channel });
     const pendingOrder = await this.orderModel.create({
       buyerId: new Types.ObjectId(userId),
       creatorId: product.creatorId,
       contentType: TrackableContentType.PRODUCT,
       contentId: product._id.toString(),
       amountDT: breakdown.amountDT,
+      businessCurrency,
       platformPercent: breakdown.platformPercent,
       platformFixedDT: breakdown.platformFixedDT,
       platformFeeDT: breakdown.platformFeeDT,
@@ -1421,6 +1509,8 @@ export class PaymentController {
       promoCode: appliedCode,
       discountDT,
       status: 'pending',
+      paymentMethod: 'stripe',
+      idempotencyKey,
       metadata: this.buildPendingFulfillmentMetadata({
         channel,
         ...(Object.keys(clientContext).length > 0 ? { clientContext } : {}),
@@ -1436,6 +1526,7 @@ export class PaymentController {
     const user = await this.userModel.findById(userId).select('email name');
     const session = await this.stripe.createLinkCheckoutSession({
       amountDT: amount,
+      currency: businessCurrency,
       successUrl,
       cancelUrl: failUrl,
       customerEmail: user?.email,
@@ -1457,9 +1548,7 @@ export class PaymentController {
 
     if (!session.success) throw new BadRequestException(session.error);
 
-    pendingOrder.paymentId = session.sessionId;
-    this.applyProviderMoneyToOrder(pendingOrder, session);
-    await pendingOrder.save();
+    await this.persistStripeCheckout(pendingOrder, session);
 
     return this.buildStripeInitResponse({
       scope: 'product',
@@ -1498,6 +1587,7 @@ export class PaymentController {
     }
 
     const price = sessionDoc.price || 0;
+    const businessCurrency = this.normalizeCatalogCurrency((sessionDoc as any).currency);
     if (price <= 0) throw new BadRequestException('Free session');
 
     let amount = price;
@@ -1514,12 +1604,18 @@ export class PaymentController {
     }
 
     const breakdown = await this.feeService.calculateForAmount(amount, sessionDoc.creatorId.toString());
+    const idempotencyKey = this.getRequestIdempotencyKey(req);
+    const reusableOrder = await this.findReusablePendingContentOrder({
+      userId, contentType: TrackableContentType.SESSION, contentId: sessionDoc._id.toString(), idempotencyKey,
+    });
+    if (reusableOrder) return this.buildReusableStripeInitResponse(reusableOrder, 'session', sessionId, { channel });
     const pendingOrder = await this.orderModel.create({
       buyerId: new Types.ObjectId(userId),
       creatorId: sessionDoc.creatorId,
       contentType: TrackableContentType.SESSION,
       contentId: sessionDoc._id.toString(),
       amountDT: breakdown.amountDT,
+      businessCurrency,
       platformPercent: breakdown.platformPercent,
       platformFixedDT: breakdown.platformFixedDT,
       platformFeeDT: breakdown.platformFeeDT,
@@ -1527,6 +1623,8 @@ export class PaymentController {
       promoCode: appliedCode,
       discountDT,
       status: 'pending',
+      paymentMethod: 'stripe',
+      idempotencyKey,
       metadata: this.buildPendingFulfillmentMetadata({
         bookingDto,
         contentId: sessionId,
@@ -1545,6 +1643,7 @@ export class PaymentController {
     const user = await this.userModel.findById(userId).select('email name');
     const session = await this.stripe.createLinkCheckoutSession({
       amountDT: amount,
+      currency: businessCurrency,
       successUrl,
       cancelUrl: failUrl,
       customerEmail: user?.email,
@@ -1567,9 +1666,7 @@ export class PaymentController {
 
     if (!session.success) throw new BadRequestException(session.error);
 
-    pendingOrder.paymentId = session.sessionId;
-    this.applyProviderMoneyToOrder(pendingOrder, session);
-    await pendingOrder.save();
+    await this.persistStripeCheckout(pendingOrder, session);
 
     return this.buildStripeInitResponse({
       scope: 'session',
@@ -1654,6 +1751,7 @@ export class PaymentController {
       creatorNetDT: breakdown.creatorNetDT,
       status: 'pending',
       paymentMethod: 'stripe',
+      idempotencyKey,
       metadata: this.buildPendingFulfillmentMetadata({
         channel,
         tier,
@@ -1705,6 +1803,7 @@ export class PaymentController {
     if (!session.success) throw new BadRequestException(session.error);
 
     pendingOrder.paymentId = session.sessionId;
+    if (session.paymentIntentId) pendingOrder.paymentIntentId = session.paymentIntentId;
     pendingOrder.metadata = {
       ...(pendingOrder.metadata || {}),
       providerCheckoutSessionId: session.sessionId,
@@ -2069,7 +2168,7 @@ export class PaymentController {
         break;
 
       case TrackableContentType.COURSE:
-        await this.coursService.inscrireAuCours(order.contentId, order.buyerId.toString(), order.promoCode, session);
+        await this.coursService.inscrireAuCours(order.contentId, order.buyerId.toString(), order.promoCode, session, true);
         break;
 
       case TrackableContentType.CHALLENGE:
@@ -2163,7 +2262,9 @@ export class PaymentController {
 
   @Get('stripe-link/verify')
   @ApiOperation({ summary: 'Verify Stripe Link payment' })
-  async verifyStripeLink(@Query('sessionId') sessionId: string) {
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async verifyStripeLink(@Query('sessionId') sessionId: string, @Req() req: any) {
     const normalizedSessionId = String(sessionId || '').trim();
     if (!normalizedSessionId) {
       throw new BadRequestException('Missing Stripe session id');
@@ -2189,6 +2290,14 @@ export class PaymentController {
         `Stripe verify could not resolve order for sessionId=${normalizedSessionId} metadataOrderId=${metadataOrderId || 'none'}`,
       );
       throw new BadRequestException('Order not found');
+    }
+    const userId = String(req.user?._id || req.user?.sub || '');
+    if (String(order.buyerId || '') !== userId) {
+      throw new ForbiddenException('You are not allowed to verify this order');
+    }
+    if (verify.paymentIntentId && order.paymentIntentId !== verify.paymentIntentId) {
+      order.paymentIntentId = verify.paymentIntentId;
+      await order.save();
     }
 
     if (this.isSuccessfulStripePayment(verify)) {
@@ -2331,6 +2440,11 @@ export class PaymentController {
         paymentMethod: verify.paymentMethod,
         customerId: verify.customerId,
         orderId: order._id,
+        businessAmount: order.amountDT,
+        businessCurrency: order.businessCurrency || 'TND',
+        providerAmount: verify.providerAmount ?? order.providerAmount,
+        providerCurrency: verify.providerCurrency ?? order.providerCurrency,
+        providerExchangeRate: verify.providerExchangeRate ?? order.providerExchangeRate,
         ...(isChapterOrder ? { chapterId, courseId: chapterCourseId || order.metadata?.courseId } : {}),
         ...(await this.enrichOrderDetails(order))
       });
@@ -2489,6 +2603,13 @@ export class PaymentController {
             // Process successful payment or completed subscription checkout
             let order: any = await this.orderModel.findOne({ paymentId: stripeSession.id });
             if (order) {
+              const paymentIntentId = typeof stripeSession.payment_intent === 'string'
+                ? stripeSession.payment_intent
+                : stripeSession.payment_intent?.id;
+              if (paymentIntentId && order.paymentIntentId !== paymentIntentId) {
+                order.paymentIntentId = paymentIntentId;
+                await order.save();
+              }
               let didCompleteFulfillment = false;
               await this.runWithOptionalTransaction(async (dbSession) => {
                 const claim = await this.paymentFulfillmentService.claimForProcessing(
@@ -2688,6 +2809,13 @@ export class PaymentController {
 
     // 4. Create Pending Order
     const breakdown = await this.feeService.calculateForAmount(amount, cours.creatorId.toString());
+    const idempotencyKey = this.getRequestIdempotencyKey(req);
+    const reusableOrder = await this.findReusablePendingContentOrder({
+      userId, contentType: TrackableContentType.CHAPTER, contentId: chapterId, idempotencyKey,
+    });
+    if (reusableOrder) return this.buildReusableStripeInitResponse(reusableOrder, 'chapter', chapterId, {
+      amount, currency, chapterId, courseId: cours.id || cours._id.toString(), channel,
+    });
     const pendingOrder = await this.orderModel.create({
       buyerId: new Types.ObjectId(userId),
       creatorId: cours.creatorId,
@@ -2701,6 +2829,8 @@ export class PaymentController {
       promoCode: appliedCode,
       discountDT,
       status: 'pending',
+      paymentMethod: 'stripe',
+      idempotencyKey,
       metadata: this.buildPendingFulfillmentMetadata({
         courseId: cours.id || cours._id.toString(), // Store course ID in metadata for access granting
         chapterTitle: targetChapter.titre,
@@ -2743,9 +2873,7 @@ export class PaymentController {
 
     if (!session.success) throw new BadRequestException(session.error);
 
-    pendingOrder.paymentId = session.sessionId;
-    this.applyProviderMoneyToOrder(pendingOrder, session);
-    await pendingOrder.save();
+    await this.persistStripeCheckout(pendingOrder, session);
 
     return this.buildStripeInitResponse({
       scope: 'chapter',

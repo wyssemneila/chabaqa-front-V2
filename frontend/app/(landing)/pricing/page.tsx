@@ -140,7 +140,7 @@ function PricingPageContent() {
   const [selectedTier, setSelectedTier] = useState<PlanTier | null>(null);
 
   const paymentModal = usePaymentProviderModal({
-    initStripe: () => subscriptionApi.initStripePayment(pendingTier!, billing === 'yearly' ? 'year' : 'month'),
+    initStripe: (key) => subscriptionApi.initStripePayment(pendingTier!, billing === 'yearly' ? 'year' : 'month', key),
     onError: () => {
       const params = new URLSearchParams({ billing });
       if (selectedTier) params.set('plan', selectedTier);
@@ -181,6 +181,8 @@ function PricingPageContent() {
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        isLoading={paymentModal.isLoading}
+        error={paymentModal.error}
         title={selectedTier ? `Start ${PLANS[selectedTier].name}` : 'Choose Payment Method'}
         description={checkoutDescription}
       />

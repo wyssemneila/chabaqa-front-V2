@@ -240,7 +240,7 @@ export function DetailsTab({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Revenue</span>
-              <span className="font-semibold text-green-600">${totalRevenue}</span>
+              <span className="font-semibold text-green-600">{totalRevenue} TND</span>
             </div>
           </CardContent>
         </EnhancedCard>

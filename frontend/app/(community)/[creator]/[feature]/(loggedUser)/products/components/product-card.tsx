@@ -73,6 +73,8 @@ export default function ProductCard({
         open={paymentModal.isOpen}
         onOpenChange={paymentModal.close}
         onSelect={paymentModal.handleSelect}
+        isLoading={paymentModal.isLoading}
+        error={paymentModal.error}
       />
     <Card
       className={`border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all cursor-pointer ${

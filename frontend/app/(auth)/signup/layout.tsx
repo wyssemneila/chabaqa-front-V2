@@ -2,8 +2,8 @@ import type React from "react"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Sign Up - Chabaqa",
-  description: "Create your Chabaqa account and join our community platform.",
+  title: "Sign Up",
+  description: "Create your Chabaqa account and start building your community today.",
 }
 
 export default function SignUpLayout({

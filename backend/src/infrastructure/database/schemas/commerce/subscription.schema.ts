@@ -94,17 +94,8 @@ export class Subscription {
   @Prop({ type: Number, default: 0 })
   sessionBookingsPerMonth: number;
 
-  @Prop({ type: Number, default: 1 })
-  aiAgentsMax: number;
-
-  @Prop({ type: Number, default: 10 })
-  aiCofounderRunsPerMonth: number;
-
-  @Prop({ type: Number, default: 2 })
-  aiKnowledgeReindexPerMonth: number;
-
-  @Prop({ type: Number, default: 100 })
-  aiStaffChatTurnsPerMonth: number;
+  @Prop({ type: Number, default: 25 })
+  creatorFieldGenerationsPerMonth: number;
 
   // Optional masked info for display
   @Prop()

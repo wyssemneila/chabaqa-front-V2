@@ -6,7 +6,7 @@ type FallbackImageItem = Pick<ExploreItem, "title"> & {
 }
 
 const TYPE_FALLBACKS: Record<string, string> = {
-  community: "/community-discussion-interface-with-posts-and-comm.jpg",
+  community: "/placeholder.svg",
   course: "/online-course-interface-with-lessons-and-progress.jpg",
   challenge: "/skill-challenge-interface-with-progress.jpg",
   product: "/product-catalog-interface-with-filters.jpg",

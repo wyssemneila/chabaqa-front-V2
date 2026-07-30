@@ -212,7 +212,7 @@ export class WhatsappController {
     return this.whatsappAiService.generateBroadcastDraft({
       communityId,
       goal: dto.goal,
-      audience: dto.audience,
+      audience: dto.audience || '',
       tone: dto.tone,
       context: dto.context,
     });

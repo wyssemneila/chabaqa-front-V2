@@ -28,6 +28,7 @@ import { HttpCacheInterceptor } from '@/shared/interceptors/cache.interceptor';
 import { CommunityPermissionGuard } from '@/domains/community/access/community-permission.guard';
 import { RequireCommunityPermission, CommunityIdFrom } from '@/domains/community/access/community-permission.decorator';
 import { CommunityPermission } from '@/shared/permissions';
+import { parsePagination } from '@/shared/utils/pagination.util';
 
 @ApiTags('Products')
 @Controller('products')
@@ -84,9 +85,10 @@ export class ProductController {
     @Query('maxPrice') maxPrice?: number,
     @Query('search') search?: string
   ): Promise<{ success: boolean; data: ProductListResponseDto }> {
+    const pagination = parsePagination(page, limit);
     const products = await this.productService.findAll(
-      page || 1,
-      limit || 10,
+      pagination.page,
+      pagination.limit,
       communityId,
       creatorId,
       category,
@@ -99,6 +101,7 @@ export class ProductController {
   }
 
   @Get('creator/:creatorId')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Récupérer les produits d\'un créateur' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -106,9 +109,25 @@ export class ProductController {
   async findByCreator(
     @Param('creatorId') creatorId: string,
     @Query('page') page?: number,
-    @Query('limit') limit?: number
+    @Query('limit') limit?: number,
+    @Query('communityId') communityId?: string,
+    @Request() req?: any,
   ): Promise<{ success: boolean; data: ProductListResponseDto }> {
-    const products = await this.productService.findByCreator(creatorId, page || 1, limit || 10);
+    const pagination = parsePagination(page, limit);
+    const requesterId = this.getRequestUserId(req);
+    const visibilityScope = requesterId === creatorId ? 'owner' : 'public';
+    const products = await this.productService.findAll(
+      pagination.page,
+      pagination.limit,
+      communityId,
+      creatorId,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      visibilityScope,
+    );
     return { success: true, data: products };
   }
 
@@ -126,12 +145,13 @@ export class ProductController {
     @Query('type') type?: string,
     @Request() req?: any,
   ): Promise<{ success: boolean; data: ProductListResponseDto }> {
+    const pagination = parsePagination(page, limit);
     const requesterId = this.getRequestUserId(req);
     const visibilityScope = requesterId && requesterId === userId ? 'owner' : 'public';
     const products = await this.productService.findByCreator(
       userId,
-      page || 1,
-      limit || 10,
+      pagination.page,
+      pagination.limit,
       type,
       visibilityScope,
     );
@@ -148,7 +168,8 @@ export class ProductController {
     @Query('page') page?: number,
     @Query('limit') limit?: number
   ): Promise<{ success: boolean; data: ProductListResponseDto }> {
-    const products = await this.productService.findByCommunity(communityId, page || 1, limit || 10);
+    const pagination = parsePagination(page, limit);
+    const products = await this.productService.findByCommunity(communityId, pagination.page, pagination.limit);
     return { success: true, data: products };
   }
 
@@ -203,11 +224,12 @@ export class ProductController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Récupérer un produit par son ID' })
   @ApiResponse({ status: 200, description: 'Produit récupéré avec succès', type: ProductResponseDto })
   @ApiResponse({ status: 404, description: 'Produit non trouvé' })
-  async findOne(@Param('id') id: string): Promise<{ success: boolean; data: ProductResponseDto }> {
-    const product = await this.productService.findOne(id);
+  async findOne(@Param('id') id: string, @Request() req): Promise<{ success: boolean; data: ProductResponseDto }> {
+    const product = await this.productService.findOne(id, this.getRequestUserId(req));
     return { success: true, data: product };
   }
 

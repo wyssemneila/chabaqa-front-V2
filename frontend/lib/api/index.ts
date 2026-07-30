@@ -10,6 +10,7 @@ export * from "./community-home.api";
 export * from "./courses.api";
 export * from "./courses-community.api";
 export * from "./creator-analytics.api";
+export * from "./creator-writing.api";
 export * from "./email-campaigns.api";
 export * from "./events.api";
 export * from "./events-community.api";
@@ -34,7 +35,6 @@ export * from "./feedback.api";
 export * from "./dm.api";
 export * from "./live-support.api";
 export * from "./ai.api";
-export * from "./ai-agents.api";
 export * from "./tracking.api";
 export * from "./affiliate.api";
 export * from "./community-access.api";
@@ -73,7 +73,6 @@ import { storageApi } from "./storage.api";
 import { emailCampaignsApi } from "./email-campaigns.api";
 import { feedbackApi } from "./feedback.api";
 import { aiApi } from "./ai.api";
-import { aiAgentsApi, aiCofounderApi } from "./ai-agents.api";
 import { dmApi } from "./dm.api";
 import { liveSupportApi } from "./live-support.api";
 import { learningPathApi } from "./learning-path.api";
@@ -104,8 +103,6 @@ export const api = {
   emailCampaigns: emailCampaignsApi,
   feedback: feedbackApi,
   ai: aiApi,
-  aiAgents: aiAgentsApi,
-  aiCofounder: aiCofounderApi,
   dm: dmApi,
   liveSupport: liveSupportApi,
   learningPath: learningPathApi,

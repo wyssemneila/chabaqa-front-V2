@@ -299,24 +299,25 @@ export const coursesApi = {
     return apiClient.post<{ message: string; enrollment: CourseEnrollment }>(`/cours/${id}/enroll${query}`);
   },
 
-  initStripePayment: async (courseId: string, promoCode?: string): Promise<any> => {
+  initStripePayment: async (courseId: string, promoCode?: string, idempotencyKey?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/course?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/course`;
 
-    return apiClient.post<any>(endpoint, { courseId });
+    return apiClient.post<any>(endpoint, { courseId }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
   },
 
   initChapterStripePayment: async (
     courseId: string,
     chapterId: string,
     promoCode?: string,
+    idempotencyKey?: string,
   ): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/chapter?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/chapter`;
 
-    return apiClient.post<any>(endpoint, { courseId, chapterId });
+    return apiClient.post<any>(endpoint, { courseId, chapterId }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
   },
 
   // Get course progress

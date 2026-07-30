@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { BarChart3, MessageSquare, Plus, RefreshCw, Search, ThumbsUp } from 'lucide-react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
 import { useAuthContext } from '@/app/providers/auth-provider'
 import { postsApi, type Post } from '@/lib/api'
+import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
+import { CreatePostDialog } from './components/create-post-dialog'
+import { PostsList } from './components/posts-list'
 
 const getUserId = (user: any) => String(user?._id || user?.id || '')
 
@@ -32,10 +34,13 @@ const getPostDate = (post: any) => {
 export default function CreatorPostsPage() {
   const { user, loading: authLoading } = useAuthContext()
   const creatorId = getUserId(user)
+  const { selectedCommunityId } = useCreatorCommunity()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingPost, setEditingPost] = useState<Post | null>(null)
 
   const loadPosts = async () => {
     if (!creatorId) {
@@ -112,13 +117,18 @@ export default function CreatorPostsPage() {
               ))}
             </div>
 
-            <Link
-              href="/creator/posts/create"
+            <button
+              type="button"
+              onClick={() => {
+                setEditingPost(null)
+                setDialogOpen(true)
+              }}
+              disabled={!selectedCommunityId}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-[13px] font-bold text-white hover:bg-indigo-700"
             >
               <Plus className="h-4 w-4" />
               New post
-            </Link>
+            </button>
           </div>
 
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 md:flex-row md:items-center">
@@ -153,36 +163,28 @@ export default function CreatorPostsPage() {
               <p className="mt-2 text-[13px] text-slate-500">Posts you publish will appear here with their engagement metrics.</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredPosts.map((post: any) => {
-                const stats = post?.stats || post
-                return (
-                  <article key={post?._id || post?.id} className="rounded-xl border border-slate-200 bg-white p-5">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 text-[12px] font-semibold text-slate-500">
-                          <span>{getPostCommunity(post)}</span>
-                          <span className="h-1 w-1 rounded-full bg-slate-300" />
-                          <span>{getPostDate(post)}</span>
-                        </div>
-                        <h2 className="mt-2 line-clamp-2 text-[16px] font-black text-slate-900">{getPostTitle(post)}</h2>
-                        {post?.content && (
-                          <p className="mt-2 line-clamp-2 text-[13px] leading-6 text-slate-500">{String(post.content)}</p>
-                        )}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2 text-[12px] font-bold text-slate-500">
-                        <span className="rounded-lg bg-slate-50 px-3 py-2">{toNumber(stats?.likesCount ?? stats?.likes)} likes</span>
-                        <span className="rounded-lg bg-slate-50 px-3 py-2">{toNumber(stats?.commentsCount ?? stats?.comments)} comments</span>
-                        <span className="rounded-lg bg-slate-50 px-3 py-2">{toNumber(stats?.sharesCount ?? stats?.shares)} shares</span>
-                      </div>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
+            <PostsList
+              posts={filteredPosts}
+              onPostDeleted={loadPosts}
+              onEdit={(post) => {
+                setEditingPost(post)
+                setDialogOpen(true)
+              }}
+            />
           )}
         </main>
       </div>
+      {selectedCommunityId && (
+        <CreatePostDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          communityId={selectedCommunityId}
+          onPostSaved={loadPosts}
+          mode={editingPost ? 'edit' : 'create'}
+          postToEdit={editingPost}
+          showTrigger={false}
+        />
+      )}
     </div>
   )
 }

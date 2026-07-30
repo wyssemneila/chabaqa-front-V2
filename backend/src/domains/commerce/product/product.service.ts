@@ -408,6 +408,9 @@ export class ProductService {
     search?: string,
     visibilityScope: 'owner' | 'public' = 'public',
   ): Promise<ProductListResponseDto> {
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Invalid pagination');
+    }
     const query: any = {};
     if (visibilityScope !== 'owner') {
       query.isPublished = true;
@@ -420,6 +423,9 @@ export class ProductService {
         : communityId;
     }
     if (creatorId) {
+      if (!Types.ObjectId.isValid(creatorId)) {
+        throw new BadRequestException('Invalid creator ID');
+      }
       query.creatorId = new Types.ObjectId(creatorId);
     }
     if (category) {
@@ -557,7 +563,7 @@ export class ProductService {
   /**
    * Récupérer un produit par son ID
    */
-    async findOne(id: string): Promise<ProductResponseDto> {
+  async findOne(id: string, currentUserId?: string): Promise<ProductResponseDto> {
     let product = await this.productModel
       .findOne({ id })
       .populate('creatorId', 'name email profile_picture photo_profil')
@@ -571,6 +577,11 @@ export class ProductService {
     }
 
     if (!product) {
+      throw new NotFoundException('Produit non trouvé');
+    }
+
+    const productCreatorId = String((product.creatorId as any)?._id || product.creatorId || '');
+    if (!product.isPublished && productCreatorId !== String(currentUserId || '')) {
       throw new NotFoundException('Produit non trouvé');
     }
 
@@ -592,10 +603,7 @@ export class ProductService {
     updateProductDto: UpdateProductDto,
     userId: string,
   ): Promise<ProductResponseDto> {
-    const product = await this.productModel.findOne({ id });
-    if (!product) {
-      throw new NotFoundException('Produit non trouvé');
-    }
+    const product = await this.findProductByAnyId(id);
 
     // Vérifier que l'utilisateur est le créateur du produit
     if (product.creatorId.toString() !== userId) {
@@ -644,10 +652,7 @@ export class ProductService {
    * Supprimer un produit
    */
   async remove(id: string, userId: string): Promise<{ message: string }> {
-    const product = await this.productModel.findOne({ id });
-    if (!product) {
-      throw new NotFoundException('Produit non trouvé');
-    }
+    const product = await this.findProductByAnyId(id);
 
     // Vérifier que l'utilisateur est le créateur du produit
     if (product.creatorId.toString() !== userId) {
@@ -668,10 +673,7 @@ export class ProductService {
     createVariantDto: CreateProductVariantDto,
     userId: string,
   ): Promise<ProductVariantResponseDto> {
-    const product = await this.productModel.findOne({ id: productId });
-    if (!product) {
-      throw new NotFoundException('Produit non trouvé');
-    }
+    const product = await this.findProductByAnyId(productId);
 
     // Vérifier que l'utilisateur est le créateur du produit
     if (product.creatorId.toString() !== userId) {
@@ -705,10 +707,7 @@ export class ProductService {
     variantId: string,
     userId: string,
   ): Promise<{ message: string }> {
-    const product = await this.productModel.findOne({ id: productId });
-    if (!product) {
-      throw new NotFoundException('Produit non trouvé');
-    }
+    const product = await this.findProductByAnyId(productId);
 
     // Vérifier que l'utilisateur est le créateur du produit
     if (product.creatorId.toString() !== userId) {
@@ -736,10 +735,7 @@ export class ProductService {
     createFileDto: CreateProductFileDto,
     userId: string,
   ): Promise<ProductFileResponseDto> {
-    const product = await this.productModel.findOne({ id: productId });
-    if (!product) {
-      throw new NotFoundException('Produit non trouvé');
-    }
+    const product = await this.findProductByAnyId(productId);
 
     // Vérifier que l'utilisateur est le créateur du produit
     if (product.creatorId.toString() !== userId) {
@@ -784,10 +780,7 @@ export class ProductService {
     fileId: string,
     userId: string,
   ): Promise<{ message: string }> {
-    const product = await this.productModel.findOne({ id: productId });
-    if (!product) {
-      throw new NotFoundException('Produit non trouvé');
-    }
+    const product = await this.findProductByAnyId(productId);
 
     // Vérifier que l'utilisateur est le créateur du produit
     if (product.creatorId.toString() !== userId) {
@@ -815,10 +808,7 @@ export class ProductService {
     amount: number,
     userId: string,
   ): Promise<{ message: string; newInventory: number }> {
-    const product = await this.productModel.findOne({ id: productId });
-    if (!product) {
-      throw new NotFoundException('Produit non trouvé');
-    }
+    const product = await this.findProductByAnyId(productId);
 
     // Vérifier que l'utilisateur est le créateur du produit
     if (product.creatorId.toString() !== userId) {
@@ -862,10 +852,7 @@ export class ProductService {
     productId: string,
     userId: string,
   ): Promise<{ message: string; isPublished: boolean }> {
-    const product = await this.productModel.findOne({ id: productId });
-    if (!product) {
-      throw new NotFoundException('Produit non trouvé');
-    }
+    const product = await this.findProductByAnyId(productId);
 
     // Vérifier que l'utilisateur est le créateur du produit
     if (product.creatorId.toString() !== userId) {
@@ -891,10 +878,7 @@ export class ProductService {
    * Récupérer les statistiques d'un produit
    */
   async getProductStats(productId: string): Promise<ProductStatsResponseDto> {
-    const product = await this.productModel.findOne({ id: productId });
-    if (!product) {
-      throw new NotFoundException('Produit non trouvé');
-    }
+    const product = await this.findProductByAnyId(productId);
 
     return {
       productId: product.id,
@@ -974,10 +958,7 @@ export class ProductService {
     isActive: boolean,
     userId: string,
   ): Promise<{ message: string }> {
-    const product = await this.productModel.findOne({ id: productId });
-    if (!product) {
-      throw new NotFoundException('Produit non trouvé');
-    }
+    const product = await this.findProductByAnyId(productId);
 
     // Vérifier que l'utilisateur est le créateur du produit
     if (product.creatorId.toString() !== userId) {

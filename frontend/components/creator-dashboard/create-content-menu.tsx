@@ -9,7 +9,6 @@ import {
   Mail,
   Plus,
   ShoppingBag,
-  Sparkles,
   Star,
   Zap,
 } from "lucide-react"
@@ -76,14 +75,6 @@ export function CreateContentMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel>{disabled ? (disabledReason || "Select a community first") : "Create content"}</DropdownMenuLabel>
-        <DropdownMenuItem asChild>
-          <Link href="/creator/ai/create">
-            <Sparkles className="h-4 w-4" />
-            Create with AI
-            <span className="ml-auto text-[10px] text-primary">Cofounder</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
         {CREATE_ITEMS.map((item) => {
           const Icon = item.icon
           return (

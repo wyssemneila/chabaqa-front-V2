@@ -402,7 +402,8 @@ export class UploadController {
   @HttpCode(HttpStatus.OK)
   async deleteFile(
     @Param('type') type: string,
-    @Param('filename') filename: string
+    @Param('filename') filename: string,
+    @Request() req: any,
   ): Promise<DeleteFileResponseDto> {
     const fileType = type as FileType;
     
@@ -414,7 +415,8 @@ export class UploadController {
     console.log(`   📁 Fichier: ${filename}`);
     console.log(`   🏷️ Type: ${fileType}`);
 
-    const success = await this.uploadService.deleteFile(filename, fileType);
+    const requesterId = (req.user?._id || req.user?.userId || req.user?.sub || req.user?.id || '').toString();
+    const success = await this.uploadService.deleteFile(filename, fileType, requesterId);
     
     if (!success) {
       throw new NotFoundException('Fichier non trouvé');
