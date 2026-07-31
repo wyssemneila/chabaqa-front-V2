@@ -6,6 +6,7 @@ describe("resolveImageUrl", () => {
     expect(resolveImageUrl("uploads/image/banner.png")).toBe("/uploads/image/banner.png")
     expect(resolveImageUrl("https://api.chabaqa.io/uploads/image/banner.png")).toBe("/uploads/image/banner.png")
     expect(resolveImageUrl("http://51.254.132.77:3000/uploads/image/banner.png")).toBe("/uploads/image/banner.png")
+    expect(resolveImageUrl("https://localhost:3000/uploads/image/avatar.jpeg")).toBe("/uploads/image/avatar.jpeg")
   })
 
   it("keeps local public assets local", () => {

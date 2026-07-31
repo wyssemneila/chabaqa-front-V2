@@ -16,6 +16,8 @@ interface OverviewTabProps {
   unlockMessage?: string
   submissionByTaskId: Record<string, any>
   onSubmissionCreated: (submission: any) => void
+  taskAccessLoaded: boolean
+  taskAccessError: string | null
 }
 
 export default function OverviewTab({ 
@@ -27,6 +29,8 @@ export default function OverviewTab({
   unlockMessage,
   submissionByTaskId,
   onSubmissionCreated,
+  taskAccessLoaded,
+  taskAccessError,
 }: OverviewTabProps) {
   const completedTasks = challengeTasks.filter((t) => t.isCompleted).length
   const totalPoints = challengeTasks.filter((t) => t.isCompleted).reduce((acc, task) => acc + (task.points || 0), 0)
@@ -47,6 +51,8 @@ export default function OverviewTab({
             unlockMessage={unlockMessage}
             submissionByTaskId={submissionByTaskId}
             onSubmissionCreated={onSubmissionCreated}
+            taskAccessLoaded={taskAccessLoaded}
+            taskAccessError={taskAccessError}
           />
         ) : (
           <Card className="border-0 shadow-sm">

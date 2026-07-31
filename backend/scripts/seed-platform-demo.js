@@ -8,7 +8,8 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 require('dotenv').config({ path: path.join(__dirname, '../.env.local-db'), override: true, quiet: true });
 
-const SEED_KEY = 'rich-demo-v1';
+const SEED_KEY = 'platform-demo-v2';
+const RESET_FLAG = '--reset';
 const PASSWORD = 'Demo123456!';
 const VIDEO_URL = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 const YOUTUBE_VIDEO_URL = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
@@ -748,6 +749,14 @@ function buildAnalyticsDailyRows(allContent, paidOrders, now) {
 async function main() {
   const mongoUri = process.env.MONGO_URI;
   if (!mongoUri) throw new Error('Missing MONGO_URI env var');
+  if (!process.argv.includes(RESET_FLAG) || process.env.DEMO_SEED_ALLOW_RESET !== 'true') {
+    throw new Error('Refusing to alter data. Run only with --reset and DEMO_SEED_ALLOW_RESET=true.');
+  }
+  // This fixture is intentionally local-only. It must never be pointed at a remote host.
+  const host = new URL(mongoUri).hostname;
+  if (!['mongo', 'localhost', '127.0.0.1', '::1'].includes(host)) {
+    throw new Error(`Refusing destructive demo seed against non-local Mongo host: ${host}`);
+  }
 
   const client = new MongoClient(mongoUri, { ignoreUndefined: true });
   const passwordHash = await bcrypt.hash(PASSWORD, 10);
@@ -755,6 +764,16 @@ async function main() {
   try {
     await client.connect();
     const db = client.db(resolveDbName(mongoUri));
+
+    // Replace all application fixture data while retaining canonical platform
+    // configuration (plans and achievements). Those are reference data, not demo rows.
+    const retainedCollections = new Set(['plans', 'achievements']);
+    const collections = await db.listCollections({}, { nameOnly: true }).toArray();
+    await Promise.all(
+      collections
+        .filter(({ name }) => !retainedCollections.has(name) && !name.startsWith('system.'))
+        .map(({ name }) => db.collection(name).deleteMany({})),
+    );
 
     await Promise.all([
       db.collection('users').deleteMany({ email: { $in: userBlueprints.map(([, , email]) => email) } }),

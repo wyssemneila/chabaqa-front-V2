@@ -44,7 +44,7 @@ interface SubmitProjectModalProps {
   challengeId: string
   taskId: string
   taskTitle: string
-  onSubmitSuccess?: () => void
+  onSubmitSuccess?: (submission: any) => void
 }
 
 export default function SubmitProjectModal({
@@ -128,7 +128,7 @@ export default function SubmitProjectModal({
     try {
       const filteredLinks = links.filter(link => link.trim() !== "")
 
-      await apiClient.post(`/challenges/project-submissions`, {
+      const response = await apiClient.post(`/challenges/project-submissions`, {
         challengeId,
         taskId,
         content: values.content,
@@ -137,8 +137,8 @@ export default function SubmitProjectModal({
       })
 
       console.log('Submission success')
-      toast.success("Project submitted successfully!")
-      onSubmitSuccess?.()
+      toast.success("Project submitted successfully and is awaiting review.")
+      onSubmitSuccess?.((response as any)?.data || response)
       onClose()
     } catch (error) {
       console.error("Submission error:", error)

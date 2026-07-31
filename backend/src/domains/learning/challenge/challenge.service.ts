@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   HttpException,
   HttpStatus,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -45,7 +46,7 @@ import { Ga4Service } from '@/domains/analytics/ga4/ga4.service';
 import { CacheService } from '@/infrastructure/cache/cache.service';
 
 @Injectable()
-export class ChallengeService {
+export class ChallengeService implements OnModuleInit {
   constructor(
     @InjectModel(Challenge.name)
     private challengeModel: Model<ChallengeDocument>,
@@ -61,6 +62,20 @@ export class ChallengeService {
     private readonly ga4Service: Ga4Service,
     private readonly cacheService: CacheService,
   ) { }
+
+  async onModuleInit(): Promise<void> {
+    // Earlier versions used a unique learner/task index. Drop it once so
+    // rejected work can be revised while retaining the complete history.
+    try {
+      await this.submissionModel.collection.dropIndex('challengeId_1_userId_1_taskId_1');
+    } catch (error: any) {
+      if (error?.codeName !== 'IndexNotFound' && error?.code !== 27) throw error;
+    }
+    await this.submissionModel.collection.createIndex(
+      { challengeId: 1, userId: 1, taskId: 1, createdAt: -1 },
+      { name: 'challengeId_1_userId_1_taskId_1_createdAt_-1' },
+    );
+  }
 
   private async invalidateChallengeCaches(creatorId?: string): Promise<void> {
     const patterns = ['http:/api/challenges*', 'http:/api/communities*'];
@@ -475,25 +490,12 @@ export class ChallengeService {
       throw new NotFoundException('Task not found');
     }
 
-    const isParticipant = challenge.participants.some(p =>
-      String(p.userId) === String(userId) ||
-      (p.userId as any)._id?.toString() === String(userId)
-    );
-    if (!isParticipant) {
-      console.log(`[CHALLENGE-SERVICE] Debug - Participant check failed for user ${userId}. Current participants:`,
-        challenge.participants.map(p => String(p.userId))
-      );
-
-      // AUTO-HEAL: If the user is the creator of the challenge, ensure they are a participant
-      const isCreator = String(challenge.creatorId) === String(userId);
-      if (isCreator) {
-        console.log(`[CHALLENGE-SERVICE] Auto-heal - User ${userId} is the creator, adding as participant.`);
-        // Add creator as participant using the schema method
-        (challenge as any).addParticipant(new Types.ObjectId(userId));
-        await challenge.save();
-      } else {
-        throw new ForbiddenException('User is not a participant of this challenge');
-      }
+    const now = new Date();
+    if (!challenge.isActive || now < challenge.startDate || now > challenge.endDate) {
+      throw new ForbiddenException('Submissions are only available while this challenge is active.');
+    }
+    if (finalTask.isActive === false) {
+      throw new ForbiddenException('This task is not currently active.');
     }
 
     if (!finalTask.id) {
@@ -501,16 +503,42 @@ export class ChallengeService {
     }
     const canonicalTaskId = String(finalTask.id);
 
+    const participant = challenge.participants.find((item) =>
+      String(item.userId) === String(userId) ||
+      (item.userId as any)._id?.toString() === String(userId),
+    );
+    if (!participant) {
+      throw new ForbiddenException('User is not a participant of this challenge');
+    }
+    if (challenge.sequentialProgression) {
+      const access = challenge.verifierAccesTache(canonicalTaskId, participant.completedTasks || []);
+      const manuallyUnlocked = (participant.manualUnlocks || []).some(
+        (override: any) => String(override.taskId) === canonicalTaskId,
+      );
+      if (!access.hasAccess && !manuallyUnlocked) {
+        throw new ForbiddenException(
+          `Complete the previous task before submitting this one: ${access.requiredTask?.title || 'previous task'}.`,
+        );
+      }
+    }
+
     // Check if submission already exists using the CANONICAL taskId
-    const existingSubmission = await this.submissionModel.findOne({
+    const activeSubmission = await this.submissionModel.findOne({
       challengeId: challenge._id,
       taskId: canonicalTaskId,
-      userId: new Types.ObjectId(userId)
+      userId: new Types.ObjectId(userId),
+      status: { $in: ['pending', 'approved'] },
     });
 
-    if (existingSubmission) {
+    if (activeSubmission) {
       throw new BadRequestException('Vous avez déjà soumis un projet pour cette tâche.');
     }
+
+    const attempt = (await this.submissionModel.countDocuments({
+      challengeId: challenge._id,
+      taskId: canonicalTaskId,
+      userId: new Types.ObjectId(userId),
+    })) + 1;
 
     const submission = new this.submissionModel({
       challengeId: challenge._id,
@@ -519,7 +547,8 @@ export class ChallengeService {
       content: dto.content,
       links: dto.links || [],
       files: dto.files || [],
-      status: 'pending'
+      status: 'pending',
+      attempt,
     });
 
     await submission.save();
@@ -744,7 +773,7 @@ export class ChallengeService {
         challengeId: submission.challengeId.toString(),
         taskId: canonicalTaskId,
         status: 'completed'
-      }, submission.userId.toString());
+      }, submission.userId.toString(), { approvedSubmission: true });
     }
 
     return submission;
@@ -840,6 +869,10 @@ export class ChallengeService {
     const challenge = await this.findChallengeById(challengeId);
     if (!challenge) throw new NotFoundException('Challenge not found');
     this.assertCreatorOrAdmin(challenge, userId, user);
+
+    if (new Date() < challenge.endDate) {
+      throw new BadRequestException('Rewards can be distributed after the challenge ends.');
+    }
 
     if (!this.isNonEmptyString(payload?.idempotencyKey)) {
       throw new BadRequestException('idempotencyKey is required');
@@ -1657,7 +1690,12 @@ export class ChallengeService {
   async updateProgress(
     updateProgressDto: UpdateProgressDto,
     userId: string,
+    options: { approvedSubmission?: boolean } = {},
   ): Promise<ChallengeResponseDto> {
+    if (!options.approvedSubmission || updateProgressDto.status !== 'completed') {
+      throw new ForbiddenException('Task completion is recorded only when a creator approves a submission.');
+    }
+
     console.log('🔄 [DEBUG-BACKEND] updateProgress called', {
       dto: updateProgressDto,
       userId,
@@ -1729,10 +1767,7 @@ export class ChallengeService {
       );
 
       if (participant) {
-        if (
-          updateProgressDto.status === 'completed' &&
-          !participant.completedTasks.includes(updateProgressDto.taskId)
-        ) {
+        if (!participant.completedTasks.includes(updateProgressDto.taskId)) {
           participant.completedTasks.push(updateProgressDto.taskId);
           participant.totalPoints = (participant.totalPoints || 0) + (task.points || 0);
         } else if (
@@ -2292,13 +2327,23 @@ export class ChallengeService {
     }
 
     const isFree = challenge.isFreeChallenge();
-    const hasPaid = false; // TODO: Implémenter la vérification du paiement
+    const participant = challenge.participants.some((item) => String(item.userId) === String(checkAccessDto.userId));
+    const paidOrder = await (this.challengeModel as any).db.model('Order').exists({
+      buyerId: new Types.ObjectId(checkAccessDto.userId),
+      contentType: TrackableContentType.CHALLENGE,
+      contentId: challenge._id.toString(),
+      status: 'paid',
+    });
+    const hasPaid = Boolean(paidOrder);
 
     let hasAccess = false;
     let reason = '';
     let trialDaysRemaining: number | undefined;
 
-    if (isFree) {
+    if (participant) {
+      hasAccess = true;
+      reason = 'User is enrolled in this challenge';
+    } else if (isFree) {
       hasAccess = true;
       reason = 'Challenge is free';
     } else if (hasPaid) {
@@ -2339,12 +2384,19 @@ export class ChallengeService {
       trialFeatures: challenge.pricing?.trialFeatures,
       priceToPay: hasAccess ? undefined : challenge.pricing?.participationFee,
       currency: challenge.pricing?.currency,
+      isParticipant: participant,
+      needsPayment: !participant && !isFree && !hasPaid,
+      canWorkOnTasks: participant && challenge.isActive && new Date() >= challenge.startDate && new Date() <= challenge.endDate,
     };
   }
 
   /**
    * Obtenir les défis gratuits
    */
+  async getCurrentUserAccess(challengeId: string, userId: string): Promise<ChallengeAccessResponseDto> {
+    return this.checkAccess({ challengeId, userId });
+  }
+
   async findFreeChallenges(
     page: number = 1,
     limit: number = 10,
@@ -3216,6 +3268,7 @@ export class ChallengeService {
       day: number;
       isCompleted: boolean;
       isUnlocked: boolean;
+      isManuallyUnlocked?: boolean;
     }>;
     sequentialProgressionEnabled: boolean;
     unlockMessage?: string;
@@ -3237,6 +3290,10 @@ export class ChallengeService {
         (p) => p.userId.toString() === userIdStr,
       );
 
+      if (!participant) {
+        throw new ForbiddenException('Join this challenge before accessing its tasks.');
+      }
+
       // 3. Extraire les tâches complétées (vide si non participant)
       const completedTaskIds = participant ? participant.completedTasks : [];
 
@@ -3247,6 +3304,7 @@ export class ChallengeService {
         day: number;
         isCompleted: boolean;
         isUnlocked: boolean;
+        isManuallyUnlocked?: boolean;
       }> = [];
 
       // Trier les tâches par jour
@@ -3259,13 +3317,16 @@ export class ChallengeService {
         const isCompleted = completedTaskIds.includes(task.id);
 
         // Vérifier si la tâche est déverrouillée
+        const isManuallyUnlocked = (participant.manualUnlocks || []).some(
+          (override: any) => String(override.taskId) === String(task.id),
+        );
         let isUnlocked = true;
         if (challenge.sequentialProgression) {
           const accessCheck = challenge.verifierAccesTache(
             task.id,
             completedTaskIds,
           );
-          isUnlocked = accessCheck.hasAccess;
+          isUnlocked = accessCheck.hasAccess || isManuallyUnlocked;
         }
 
         unlockedTasks.push({
@@ -3274,6 +3335,7 @@ export class ChallengeService {
           day: task.day,
           isCompleted,
           isUnlocked,
+          isManuallyUnlocked,
         });
       }
 
@@ -3330,6 +3392,11 @@ export class ChallengeService {
       }
 
       // 2. Vérifier que le créateur est le créateur du défi
+      const task = challenge.tasks?.find((item) => String(item.id) === String(taskId));
+      if (!task) {
+        throw new NotFoundException('Task not found');
+      }
+
       if (challenge.creatorId.toString() !== creatorId) {
         throw new ForbiddenException(
           'Seul le créateur du défi peut déverrouiller des tâches',
@@ -3351,6 +3418,14 @@ export class ChallengeService {
 
       // 5. Marquer la tâche comme accessible (mais pas forcément complétée)
       // On ne l'ajoute pas aux completedTasks, on la laisse accessible
+      participant.manualUnlocks = participant.manualUnlocks || [];
+      if (!(participant.manualUnlocks as any[]).some((override) => String(override.taskId) === String(task.id))) {
+        (participant.manualUnlocks as any[]).push({
+          taskId: String(task.id),
+          unlockedBy: new Types.ObjectId(creatorId),
+          unlockedAt: new Date(),
+        });
+      }
       participant.lastActivityAt = new Date();
       await challenge.save();
 
@@ -3387,6 +3462,11 @@ export class ChallengeService {
     updateProgressDto: UpdateProgressDto,
     userId: string,
   ): Promise<ChallengeResponseDto> {
+    const isAuthoritativeWorkflow = false;
+    if (!isAuthoritativeWorkflow) {
+      throw new ForbiddenException('Task completion is recorded only when a creator approves a submission.');
+    }
+
     console.log('🔧 DEBUG - updateProgressWithSequential');
     console.log(`   📋 Challenge ID: ${updateProgressDto.challengeId}`);
     console.log(`   📄 Task ID: ${updateProgressDto.taskId}`);

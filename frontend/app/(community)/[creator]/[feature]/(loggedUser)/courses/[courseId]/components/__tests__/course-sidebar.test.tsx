@@ -82,7 +82,7 @@ describe("CourseSidebar chapter selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /premium chapter/i }))
 
     expect(setSelectedChapter).not.toHaveBeenCalled()
-    expect(screen.getByText("Buy chapter")).toBeInTheDocument()
+    expect(screen.getByText("Purchase required")).toBeInTheDocument()
   })
 
   it("does not show Preview badges for later chapters with stale preview flags", () => {
@@ -117,7 +117,7 @@ describe("CourseSidebar chapter selection", () => {
       />,
     )
 
-    expect(screen.getAllByText("Preview")).toHaveLength(1)
+    expect(screen.getAllByText("Free preview")).toHaveLength(1)
     expect(screen.getByText("Locked")).toBeInTheDocument()
   })
 

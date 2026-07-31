@@ -272,8 +272,8 @@ export default function CoursesPageContent({
                 setIsEnrollDialogOpen(true)
               }}
             />
-            {/* Sidebar - Hidden on mobile */}
-            <div className="hidden lg:block">
+            {/* The learning plan follows the course list on mobile and remains a right sidebar on desktop. */}
+            <div className="lg:col-span-1">
               <CourseDetailsSidebar
                 selectedCourse={selectedCourse}
                 allCourses={allCourses}

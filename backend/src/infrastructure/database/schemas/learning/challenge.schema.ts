@@ -248,6 +248,17 @@ export class ChallengeParticipant {
   })
   completedTasks: string[];
 
+  /** Explicit instructor overrides, retained with an audit trail. */
+  @Prop({
+    type: [{
+      taskId: { type: String, required: true },
+      unlockedBy: { type: Types.ObjectId, ref: 'User', required: true },
+      unlockedAt: { type: Date, required: true, default: Date.now },
+    }],
+    default: [],
+  })
+  manualUnlocks: Array<{ taskId: string; unlockedBy: Types.ObjectId; unlockedAt: Date }>;
+
   @Prop({
     type: Date,
     default: Date.now
@@ -940,6 +951,7 @@ ChallengeSchema.methods.addParticipant = function (userId: Types.ObjectId): void
       progress: 0,
       totalPoints: 0,
       completedTasks: [],
+      manualUnlocks: [],
       lastActivityAt: new Date()
     };
     this.participants.push(participant);

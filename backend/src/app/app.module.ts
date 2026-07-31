@@ -10,7 +10,6 @@ import { attachMongoSlowQueryLogger } from '@/shared/database/mongo-slow-query';
 
 import { AppController } from '@/app/app.controller';
 import { AppService } from '@/app/app.service';
-import { SeedTunisianUsers } from '@/shared/scripts/seed-tunisian-users';
 import { User, UserSchema } from '@/infrastructure/database/schemas/auth/user.schema';
 import { VerificationCode, VerificationCodeSchema } from '@/infrastructure/database/schemas/auth/verification-code.schema';
 import { RevokedToken, RevokedTokenSchema } from '@/infrastructure/database/schemas/auth/revoked-token.schema';
@@ -221,7 +220,6 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     StripePaymentService,
     PromoService,
     FeeService,
-    SeedTunisianUsers,
   ],
 })
 export class AppModule { }

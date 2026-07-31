@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { changePassword, deleteAccount, updateProfile, type ChangePasswordPayload, type DeleteAccountPayload } from "@/lib/api/user.api"
 import { storageApi } from "@/lib/api/storage.api"
 import { useCurrentUser } from "@/lib/hooks/useUser"
+import { resolveImageUrl } from "@/lib/resolve-image-url"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import {
@@ -153,7 +154,7 @@ export default function EditProfilePage() {
 
 
 
-  const avatarUrl = uploadedAvatarUrl || user?.avatar || "/placeholder.svg"
+  const avatarUrl = resolveImageUrl(uploadedAvatarUrl || user?.avatar) || "/placeholder.svg"
 
   const handleFileClick = () => {
     fileInputRef.current?.click()
@@ -180,7 +181,9 @@ export default function EditProfilePage() {
 
     try {
       const uploaded = await storageApi.upload(file)
-      setUploadedAvatarUrl(uploaded.url)
+      // Keep uploaded media on this origin. The frontend proxy serves this path
+      // in development and production, avoiding invalid local HTTPS URLs.
+      setUploadedAvatarUrl(resolveImageUrl(uploaded.url) || uploaded.url)
       console.log("Uploaded avatar URL:", uploaded.url) // Debugging
     } catch (err: any) {
       console.error("Upload failed:", err)

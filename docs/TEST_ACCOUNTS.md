@@ -1,6 +1,6 @@
 # Test / Demo Accounts
 
-Seeded by `cd backend && npm run db:seed:rich-demo` (runs `scripts/seed-rich-demo.js`).
+Seeded by `cd backend && npm run db:seed:platform-demo` (runs `scripts/seed-platform-demo.js`).
 All seeded accounts share the password below unless noted otherwise.
 
 | Role | Email | Password | Notes |
@@ -17,8 +17,8 @@ Run additional seeds as needed:
 
 ```bash
 cd backend
-npm run db:seed              # plans + achievements (required for pricing/gamification)
-npm run db:seed:rich-demo    # full demo dataset: users, communities, courses, challenges, events
+npm run db:seed:platform-demo # destructive local-only replacement: full platform demo dataset
+npm run db:seed               # alias for the same destructive local-only seed
 ```
 
 > Seeding is idempotent (upserts by email/slug) — safe to re-run against the same database.

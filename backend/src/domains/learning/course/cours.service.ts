@@ -24,6 +24,8 @@ import { MediaPurpose } from '@/domains/content/media/media.types';
 import { CacheService } from '@/shared/services/cache.service';
 import { ChapterAccessService } from '@/shared/services/chapter-access.service';
 import { CourseSessionDto } from '@/shared/dto/course-session.dto';
+import { CommunityAccessService } from '@/domains/community/access/community-access.service';
+import { CommunityRole } from '@/shared/permissions';
 import {
   isSupportedChapterVideoUrl,
   normalizeChapterVideoUrl,
@@ -67,7 +69,28 @@ export class CoursService {
     @Optional()
     private readonly cacheService: CacheService,
     @Optional() private readonly chapterAccessService?: ChapterAccessService,
+    @Optional() private readonly communityAccessService?: CommunityAccessService,
   ) { }
+
+  /** A global creator role or ordinary membership never bypasses paid playback. */
+  private async hasCommunityStaffPlaybackAccess(
+    userId: string,
+    communityId: string,
+  ): Promise<boolean> {
+    if (!this.communityAccessService) return false;
+
+    try {
+      const role = await this.communityAccessService.getCommunityRole(communityId, userId);
+      return [
+        CommunityRole.OWNER,
+        CommunityRole.ADMIN,
+        CommunityRole.MODERATOR,
+        CommunityRole.SUPPORT,
+      ].includes(role);
+    } catch {
+      return false;
+    }
+  }
 
   private async invalidateCourseCaches(creatorId?: string): Promise<void> {
     if (!this.cacheService) {
@@ -3523,17 +3546,13 @@ export class CoursService {
 
     const cours = await this.resolveCourseDocument(coursId);
 
-    // Admin/Creator bypass
-    let isAdmin = false;
-    try {
-      await this.verifierAdminCommunaute(userId, cours.communityId.toString());
-      isAdmin = true;
-    } catch {
-      // Not admin
-    }
+    const hasStaffPlaybackAccess = await this.hasCommunityStaffPlaybackAccess(
+      userId,
+      cours.communityId.toString(),
+    );
 
     const context = await this.chapterAccessService.buildAccessContext(userId, cours);
-    const allChapterAccess = isAdmin
+    const allChapterAccess = hasStaffPlaybackAccess
       ? context.orderedChapters.map((descriptor) => {
           const chapterId = String(descriptor.chapter?.id || '');
           const progress = context.progressMap.get(chapterId);
@@ -3552,6 +3571,7 @@ export class CoursService {
               canAccess: true,
               lockCode: 'allowed' as const,
               reason: 'admin_access',
+              accessSource: 'staff' as const,
               hasCourseEnrollment: true,
               hasChapterPurchase: true,
               isPaidChapter: false,
@@ -3578,6 +3598,14 @@ export class CoursService {
       needsPayment: entry.access.needsPayment || undefined,
       chapterPrice: entry.access.chapterPrice,
       requiredChapterId: entry.access.requiredChapter?.id,
+      accessSource: (entry.access as any).accessSource ||
+        (entry.access.canAccess
+          ? entry.isPreview && !context.enrollment
+            ? 'preview'
+            : entry.access.hasChapterPurchase && entry.isPaidChapter
+                ? 'chapter_purchase'
+                : undefined
+          : undefined),
     }));
 
     const completedChapters = chapters.filter((c) => c.isCompleted).length;
@@ -3590,7 +3618,7 @@ export class CoursService {
       (chapters.find((c) => !c.isCompleted && c.canAccess)?.chapterId ?? chapters[0]?.chapterId);
 
     let nextChapterAction: CourseSessionDto['nextChapterAction'] | undefined;
-    if (effectiveCurrentChapterId && !isAdmin) {
+    if (effectiveCurrentChapterId && !hasStaffPlaybackAccess) {
       const action = this.chapterAccessService.resolveNextChapterAction(context, effectiveCurrentChapterId);
       nextChapterAction = {
         action: action.action,

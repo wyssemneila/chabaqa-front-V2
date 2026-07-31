@@ -223,9 +223,10 @@ export default function CoursePlayer({
             }
           }
         } catch (e: any) {
-          // If we cannot confirm paid access, fall back to requiring enrollment to be safe
-          if (!isUserEnrolled) {
-            return { canAccess: false, reason: effectiveUnlockMessage || "Enrollment required" }
+          // A network or API failure must never turn into access to paid content.
+          return {
+            canAccess: false,
+            reason: "We couldn't confirm your purchase. Please try again.",
           }
         }
       }
@@ -290,16 +291,16 @@ export default function CoursePlayer({
         pendingPaidChapterId &&
         key === String(pendingPaidChapterId)
       const unlockedEntry = unlockedMap.get(key)
+      // Prefer the centralized session's access decisions (backend-authoritative, no stale closure).
+      if (courseSession && courseSession.chapters.length > 0) {
+        return courseSession.isChapterAccessible(key)
+      }
+
       if (isPendingPaidUnlock || (Boolean(chapter.isPaidChapter) && Boolean(unlockedEntry?.isUnlocked))) {
         return true
       }
       if (accessibleChapters[key] === true) {
         return true
-      }
-
-      // Prefer the centralized session's access decisions (backend-authoritative, no stale closure).
-      if (courseSession && courseSession.chapters.length > 0) {
-        return courseSession.isChapterAccessible(key)
       }
 
       // Fail closed while the backend/session source of truth is not ready.
@@ -359,44 +360,6 @@ export default function CoursePlayer({
     setChapterAccessReason({})
     accessCheckInFlight.current = {}
   }, [courseId, effectiveSequentialProgressionEnabled, unlockedChapters, isUserEnrolled, firstChapterId])
-
-  const tryAutoAdvanceToNext = useCallback(
-    async (fromChapterId: string, options?: { refreshBeforeCheck?: boolean; delayMs?: number }): Promise<boolean> => {
-      if (!isUserEnrolled) return false
-      const sourceId = String(fromChapterId)
-      const idx = allChapters.findIndex((c: any) => String(c.id) === sourceId)
-      if (idx === -1 || idx >= allChapters.length - 1) return false
-      const nextChapter = allChapters[idx + 1]
-      const nextChapterId = String(nextChapter.id)
-
-      if (options?.delayMs && options.delayMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, options.delayMs))
-      }
-
-      if (options?.refreshBeforeCheck !== false) {
-        if (onRefreshProgress) {
-          await onRefreshProgress().catch(() => null)
-        }
-        if (onRefreshUnlockedChapters) {
-          await onRefreshUnlockedChapters().catch(() => null)
-        }
-      }
-
-      if (courseSession) {
-        if (courseSession.chapters.length === 0) return false
-        const result = await courseSession.selectChapter(nextChapterId)
-        if (!result.success) return false
-      } else {
-        const canAccessNext = await ensureChapterAccessCached(nextChapterId)
-        if (!canAccessNext) return false
-      }
-
-      autoAdvancedFromChapterRef.current[sourceId] = true
-      setSelectedChapter(nextChapterId)
-      return true
-    },
-    [isUserEnrolled, allChapters, onRefreshProgress, onRefreshUnlockedChapters, ensureChapterAccessCached, courseSession],
-  )
 
   // Handler called by EnhancedVideoPlayer with latest seconds (and optional duration)
   const handleWatchTimeUpdate = useCallback(
@@ -510,7 +473,7 @@ export default function CoursePlayer({
         }
       }
     },
-    [onRefreshProgress, enrollment, isUserEnrolled, allChapters, tryAutoAdvanceToNext, videoDurationOverride],
+    [onRefreshProgress, enrollment, isUserEnrolled, allChapters, videoDurationOverride],
   )
 
   const defaultChapterId = useMemo(() => {
@@ -769,18 +732,6 @@ export default function CoursePlayer({
     })
 
     if (courseSession) {
-      const hasFreshPaidUnlock =
-        Boolean(chapter.isPaidChapter) &&
-        (Boolean(unlockedMap.get(String(chapterId))?.isUnlocked) ||
-          (chapterUnlockState === "unlocked" &&
-            pendingPaidChapterId &&
-            String(pendingPaidChapterId) === String(chapterId)))
-
-      if (hasFreshPaidUnlock) {
-        setSelectedChapter(String(chapterId))
-        return true
-      }
-
       if (courseSession.chapters.length === 0) {
         const isFirstChapter = Boolean(firstChapterId && String(chapterId) === firstChapterId)
         if (isFirstChapter) {
@@ -838,7 +789,7 @@ export default function CoursePlayer({
   ])
 
   const handleSelectChapter = useCallback(async (chapterId: string) => {
-    await attemptSelectChapter(chapterId)
+    return attemptSelectChapter(chapterId)
   }, [attemptSelectChapter])
 
   useEffect(() => {

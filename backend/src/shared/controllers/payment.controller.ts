@@ -2179,7 +2179,13 @@ export class PaymentController {
         // Use metadata ticketType if available
         const ticketType = order.metadata?.ticketType || 'standard';
         try {
-          await this.eventService.registerAttendee(order.contentId, ticketType, order.buyerId.toString(), order.promoCode);
+          await this.eventService.registerAttendee(
+            order.contentId,
+            ticketType,
+            order.buyerId.toString(),
+            order.promoCode,
+            { session, paymentConfirmed: true },
+          );
         } catch (error: any) {
           if (this.isAlreadyRegisteredEventError(error)) {
             this.logger.warn(`Skipping duplicate event registration for order ${order._id}: buyer already registered`);

@@ -26,6 +26,7 @@ import { PromoModule } from '@/shared/modules/promo.module';
 import { ChapterAccessModule } from '@/shared/modules/chapter-access.module';
 import { AchievementModule } from '@/domains/shared/achievement/achievement.module';
 import { AiModule } from '@/domains/shared/ai/ai.module';
+import { CommunityAccessModule } from '@/domains/community/access/community-access.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { AiModule } from '@/domains/shared/ai/ai.module';
     FeeModule,
     PromoModule,
     ChapterAccessModule,
+    CommunityAccessModule,
     AchievementModule,
     forwardRef(() => AiModule)
   ],

@@ -23,6 +23,8 @@ interface ChallengeTabsProps {
   submissions: any[]
   submissionByTaskId: Record<string, any>
   onSubmissionCreated: (submission: any) => void
+  taskAccessLoaded: boolean
+  taskAccessError: string | null
 }
 
 export default function ChallengeTabs({
@@ -40,6 +42,8 @@ export default function ChallengeTabs({
   submissions,
   submissionByTaskId,
   onSubmissionCreated,
+  taskAccessLoaded,
+  taskAccessError,
 }: ChallengeTabsProps) {
   const startDateLabel = new Date(startDate).toLocaleString()
 
@@ -82,6 +86,8 @@ export default function ChallengeTabs({
             unlockMessage={unlockMessage}
             submissionByTaskId={submissionByTaskId}
             onSubmissionCreated={onSubmissionCreated}
+            taskAccessLoaded={taskAccessLoaded}
+            taskAccessError={taskAccessError}
           />
         )}
       </TabsContent>
