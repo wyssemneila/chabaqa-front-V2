@@ -107,9 +107,16 @@ export default function ChallengeDetailPageContent({
         setSequentialProgressionEnabled(sequentialEnabled)
         setUnlockMessage(apiUnlockMessage || challenge?.unlockMessage)
       } else {
+        const accessError = unlockedResult.reason as any
+        const statusCode = Number(accessError?.statusCode || accessError?.status || 0)
+        const accessMessage = String(accessError?.message || "")
         setUnlockedByTaskId({})
         setTaskAccessLoaded(false)
-        setTaskAccessError("We couldn't verify task access. Please refresh and try again.")
+        setTaskAccessError(
+          statusCode === 403 || /join this challenge/i.test(accessMessage)
+            ? "Join this challenge to access its tasks."
+            : "We couldn't verify task access. Please refresh and try again.",
+        )
         setSequentialProgressionEnabled(Boolean(challenge?.sequentialProgression))
         setUnlockMessage(challenge?.unlockMessage)
       }

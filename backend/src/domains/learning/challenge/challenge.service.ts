@@ -3238,7 +3238,10 @@ export class ChallengeService implements OnModuleInit {
           : undefined,
       };
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      // Keep intentional access and validation responses intact. Converting a
+      // "join first" 403 to a generic 400 made the learner UI report a false
+      // task-access verification failure.
+      if (error instanceof HttpException) {
         throw error;
       }
 

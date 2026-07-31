@@ -31,6 +31,8 @@ const contentSecurityPolicy = [
     'ws://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'https://picsum.photos',
+    // Picsum serves the actual image after a redirect from this hostname.
+    'https://fastly.picsum.photos',
     'https://ui-avatars.com',
     'https://placehold.co',
     'https://images.unsplash.com',
@@ -149,6 +151,10 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
+        hostname: 'fastly.picsum.photos',
       },
       {
         protocol: 'https',
