@@ -1,51 +1,92 @@
 // Universal authenticatedFetch that works in both client and server contexts
 
+import {
+  ensureBrowserCsrfToken,
+  getBrowserCookie,
+  issueBrowserCsrfToken,
+  isCsrfTokenRejection,
+} from '@/lib/auth-refresh'
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+function getApiBaseFromUrl(url: string): string {
+  if (typeof window === 'undefined') return ''
+
+  try {
+    const parsed = new URL(url, window.location.origin)
+    const apiIndex = parsed.pathname.indexOf('/api/')
+    if (apiIndex >= 0) {
+      return `${parsed.origin}${parsed.pathname.slice(0, apiIndex + 4)}`
+    }
+  } catch {
+    // Fall through to the configured same-origin API base.
+  }
+
+  return process.env.NEXT_PUBLIC_API_URL || '/api'
+}
+
 export async function authenticatedFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  // This will be handled differently based on context
-  // In server components: cookies will be available
-  // In client components: tokenManager will be used
-
-  // Try to get token from different sources
   let token: string | null = null
 
-  // Try server-side cookies first (won't work in browser)
   try {
     if (typeof window === 'undefined') {
-      // Server-side: use cookies
       const { cookies } = await import('next/headers')
       const cookieStore = await cookies()
-      const accessToken = cookieStore.get('accessToken')
-      token = accessToken?.value || null
+      token = cookieStore.get('accessToken')?.value || null
     }
-  } catch (error) {
-    // Cookies not available, will try client-side
+  } catch {
+    // Cookies are unavailable in this context; try client storage below.
   }
 
-  // Try client-side token manager
   if (!token && typeof window !== 'undefined') {
     try {
       const { tokenManager } = await import('@/lib/token-manager')
       token = tokenManager.getAccessToken()
-    } catch (error) {
-      // Token manager not available
+    } catch {
+      // The request may be intentionally unauthenticated.
     }
   }
 
-  const headers = new Headers(options.headers || {})
+  const method = String(options.method || 'GET').toUpperCase()
+  const isUnsafeBrowserRequest = typeof window !== 'undefined' && !SAFE_METHODS.has(method)
+  const apiBase = isUnsafeBrowserRequest ? getApiBaseFromUrl(url) : ''
 
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`)
+  if (isUnsafeBrowserRequest) {
+    await ensureBrowserCsrfToken(apiBase)
   }
 
-  headers.set('Content-Type', 'application/json')
+  const doRequest = () => {
+    const headers = new Headers(options.headers || {})
 
-  return fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include', // Ensure cookies are sent
-    cache: options.cache || 'no-store',
-  })
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+    if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+      headers.set('Content-Type', 'application/json')
+    }
+
+    if (isUnsafeBrowserRequest) {
+      const csrfToken = getBrowserCookie('chabaqa_csrf')
+      if (csrfToken) headers.set('X-CSRF-Token', csrfToken)
+    }
+
+    return fetch(url, {
+      ...options,
+      headers,
+      credentials: 'include',
+      cache: options.cache || 'no-store',
+    })
+  }
+
+  let response = await doRequest()
+
+  // A stale/missing double-submit token is recoverable. Rotate it and retry the
+  // original request once; genuine authorization failures remain untouched.
+  if (isUnsafeBrowserRequest && await isCsrfTokenRejection(response)) {
+    await issueBrowserCsrfToken(apiBase)
+    response = await doRequest()
+  }
+
+  return response
 }

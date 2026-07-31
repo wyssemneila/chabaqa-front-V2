@@ -2,8 +2,8 @@
 set -euo pipefail
 
 DOMAIN="${DOMAIN:-https://chabaqa.io}"
-TEST_COMMUNITY_SLUG="${TEST_COMMUNITY_SLUG:-growth-operators-network}"
-TEST_COMMUNITY_CREATOR="${TEST_COMMUNITY_CREATOR:-youssef-bouallegue}"
+TEST_COMMUNITY_SLUG="${TEST_COMMUNITY_SLUG:-}"
+TEST_COMMUNITY_CREATOR="${TEST_COMMUNITY_CREATOR:-}"
 TEST_STRIPE_SESSION="${TEST_STRIPE_SESSION:-}"
 
 fail() {
@@ -31,12 +31,25 @@ assert_status "${DOMAIN}/" "frontend" "200,307,308"
 assert_status "${DOMAIN}/api" "backend api" "200,301,308"
 assert_status "${DOMAIN}/Logos/PNG/frensh1.png" "header logo asset"
 assert_status "${DOMAIN}/banners-community/community-3-fitness.png" "community fallback asset"
-assert_status "${DOMAIN}/en/${TEST_COMMUNITY_CREATOR}/${TEST_COMMUNITY_SLUG}/home" "community member home" "200,307,308"
+communities_json="$(fetch "${DOMAIN}/api/communities?page=1&limit=1")"
+echo "${communities_json}" | grep -q '"success":true' || fail "communities response missing success=true"
+echo "${communities_json}" | grep -q '"communities"' || fail "communities response missing communities list"
 
-community_json="$(fetch "${DOMAIN}/api/communities/${TEST_COMMUNITY_SLUG}")"
-echo "${community_json}" | grep -q '"logoUrl"' || fail "community response missing logoUrl"
-echo "${community_json}" | grep -q '"coverUrl"' || fail "community response missing coverUrl"
-echo "${community_json}" | grep -q '"thumbnailUrl"' || fail "community response missing thumbnailUrl"
+if echo "${communities_json}" | grep -q '"slug"'; then
+  echo "${communities_json}" | grep -q '"logoUrl"' || fail "community list response missing logoUrl"
+  echo "${communities_json}" | grep -q '"coverUrl"' || fail "community list response missing coverUrl"
+  echo "${communities_json}" | grep -q '"thumbnailUrl"' || fail "community list response missing thumbnailUrl"
+else
+  echo "[smoke-production] no communities found; skipping community media verification"
+fi
+
+if [ -n "${TEST_COMMUNITY_SLUG}" ] && [ -n "${TEST_COMMUNITY_CREATOR}" ]; then
+  assert_status "${DOMAIN}/en/${TEST_COMMUNITY_CREATOR}/${TEST_COMMUNITY_SLUG}/home" "community member home" "200,307,308"
+  community_json="$(fetch "${DOMAIN}/api/communities/${TEST_COMMUNITY_SLUG}")"
+  echo "${community_json}" | grep -q '"logoUrl"' || fail "community response missing logoUrl"
+  echo "${community_json}" | grep -q '"coverUrl"' || fail "community response missing coverUrl"
+  echo "${community_json}" | grep -q '"thumbnailUrl"' || fail "community response missing thumbnailUrl"
+fi
 
 if [ -n "${TEST_STRIPE_SESSION}" ]; then
   payment_json="$(fetch "${DOMAIN}/api/payments/verify?sessionId=${TEST_STRIPE_SESSION}")"

@@ -1,4 +1,10 @@
-import { getBrowserCookie, refreshBrowserAccessToken } from '@/lib/auth-refresh';
+import {
+  ensureBrowserCsrfToken,
+  getBrowserCookie,
+  issueBrowserCsrfToken,
+  isCsrfTokenRejection,
+  refreshBrowserAccessToken,
+} from '@/lib/auth-refresh';
 
 // API Response types
 export interface ApiSuccessResponse<T> {
@@ -74,6 +80,13 @@ class ApiClient {
         if (typeof value === 'string') return value;
         if (Array.isArray(value)) return value.map((v) => extractErrorMessage(v)).filter(Boolean).join(', ');
         if (typeof value === 'object') {
+          if (Array.isArray(value.details)) {
+            const details = value.details
+              .flatMap((detail: any) => detail?.messages || detail?.message || [])
+              .filter(Boolean)
+              .join(', ');
+            if (details) return details;
+          }
           if (typeof value.message === 'string') return value.message;
           if (value.error) return extractErrorMessage(value.error);
           if (typeof value.code === 'string') return value.code;
@@ -164,6 +177,21 @@ class ApiClient {
     return headers;
   }
 
+  private async executeUnsafeRequest(doRequest: () => Promise<Response>): Promise<Response> {
+    await ensureBrowserCsrfToken(this.baseURL);
+
+    let response = await doRequest();
+    if (await isCsrfTokenRejection(response)) {
+      await issueBrowserCsrfToken(this.baseURL);
+      response = await doRequest();
+    }
+    if (response.status === 401) {
+      const refreshed = await this.tryRefreshToken();
+      if (refreshed) response = await doRequest();
+    }
+    return response;
+  }
+
   // Generic HTTP methods
   async get<T>(
     endpoint: string,
@@ -197,14 +225,7 @@ class ApiClient {
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
-    let response = await doRequest();
-    if (response.status === 401) {
-      const refreshed = await this.tryRefreshToken();
-      if (refreshed) {
-        response = await doRequest();
-      }
-    }
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
   }
 
   async patch<T>(endpoint: string, data?: any): Promise<T> {
@@ -214,14 +235,7 @@ class ApiClient {
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
-    let response = await doRequest();
-    if (response.status === 401) {
-      const refreshed = await this.tryRefreshToken();
-      if (refreshed) {
-        response = await doRequest();
-      }
-    }
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
   }
 
   async put<T>(endpoint: string, data?: any): Promise<T> {
@@ -231,14 +245,7 @@ class ApiClient {
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
-    let response = await doRequest();
-    if (response.status === 401) {
-      const refreshed = await this.tryRefreshToken();
-      if (refreshed) {
-        response = await doRequest();
-      }
-    }
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
   }
 
   async delete<T>(endpoint: string): Promise<T> {
@@ -247,14 +254,7 @@ class ApiClient {
       headers: this.getHeaders(false, true),
       credentials: 'include',
     });
-    let response = await doRequest();
-    if (response.status === 401) {
-      const refreshed = await this.tryRefreshToken();
-      if (refreshed) {
-        response = await doRequest();
-      }
-    }
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
   }
 
   // File upload
@@ -279,14 +279,7 @@ class ApiClient {
       credentials: 'include',
       body: formData,
     });
-    let response = await doRequest();
-    if (response.status === 401) {
-      const refreshed = await this.tryRefreshToken();
-      if (refreshed) {
-        response = await doRequest();
-      }
-    }
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
   }
 
   // Multiple file upload
@@ -302,14 +295,7 @@ class ApiClient {
       credentials: 'include',
       body: formData,
     });
-    let response = await doRequest();
-    if (response.status === 401) {
-      const refreshed = await this.tryRefreshToken();
-      if (refreshed) {
-        response = await doRequest();
-      }
-    }
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
   }
 
   // Token refresh: single-flight so all concurrent 401 requests share one refresh.

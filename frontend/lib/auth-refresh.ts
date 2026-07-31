@@ -43,12 +43,54 @@ function notifyAccessTokenChanged(accessToken: string): void {
   }
 }
 
-async function issueBrowserCsrfToken(apiBase: string): Promise<void> {
-  await fetch(`${normalizeApiBase(apiBase)}/auth/csrf`, {
-    method: 'GET',
-    credentials: 'include',
-    cache: 'no-store',
-  }).catch(() => undefined)
+let csrfIssuePromise: Promise<string> | null = null
+
+/**
+ * Issue a fresh double-submit CSRF cookie and return its value.
+ * Calls are single-flight so concurrent uploads/profile saves do not rotate the
+ * cookie underneath one another.
+ */
+export async function issueBrowserCsrfToken(apiBase: string): Promise<string> {
+  if (typeof window === 'undefined') return ''
+  if (csrfIssuePromise) return csrfIssuePromise
+
+  csrfIssuePromise = (async () => {
+    const response = await fetch(`${normalizeApiBase(apiBase)}/auth/csrf`, {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+    })
+    if (!response.ok) return ''
+
+    const payload = await response.json().catch(() => ({}))
+    return String(payload?.data?.csrfToken || payload?.csrfToken || getBrowserCookie('chabaqa_csrf')).trim()
+  })().catch(() => '').finally(() => {
+    csrfIssuePromise = null
+  })
+
+  return csrfIssuePromise
+}
+
+export async function ensureBrowserCsrfToken(apiBase: string): Promise<string> {
+  return getBrowserCookie('chabaqa_csrf') || issueBrowserCsrfToken(apiBase)
+}
+
+/** True only for the backend's double-submit CSRF rejection, never generic 403s. */
+export async function isCsrfTokenRejection(response: Response): Promise<boolean> {
+  if (response.status !== 403) return false
+
+  try {
+    // Native fetch responses are cloned so the caller can still read the body.
+    // The fallback keeps this helper compatible with lightweight test responses.
+    const readable = typeof response.clone === 'function' ? response.clone() : response
+    const payload = await readable.json()
+    const text = [payload?.code, payload?.message, payload?.error]
+      .filter((value): value is string => typeof value === 'string')
+      .join(' ')
+    return /CSRF_TOKEN_INVALID|csrf token is missing or invalid/i.test(text)
+  } catch {
+    return false
+  }
 }
 
 async function requestAccessTokenRefresh(apiBase: string): Promise<Response> {

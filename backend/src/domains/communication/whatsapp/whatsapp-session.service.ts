@@ -63,7 +63,16 @@ export class WhatsappSessionService {
 
     const safeName = (
       requestedName || `chabaqa-${community.slug || communityId}`
-    ).replace(/[^a-zA-Z0-9_-]/g, '-');
+    )
+      .replace(/[^a-zA-Z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 50);
+    if (safeName.length < 3) {
+      throw new BadRequestException(
+        'WhatsApp session name must contain 3 to 50 letters, numbers, or hyphens',
+      );
+    }
     const created = await this.openWaClient.createSession(safeName);
 
     return new this.sessionModel({
@@ -256,7 +265,7 @@ export class WhatsappSessionService {
     communityId: string,
   ): Promise<WhatsappSessionDocument> {
     const session = await this.requireSession(communityId);
-    const synced = await this.syncOpenWaStatus(session);
+    const synced = await this.syncOpenWaStatus(session, true);
     if (synced.status !== WhatsappSessionStatus.READY) {
       throw new BadRequestException('WhatsApp session is not connected');
     }
@@ -282,6 +291,18 @@ export class WhatsappSessionService {
     };
     if (status === WhatsappSessionStatus.READY) set.connectedAt = new Date();
     await this.sessionModel.updateOne({ openwaSessionId }, { $set: set });
+  }
+
+  async markOpenWaStatusFromWebhook(
+    openwaSessionId: string | undefined,
+    openwaStatus: string,
+    error?: string,
+  ): Promise<void> {
+    await this.markFromWebhook(
+      openwaSessionId,
+      this.mapOpenWaStatus(openwaStatus, WhatsappSessionStatus.FAILED),
+      error,
+    );
   }
 
   async getHealth(): Promise<any> {
@@ -355,6 +376,7 @@ export class WhatsappSessionService {
 
   private async syncOpenWaStatus(
     session: WhatsappSessionDocument,
+    throwOnError = false,
   ): Promise<WhatsappSessionDocument> {
     if (!session.openwaSessionId) return session;
     try {
@@ -375,6 +397,7 @@ export class WhatsappSessionService {
       session.lastError = error?.message || 'Failed to sync OpenWA session';
       session.lastSyncedAt = new Date();
       await session.save();
+      if (throwOnError) throw error;
       return session;
     }
   }
@@ -416,11 +439,17 @@ export class WhatsappSessionService {
       return WhatsappSessionStatus.READY;
     if (['qr', 'qr_pending', 'qr_ready'].includes(normalized))
       return WhatsappSessionStatus.QR_PENDING;
-    if (['starting', 'initializing', 'loading'].includes(normalized))
+    if (
+      ['created', 'starting', 'initializing', 'authenticating', 'loading'].includes(
+        normalized,
+      )
+    )
       return WhatsappSessionStatus.STARTING;
     if (['disconnected', 'stopped', 'closed'].includes(normalized))
       return WhatsappSessionStatus.DISCONNECTED;
-    if (['failed', 'auth_failed', 'error'].includes(normalized))
+    if (
+      ['failed', 'auth_failed', 'action_required', 'error'].includes(normalized)
+    )
       return WhatsappSessionStatus.FAILED;
     return fallback;
   }

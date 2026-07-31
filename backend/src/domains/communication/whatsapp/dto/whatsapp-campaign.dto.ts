@@ -19,6 +19,7 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   WhatsappAudienceType,
+  WhatsappCampaignStatus,
   WhatsappMessageType,
 } from '@/infrastructure/database/schemas/communication/whatsapp-campaign.schema';
 import { WhatsappAutomationTrigger } from '@/infrastructure/database/schemas/communication/whatsapp-automation.schema';
@@ -97,6 +98,7 @@ export class WhatsappAudiencePreviewDto {
 
   @ApiPropertyOptional({ minimum: 1, maximum: 1000 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   @Max(1000)
@@ -221,15 +223,36 @@ export class UpdateWhatsappCampaignDto {
 
 export class WhatsappCampaignQueryDto {
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   page?: number = 1;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   @Max(100)
   limit?: number = 20;
+
+  @IsOptional()
+  @IsEnum(WhatsappCampaignStatus)
+  status?: WhatsappCampaignStatus;
+}
+
+export class WhatsappCampaignRecipientsQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  limit?: number = 50;
 
   @IsOptional()
   @IsString()

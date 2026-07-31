@@ -137,6 +137,11 @@ describe('OpenWaClientService', () => {
       expect.objectContaining({
         method: 'POST',
         url: '/sessions/session-1/messages/send-image',
+        data: {
+          chatId: '21650123456@c.us',
+          url: 'https://cdn.example.com/image.jpg',
+          caption: 'Image',
+        },
       }),
     );
     expect(request).toHaveBeenNthCalledWith(
