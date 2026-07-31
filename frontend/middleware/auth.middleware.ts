@@ -102,6 +102,8 @@ const SECURITY_HEADERS: Array<[string, string]> = [
         'http://127.0.0.1:3000',
         'http://127.0.0.1:3001',
         'https://picsum.photos',
+        // Picsum redirects image requests to its Fastly delivery hostname.
+        'https://fastly.picsum.photos',
         'https://ui-avatars.com',
         'https://placehold.co',
         'https://images.unsplash.com',
