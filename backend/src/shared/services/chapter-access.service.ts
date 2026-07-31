@@ -269,9 +269,10 @@ export class ChapterAccessService {
     const isPaidChapter = Boolean(descriptor.chapter?.isPaidChapter);
     const chapterPrice = Number(descriptor.chapter?.prix || 0);
     const hasEnrollment = Boolean(context.enrollment);
+    // A whole-course purchase creates enrollment only. Paid chapter playback
+    // is intentionally granted only by that chapter's fulfilled purchase.
     const hasChapterPurchase = isPaidChapter
-      ? Boolean(context.hasCoursePurchase) ||
-        context.purchasedChapterIds.has(String(descriptor.chapter?.id))
+      ? context.purchasedChapterIds.has(String(descriptor.chapter?.id))
       : false;
 
 

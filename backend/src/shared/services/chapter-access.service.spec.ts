@@ -198,7 +198,7 @@ describe('ChapterAccessService', () => {
     expect(decision.lockCode).toBe('previous_chapter_incomplete');
   });
 
-  it('allows paid chapters with full-course entitlement', async () => {
+  it('does not unlock a paid chapter from a whole-course purchase alone', async () => {
     const enrollment = {
       progression: [{ chapterId: 'chapter-1', isCompleted: true }],
       purchasedChapterIds: [],
@@ -215,8 +215,10 @@ describe('ChapterAccessService', () => {
     );
 
     const decision = service.evaluateChapterAccess(context, 'chapter-2');
-    expect(decision.canAccess).toBe(true);
-    expect(decision.hasChapterPurchase).toBe(true);
+    expect(decision.canAccess).toBe(false);
+    expect(decision.lockCode).toBe('payment_required');
+    expect(decision.needsPayment).toBe(true);
+    expect(decision.hasChapterPurchase).toBe(false);
   });
 
   it('keeps sequential lock for paid chapters even with entitlement', async () => {

@@ -151,10 +151,18 @@ export class EventService {
     throw error;
   }
 
-  private async findEventByIdentifier(idOrMongoId: string): Promise<EventDocument | null> {
-    let event = await this.eventModel.findOne({ id: idOrMongoId });
+  private async findEventByIdentifier(idOrMongoId: string, session: any = null): Promise<EventDocument | null> {
+    let eventQuery = this.eventModel.findOne({ id: idOrMongoId });
+    if (session) {
+      eventQuery = eventQuery.session(session);
+    }
+    let event = await eventQuery;
     if (!event && Types.ObjectId.isValid(idOrMongoId)) {
-      event = await this.eventModel.findById(idOrMongoId);
+      let eventByIdQuery = this.eventModel.findById(idOrMongoId);
+      if (session) {
+        eventByIdQuery = eventByIdQuery.session(session);
+      }
+      event = await eventByIdQuery;
     }
     return event;
   }
@@ -1046,8 +1054,14 @@ export class EventService {
   /**
    * Inscrire un utilisateur à un événement
    */
-  async registerAttendee(eventId: string, ticketType: string, userId: string, promoCode?: string): Promise<{ message: string }> {
-    const event = await this.findEventByIdentifier(eventId);
+  async registerAttendee(
+    eventId: string,
+    ticketType: string,
+    userId: string,
+    promoCode?: string,
+    options: { session?: any; paymentConfirmed?: boolean } = {},
+  ): Promise<{ message: string }> {
+    const event = await this.findEventByIdentifier(eventId, options.session);
 
     if (!event) {
       throw new NotFoundException('Événement non trouvé');
@@ -1103,14 +1117,21 @@ export class EventService {
     const FREE_MODE = process.env.FREE_MODE === 'true';
     let hasPaidOrder = false;
     if (ticket.price && ticket.price > 0 && !FREE_MODE) {
-      const existingPaidOrder = await this.orderModel.findOne({
+      let paidOrderQuery = this.orderModel.findOne({
         buyerId: new Types.ObjectId(userId),
         contentType: TrackableContentType.EVENT,
         contentId: (event as any)._id.toString(),
         status: 'paid',
       });
+      if (options.session) {
+        paidOrderQuery = paidOrderQuery.session(options.session);
+      }
+      const existingPaidOrder = await paidOrderQuery;
 
-      hasPaidOrder = Boolean(existingPaidOrder);
+      // Only the payment fulfillment controller can pass this flag, after it
+      // has verified Stripe server-side. It prevents a transaction visibility
+      // race while the public registration API still requires a paid order.
+      hasPaidOrder = Boolean(options.paymentConfirmed || existingPaidOrder);
       if (!hasPaidOrder && this.isPaidOrderRequired()) {
         throw this.buildPaymentRequiredException({
           contentId: (event as any)._id.toString(),
@@ -1171,7 +1192,7 @@ export class EventService {
       });
     }
     
-    await event.save();
+    await event.save(options.session ? { session: options.session } : undefined);
     await this.invalidateEventCaches(event.id || event._id?.toString());
 
     // Unified Progression Tracking: Track the start of event participation (successful registration)

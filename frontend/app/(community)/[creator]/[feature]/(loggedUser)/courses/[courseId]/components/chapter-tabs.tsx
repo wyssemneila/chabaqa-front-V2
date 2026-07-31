@@ -5,9 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { FileText as FileTextIcon, Download as DownloadIcon, Video, Code, Link as LinkIcon, FileType, Wrench, Star, Sparkles, Captions } from "lucide-react"
+import { FileText as FileTextIcon, Download as DownloadIcon, Video, Code, Link as LinkIcon, FileType, Wrench, Star, Captions } from "lucide-react"
 import { CourseReviewsSection } from "@/components/reviews/course-reviews-section"
-import { FloatingAiTutorSheet } from "./ai-tutor-widget"
+import { AiTutorMark, FloatingAiTutorSheet } from "./ai-tutor-widget"
 import { TranscriptTracker, type TranscriptSegment } from "./transcript-tracker"
 
 interface ChapterTabsProps {
@@ -121,7 +121,10 @@ export default function ChapterTabs({
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList className={cn("grid h-auto w-full gap-1 p-1.5", isTheaterMode ? "border border-white/80 bg-white/80 text-slate-600 shadow-sm backdrop-blur" : "bg-muted/50", chapterTranscript.length ? "grid-cols-6" : "grid-cols-5")}>
         <TabsTrigger value="content" className={tabTriggerClassName}>Content</TabsTrigger>
-        <TabsTrigger value="ai-tutor" className={cn(tabTriggerClassName, "gap-1")}><Sparkles className="h-3 w-3 md:h-4 md:w-4 text-purple-500" /> AI</TabsTrigger>
+        <TabsTrigger value="ai-tutor" className={cn(tabTriggerClassName, "gap-1")}>
+          <AiTutorMark className="h-3 w-3 md:h-4 md:w-4" />
+          AI
+        </TabsTrigger>
         <TabsTrigger value="notes" className={tabTriggerClassName}>Notes</TabsTrigger>
         <TabsTrigger value="resources" className={tabTriggerClassName}>Resources</TabsTrigger>
         <TabsTrigger value="reviews" className={tabTriggerClassName}>Reviews</TabsTrigger>
@@ -177,9 +180,8 @@ export default function ChapterTabs({
         {canUseAiTutor ? (
           <Card className={cn(surfaceClassName, "overflow-hidden")}>
             <CardContent className="relative px-5 py-10 text-center md:px-8">
-              <div className="pointer-events-none absolute inset-x-10 top-0 h-20 rounded-full bg-[#8e78fb]/10 blur-3xl" aria-hidden="true" />
-              <div className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-white shadow-lg shadow-purple-100 ring-1 ring-purple-100">
-                <Sparkles className="h-8 w-8 text-[#8e78fb]" strokeWidth={1.75} aria-hidden="true" />
+              <div className="relative mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#d4c5ff] bg-[#f0eefe]">
+                <AiTutorMark className="h-7 w-7" />
               </div>
               <CardTitle className="relative text-lg text-slate-950 md:text-xl">AI Course Tutor</CardTitle>
               <CardDescription className={cn("relative mx-auto mt-2 max-w-md text-sm leading-relaxed md:text-base", mutedTextClassName)}>
@@ -187,11 +189,11 @@ export default function ChapterTabs({
               </CardDescription>
               <Button
                 type="button"
-                className="btn-press-active relative mt-6 h-11 gap-2 rounded-xl bg-slate-950 px-5 text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800"
+                className="btn-press-active relative mt-6 h-11 gap-2 rounded-xl bg-[#8e78fb] px-5 text-white shadow-lg shadow-[#8e78fb]/20 hover:bg-[#7a64f0]"
                 onClick={() => setIsAiTutorOpen(true)}
                 data-testid="open-ai-tutor-cta"
               >
-                <Sparkles className="h-4 w-4 text-[#47c7ea]" aria-hidden="true" />
+                <AiTutorMark className="h-4 w-4 text-white" />
                 Open AI Tutor
               </Button>
             </CardContent>
@@ -199,7 +201,7 @@ export default function ChapterTabs({
         ) : (
           <Card className={surfaceClassName}>
             <CardContent className={cn("py-12 text-center", mutedTextClassName)}>
-              <Sparkles className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4 opacity-50" />
+              <AiTutorMark className="mx-auto mb-4 h-12 w-12 opacity-60 md:h-16 md:w-16" />
               <p className="text-sm md:text-base">Please select a chapter to use the AI Tutor.</p>
             </CardContent>
           </Card>

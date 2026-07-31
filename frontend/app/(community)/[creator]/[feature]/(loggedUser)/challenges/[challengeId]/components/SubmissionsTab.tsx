@@ -70,6 +70,7 @@ export default function SubmissionsTab({ challengeTasks, submissions, submission
           ) : (
             submittedTasks.map((task) => {
                 const submission = submissionByTaskId[String(task.id)]
+                const attempts = submissions.filter((item) => String(item?.taskId) === String(task.id))
                 const isCompleted = task.isCompleted || (submission && submission.status === 'approved');
                 const state = getSubmissionState(submission?.status, isCompleted)
                 const StateIcon = state.Icon
@@ -94,6 +95,7 @@ export default function SubmissionsTab({ challengeTasks, submissions, submission
                         <Badge className={state.badge}>
                           {state.label}
                         </Badge>
+                        {attempts.length > 1 && <Badge variant="outline">Attempt {submission?.attempt || attempts.length} of {attempts.length}</Badge>}
                       </div>
                     </div>
                     {!submission && (
@@ -170,6 +172,9 @@ export default function SubmissionsTab({ challengeTasks, submissions, submission
                         <div className="text-xs text-muted-foreground">
                           Submitted {new Date(submission.createdAt).toLocaleDateString()}
                         </div>
+                        {attempts.length > 1 && (
+                          <p className="text-xs text-muted-foreground">Earlier attempts are retained in your review history.</p>
+                        )}
                       </div>
                     )}
                   </div>

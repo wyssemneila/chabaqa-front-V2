@@ -5,12 +5,9 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import {
   Send,
   Loader2,
-  Sparkles,
   BookOpen,
   ListChecks,
   Lightbulb,
-  MessageCircle,
-  ListOrdered,
   CircleHelp,
   ShieldCheck,
   PanelRightOpen,
@@ -55,23 +52,48 @@ const PROMPT_CHIPS: {
   mode?: AiTutorMode
   icon: React.ComponentType<{ className?: string }>
 }[] = [
-  { label: "Explain simply", text: "Explain this chapter in simple terms for a beginner.", icon: Lightbulb },
-  { label: "Key takeaways", text: "What are the key takeaways from this chapter?", icon: ListOrdered },
+  { label: "Explain", text: "Explain this chapter in simple terms for a beginner.", icon: Lightbulb },
   { label: "Summary", text: "", mode: "summary", icon: BookOpen },
-  { label: "Quick quiz", text: "Give me a 3-question quiz on this chapter.", mode: "quiz", icon: ListChecks },
-  { label: "Simplify", text: "", mode: "simplify", icon: Lightbulb },
-  { label: "I'm stuck", text: "I'm stuck on the main concept — can you help me understand it?", icon: CircleHelp },
+  { label: "Quiz me", text: "Give me a 3-question quiz on this chapter.", mode: "quiz", icon: ListChecks },
+  { label: "Help me", text: "I'm stuck on the main concept — can you help me understand it?", icon: CircleHelp },
 ]
+
+/** Chabaqa AI Tutor mark: an open book (learning) with a focused AI spark. */
+export function AiTutorMark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      fill="none"
+      aria-hidden="true"
+      className={cn("h-4 w-4 text-[#8e78fb]", className)}
+    >
+      <path
+        d="M4.75 8.75c3.55-1.55 6.8-1.05 11.25 1.65v15.1c-4.45-2.7-7.7-3.2-11.25-1.65V8.75Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M27.25 8.75c-3.55-1.55-6.8-1.05-11.25 1.65v15.1c4.45-2.7 7.7-3.2 11.25-1.65V8.75Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M16 10.4v15.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M23.5 3.25v4.5M21.25 5.5h4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
 
 function TutorAvatar({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#8e78fb]/15 to-[#47c7ea]/15 ring-1 ring-[#8e78fb]/20",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f0eefe] ring-1 ring-[#d4c5ff]",
         className,
       )}
     >
-      <Sparkles className="h-4 w-4 text-purple-600" strokeWidth={2} />
+      <AiTutorMark />
     </div>
   )
 }
@@ -205,7 +227,7 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
   if (isDisabled) {
     return (
       <Card className="flex h-full min-h-[360px] flex-col justify-center rounded-none border-0 bg-transparent p-6 text-center shadow-none">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-1 ring-amber-200">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-700">
           <ShieldCheck className="h-7 w-7" aria-hidden="true" />
         </div>
         <CardTitle className="mt-4 text-base text-slate-950">Tutor locked for this chapter</CardTitle>
@@ -228,11 +250,11 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
             type="button"
             variant="secondary"
             size="sm"
-            className="btn-press-active h-11 shrink-0 gap-2 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm hover:border-[#8e78fb]/40 hover:bg-[#8e78fb]/5 hover:text-[#8e78fb] disabled:opacity-50"
+            className="btn-press-active h-10 shrink-0 gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition-colors hover:border-[#d4c5ff] hover:bg-[#f0eefe] hover:text-[#8e78fb] disabled:opacity-50"
             disabled={isLoading || isHistoryLoading}
             onClick={() => sendRequest(chip.text, mode)}
           >
-            <Icon className="h-4 w-4 text-[#8e78fb]" aria-hidden="true" />
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
             {chip.label}
           </Button>
         )
@@ -246,17 +268,17 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
         "flex flex-col",
         isSheet
           ? "h-full min-h-0 rounded-none border-0 bg-transparent shadow-none"
-          : "h-[min(680px,72vh)] min-h-[460px] overflow-hidden border-slate-200 bg-white shadow-[0_18px_50px_-28px_rgba(51,65,85,0.55)]",
+          : "h-[min(680px,72vh)] min-h-[460px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm",
       )}
     >
-      <CardHeader className={cn("shrink-0 border-b border-slate-100 bg-gradient-to-br from-white via-white to-[#f6f4ff] pb-4", isSheet && "pr-12 backdrop-blur")}>
+      <CardHeader className={cn("shrink-0 border-b border-gray-100 bg-white pb-4", isSheet && "pr-12")}>
         <div className="flex items-start gap-3">
           <TutorAvatar className="h-11 w-11" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-base text-slate-950 md:text-lg">AI Course Tutor</CardTitle>
-              <span className="rounded-full bg-[#47c7ea]/10 px-2 py-0.5 text-[11px] font-bold text-[#0f7490] ring-1 ring-[#47c7ea]/20">
-                Chapter-aware
+              <span className="rounded-full border border-[#d4c5ff] bg-[#f0eefe] px-2 py-0.5 text-[11px] font-semibold text-[#8e78fb]">
+                This chapter
               </span>
             </div>
             <CardDescription className="mt-1 text-xs leading-relaxed text-slate-500 md:text-sm">
@@ -271,7 +293,7 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
 
         <div
           ref={scrollViewportRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-[radial-gradient(circle_at_top_right,rgba(142,120,251,0.08),transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 md:px-6"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-gray-50/60 px-4 md:px-6"
         >
           <div className="py-4">
             {messages.length === 0 ? (
@@ -282,8 +304,8 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
                 </div>
               ) : (
                 <div className="mx-auto max-w-md space-y-6 py-8 text-center">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-white shadow-lg shadow-purple-100 ring-1 ring-purple-100">
-                    <MessageCircle className="h-8 w-8 text-[#8e78fb]" strokeWidth={1.75} aria-hidden="true" />
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#d4c5ff] bg-[#f0eefe]">
+                    <AiTutorMark className="h-7 w-7" />
                   </div>
                   <div>
                     <p className="text-base font-bold text-slate-950 md:text-lg">Start with a chapter question</p>
@@ -345,12 +367,12 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
 
       <CardFooter
         className={cn(
-          "shrink-0 flex flex-col gap-3 border-t border-slate-100 bg-white/92 p-4 backdrop-blur md:p-5",
+          "shrink-0 flex flex-col gap-3 border-t border-gray-100 bg-white p-4 md:p-5",
           isSheet && "pb-[calc(1rem+env(safe-area-inset-bottom))]",
         )}
       >
         {promptChips}
-        <div className="flex w-full gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 focus-within:border-[#8e78fb]/60 focus-within:ring-2 focus-within:ring-[#8e78fb]/15">
+        <div className="flex w-full gap-2 rounded-xl border border-gray-200 bg-white p-1.5 focus-within:border-[#8e78fb] focus-within:ring-2 focus-within:ring-[#8e78fb]/10">
           <Input
             placeholder="Ask about this chapter…"
             value={input}
@@ -371,7 +393,7 @@ export default function AiTutorWidget({ courseId, chapterId, variant = "embedded
             disabled={isLoading || isHistoryLoading || !input.trim()}
             onClick={() => void sendRequest(input, "chat")}
             aria-label="Send question"
-            className="btn-press-active h-11 w-11 shrink-0 rounded-xl bg-[#8e78fb] text-white shadow-sm hover:bg-[#7d67f5] disabled:bg-slate-300"
+            className="btn-press-active h-10 w-10 shrink-0 rounded-lg bg-[#8e78fb] text-white shadow-sm hover:bg-[#7a64f0] disabled:bg-slate-300"
           >
             <Send className="h-4 w-4" aria-hidden="true" />
           </Button>
@@ -391,17 +413,17 @@ export function FloatingAiTutorSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <Button
         type="button"
-        className="btn-press-active motion-safe:hover:scale-[1.03] fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-40 h-14 gap-2 rounded-2xl bg-slate-950 px-4 text-white shadow-xl shadow-slate-900/20 ring-1 ring-white/20 hover:bg-slate-800 sm:bottom-6 sm:right-6"
+        className="btn-press-active fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-40 h-11 gap-2 rounded-xl bg-[#8e78fb] px-4 text-white shadow-lg shadow-[#8e78fb]/20 hover:bg-[#7a64f0] sm:bottom-6 sm:right-6"
         onClick={() => onOpenChange?.(true)}
         aria-label="Ask AI Tutor"
         data-testid="floating-ai-tutor-trigger"
       >
-        <PanelRightOpen className="h-5 w-5 text-[#47c7ea]" aria-hidden="true" />
+        <PanelRightOpen className="h-4 w-4" aria-hidden="true" />
         <span className="text-xs font-bold">Ask AI</span>
       </Button>
       <SheetContent
         side="right"
-        className="flex h-full w-full max-w-full flex-col overflow-hidden border-l border-slate-200 bg-white/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-[480px]"
+        className="flex h-full w-full max-w-full flex-col overflow-hidden border-l border-gray-200 bg-white p-0 shadow-2xl sm:max-w-[440px]"
         data-testid="floating-ai-tutor-sheet"
       >
         <SheetTitle className="sr-only">AI Course Tutor</SheetTitle>

@@ -37,6 +37,7 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
   const [requestedChapterId, setRequestedChapterId] = useState<string | null>(null)
   const [pendingPaidChapterId, setPendingPaidChapterId] = useState<string | null>(null)
   const [chapterUnlockState, setChapterUnlockState] = useState<"idle" | "syncing" | "unlocked" | "timeout">("idle")
+  const [checkoutChapterId, setCheckoutChapterId] = useState<string | null>(null)
 
   const trackingSentRef = useMemo(
     () => ({ view: false, start: false }),
@@ -60,6 +61,21 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
   const coursePagePaymentModal = usePaymentProviderModal({
     initStripe: (key) => (coursesApi as any).initStripePayment(String(course?.mongoId || courseId), undefined, key),
     onError: (err: any) => toast({ title: "Checkout failed", description: err?.message || "Please try again.", variant: "destructive" }),
+  })
+
+  const chapterCheckoutModal = usePaymentProviderModal({
+    initStripe: (key) => {
+      if (!checkoutChapterId) return Promise.reject(new Error("No chapter selected for checkout"))
+      const resolvedCourseId = String(course?.mongoId || courseId)
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          "pending_chapter_checkout",
+          JSON.stringify({ courseId: resolvedCourseId, chapterId: checkoutChapterId, createdAt: Date.now() }),
+        )
+      }
+      return coursesApi.initChapterStripePayment(resolvedCourseId, checkoutChapterId, undefined, key)
+    },
+    onError: (err: any) => toast({ title: "Chapter checkout failed", description: err?.message || "Please try again.", variant: "destructive" }),
   })
 
   const refreshEnrollmentProgress = async (
@@ -167,26 +183,24 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
         await new Promise((resolve) => setTimeout(resolve, delay))
       }
       try {
-        const [, unlockedSnapshot, sessionRaw] = await Promise.all([
+        const [, , sessionRaw] = await Promise.all([
           refreshEnrollmentProgress(resolvedCourseId, course),
           refreshUnlockedChapters(resolvedCourseId),
           coursesApi.getCourseSession(resolvedCourseId, chapterId).catch(() => null),
         ])
-        void courseSession.refreshSession().catch(() => {})
+        void courseSession.refreshSession({ force: true, currentChapterId: chapterId }).catch(() => {})
 
         const session = unwrapApiPayload(sessionRaw)
-        const unlockedByList = Boolean(
-          unlockedSnapshot.unlockedChapters?.some(
-            (chapter: any) => String(chapter?.id) === String(chapterId) && Boolean(chapter?.isUnlocked),
-          ),
-        )
         const unlockedBySession = Boolean(
           (session as any)?.chapters?.some(
-            (chapter: any) => String(chapter?.chapterId) === String(chapterId) && Boolean(chapter?.canAccess),
+            (chapter: any) =>
+              String(chapter?.chapterId) === String(chapterId) &&
+              Boolean(chapter?.canAccess) &&
+              chapter?.accessSource === "chapter_purchase",
           ),
         )
 
-        if (unlockedByList || unlockedBySession) {
+        if (unlockedBySession) {
           setPendingPaidChapterId(chapterId)
           setChapterUnlockState("unlocked")
           clearCheckoutParams()
@@ -266,39 +280,12 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
       // Continue to paid or free flow if re-fetch fails
     }
 
-    // Chapter-driven flow (independent from course-level price).
+    // Chapter-driven flow (independent from course-level price). The dialog is
+    // intentionally shown before Stripe so learners can review what they unlock.
     if (targetChapterId) {
       if (chapterRequiresPayment) {
-        try {
-          setIsEnrolling(true)
-          console.info("[CourseNextFlow] Redirecting to chapter payment", { targetChapterId })
-          toast({ title: "Redirecting to chapter payment...", description: "Taking you to secure checkout." })
-          const result = await coursesApi.initChapterStripePayment(resolvedCourseId, targetChapterId)
-          const checkoutUrl = result?.data?.checkoutUrl ?? result?.checkoutUrl
-          if (checkoutUrl) {
-            if (typeof window !== "undefined") {
-              sessionStorage.setItem(
-                "pending_chapter_checkout",
-                JSON.stringify({
-                  courseId: resolvedCourseId,
-                  chapterId: targetChapterId,
-                  createdAt: Date.now(),
-                }),
-              )
-            }
-            window.location.href = checkoutUrl
-            return
-          }
-          throw new Error("Unable to start chapter checkout. Please try again.")
-        } catch (error) {
-          toast({
-            title: "Checkout failed",
-            description: typeof error === "object" && error && "message" in error ? String((error as any).message) : "Please try again.",
-            variant: "destructive",
-          })
-        } finally {
-          setIsEnrolling(false)
-        }
+        setCheckoutChapterId(targetChapterId)
+        chapterCheckoutModal.open()
         return
       }
 
@@ -500,6 +487,26 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
         onSelect={coursePagePaymentModal.handleSelect}
         isLoading={coursePagePaymentModal.isLoading}
         error={coursePagePaymentModal.error}
+      />
+      <PaymentProviderModal
+        open={chapterCheckoutModal.isOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            chapterCheckoutModal.close()
+            setCheckoutChapterId(null)
+          }
+        }}
+        onSelect={chapterCheckoutModal.handleSelect}
+        isLoading={chapterCheckoutModal.isLoading}
+        error={chapterCheckoutModal.error}
+        title="Unlock this lesson"
+        description={(() => {
+          const chapter = courseSession.chapters.find((item) => item.chapterId === checkoutChapterId)
+          if (!chapter) return "Pay securely by card through Stripe Checkout. Your access is saved to your account."
+          const minutes = chapter.videoDuration > 0 ? ` · ${Math.max(1, Math.ceil(chapter.videoDuration / 60))} min` : ""
+          const price = chapter.access.chapterPrice != null ? ` for ${chapter.access.chapterPrice} ${course?.currency || course?.devise || "TND"}` : ""
+          return `${chapter.chapterTitle}${minutes}${price}. Your access is saved to your account after Stripe confirms payment.`
+        })()}
       />
       <CoursePlayer
         creatorSlug={creator}

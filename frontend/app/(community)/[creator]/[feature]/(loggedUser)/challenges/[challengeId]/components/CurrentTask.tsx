@@ -18,6 +18,8 @@ interface CurrentTaskProps {
   unlockMessage?: string
   submissionByTaskId: Record<string, any>
   onSubmissionCreated: (submission: any) => void
+  taskAccessLoaded: boolean
+  taskAccessError: string | null
 }
 
 export default function CurrentTask({
@@ -29,6 +31,8 @@ export default function CurrentTask({
   unlockMessage,
   submissionByTaskId,
   onSubmissionCreated,
+  taskAccessLoaded,
+  taskAccessError,
 }: CurrentTaskProps) {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false)
   const [isCoachOpen, setIsCoachOpen] = useState(false)
@@ -41,10 +45,11 @@ export default function CurrentTask({
         challengeTasks.find((t) => t.isUnlocked !== false && !t.isCompleted) ||
         challengeTasks[0]
 
-  const isTaskLocked = sequentialProgressionEnabled && currentTask?.isUnlocked === false
+  const isTaskLocked = !taskAccessLoaded || currentTask?.isUnlocked === false
   const submissionForTask = currentTask?.id ? submissionByTaskId[String(currentTask.id)] : undefined
   const isCompleted = Boolean(currentTask?.isCompleted || submissionForTask?.status === "approved")
-  const isPendingSubmission = Boolean(submissionForTask && !isCompleted)
+  const isPendingSubmission = submissionForTask?.status === "pending"
+  const needsRevision = submissionForTask?.status === "rejected" || submissionForTask?.status === "feedback_required"
   const isSubmitDisabled = isTaskLocked || isCompleted || isPendingSubmission
 
   if (!currentTask) {
@@ -82,6 +87,10 @@ export default function CurrentTask({
                 ? "Completed"
                 : isPendingSubmission
                   ? "Submitted (Pending Review)"
+                  : needsRevision
+                    ? "Needs revision"
+                    : currentTask.isManuallyUnlocked
+                      ? "Instructor-unlocked"
                   : currentTask.isActive
                     ? "Active"
                     : "Upcoming"}
@@ -91,7 +100,17 @@ export default function CurrentTask({
       <CardContent className="space-y-6">
         {isTaskLocked && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-            {currentTask.lockReason || unlockMessage || "Complete the previous task to unlock this one."}
+            {taskAccessError || currentTask.lockReason || unlockMessage || "Complete the previous task to unlock this one."}
+          </div>
+        )}
+        {needsRevision && submissionForTask?.feedback && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <span className="font-semibold">Reviewer feedback: </span>{submissionForTask.feedback}
+          </div>
+        )}
+        {currentTask.isManuallyUnlocked && !isCompleted && (
+          <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900">
+            Your instructor unlocked this task for you. Completing it still requires review.
           </div>
         )}
         <div>
@@ -165,8 +184,10 @@ export default function CurrentTask({
               ? "Task Locked"
               : isCompleted
                 ? "Task Completed"
-                : isPendingSubmission
+              : isPendingSubmission
                   ? "Submitted (Pending Review)"
+                  : needsRevision
+                    ? "Submit revision"
                   : "Submit Project"}
           </Button>
           <Button
@@ -193,16 +214,7 @@ export default function CurrentTask({
           challengeId={challengeId}
           taskId={currentTask.id}
           taskTitle={currentTask.title}
-          onSubmitSuccess={() => {
-            if (currentTask?.id) {
-              onSubmissionCreated({
-                challengeId,
-                taskId: currentTask.id,
-                status: "pending",
-                createdAt: new Date().toISOString(),
-              })
-            }
-          }}
+          onSubmitSuccess={onSubmissionCreated}
         />
       </CardContent>
     </Card>

@@ -42,6 +42,10 @@ export class ChallengeSubmission {
   @Prop({ type: Number, default: 0 })
   pointsAwarded: number;
 
+  /** Monotonic learner attempt number; rejected work remains review history. */
+  @Prop({ type: Number, required: true, min: 1, default: 1 })
+  attempt: number;
+
   /** Instant AI coach feedback generated on submission (review-before-override). */
   @Prop({ trim: true })
   aiFeedback?: string;
@@ -49,6 +53,8 @@ export class ChallengeSubmission {
 
 export const ChallengeSubmissionSchema = SchemaFactory.createForClass(ChallengeSubmission);
 
-ChallengeSubmissionSchema.index({ challengeId: 1, userId: 1, taskId: 1 }, { unique: true });
+// Multiple attempts are retained. The service prevents concurrent pending work
+// and makes approval final for a learner/task.
+ChallengeSubmissionSchema.index({ challengeId: 1, userId: 1, taskId: 1, createdAt: -1 });
 ChallengeSubmissionSchema.index({ status: 1 });
 ChallengeSubmissionSchema.index({ userId: 1 });

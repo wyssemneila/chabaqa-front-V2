@@ -269,6 +269,41 @@ export default function PaymentSuccessContent() {
         return;
       }
 
+      if (scope === 'challenge' && creatorSlug && communitySlug && targetId) {
+        redirectDone.current = true;
+        (async () => {
+          const started = Date.now();
+          const timeoutMs = 20000;
+          let enrolled = false;
+          while (Date.now() - started < timeoutMs) {
+            try {
+              const accessToken = localStorage.getItem('accessToken') || localStorage.getItem('token') || '';
+              const response = await fetch(`/api/challenges/${encodeURIComponent(String(targetId))}/access`, {
+                credentials: 'include',
+                headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+              });
+              const payload = await response.json().catch(() => null);
+              const access = payload?.data || payload;
+              if (response.ok && access?.isParticipant) {
+                enrolled = true;
+                break;
+              }
+            } catch {
+              // Stripe fulfillment can still be in flight; retry briefly.
+            }
+            await sleep(1000);
+          }
+          if (!enrolled) {
+            toast({
+              title: 'Payment received',
+              description: 'We are confirming your challenge enrollment. You can safely refresh this page in a moment.',
+            });
+          }
+          router.replace(`/${creatorSlug}/${communitySlug}/challenges/${targetId}${enrolled ? '?enrolled=1' : '?enrollment=pending'}`);
+        })();
+        return;
+      }
+
       if (scope === 'session' && creatorSlug && communitySlug) {
         redirectDone.current = true;
         router.replace(`/${creatorSlug}/${communitySlug}/sessions`);
@@ -296,6 +331,7 @@ export default function PaymentSuccessContent() {
     (scope === 'community' && creatorSlug && communitySlug) ||
     (scope === 'session' && creatorSlug && communitySlug) ||
     (scope === 'event' && eventQrHref) ||
+    (scope === 'challenge' && creatorSlug && communitySlug && targetId) ||
     scope === 'subscription'
   );
 

@@ -31,7 +31,7 @@ export function SourceCitations({ sources }: { sources: TutorSource[] }) {
         aria-expanded={open}
       >
         <span className="inline-flex items-center gap-1.5">
-          <FileText className="h-3.5 w-3.5 shrink-0 text-purple-500" />
+          <FileText className="h-3.5 w-3.5 shrink-0 text-[#8e78fb]" />
           Sources from this chapter ({sources.length})
         </span>
         {open ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />}
@@ -79,7 +79,7 @@ export function QuizBlock({ questions }: { questions: TutorQuizQuestion[] }) {
                   dir="auto"
                   className={cn(
                     "flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2.5 py-2 text-sm transition-colors",
-                    selected === oi && !revealed && "border-purple-200 bg-purple-50/80",
+                    selected === oi && !revealed && "border-[#d4c5ff] bg-[#f0eefe]",
                     revealed && oi === q.correctIndex && "border-green-200 bg-green-50",
                     isWrong && selected === oi && "border-red-200 bg-red-50",
                   )}

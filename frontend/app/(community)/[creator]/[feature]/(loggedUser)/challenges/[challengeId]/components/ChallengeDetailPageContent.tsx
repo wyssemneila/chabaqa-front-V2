@@ -27,8 +27,10 @@ export default function ChallengeDetailPageContent({
   const [selectedTaskDay, setSelectedTaskDay] = useState<number | null>(null)
   const [resolvedTasks, setResolvedTasks] = useState<any[]>(challengeTasks || [])
   const [unlockedByTaskId, setUnlockedByTaskId] = useState<
-    Record<string, { isUnlocked: boolean; isCompleted: boolean }>
+    Record<string, { isUnlocked: boolean; isCompleted: boolean; isManuallyUnlocked?: boolean }>
   >({})
+  const [taskAccessLoaded, setTaskAccessLoaded] = useState(false)
+  const [taskAccessError, setTaskAccessError] = useState<string | null>(null)
   const [submissions, setSubmissions] = useState<any[]>([])
   const [submissionByTaskId, setSubmissionByTaskId] = useState<Record<string, any>>({})
   const [sequentialProgressionEnabled, setSequentialProgressionEnabled] = useState<boolean>(Boolean(challenge?.sequentialProgression))
@@ -56,6 +58,8 @@ export default function ChallengeDetailPageContent({
   useEffect(() => {
     const run = async () => {
       if (!challenge || isUpcoming) return
+      setTaskAccessLoaded(false)
+      setTaskAccessError(null)
       const id = String(challenge.id || challenge._id || "")
       if (!id) return
 
@@ -85,23 +89,27 @@ export default function ChallengeDetailPageContent({
       if (unlockedResult.status === "fulfilled") {
         const unlockedPayload = (unlockedResult.value as any)?.data || unlockedResult.value
         const unlockedTasks = ((unlockedPayload as any)?.unlockedTasks || []) as any[]
-        const unlockedMap: Record<string, { isUnlocked: boolean; isCompleted: boolean }> = {}
+        const unlockedMap: Record<string, { isUnlocked: boolean; isCompleted: boolean; isManuallyUnlocked?: boolean }> = {}
         unlockedTasks.forEach((task: any) => {
           const taskId = String(task?.id || "")
           if (!taskId) return
           unlockedMap[taskId] = {
             isUnlocked: Boolean(task?.isUnlocked),
             isCompleted: Boolean(task?.isCompleted),
+            isManuallyUnlocked: Boolean(task?.isManuallyUnlocked),
           }
         })
         const sequentialEnabled = Boolean((unlockedPayload as any)?.sequentialProgressionEnabled)
         const apiUnlockMessage = (unlockedPayload as any)?.unlockMessage as string | undefined
 
         setUnlockedByTaskId(unlockedMap)
+        setTaskAccessLoaded(true)
         setSequentialProgressionEnabled(sequentialEnabled)
         setUnlockMessage(apiUnlockMessage || challenge?.unlockMessage)
       } else {
         setUnlockedByTaskId({})
+        setTaskAccessLoaded(false)
+        setTaskAccessError("We couldn't verify task access. Please refresh and try again.")
         setSequentialProgressionEnabled(Boolean(challenge?.sequentialProgression))
         setUnlockMessage(challenge?.unlockMessage)
       }
@@ -167,7 +175,9 @@ export default function ChallengeDetailPageContent({
       const taskId = String(task?.id || "")
       const unlocked = unlockedByTaskId[taskId]
       const submission = submissionByTaskId[taskId]
-      const isUnlocked = unlocked ? Boolean(unlocked.isUnlocked) : true
+      // Access must come from the backend. Never reveal tasks as usable when
+      // access loading has failed or has not completed yet.
+      const isUnlocked = taskAccessLoaded && unlocked ? Boolean(unlocked.isUnlocked) : false
       const isCompleted = unlocked ? Boolean(unlocked.isCompleted) : Boolean(task?.isCompleted)
       const hasSubmission = Boolean(submission)
       const isPendingSubmission = hasSubmission && !isCompleted
@@ -176,6 +186,7 @@ export default function ChallengeDetailPageContent({
         ...task,
         isUnlocked,
         isCompleted,
+        isManuallyUnlocked: Boolean(unlocked?.isManuallyUnlocked),
         hasSubmission,
         isPendingSubmission,
         submissionStatus: submission?.status,
@@ -195,7 +206,7 @@ export default function ChallengeDetailPageContent({
         isActive: activeIndex === -1 ? false : index === activeIndex,
       })),
     )
-  }, [challengeTasks, unlockedByTaskId, submissionByTaskId, unlockMessage, challenge?.unlockMessage, isUpcoming])
+  }, [challengeTasks, unlockedByTaskId, submissionByTaskId, unlockMessage, challenge?.unlockMessage, isUpcoming, taskAccessLoaded])
 
   if (!community || !challenge) {
     return <div>Challenge not found</div>
@@ -221,6 +232,8 @@ export default function ChallengeDetailPageContent({
           submissions={submissions}
           submissionByTaskId={submissionByTaskId}
           onSubmissionCreated={handleSubmissionCreated}
+          taskAccessLoaded={taskAccessLoaded}
+          taskAccessError={taskAccessError}
         />
       </div>
     </div>

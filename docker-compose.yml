@@ -101,7 +101,10 @@ services:
             resources:
                 limits:
                     cpus: "1.0"
-                    memory: 1G
+                    # The current ClamAV signature set needs more than 1 GiB
+                    # while clamd loads it. Keep uploads fail-closed, but give
+                    # the scanner enough memory to remain available.
+                    memory: 2G
         healthcheck:
             test: ["CMD-SHELL", "nc -z 127.0.0.1 3310"]
             interval: 15s

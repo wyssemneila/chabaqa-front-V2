@@ -10,6 +10,9 @@ jest.mock(
   "@/app/(community)/[creator]/[feature]/(loggedUser)/courses/[courseId]/components/ai-tutor-widget",
   () => ({
     __esModule: true,
+    AiTutorMark: ({ className }: { className?: string }) => (
+      <svg aria-hidden="true" className={className} data-testid="ai-tutor-mark" />
+    ),
     FloatingAiTutorSheet: ({ open }: { open?: boolean }) => (
       <div
         data-testid="floating-ai-tutor"

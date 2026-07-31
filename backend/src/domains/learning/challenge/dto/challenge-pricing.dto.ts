@@ -334,4 +334,13 @@ export class ChallengeAccessResponseDto {
 
   @ApiPropertyOptional({ description: 'Devise', example: 'USD' })
   currency?: string;
+
+  @ApiPropertyOptional({ description: 'Whether the learner is enrolled' })
+  isParticipant?: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether checkout is required before enrollment' })
+  needsPayment?: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether the learner may work on tasks now' })
+  canWorkOnTasks?: boolean;
 }

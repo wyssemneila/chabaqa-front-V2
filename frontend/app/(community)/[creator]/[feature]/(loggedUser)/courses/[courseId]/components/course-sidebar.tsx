@@ -1,10 +1,10 @@
 import React from "react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle, Lock, MessageSquare, StickyNote, ArrowRight, ShoppingCart, Trash2 } from "lucide-react"
+import { Check, CheckCircle, Clock3, Lock, MessageSquare, Play, StickyNote, ArrowRight, ShoppingCart, Trash2 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { api } from "@/lib/api"
@@ -77,12 +77,12 @@ function getChapterState({
   isPreview: boolean
   isActive: boolean
 }) {
-  if (isCompleted) return { label: "Completed", className: "bg-green-100 text-green-700" }
-  if (isActive) return { label: "Current", className: "bg-[#8e78fb]/10 text-[#8e78fb]" }
-  if (isPreview && accessible) return { label: "Preview", className: "bg-blue-100 text-blue-700" }
-  if (isPaidChapter && !accessible) return { label: "Buy chapter", className: "bg-amber-100 text-amber-800" }
-  if (!accessible) return { label: "Locked", className: "bg-slate-100 text-slate-700" }
-  return { label: "Unlocked", className: "bg-cyan-100 text-cyan-700" }
+  if (isCompleted) return { label: "Completed", className: "text-emerald-700" }
+  if (isActive) return { label: "Now playing", className: "text-[#6f58df]" }
+  if (isPreview && accessible) return { label: "Free preview", className: "text-sky-700" }
+  if (isPaidChapter && !accessible) return { label: "Purchase required", className: "text-amber-800" }
+  if (!accessible) return { label: "Locked", className: "text-slate-500" }
+  return { label: "Ready to start", className: "text-slate-500" }
 }
 
 interface CourseSidebarProps {
@@ -93,7 +93,7 @@ interface CourseSidebarProps {
   completedChaptersCount: number
   remainingChaptersCount: number
   selectedChapter: string | null
-  setSelectedChapter: (chapterId: string) => void | Promise<void>
+  setSelectedChapter: (chapterId: string) => boolean | void | Promise<boolean | void>
   isChapterAccessible: (chapterId: string) => boolean
   /** Live watch time for current chapter (from player) so % updates second-by-second */
   currentChapterProgress?: { watchTime: number; duration: number }
@@ -221,11 +221,13 @@ export default function CourseSidebar({
       isUserEnrolled,
     })
     try {
-      await Promise.resolve(setSelectedChapter(targetChapterId))
+      const selected = await Promise.resolve(setSelectedChapter(targetChapterId))
+      if (selected === false) return false
       console.info("[CourseNextFlow] Chapter selection resolved", {
         source,
         targetChapterId,
       })
+      return true
     } catch (error) {
       console.error("[CourseNextFlow] Chapter selection failed", {
         source,
@@ -237,7 +239,25 @@ export default function CourseSidebar({
         description: "Could not open the chapter. Please try again.",
         variant: "destructive",
       })
+      return false
     }
+  }
+
+  const hasPaidEntitlement = (chapterId: string) => {
+    if (!Array.isArray(courseSession?.chapters)) {
+      // Legacy callers/tests without a session snapshot still defer to their
+      // supplied access authority. Production player sessions always include it.
+      return isChapterAccessible(chapterId)
+    }
+    const sessionChapter = courseSession.chapters.find(
+      (chapter) => String(chapter.chapterId) === String(chapterId),
+    )
+    return Boolean(
+      sessionChapter?.access.canAccess &&
+        ["chapter_purchase", "staff"].includes(
+          String(sessionChapter.access.accessSource || ""),
+        ),
+    )
   }
 
   const handleNextChapter = async (nextChapter: any) => {
@@ -265,7 +285,15 @@ export default function CourseSidebar({
       return
     }
 
-    if (nextChapterRequiresPayment && !isChapterAccessible(nextChapterId)) {
+    if (nextChapterRequiresPayment && !hasPaidEntitlement(nextChapterId)) {
+      if (onOpenEnrollment) {
+        await onOpenEnrollment({
+          targetChapterId: nextChapterId,
+          targetChapterPaid: true,
+          source: "sidebar-next",
+        })
+        return
+      }
       // Initiate payment for the next chapter
       console.info("[CourseNextFlow] Next chapter requires payment; initializing checkout", {
         nextChapterId,
@@ -339,7 +367,9 @@ export default function CourseSidebar({
     }
 
     const nextChapterRequiresPayment = Boolean(nextChapter.isPaidChapter)
-    const nextChapterAccessible = isChapterAccessible(nextChapterId)
+    const nextChapterAccessible =
+      isChapterAccessible(nextChapterId) &&
+      (!nextChapterRequiresPayment || hasPaidEntitlement(nextChapterId))
 
     if (nextChapterRequiresPayment && !nextChapterAccessible) {
       await handleNextChapter(nextChapter)
@@ -461,9 +491,9 @@ export default function CourseSidebar({
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3 pt-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm md:text-base font-semibold">Course Content</CardTitle>
+                <CardTitle className="text-sm md:text-base font-semibold">Course content</CardTitle>
                 <p className="text-xs md:text-sm text-muted-foreground font-medium">
-                  {allChapters.length} chapters
+                  {completedChaptersCount} of {allChapters.length} completed
                 </p>
               </div>
             </CardHeader>
@@ -488,10 +518,13 @@ export default function CourseSidebar({
                       </div>
                       <div className="space-y-1.5">
                         {section.chapters.map((chapter: any, chapterIndex: number) => {
+                          const sessionChapter = Array.isArray(courseSession?.chapters) ? courseSession.chapters.find(
+                            (entry) => String(entry.chapterId) === String(chapter.id),
+                          ) : undefined
                           const chapterProgress = enrollment?.progress?.find((p: any) => String(p.chapterId) === String(chapter.id))
-                          const isCompleted = chapterProgress?.isCompleted
+                          const isCompleted = Boolean(sessionChapter?.isCompleted || chapterProgress?.isCompleted)
                           const isActive = String(selectedChapter) === String(chapter.id)
-                          const accessible = isChapterAccessible(String(chapter.id))
+                          const accessible = sessionChapter ? sessionChapter.access.canAccess : isChapterAccessible(String(chapter.id))
                           const isFirstPreviewChapter =
                             !isUserEnrolled &&
                             Boolean(firstChapterId && String(chapter.id) === firstChapterId)
@@ -503,7 +536,7 @@ export default function CourseSidebar({
                           const chapterState = getChapterState({
                             isCompleted: Boolean(isCompleted),
                             accessible,
-                            isPaidChapter: Boolean(chapter.isPaidChapter),
+                            isPaidChapter: Boolean(sessionChapter?.isPaidChapter ?? chapter.isPaidChapter),
                             isPreview: Boolean(chapter.isPreview || isFirstPreviewChapter),
                             isActive,
                           })
@@ -520,6 +553,14 @@ export default function CourseSidebar({
                                   isUserEnrolled,
                                 })
                                 if (!accessible) {
+                                  if (sessionChapter?.access.needsPayment && onOpenEnrollment) {
+                                    void onOpenEnrollment({
+                                      targetChapterId: chapterId,
+                                      targetChapterPaid: true,
+                                      source: "manual",
+                                    })
+                                    return
+                                  }
                                   const reason = chapter.isPaidChapter
                                     ? "Buy this chapter to continue learning."
                                     : isUserEnrolled
@@ -542,18 +583,13 @@ export default function CourseSidebar({
                                 isActive
                                   ? "bg-primary/10 border-2 border-primary/30 shadow-md"
                                   : accessible
-                                    ? "hover:bg-muted/60 border-2 border-transparent hover:border-muted"
-                                    : "cursor-not-allowed opacity-60 border-2 border-transparent"
+                                    ? "border border-transparent hover:border-slate-200 hover:bg-slate-50"
+                                    : "cursor-not-allowed border border-transparent opacity-60"
                               }`}
                             >
                               <div className="flex items-start gap-2.5 md:gap-3 w-full">
                                 <div className="flex-shrink-0">
-                                  <ChapterProgressRing
-                                    progress={progressPct}
-                                    isCompleted={Boolean(isCompleted)}
-                                    isLocked={!accessible}
-                                    isActive={isActive}
-                                  />
+                                  <span className={`flex h-8 w-8 items-center justify-center rounded-full ${Boolean(isCompleted) ? "bg-emerald-100 text-emerald-700" : !accessible ? "bg-slate-100 text-slate-400" : isActive ? "bg-white text-[#8e78fb] ring-1 ring-[#8e78fb]" : "bg-slate-100 text-slate-500"}`}>{Boolean(isCompleted) ? <Check className="h-4 w-4" strokeWidth={2.5} /> : !accessible ? <Lock className="h-3.5 w-3.5" /> : <Play className="ml-0.5 h-3 w-3" fill="currentColor" />}</span>
                                 </div>
 
                                 <div className="flex-1 min-w-0">
@@ -564,20 +600,21 @@ export default function CourseSidebar({
                                       </span>
                                     </div>
                                     {chapter.duration && (
-                                      <span className="text-xs md:text-sm text-muted-foreground whitespace-nowrap font-medium">
-                                        {Math.floor(chapter.duration / 60)}
-                                        {chapter.duration % 60 > 0 && `:${String(chapter.duration % 60).padStart(2, '0')}`}
-                                      </span>
+                                      <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"><Clock3 className="h-3 w-3" />{Math.max(1, Math.ceil(Number(chapter.duration) / 60))} min</span>
                                     )}
                                   </div>
 
                                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold md:px-2 md:text-xs ${chapterState.className}`}>
-                                      {chapterState.label}
+                                    <span className={`text-[11px] font-medium ${chapterState.className}`}>
+                                      {sessionChapter?.access.accessSource === "staff"
+                                        ? "Staff access"
+                                        : sessionChapter?.access.accessSource === "chapter_purchase"
+                                          ? "Purchased"
+                                          : chapterState.label}
                                     </span>
-                                    {chapter.isPaidChapter && accessible && (
-                                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 md:px-2 md:text-xs">
-                                        Paid
+                                    {!accessible && sessionChapter?.access.lockReason && (
+                                      <span className="text-[11px] text-slate-500">
+                                        · {sessionChapter.access.lockReason}
                                       </span>
                                     )}
                                   </div>

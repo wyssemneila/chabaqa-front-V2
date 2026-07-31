@@ -121,6 +121,19 @@ export function transformCourse(backendCourse: any): any {
     ratingCount: Number(courseData.ratingCount || courseData.totalRatings || courseData.reviews_count || 0),
     sequentialProgression: Boolean(courseData.sequentialProgression),
     unlockMessage: typeof courseData.unlockMessage === "string" ? courseData.unlockMessage : undefined,
+    // Keep only resources actually supplied by the creator. The course page must
+    // never imply downloadable material exists when it has not been added.
+    ressources: Array.isArray(courseData.ressources)
+      ? courseData.ressources.map((resource: any) => ({
+        id: resource.id || resource._id || '',
+        title: resource.titre || resource.title || '',
+        titre: resource.titre || resource.title || '',
+        type: resource.type || 'link',
+        url: resource.url || '',
+        description: resource.description || '',
+        order: resource.ordre || resource.order || 0,
+      }))
+      : [],
     sections, // Include sections with chapters
     createdAt: courseData.createdAt || new Date().toISOString(),
     updatedAt: courseData.updatedAt || new Date().toISOString(),

@@ -324,6 +324,7 @@ describe('ChallengeService', () => {
           status: 'completed',
         }),
         userId.toString(),
+        { approvedSubmission: true },
       );
     });
 

@@ -21,6 +21,8 @@ export class ChapterSessionDto {
   @ApiProperty({ required: false }) needsPayment?: boolean;
   @ApiProperty({ required: false }) chapterPrice?: number;
   @ApiProperty({ required: false }) requiredChapterId?: string;
+  @ApiProperty({ required: false, enum: ['preview', 'course_purchase', 'chapter_purchase', 'staff'] })
+  accessSource?: 'preview' | 'course_purchase' | 'chapter_purchase' | 'staff';
 }
 
 export class NextChapterActionDto {

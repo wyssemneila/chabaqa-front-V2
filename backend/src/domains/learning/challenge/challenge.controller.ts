@@ -390,6 +390,14 @@ export class ChallengeController {
     return this.challengeService.checkAccess(checkAccessDto);
   }
 
+  @Get(':id/access')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get the authenticated learner access state for a challenge' })
+  async getCurrentUserAccess(@Param('id') id: string, @Request() req: any): Promise<ChallengeAccessResponseDto> {
+    return this.challengeService.getCurrentUserAccess(id, this.getRequestUserId(req));
+  }
+
   @Patch('progress')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
