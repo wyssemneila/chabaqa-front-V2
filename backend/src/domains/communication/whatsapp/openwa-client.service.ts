@@ -152,10 +152,11 @@ export class OpenWaClientService {
     type: 'image' | 'video' | 'document',
     payload: OpenWaMediaPayload,
   ): Promise<OpenWaMessageResponse> {
+    const { mediaUrl, ...rest } = payload;
     const response = await this.request<any>({
       method: 'POST',
       url: `/sessions/${encodeURIComponent(sessionId)}/messages/send-${type}`,
-      data: payload,
+      data: { ...rest, url: mediaUrl },
     });
     return this.normalizeMessageResponse(response);
   }

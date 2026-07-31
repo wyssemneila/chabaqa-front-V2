@@ -26,6 +26,7 @@ import {
   UpdateWhatsappCampaignDto,
   WhatsappAudiencePreviewDto,
   WhatsappCampaignQueryDto,
+  WhatsappCampaignRecipientsQueryDto,
 } from '@/domains/communication/whatsapp/dto/whatsapp-campaign.dto';
 import { WhatsappService } from '@/domains/communication/whatsapp/whatsapp.service';
 import { WhatsappAiService } from '@/domains/communication/whatsapp/whatsapp-ai.service';
@@ -135,7 +136,7 @@ export class WhatsappController {
   getRecipients(
     @Request() req,
     @Param('campaignId') campaignId: string,
-    @Query() query: { page?: number; limit?: number; status?: string },
+    @Query() query: WhatsappCampaignRecipientsQueryDto,
   ) {
     return this.whatsappService.getCampaignRecipients(campaignId, req.user._id, query);
   }

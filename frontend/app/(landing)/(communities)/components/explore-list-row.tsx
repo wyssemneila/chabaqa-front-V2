@@ -2,8 +2,9 @@ import Link from 'next/link'
 import type { ExploreItem } from '@/lib/explore-data'
 import { TYPE_CONFIG } from '@/lib/explore-data'
 import { useTranslations } from 'next-intl'
+import { ExploreCreatorAvatar } from './explore-creator-avatar'
 import { ExploreSafeImage } from './explore-safe-image'
-import { getExploreAvatarFallback, getExploreImageFallback } from '@/lib/explore-image-fallbacks'
+import { getExploreImageFallback } from '@/lib/explore-image-fallbacks'
 
 function fmt(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `${n}`
@@ -23,7 +24,6 @@ export function ExploreListRow({ item }: ExploreListRowProps) {
   const itemType = item.type
   const t = useTranslations('landing.explore')
   const imageFallback = getExploreImageFallback(item)
-  const avatarFallback = getExploreAvatarFallback(item)
 
   // Resolve href based on membership
   let href: string
@@ -82,11 +82,8 @@ export function ExploreListRow({ item }: ExploreListRowProps) {
           </div>
           <div className="flex items-center gap-2 flex-wrap mt-2">
             <div className="flex items-center gap-1.5">
-              <div className="relative w-5 h-5 rounded-full overflow-hidden flex-shrink-0 ring-1 ring-gray-200">
-                {item.creatorAvatar
-                  ? <ExploreSafeImage src={item.creatorAvatar} fallbackSrc={avatarFallback} alt={item.creator} fill className="object-cover" sizes="20px" />
-                  : <div className="w-full h-full flex items-center justify-center text-[7px] font-black text-white" style={{ background: item.creatorColor }}>{item.creatorInitials}</div>
-                }
+              <div className="w-5 h-5 flex-shrink-0 ring-1 ring-gray-200 rounded-full">
+                <ExploreCreatorAvatar src={item.creatorAvatar} name={item.creator} />
               </div>
               <span className="text-[11px] text-gray-500 font-medium">{item.creator}</span>
             </div>

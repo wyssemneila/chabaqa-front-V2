@@ -54,17 +54,22 @@ export function useWhatsappPage(communityId: string | null) {
         setLoading(true);
         setError(null);
         try {
-            const [campaignRes, contactRes, statsRes, automationRes] =
-                await Promise.all([
+            const results = await Promise.allSettled([
                     whatsappApi.listCampaigns(communityId, { limit: 50 }),
                     whatsappApi.listContacts(communityId),
                     whatsappApi.getStats(communityId),
                     whatsappApi.listAutomations(communityId),
                 ]);
-            setCampaigns(campaignRes.campaigns || []);
-            setContacts(contactRes.contacts || []);
-            setStats(normalizeStats(statsRes));
-            setAutomations(automationRes.automations || []);
+            const [campaignResult, contactResult, statsResult, automationResult] = results;
+            if (campaignResult.status === "fulfilled") setCampaigns(campaignResult.value.campaigns || []);
+            if (contactResult.status === "fulfilled") setContacts(contactResult.value.contacts || []);
+            if (statsResult.status === "fulfilled") setStats(normalizeStats(statsResult.value));
+            if (automationResult.status === "fulfilled") setAutomations(automationResult.value.automations || []);
+
+            const failure = results.find((result) => result.status === "rejected");
+            if (failure?.status === "rejected") {
+                setError(failure.reason?.message || "Some WhatsApp data could not be loaded");
+            }
         } catch (e: any) {
             setError(e?.message || "Failed to load WhatsApp data");
         } finally {

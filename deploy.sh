@@ -10,7 +10,7 @@ DEPLOY_USER="${DEPLOY_USER:-ubuntu}"
 NGINX_SOURCE="${NGINX_SOURCE:-${PROJECT_DIR}/nginx/chabaqa-cloudflare.conf}"
 NGINX_TARGET="${NGINX_TARGET:-/etc/nginx/sites-available/chabaqa}"
 APP_SERVICES=(chabaqa-backend chabaqa-frontend)
-INFRA_SERVICES=(mongo redis clamav openwa-api)
+INFRA_SERVICES=(mongo mongo-init redis clamav minio minio-init meilisearch)
 MONITORING_SERVICES=(blackbox-exporter alertmanager prometheus grafana node-exporter cadvisor)
 export COMPOSE_PROJECT_NAME
 
@@ -370,6 +370,13 @@ wait_for_container() {
 
 echo "[deploy] ensuring infrastructure services"
 docker compose up -d --no-recreate "${INFRA_SERVICES[@]}"
+COMPOSE_WHATSAPP_ENABLED="$(
+  docker compose config --environment \
+    | awk -F= '$1 == "WHATSAPP_ENABLED" { print tolower($2); exit }'
+)"
+if [ "${WHATSAPP_ENABLED:-${COMPOSE_WHATSAPP_ENABLED:-false}}" = "true" ]; then
+  docker compose --profile whatsapp up -d --no-recreate openwa-api
+fi
 wait_for_container chabaqa-mongo 120
 wait_for_container chabaqa-redis 120
 if ! wait_for_container chabaqa-clamav 60; then
@@ -441,8 +448,8 @@ if [ "${GRAFANA_STATUS}" != "200" ]; then
   exit 1
 fi
 
-"${PROJECT_DIR}/scripts/verify-production.sh"
-"${PROJECT_DIR}/scripts/smoke-production.sh"
+bash "${PROJECT_DIR}/scripts/verify-production.sh"
+bash "${PROJECT_DIR}/scripts/smoke-production.sh"
 
 echo "[deploy] success"
 echo "[deploy] frontend: https://chabaqa.io"

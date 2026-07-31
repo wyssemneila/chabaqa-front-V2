@@ -2,7 +2,8 @@ import Link from 'next/link'
 import type { ExploreItem } from '@/lib/explore-data'
 import { TYPE_CONFIG } from '@/lib/explore-data'
 import { useTranslations } from 'next-intl'
-import { getExploreAvatarFallback, getExploreImageFallback } from '@/lib/explore-image-fallbacks'
+import { getExploreImageFallback } from '@/lib/explore-image-fallbacks'
+import { ExploreCreatorAvatar } from '@/app/(landing)/(communities)/components/explore-creator-avatar'
 import { ExploreSafeImage } from '@/app/(landing)/(communities)/components/explore-safe-image'
 
 function fmt(n: number) {
@@ -25,7 +26,6 @@ export function ExploreCard({ item, featured = false }: ExploreCardProps) {
   const isFree = item.price === 'free' || item.price === 0
   const itemType = item.type
   const imageFallback = getExploreImageFallback(item)
-  const avatarFallback = getExploreAvatarFallback(item)
 
   let ctaLabel: string
   let ctaHref: string
@@ -125,15 +125,8 @@ export function ExploreCard({ item, featured = false }: ExploreCardProps) {
           {item.title}
         </h3>
         <div className="flex items-center gap-2">
-          <div className="relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 ring-[1.5px] ring-gray-200">
-            <ExploreSafeImage
-              src={item.creatorAvatar}
-              fallbackSrc={avatarFallback}
-              alt={item.creator}
-              fill
-              className="object-cover"
-              sizes="24px"
-            />
+          <div className="w-6 h-6 flex-shrink-0 ring-[1.5px] ring-gray-200 rounded-full">
+            <ExploreCreatorAvatar src={item.creatorAvatar} name={item.creator} />
           </div>
           <span className="text-[11px] text-gray-500 truncate flex items-center gap-1">
             {item.creator}

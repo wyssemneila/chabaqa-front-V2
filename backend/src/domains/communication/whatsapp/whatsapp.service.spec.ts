@@ -21,6 +21,7 @@ describe('WhatsappService', () => {
   const sessionService = {};
   const queueService = { queueCampaignSend: jest.fn() };
   const policyService = { getEffectiveLimitsForCreator: jest.fn() };
+  const whatsappAiService = {};
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -43,6 +44,7 @@ describe('WhatsappService', () => {
       sessionService as any,
       queueService as any,
       policyService as any,
+      whatsappAiService as any,
     );
   }
 
@@ -100,6 +102,7 @@ describe('WhatsappService', () => {
       sessionServiceWithWebhook as any,
       queueService as any,
       policyService as any,
+      whatsappAiService as any,
     );
 
     await expect(

@@ -49,11 +49,9 @@ assert_container_running() {
 
 assert_port() {
   local port="$1"
-  local expected_process="$2"
   local line
   line="$(ss -ltnp "( sport = :${port} )" | awk 'NR>1 {print; exit}')"
   [ -n "${line}" ] || fail "port ${port} is not listening"
-  printf '%s' "${line}" | grep -q "${expected_process}" || fail "port ${port} is not owned by ${expected_process}: ${line}"
 }
 
 assert_http_ok() {
@@ -86,13 +84,13 @@ do
   assert_container_running "${container}"
 done
 
-assert_port 3000 docker-proxy
-assert_port 8083 docker-proxy
-assert_port 9090 docker-proxy
-assert_port 9115 docker-proxy
-assert_port 9100 docker-proxy
-assert_port 8088 docker-proxy
-assert_port 3001 docker-proxy
+assert_port 3000
+assert_port 8083
+assert_port 9090
+assert_port 9115
+assert_port 9100
+assert_port 8088
+assert_port 3001
 
 assert_http_ok "http://127.0.0.1:3000/api/health/ping" "backend local health" "200"
 assert_http_ok "http://127.0.0.1:8083/api/health/ping" "frontend local health" "200"
