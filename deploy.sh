@@ -429,6 +429,9 @@ assert_http_status "http://127.0.0.1:8083/logo_chabaqa.png" "200" "frontend logo
 assert_http_status "http://127.0.0.1:8083/Logos/PNG/frensh1.png" "200" "frontend header logo asset"
 assert_http_status "http://127.0.0.1:8083/banners-community/community-1-email-marketing.png" "200" "frontend image fallback asset"
 assert_http_status "http://127.0.0.1:8083/placeholder-user.jpg" "200" "frontend avatar fallback asset"
+# This is served by Next.js rather than the Nest /api proxy. Without a
+# session id it intentionally returns 400, proving the BFF route is present.
+assert_http_status "http://127.0.0.1:8083/api/payments/verify" "400" "frontend payment verification route"
 assert_http_status "http://127.0.0.1:9090/-/ready" "200" "prometheus readiness"
 assert_http_status "http://127.0.0.1:9115/-/healthy" "200" "blackbox exporter health"
 assert_http_status "http://127.0.0.1:9100/metrics" "200" "node exporter metrics"

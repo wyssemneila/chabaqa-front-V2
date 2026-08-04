@@ -106,6 +106,9 @@ assert_http_ok "http://127.0.0.1:3001/api/health" "grafana health" "200"
 
 assert_http_ok "${DOMAIN}/" "frontend"
 assert_http_ok "${DOMAIN}/api" "backend api"
+# The checkout return path must go to Next.js. A 400 without a session id is
+# expected; a 404 means Nginx incorrectly sent it to the Nest /api proxy.
+assert_http_ok "${DOMAIN}/api/payments/verify" "payment verification BFF route" "400"
 assert_http_ok "${DOMAIN}/Logos/PNG/frensh1.png" "frontend header logo asset" "200"
 assert_http_ok "${DOMAIN}/banners-community/community-3-fitness.png" "frontend community fallback asset" "200"
 
