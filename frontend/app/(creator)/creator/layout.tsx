@@ -5,8 +5,8 @@ import CreatorClientLayout from "@/app/(creator)/creator/creator-client-layout"
 import { noIndexRobots } from "@/lib/seo-config"
 
 export const metadata: Metadata = {
-  title: "Chabaqa - Creator Dashboard",
-  description: "Manage your creator content, analytics, and community",
+  title: "Creator Studio",
+  description: "Manage your content, community, audience, analytics, and revenue from Chabaqa Creator Studio.",
   robots: noIndexRobots,
 }
 

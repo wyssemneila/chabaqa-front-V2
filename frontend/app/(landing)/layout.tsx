@@ -10,9 +10,9 @@ const LiveSupportWidget = dynamic(
 )
 
 export const metadata: Metadata = {
-  title: "Chabaqa - Turn your passion into business",
+  title: "The Creator Community Platform",
   description:
-    "Build and monetize your community with courses, sessions, events, challenges, and digital products on Chabaqa.",
+    "Build, engage, and monetize your community with courses, memberships, events, coaching, challenges, and digital products.",
   alternates: generateAlternateLanguages(""),
   icons: {
     icon: "/favicon.ico",

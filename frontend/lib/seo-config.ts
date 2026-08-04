@@ -12,9 +12,9 @@ export const seoConfig = {
   // Base configuration
   siteName: "Chabaqa",
   siteUrl: configuredSiteUrl,
-  defaultTitle: "Chabaqa Official Site | All-in-One Community Platform for Creators",
+  defaultTitle: "Chabaqa | The Creator Community Platform",
   defaultDescription:
-    "Official Chabaqa platform for creators to build and monetize communities with courses, challenges, coaching sessions, events, and digital products.",
+    "Build, engage, and monetize your community with courses, memberships, events, coaching, challenges, and digital products on Chabaqa.",
   
   // Brand variations for search optimization
   brandVariations: [

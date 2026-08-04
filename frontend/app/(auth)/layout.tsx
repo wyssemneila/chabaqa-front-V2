@@ -6,9 +6,9 @@ import { ExtensionErrorGuard } from "./components/extension-error-guard"
 import { noIndexRobots } from "@/lib/seo-config"
 
 export const metadata: Metadata = {
-  title: "Chabaqa - Turn your passion into buisness",
+  title: "Account Access",
   description:
-    "The ultimate platform for creators to build engaged communities, monetize their expertise, and scale their impact.",
+    "Sign in or create a Chabaqa account to build, manage, and grow your community.",
   robots: noIndexRobots,
 }
 

@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { noIndexRobots } from "@/lib/seo-config"
 
 export const metadata: Metadata = {
-  title: "Profile | Chabaqa",
+  title: "Your Profile",
   robots: noIndexRobots,
 }
 
