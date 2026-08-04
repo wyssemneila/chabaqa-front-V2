@@ -220,6 +220,9 @@ export class EventService {
     if (!attendee) {
       throw new NotFoundException('Inscription non trouvée');
     }
+    if ((attendee as any).status && (attendee as any).status !== 'active') {
+      throw new ForbiddenException('This ticket is no longer active');
+    }
 
     const eventIdentifier = event.id || event._id?.toString() || eventId;
     const attendeeId = attendee.id || `${eventIdentifier}:${normalizedUserId}`;
@@ -351,7 +354,6 @@ export class EventService {
     };
     attendee: {
       name: string;
-      email: string;
       profilePicture?: string;
       ticketType: string;
       registeredAt: string;
@@ -380,6 +382,9 @@ export class EventService {
     });
     if (!attendee) {
       throw new NotFoundException('Attendee registration not found');
+    }
+    if (attendee.status && attendee.status !== 'active') {
+      throw new NotFoundException('Attendee registration is no longer active');
     }
 
     const user = await this.userModel.findById(attendee.userId).select('firstName lastName email profilePicture').lean();
@@ -410,7 +415,6 @@ export class EventService {
       },
       attendee: {
         name: user ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim() : 'Unknown',
-        email: (user as any)?.email ? this.maskEmail((user as any).email) : '',
         ticketType: attendee.ticketType,
         registeredAt: attendee.registeredAt?.toISOString?.() || String(attendee.registeredAt),
         checkedIn: Boolean(attendee.checkedIn),
@@ -425,13 +429,6 @@ export class EventService {
       issuedAt: payload.issuedAt || payload.iat ? new Date((payload.iat || 0) * 1000).toISOString() : new Date().toISOString(),
       verifiedAt: new Date().toISOString(),
     };
-  }
-
-  /** Mask email for public display: j***n@gmail.com */
-  private maskEmail(email: string): string {
-    const [local, domain] = email.split('@');
-    if (!domain || local.length <= 2) return `***@${domain || '***'}`;
-    return `${local[0]}${'*'.repeat(Math.min(local.length - 2, 4))}${local[local.length - 1]}@${domain}`;
   }
 
   /**
@@ -1059,7 +1056,7 @@ export class EventService {
     ticketType: string,
     userId: string,
     promoCode?: string,
-    options: { session?: any; paymentConfirmed?: boolean } = {},
+    options: { session?: any; paymentConfirmed?: boolean; specialRequests?: string } = {},
   ): Promise<{ message: string }> {
     const event = await this.findEventByIdentifier(eventId, options.session);
 
@@ -1147,7 +1144,9 @@ export class EventService {
       userId: new Types.ObjectId(userId),
       ticketType,
       registeredAt: new Date(),
-      checkedIn: false
+      checkedIn: false,
+      status: 'active',
+      specialRequests: String(options.specialRequests || '').trim().slice(0, 1000) || undefined,
     };
 
     event.attendees.push(attendee);
@@ -1249,6 +1248,9 @@ export class EventService {
     }
 
     const refund = await this.refundEventTicketIfEligible(event, userId);
+    if (refund.status === 'failed' || refund.status === 'refund_unavailable') {
+      throw new BadRequestException(refund.reason || 'Unable to cancel this paid ticket. Please contact support.');
+    }
 
     event.attendees.splice(attendeeIndex, 1);
     await event.save();
@@ -1261,7 +1263,7 @@ export class EventService {
     event: EventDocument,
     userId: string,
   ): Promise<{ status: string; orderId?: string; reason?: string }> {
-    const order = await this.orderModel.findOne({
+    const order: any = await this.orderModel.findOne({
       buyerId: new Types.ObjectId(userId),
       contentType: TrackableContentType.EVENT,
       contentId: event._id.toString(),
@@ -1269,7 +1271,8 @@ export class EventService {
     }).sort({ createdAt: -1 }).exec();
 
     if (!order) return { status: 'not_applicable', reason: 'No paid order found' };
-    if (!order.paymentId || order.paymentMethod !== 'stripe') {
+    const paymentIntentId = order.paymentIntentId || order.metadata?.paymentIntentId;
+    if (!paymentIntentId || order.paymentMethod !== 'stripe') {
       order.metadata = {
         ...(order.metadata || {}),
         refundRequestedAt: new Date().toISOString(),
@@ -1283,7 +1286,7 @@ export class EventService {
       return { status: 'refund_unavailable', orderId: order._id.toString(), reason: 'Stripe refund service unavailable' };
     }
 
-    const result = await this.stripePaymentService.refundPayment(order.paymentId);
+    const result = await this.stripePaymentService.refundPayment(paymentIntentId);
     if (!result.success) {
       order.metadata = {
         ...(order.metadata || {}),
@@ -1518,6 +1521,32 @@ export class EventService {
   /**
    * Récupérer les événements auxquels l'utilisateur est inscrit
    */
+  async getMyTicket(eventId: string, userId: string): Promise<any> {
+    const event = await this.findEventByIdentifier(eventId);
+    if (!event) throw new NotFoundException('Event not found');
+    const attendee: any = (event.attendees || []).find((entry: any) => String(entry.userId) === String(userId));
+    if (!attendee) throw new NotFoundException('Ticket not found');
+
+    const ticket: any = (event.tickets || []).find((entry: any) => entry.id === attendee.ticketType || entry.type === attendee.ticketType);
+    const isActive = !attendee.status || attendee.status === 'active';
+    const qr = isActive ? await this.buildEventQrToken(event.id || event._id.toString(), userId) : null;
+    const order: any = await this.orderModel.findOne({
+      buyerId: new Types.ObjectId(userId),
+      contentType: TrackableContentType.EVENT,
+      contentId: event._id.toString(),
+      status: { $in: ['paid', 'refunded'] },
+    }).sort({ createdAt: -1 }).lean();
+
+    return {
+      event: { id: event.id, title: event.title, image: event.image, startDate: event.startDate, endDate: event.endDate, startTime: event.startTime, endTime: event.endTime, timezone: event.timezone, location: event.location, onlineUrl: event.onlineUrl, type: event.type },
+      attendee: { id: attendee.id, ticketType: attendee.ticketType, registeredAt: attendee.registeredAt, checkedIn: attendee.checkedIn, checkedInAt: attendee.checkedInAt, status: attendee.status || 'active', specialRequests: attendee.specialRequests },
+      ticket: ticket ? { id: ticket.id, name: ticket.name, type: ticket.type, description: ticket.description, price: ticket.price } : null,
+      qr: qr ? { token: qr.token, expiresIn: qr.expiresIn } : null,
+      order: order ? { id: order._id.toString(), status: order.status, amountDT: order.amountDT, currency: order.businessCurrency || 'TND', paidAt: order.updatedAt } : null,
+      cancellation: { eligible: isActive && !attendee.checkedIn && new Date(event.startDate) > new Date() },
+    };
+  }
+
   async getMyRegistrations(userId: string): Promise<any[]> {
     try {
       // Chercher tous les événements où l'utilisateur est inscrit comme participant

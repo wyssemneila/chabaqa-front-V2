@@ -21,6 +21,7 @@ import {
   ConversationDocument,
 } from '@/infrastructure/database/schemas/communication/conversation.schema';
 import { DmService } from '@/domains/communication/dm/dm.service';
+import { DmDelivery, DmDeliveryDocument } from '@/infrastructure/database/schemas/communication/dm-delivery.schema';
 
 @Injectable()
 export class DmBroadcastService {
@@ -29,6 +30,7 @@ export class DmBroadcastService {
     @InjectModel(DmAutomation.name) private readonly automationModel: Model<DmAutomationDocument>,
     @InjectModel(Community.name) private readonly communityModel: Model<CommunityDocument>,
     @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
+    @InjectModel(DmDelivery.name) private readonly deliveryModel: Model<DmDeliveryDocument>,
     private readonly dmService: DmService,
   ) {}
 
@@ -80,51 +82,38 @@ export class DmBroadcastService {
     return { success: true };
   }
 
+  async cancelBroadcast(id: string, userId: string) {
+    const broadcast = await this.broadcastModel.findById(id);
+    if (!broadcast) throw new NotFoundException('Broadcast not found');
+    await this.assertCommunityCreator(userId, String(broadcast.communityId));
+    if (!['queued', 'sending'].includes(broadcast.status)) {
+      throw new BadRequestException('Only queued or active broadcasts can be cancelled');
+    }
+    broadcast.status = 'cancelled';
+    broadcast.cancelledAt = new Date();
+    await broadcast.save();
+    await this.deliveryModel.updateMany({ broadcastId: broadcast._id, status: 'queued' }, { $set: { status: 'cancelled' } });
+    return { broadcast };
+  }
+
   async sendBroadcast(id: string, userId: string) {
     const broadcast = await this.broadcastModel.findById(id);
     if (!broadcast) throw new NotFoundException('Broadcast not found');
     const community = await this.assertCommunityCreator(userId, String(broadcast.communityId));
-    if (broadcast.status === 'sent') throw new BadRequestException('Broadcast already sent');
+    if (!['draft', 'failed'].includes(broadcast.status)) throw new BadRequestException('Broadcast has already been queued or sent');
 
     const memberIds = (community.members || []).map((m) => String(m)).filter((id) => id !== String(userId));
-    broadcast.status = 'sending';
+    broadcast.status = 'queued';
     broadcast.recipientCount = memberIds.length;
     await broadcast.save();
 
-    let sentCount = 0;
-    let failedCount = 0;
-
-    for (const memberId of memberIds) {
-      try {
-        let conv = await this.conversationModel.findOne({
-          type: 'COMMUNITY_DM',
-          communityId: community._id,
-          participantA: new Types.ObjectId(memberId),
-          participantB: new Types.ObjectId(userId),
-        });
-        if (!conv) {
-          conv = await this.conversationModel.create({
-            type: 'COMMUNITY_DM',
-            participantA: new Types.ObjectId(memberId),
-            participantB: new Types.ObjectId(userId),
-            communityId: community._id,
-            isOpen: true,
-            unreadCountA: 0,
-            unreadCountB: 0,
-          });
-        }
-        await this.dmService.sendMessage(String(conv._id), userId, { text: broadcast.body });
-        sentCount += 1;
-      } catch {
-        failedCount += 1;
-      }
-    }
-
-    broadcast.status = failedCount === memberIds.length && memberIds.length > 0 ? 'failed' : 'sent';
-    broadcast.sentCount = sentCount;
-    broadcast.failedCount = failedCount;
-    broadcast.sentAt = new Date();
-    await broadcast.save();
+    await this.deliveryModel.bulkWrite(memberIds.map((memberId) => ({
+      updateOne: {
+        filter: { broadcastId: broadcast._id, recipientId: new Types.ObjectId(memberId) },
+        update: { $setOnInsert: { kind: 'broadcast', broadcastId: broadcast._id, communityId: community._id, recipientId: new Types.ObjectId(memberId), status: 'queued', attempts: 0 } },
+        upsert: true,
+      },
+    })));
 
     return { broadcast };
   }

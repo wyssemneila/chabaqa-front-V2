@@ -3,7 +3,7 @@ import { Document, Types } from 'mongoose';
 
 export type DmBroadcastDocument = DmBroadcast & Document;
 
-export type DmBroadcastStatus = 'draft' | 'sending' | 'sent' | 'failed';
+export type DmBroadcastStatus = 'draft' | 'queued' | 'sending' | 'sent' | 'failed' | 'cancelled';
 
 @Schema({ timestamps: true })
 export class DmBroadcast {
@@ -23,7 +23,7 @@ export class DmBroadcast {
 
   @Prop({
     type: String,
-    enum: ['draft', 'sending', 'sent', 'failed'],
+    enum: ['draft', 'queued', 'sending', 'sent', 'failed', 'cancelled'],
     default: 'draft',
     index: true,
   })
@@ -40,6 +40,9 @@ export class DmBroadcast {
 
   @Prop({ type: Date })
   sentAt?: Date;
+
+  @Prop({ type: Date })
+  cancelledAt?: Date;
 
   @Prop({ type: Object, default: {} })
   metadata?: Record<string, unknown>;

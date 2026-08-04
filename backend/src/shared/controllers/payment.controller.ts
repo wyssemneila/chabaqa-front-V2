@@ -1338,6 +1338,7 @@ export class PaymentController {
     @Body('eventId') eventId: string,
     @Body('ticketType') ticketType: string,
     @Req() req: any,
+    @Body('specialRequests') specialRequests?: string,
     @Body('channel') channelRaw?: string,
     @Body('successRedirectUrl') successRedirectUrl?: string,
     @Body('cancelRedirectUrl') cancelRedirectUrl?: string,
@@ -1347,6 +1348,7 @@ export class PaymentController {
     const userId = (req.user?._id || req.user?.sub || '').toString();
     const channel = this.normalizePaymentChannel(channelRaw);
     const clientContext = this.normalizeClientContext(clientContextRaw);
+    const normalizedSpecialRequests = String(specialRequests || '').trim().slice(0, 1000);
     const event = await this.eventModel.findOne({ id: eventId }) || await this.eventModel.findById(eventId);
     if (!event) throw new BadRequestException('Event not found');
     const alreadyRegistered = (event.attendees || []).some((attendee: any) => attendee?.userId?.toString() === userId);
@@ -1398,6 +1400,7 @@ export class PaymentController {
       metadata: this.buildPendingFulfillmentMetadata({
         ticketType,
         channel,
+        ...(normalizedSpecialRequests ? { specialRequests: normalizedSpecialRequests } : {}),
         ...(Object.keys(clientContext).length > 0 ? { clientContext } : {}),
         ...this.resolveAffiliateAttribution(req),
       })
@@ -1422,6 +1425,7 @@ export class PaymentController {
         orderId: pendingOrder._id.toString(),
         ticketType,
         channel,
+        ...(normalizedSpecialRequests ? { specialRequests: normalizedSpecialRequests } : {}),
         ...(Object.keys(clientContext).length > 0 ? { clientContext: JSON.stringify(clientContext) } : {}),
       },
       lineItems: [{
@@ -2184,7 +2188,11 @@ export class PaymentController {
             ticketType,
             order.buyerId.toString(),
             order.promoCode,
-            { session, paymentConfirmed: true },
+            {
+              session,
+              paymentConfirmed: true,
+              specialRequests: order.metadata?.specialRequests || stripeSessionMetadata?.specialRequests,
+            },
           );
         } catch (error: any) {
           if (this.isAlreadyRegisteredEventError(error)) {

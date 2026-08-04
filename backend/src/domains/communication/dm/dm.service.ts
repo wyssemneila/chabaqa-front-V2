@@ -1002,6 +1002,32 @@ export class DmService {
     return { ok: true };
   }
 
+  async updateConversationWorkflow(
+    conversationId: string,
+    userId: string,
+    payload: { workflowStatus?: 'open' | 'waiting_on_member' | 'resolved' | 'archived'; label?: string | null },
+    options?: { isAdmin?: boolean },
+  ) {
+    const { conv } = await this.getConversationForUser(conversationId, userId, options);
+    if (payload.workflowStatus) conv.workflowStatus = payload.workflowStatus;
+    if (payload.label !== undefined) {
+      const label = String(payload.label || '').trim();
+      conv.label = label ? label.slice(0, 80) : undefined;
+    }
+    await conv.save();
+    return { conversation: conv };
+  }
+
+  async setConversationMuted(conversationId: string, userId: string, muted: boolean, options?: { isAdmin?: boolean }) {
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId, options);
+    const current = Array.isArray(conv.mutedBy) ? conv.mutedBy : [];
+    conv.mutedBy = muted
+      ? (current.some((id: any) => this.isSameId(id, uid)) ? current : [...current, uid])
+      : current.filter((id: any) => !this.isSameId(id, uid));
+    await conv.save();
+    return { conversation: conv, muted };
+  }
+
   async assignHelpThread(conversationId: string, adminId: string) {
     const conv = await this.conversationModel.findById(conversationId)
       .populate('participantA', 'name email profile_picture');

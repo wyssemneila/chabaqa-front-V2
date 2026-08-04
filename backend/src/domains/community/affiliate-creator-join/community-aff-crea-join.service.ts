@@ -18,6 +18,7 @@ import { CacheService } from '@/shared/services/cache.service';
 import { Post, PostDocument } from '@/infrastructure/database/schemas/content/post.schema';
 import { EmailCampaignService } from '@/domains/communication/email-campaign/email-campaign.service';
 import { CommunityStaff, CommunityStaffDocument } from '@/infrastructure/database/schemas/community/community-staff.schema';
+import { DmCampaignProcessor } from '@/domains/communication/dm/dm-campaign.processor';
 
 @Injectable()
 export class CommunityAffCreaJoinService implements OnModuleInit {
@@ -37,6 +38,7 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
     private readonly trackingService: ContentTrackingService,
     private readonly cacheService: CacheService,
     private readonly emailCampaignService: EmailCampaignService,
+    private readonly dmCampaignProcessor: DmCampaignProcessor,
   ) { }
 
   async onModuleInit(): Promise<void> {
@@ -1811,6 +1813,7 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       });
 
       await this.notifyCreatorMemberJoined(community, userId, this.resolveMemberDisplayName(user));
+      await this.dmCampaignProcessor.queueNewMemberAutomations(community._id.toString(), userId).catch(() => undefined);
 
       // Retourner la communauté avec les relations peuplées
       const populatedCommunity = await this.communityModel
