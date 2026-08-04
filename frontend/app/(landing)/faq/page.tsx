@@ -12,7 +12,7 @@ import {
   generateTwitterMetadata,
 } from "@/lib/seo-config"
 
-const faqTitle = "FAQ - Frequently Asked Questions | Chabaqa Community Platform"
+const faqTitle = "Frequently Asked Questions"
 const faqDescription =
   "Find answers to common questions about Chabaqa, the all-in-one community platform for courses, challenges, coaching sessions, events, and creator monetization."
 

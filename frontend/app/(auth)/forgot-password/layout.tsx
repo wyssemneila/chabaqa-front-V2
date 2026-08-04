@@ -2,8 +2,8 @@ import type React from "react"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Forgot Password - Chabaqa",
-  description: "Reset your Chabaqa account password securely.",
+  title: "Recover Your Password",
+  description: "Securely recover access to your Chabaqa account.",
 }
 
 export default function ForgotPasswordLayout({

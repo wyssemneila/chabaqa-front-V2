@@ -1,17 +1,13 @@
 import type { Metadata } from "next"
 import { AuthProvider } from "@/app/providers/auth-provider"
 import { LiveSupportWidget } from "@/components/live-support/live-support-widget"
-import { getTranslations } from "next-intl/server"
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("dashboard")
-  return {
-    title: {
-      default: t("metaTitle"),
-      template: t("metaTemplate"),
-    },
-    description: t("metaDesc"),
-  }
+export const metadata: Metadata = {
+  title: {
+    default: "Workspace",
+    template: "%s | Chabaqa",
+  },
+  description: "Manage your Chabaqa account, communities, memberships, and creator activity from one secure workspace.",
 }
 
 export default function RootLayout({
