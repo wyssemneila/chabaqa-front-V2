@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: "Status",
-  description: 'Current operational status of Chabaqa services',
+  title: 'System Status',
+  description: 'Live operational status for Chabaqa services and platform dependencies.',
 }
 
 type ServiceStatus = 'operational' | 'degraded' | 'down' | 'unknown'

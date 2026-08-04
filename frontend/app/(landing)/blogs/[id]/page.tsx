@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   
   if (!post) {
     return {
-      title: "Post Not Found | Chabaqa Blog"
+      title: "Article Not Found"
     }
   }
 

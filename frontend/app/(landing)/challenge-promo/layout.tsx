@@ -1,8 +1,6 @@
-import type { Metadata } from "next"
-
-export const metadata: Metadata = {
-  title: "Challenges",
-  description: "Participate in exciting challenges, compete with others, and earn rewards on Chabaqa.",
+export const metadata = {
+  title: 'Creator Challenges',
+  description: 'Discover guided challenges designed to help you learn, build momentum, and reach your goals.',
 }
 
 export default function RootLayout({
