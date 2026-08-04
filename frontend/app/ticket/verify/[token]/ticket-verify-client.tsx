@@ -36,7 +36,6 @@ interface VerificationData {
   };
   attendee: {
     name: string;
-    email: string;
     profilePicture?: string;
     ticketType: string;
     registeredAt: string;
@@ -306,7 +305,7 @@ export function TicketVerifyClient({ token }: { token: string }) {
                   <p className="text-sm font-bold text-[#1a1730] truncate">
                     {att.name}
                   </p>
-                  <p className="text-xs text-[#9590b8] truncate">{att.email}</p>
+                  <p className="text-xs text-[#9590b8]">Verified ticket holder</p>
                 </div>
               </div>
             </div>

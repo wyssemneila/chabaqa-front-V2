@@ -14,6 +14,7 @@ import { TrackingModule } from '@/shared/modules/tracking.module';
 import { NotificationModule } from '@/domains/communication/notification/notification.module';
 import { AuthModule } from '@/domains/auth/auth.module';
 import { EmailCampaignModule } from '@/domains/communication/email-campaign/email-campaign.module';
+import { DmModule } from '@/domains/communication/dm/dm.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { EmailCampaignModule } from '@/domains/communication/email-campaign/emai
     NotificationModule,
     AuthModule,
     EmailCampaignModule,
+    DmModule,
   ],
   controllers: [CommunityAffCreaJoinController],
   providers: [CommunityAffCreaJoinService],

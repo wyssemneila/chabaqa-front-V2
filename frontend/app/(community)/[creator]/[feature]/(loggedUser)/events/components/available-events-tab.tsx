@@ -37,7 +37,7 @@ export default function AvailableEventsTab({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const paymentModal = usePaymentProviderModal({
-    initStripe: (key) => (eventsApi as any).initStripePayment(String(selectedEvent?.id), String(selectedTicket), promoCode.trim() || undefined, key),
+    initStripe: (key) => (eventsApi as any).initStripePayment(String(selectedEvent?.id), String(selectedTicket), promoCode.trim() || undefined, key, notes.trim() || undefined),
     onError: (err: any) => toast({ title: "Payment failed", description: err?.message || "Please try again.", variant: "destructive" }),
   });
 
@@ -107,7 +107,7 @@ export default function AvailableEventsTab({
     setIsSubmitting(true);
     try {
       if (price <= 0) {
-        await eventsApi.register(String(selectedEvent.id), String(selectedTicket));
+        await eventsApi.register(String(selectedEvent.id), String(selectedTicket), undefined, notes.trim() || undefined);
         toast({ title: "Registered", description: "Your registration has been confirmed." });
         const qrHref = creator && feature
           ? `/${creator}/${feature}/events/qr?eventId=${encodeURIComponent(String(selectedEvent.id))}`

@@ -16,6 +16,8 @@ import { Admin, AdminSchema } from '@/infrastructure/database/schemas/auth/admin
 import { Session, SessionSchema } from '@/infrastructure/database/schemas/commerce/session.schema';
 import { DmBroadcast, DmBroadcastSchema } from '@/infrastructure/database/schemas/communication/dm-broadcast.schema';
 import { DmAutomation, DmAutomationSchema } from '@/infrastructure/database/schemas/communication/dm-automation.schema';
+import { DmDelivery, DmDeliverySchema } from '@/infrastructure/database/schemas/communication/dm-delivery.schema';
+import { DmCampaignProcessor } from '@/domains/communication/dm/dm-campaign.processor';
 
 @Module({
   imports: [
@@ -29,14 +31,15 @@ import { DmAutomation, DmAutomationSchema } from '@/infrastructure/database/sche
       { name: Session.name, schema: SessionSchema },
       { name: DmBroadcast.name, schema: DmBroadcastSchema },
       { name: DmAutomation.name, schema: DmAutomationSchema },
+      { name: DmDelivery.name, schema: DmDeliverySchema },
     ]),
     AuthModule,
     UploadModule,
     PolicyModule,
   ],
   controllers: [DmController],
-  providers: [DmService, DmGateway, DmBroadcastService],
-  exports: [DmService, DmGateway, DmBroadcastService],
+  providers: [DmService, DmGateway, DmBroadcastService, DmCampaignProcessor],
+  exports: [DmService, DmGateway, DmBroadcastService, DmCampaignProcessor],
 })
 export class DmModule {}
 

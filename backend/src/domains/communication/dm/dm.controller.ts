@@ -370,6 +370,28 @@ export class DmController {
     return this.dmService.emitTyping(conversationId, this.getRequestUserId(req), body.isTyping, { isAdmin });
   }
 
+  @Patch(':conversationId/workflow')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a conversation status or label' })
+  async updateWorkflow(
+    @Param('conversationId') conversationId: string,
+    @Body() body: { workflowStatus?: 'open' | 'waiting_on_member' | 'resolved' | 'archived'; label?: string | null },
+    @Request() req: any,
+  ) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    return this.dmService.updateConversationWorkflow(conversationId, this.getRequestUserId(req), body, { isAdmin });
+  }
+
+  @Patch(':conversationId/mute')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mute or unmute a conversation for the authenticated user' })
+  async setMuted(@Param('conversationId') conversationId: string, @Body('muted') muted: any, @Request() req: any) {
+    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    return this.dmService.setConversationMuted(conversationId, this.getRequestUserId(req), muted !== false && muted !== 'false', { isAdmin });
+  }
+
   @Get('help/queue')
   @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()
@@ -396,5 +418,4 @@ export class DmController {
     return { admin };
   }
 }
-
 

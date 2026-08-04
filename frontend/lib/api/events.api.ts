@@ -135,24 +135,32 @@ export const eventsApi = {
   },
 
   // Register for event
-  register: async (id: string, ticketType: string, promoCode?: string): Promise<ApiSuccessResponse<void>> => {
+  register: async (id: string, ticketType: string, promoCode?: string, specialRequests?: string): Promise<ApiSuccessResponse<void>> => {
     const endpoint = promoCode 
       ? `/events/${id}/register?promoCode=${encodeURIComponent(promoCode)}`
       : `/events/${id}/register`;
-    return apiClient.post<ApiSuccessResponse<void>>(endpoint, { ticketType });
+    return apiClient.post<ApiSuccessResponse<void>>(endpoint, { ticketType, specialRequests });
   },
 
-  initStripePayment: async (eventId: string, ticketType: string, promoCode?: string, idempotencyKey?: string): Promise<any> => {
+  initStripePayment: async (eventId: string, ticketType: string, promoCode?: string, idempotencyKey?: string, specialRequests?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/event?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/event`;
 
-    return apiClient.post<any>(endpoint, { eventId, ticketType }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
+    return apiClient.post<any>(endpoint, { eventId, ticketType, specialRequests }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
   },
 
   // Unregister from event
   unregister: async (id: string): Promise<ApiSuccessResponse<void>> => {
     return apiClient.post<ApiSuccessResponse<void>>(`/events/${id}/unregister`, {});
+  },
+
+  checkInByQr: async (id: string, token: string): Promise<ApiSuccessResponse<any>> => {
+    return apiClient.post<ApiSuccessResponse<any>>(`/events/${id}/check-in`, { token });
+  },
+
+  checkInAttendee: async (id: string, attendeeId: string): Promise<ApiSuccessResponse<any>> => {
+    return apiClient.patch<ApiSuccessResponse<any>>(`/events/${id}/attendees/${attendeeId}/check-in`, {});
   },
 
   // Get attendees
@@ -194,6 +202,8 @@ export const eventsApi = {
   getQrToken: async (id: string): Promise<ApiSuccessResponse<{ token: string; payload: any; expiresIn: string }>> => {
     return apiClient.get<ApiSuccessResponse<{ token: string; payload: any; expiresIn: string }>>(`/events/${id}/qr`);
   },
+
+  getMyTicket: async (id: string): Promise<ApiSuccessResponse<any>> => apiClient.get<ApiSuccessResponse<any>>(`/events/${id}/my-ticket`),
 
   // Toggle published status
   togglePublished: async (id: string): Promise<ApiSuccessResponse<{ isPublished: boolean; message: string }>> => {

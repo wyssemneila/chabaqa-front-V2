@@ -51,6 +51,12 @@ export class CommunityDmBroadcastController {
     return this.broadcastService.sendBroadcast(id, this.getUserId(req));
   }
 
+  @Post('broadcasts/:id/cancel')
+  @ApiOperation({ summary: 'Cancel a queued DM broadcast' })
+  async cancelBroadcast(@Param('id') id: string, @Request() req: any) {
+    return this.broadcastService.cancelBroadcast(id, this.getUserId(req));
+  }
+
   @Delete('broadcasts/:id')
   @ApiOperation({ summary: 'Delete a DM broadcast draft' })
   async deleteBroadcast(@Param('id') id: string, @Request() req: any) {

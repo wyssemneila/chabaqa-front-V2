@@ -104,6 +104,15 @@ export class EventController {
     return { success: true, events };
   }
 
+  @Get(':id/my-ticket')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get the authenticated user ticket for an event' })
+  async getMyTicket(@Param('id') eventId: string, @Request() req: any): Promise<{ success: boolean; data: any }> {
+    const userId = req.user._id || req.user.userId || req.user.id;
+    return { success: true, data: await this.eventService.getMyTicket(eventId, userId) };
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Récupérer les statistiques des événements' })
   @ApiQuery({ name: 'communityId', required: false, type: String, description: 'ID de la communauté' })
@@ -258,11 +267,12 @@ export class EventController {
   async registerAttendee(
     @Param('id') eventId: string,
     @Body('ticketType') ticketType: string,
+    @Body('specialRequests') specialRequests: string | undefined,
     @Query('promoCode') promoCode: string | undefined,
     @Request() req
   ): Promise<{ success: boolean; message: string; refund?: { status: string; orderId?: string; reason?: string } }> {
     const userId = req.user._id || req.user.userId || req.user.id;
-    const result = await this.eventService.registerAttendee(eventId, ticketType, userId, promoCode);
+    const result = await this.eventService.registerAttendee(eventId, ticketType, userId, promoCode, { specialRequests });
     return { success: true, ...result };
   }
 

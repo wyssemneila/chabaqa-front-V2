@@ -11,6 +11,7 @@ export type ConversationType =
   | 'LIVE_SUPPORT';
 
 export type LiveSupportStatus = 'BOT_ACTIVE' | 'WAITING_ADMIN' | 'ASSIGNED' | 'CLOSED';
+export type ConversationWorkflowStatus = 'open' | 'waiting_on_member' | 'resolved' | 'archived';
 
 @Schema({ timestamps: true })
 export class Conversation {
@@ -62,6 +63,15 @@ export class Conversation {
 
   @Prop({ type: String, required: false, enum: ['session_finished', 'booking_cancelled', 'booking_completed', 'manual'] })
   closeReason?: 'session_finished' | 'booking_cancelled' | 'booking_completed' | 'manual';
+
+  @Prop({ type: String, enum: ['open', 'waiting_on_member', 'resolved', 'archived'], default: 'open', index: true })
+  workflowStatus?: ConversationWorkflowStatus;
+
+  @Prop({ type: String, trim: true, maxlength: 80, index: true })
+  label?: string;
+
+  @Prop({ type: [Types.ObjectId], ref: 'User', default: [] })
+  mutedBy?: Types.ObjectId[];
 
   @Prop({ type: String, required: false, enum: ['BOT_ACTIVE', 'WAITING_ADMIN', 'ASSIGNED', 'CLOSED'], index: true })
   supportStatus?: LiveSupportStatus;

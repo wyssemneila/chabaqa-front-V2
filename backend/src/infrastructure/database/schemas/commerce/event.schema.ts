@@ -204,6 +204,15 @@ export class EventAttendee {
     type: Date
   })
   checkedInAt?: Date;
+
+  @Prop({ type: String, trim: true, maxlength: 1000 })
+  specialRequests?: string;
+
+  @Prop({ type: String, enum: ['active', 'cancelled', 'refund_pending', 'refunded'], default: 'active' })
+  status?: string;
+
+  @Prop({ type: Date })
+  cancelledAt?: Date;
 }
 
 export const EventAttendeeSchema = SchemaFactory.createForClass(EventAttendee);

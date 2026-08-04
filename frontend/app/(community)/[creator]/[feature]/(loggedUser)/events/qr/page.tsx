@@ -9,7 +9,6 @@ const QRCodeCanvas = dynamic(
   () => import("qrcode.react").then(mod => ({ default: mod.QRCodeCanvas })),
   { ssr: false, loading: () => <div className="h-48 w-48 animate-pulse rounded-lg bg-muted" /> }
 );
-import { normalizeEventRegistrations } from "@/lib/api/events-community.api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,6 +18,7 @@ import {
   Ticket,
   Clock,
   Download,
+  Printer,
   ExternalLink,
   Globe,
   Loader2,
@@ -60,32 +60,15 @@ export default function EventQrPage() {
         return;
       }
       try {
-        const [qrRes, regsRes] = await Promise.all([
-          eventsApi.getQrToken(eventId),
-          eventsApi.getMyRegistrations(),
-        ]);
-
-        const qrData =
-          (qrRes as any)?.data?.data || (qrRes as any)?.data;
-        const qrToken = qrData?.token || "";
-        const qrExpires = qrData?.expiresIn || "";
-
-        const registrations = normalizeEventRegistrations(regsRes);
-        const match =
-          registrations.find((reg: any) => {
-            const id = reg?.event?.id;
-            const mongoId =
-              reg?.event?._id || reg?.event?.mongoId;
-            return (
-              String(id || "") === String(eventId) ||
-              String(mongoId || "") === String(eventId)
-            );
-          }) || null;
+        const response = await eventsApi.getMyTicket(eventId);
+        const ticketData = (response as any)?.data?.data || (response as any)?.data || response;
+        const qrToken = ticketData?.qr?.token || "";
+        const qrExpires = ticketData?.qr?.expiresIn || "";
 
         if (!isMounted) return;
         setToken(qrToken);
         setExpiresIn(qrExpires);
-        setRegistration(match);
+        setRegistration(ticketData);
         setError(null);
       } catch (err: any) {
         if (!isMounted) return;
@@ -122,6 +105,8 @@ export default function EventQrPage() {
     a.download = `chabaqa-ticket-${registration?.event?.title || "event"}.png`;
     a.click();
   };
+
+  const handlePrintTicket = () => window.print();
 
 
   return (
@@ -261,7 +246,7 @@ export default function EventQrPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="px-6 pb-4 flex gap-2">
+            <div className="px-6 pb-4 flex gap-2 print:hidden">
               <Button
                 variant="outline"
                 size="sm"
@@ -269,7 +254,16 @@ export default function EventQrPage() {
                 onClick={handleDownloadQR}
               >
                 <Download className="h-3.5 w-3.5 me-1.5" />
-                Download QR
+                Save QR
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 h-9 text-xs border-[#e8e4ff] text-[#46426a] hover:bg-[#f8f7ff]"
+                onClick={handlePrintTicket}
+              >
+                <Printer className="h-3.5 w-3.5 me-1.5" />
+                Print ticket
               </Button>
             </div>
 
