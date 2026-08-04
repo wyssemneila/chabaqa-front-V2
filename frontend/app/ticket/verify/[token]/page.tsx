@@ -8,8 +8,8 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   return {
-    title: "Verify Ticket",
-    description: "Verify your event ticket authenticity on Chabaqa",
+    title: "Ticket Verification",
+    description: "Verify the authenticity and status of a Chabaqa event ticket.",
     robots: noIndexRobots,
   };
 }

@@ -4,24 +4,24 @@ import { noIndexRobots } from "@/lib/seo-config"
 
 export const metadata: Metadata = {
   title: {
-    default: "Community",
+    default: "Community Hub",
     template: "%s | Chabaqa"
   },
-  description: "A full-featured creator platform for building and managing communities",
+  description: "Your member space for learning, conversations, events, and community progress.",
   keywords: ["creator platform", "community", "business", "passion"],
   authors: [{ name: "Chabaqa" }],
   creator: "Chabaqa",
   openGraph: {
     type: "website",
-    locale: "en_US",
-    title: "Chabaqa - Community Platform for Creators",
-    description: "A full-featured creator platform for building and managing communities",
+    locale: "TN-216",
+    title: "Community Hub | Chabaqa",
+    description: "Your member space for learning, conversations, events, and community progress.",
     siteName: "Chabaqa"
   },
   twitter: {
     card: "summary_large_image",
-    title: "Chabaqa - Community Platform for Creators",
-    description: "A full-featured creator platform for building and managing communities"
+    title: "Community Hub | Chabaqa",
+    description: "Your member space for learning, conversations, events, and community progress."
   },
   robots: noIndexRobots,
 }

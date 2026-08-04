@@ -4,8 +4,8 @@ import { noIndexRobots } from '@/lib/seo-config';
 import PaymentFailedContent from './payment-failed-content';
 
 export const metadata: Metadata = {
-  title: 'Payment Failed',
-  description: 'Checkout failed or was canceled.',
+  title: 'Payment Not Completed',
+  description: 'Your checkout was canceled or could not be completed. You can try again securely.',
   robots: noIndexRobots,
 };
 

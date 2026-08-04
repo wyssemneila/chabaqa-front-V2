@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 
 export const metadata: Metadata = {
   title: "Sign In",
-  description: "Sign in to your Chabaqa account and access your communities, courses, and creator tools."
+  description: "Access your Chabaqa workspace and communities securely."
 }
 
 export default function SignInLayout({

@@ -5,8 +5,8 @@ import CreatorClientLayout from "@/app/(creator)/creator/creator-client-layout"
 import { noIndexRobots } from "@/lib/seo-config"
 
 export const metadata: Metadata = {
-  title: "Creator Dashboard",
-  description: "Manage your creator content, analytics, and community",
+  title: "Creator Studio",
+  description: "Manage your content, community, audience, analytics, and revenue from Chabaqa Creator Studio.",
   robots: noIndexRobots,
 }
 
@@ -21,22 +21,15 @@ const LiveSupportWidget = dynamic(
 
 export default function CreatorLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `(function(){try{var t=localStorage.getItem('chabaqa_dash_theme');document.documentElement.classList.toggle('dark',t==='dark');var l=localStorage.getItem('chabaqa_dash_lang')==='ar'?'ar':'en';document.documentElement.lang=l;document.documentElement.dir=l==='ar'?'rtl':'ltr'}catch(e){}})()`,
-        }}
-      />
-      <AuthProvider>
-        <CommunityProvider>
-          <CreatorCommunityProvider>
-            <CreatorClientLayout>
-              {children}
-            </CreatorClientLayout>
-            <LiveSupportWidget />
-          </CreatorCommunityProvider>
-        </CommunityProvider>
-      </AuthProvider>
-    </>
+    <AuthProvider>
+      <CommunityProvider>
+        <CreatorCommunityProvider>
+          <CreatorClientLayout>
+            {children}
+          </CreatorClientLayout>
+          <LiveSupportWidget />
+        </CreatorCommunityProvider>
+      </CommunityProvider>
+    </AuthProvider>
   )
 }
