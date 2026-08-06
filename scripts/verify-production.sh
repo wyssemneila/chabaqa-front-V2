@@ -111,6 +111,10 @@ assert_http_ok "${DOMAIN}/api/payments/verify" "payment verification BFF route" 
 assert_http_ok "${DOMAIN}/Logos/PNG/frensh1.png" "frontend header logo asset" "200"
 assert_http_ok "${DOMAIN}/banners-community/community-3-fitness.png" "frontend community fallback asset" "200"
 
+if [ -n "${TEST_COMMUNITY_SLUG:-}" ]; then
+  assert_http_ok "${DOMAIN}/en/community/${TEST_COMMUNITY_SLUG}" "public community page" "200"
+fi
+
 if [ -f "${NGINX_SOURCE}" ] && [ -f "${NGINX_TARGET}" ]; then
   diff -q "${NGINX_SOURCE}" "${NGINX_TARGET}" >/dev/null || fail "nginx target differs from repo source"
 fi

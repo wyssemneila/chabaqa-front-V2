@@ -3,6 +3,7 @@ set -euo pipefail
 
 PROJECT_DIR="${PROJECT_DIR:-/home/ubuntu/chabaqa}"
 BRANCH="${BRANCH:-main}"
+DEPLOY_REF="${DEPLOY_REF:-}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-chabaqa}"
 MONGO_DATABASE="${MONGO_DATABASE:-chabaqa_local}"
 DEPLOY_BACKUP_DIR="${DEPLOY_BACKUP_DIR:-${PROJECT_DIR}/.deploy-backups}"
@@ -32,8 +33,13 @@ else
   fi
 
   git fetch --all --prune
-  git checkout "$BRANCH"
-  git reset --hard "origin/$BRANCH"
+  if [ -n "${DEPLOY_REF}" ]; then
+    git fetch origin "${DEPLOY_REF}"
+    git checkout --detach "${DEPLOY_REF}"
+  else
+    git checkout "$BRANCH"
+    git reset --hard "origin/$BRANCH"
+  fi
 fi
 
 echo "[deploy] validating docker compose"
@@ -436,6 +442,9 @@ assert_http_status "http://127.0.0.1:8083/logo_chabaqa.png" "200" "frontend logo
 assert_http_status "http://127.0.0.1:8083/Logos/PNG/frensh1.png" "200" "frontend header logo asset"
 assert_http_status "http://127.0.0.1:8083/banners-community/community-1-email-marketing.png" "200" "frontend image fallback asset"
 assert_http_status "http://127.0.0.1:8083/placeholder-user.jpg" "200" "frontend avatar fallback asset"
+
+PUBLIC_COMMUNITY_SLUG="${TEST_COMMUNITY_SLUG:-creator-launch-studio}"
+assert_http_status "http://127.0.0.1:8083/en/community/${PUBLIC_COMMUNITY_SLUG}" "200" "public community page"
 # This is served by Next.js (not the Nest /api proxy). A missing session id
 # intentionally returns 400; this check proves the route is present after a deploy.
 assert_http_status "http://127.0.0.1:8083/api/payments/verify" "400" "frontend payment verification route"
@@ -451,8 +460,10 @@ if [ "${GRAFANA_STATUS}" != "200" ]; then
   exit 1
 fi
 
-bash "${PROJECT_DIR}/scripts/verify-production.sh"
-bash "${PROJECT_DIR}/scripts/smoke-production.sh"
+DOMAIN="${DOMAIN:-https://chabaqa.io}" TEST_COMMUNITY_SLUG="${PUBLIC_COMMUNITY_SLUG}" \
+  bash "${PROJECT_DIR}/scripts/verify-production.sh"
+DOMAIN="${DOMAIN:-https://chabaqa.io}" TEST_COMMUNITY_SLUG="${PUBLIC_COMMUNITY_SLUG}" \
+  bash "${PROJECT_DIR}/scripts/smoke-production.sh"
 
 echo "[deploy] success"
 echo "[deploy] frontend: https://chabaqa.io"
