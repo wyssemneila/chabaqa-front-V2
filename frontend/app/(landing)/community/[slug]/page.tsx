@@ -56,7 +56,10 @@ interface CommunityDetailsPageProps {
 export async function generateMetadata({ params }: CommunityDetailsPageProps): Promise<Metadata> {
   const { slug: rawSlug } = await params
   const slug = decodeURIComponent(rawSlug || "").trim()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+  const apiBase =
+    process.env.API_INTERNAL_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:3000/api"
   const readableSlug = slug.replace(/[-_]+/g, " ").trim()
   let normalizedName = readableSlug
     ? readableSlug
@@ -67,6 +70,9 @@ export async function generateMetadata({ params }: CommunityDetailsPageProps): P
     : "Community"
   let title = `${normalizedName}`
   let description = `Join ${normalizedName} on Chabaqa to access premium content, sessions, events, and creator resources.`
+  let ogImage = ""
+  let canonicalUrl = ""
+  let noIndex = false
 
   try {
     const response = await fetch(`${apiBase}/community-aff-crea-join/${encodeURIComponent(slug)}`, {
@@ -86,6 +92,9 @@ export async function generateMetadata({ params }: CommunityDetailsPageProps): P
         settings.metaDescription.trim() ||
         normalizeDisplayText(community?.description) ||
         description
+      ogImage = settings.ogImage || resolveImageUrl(community?.coverImage || community?.image || community?.logo, apiBase)
+      canonicalUrl = /^https:\/\/[^\s]+$/i.test(settings.canonicalUrl) ? settings.canonicalUrl : ""
+      noIndex = settings.noIndex
     }
   } catch {
     // Metadata falls back to the slug-derived copy when the optional fetch fails.
@@ -97,15 +106,23 @@ export async function generateMetadata({ params }: CommunityDetailsPageProps): P
     title,
     description,
     keywords: generateKeywords([`${normalizedName} community`, `${slug} community`, "join creator community"]),
-    alternates: generateAlternateLanguages(communityPath),
+    alternates: {
+      ...generateAlternateLanguages(communityPath),
+      canonical: canonicalUrl || absoluteUrl(communityPath),
+    },
+    robots: noIndex ? { index: false, follow: false } : { index: true, follow: true },
     openGraph: {
       title,
       description,
       url: absoluteUrl(communityPath),
       type: "website",
       siteName: "Chabaqa",
+      images: ogImage ? [{ url: ogImage, alt: normalizedName }] : undefined,
     },
-    twitter: generateTwitterMetadata(title, description),
+    twitter: {
+      ...generateTwitterMetadata(title, description),
+      images: ogImage ? [ogImage] : undefined,
+    },
   }
 }
 
@@ -375,7 +392,10 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
   const { slug } = await params
   
   let community = null
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+  const apiBase =
+    process.env.API_INTERNAL_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:3000/api"
   const hdrs = await headers()
   const cookieHeader = hdrs.get("cookie") || ""
   const authHeader = hdrs.get("authorization") || ""
@@ -459,7 +479,7 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
       null,
     ),
     withTimeoutFallback(
-      getCommunityPageContent(slug),
+      getCommunityPageContent(slug, apiBase),
       OPTIONAL_COMMUNITY_FETCH_TIMEOUT_MS,
       null,
     ),
@@ -631,11 +651,16 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
     .map((item) => resolveImageUrl(item, apiBaseForImages))
     .filter(Boolean)
   const videoUrl = getEmbeddableVideoUrl(normalizedSettings.videoUrl)
-  const customSections = normalizedSettings.customSections.filter((section) => {
+  const legacyCustomSections = normalizedSettings.customSections.filter((section) => {
     const title = typeof section.title === "string" ? section.title.trim() : ""
     const content = typeof section.content === "string" ? section.content.trim() : ""
     return section.visible !== false && (title || content)
   })
+  // Brand Studio sections are typed, ordered and safe. Older communities keep
+  // rendering their existing custom sections until they migrate.
+  const customSections = normalizedSettings.brandSections.length > 0
+    ? normalizedSettings.brandSections
+    : legacyCustomSections
 
   const overviewTitle = overviewContent?.title || "Community Overview"
   const overviewSubtitle =
@@ -649,9 +674,34 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
         backgroundAttachment: normalizedSettings.enableParallax ? "fixed" : undefined,
         backgroundSize: normalizedSettings.backgroundStyle === "image" ? "cover" : undefined,
         fontFamily: themeTokens.fontFamily,
+        color: themeTokens.text,
+        ["--community-primary" as string]: themeTokens.primary,
+        ["--community-accent" as string]: themeTokens.secondary,
+        ["--community-surface" as string]: themeTokens.surfaceBackground,
+        ["--community-border" as string]: themeTokens.border,
+        ["--community-section-space" as string]: themeTokens.sectionSpacing,
       }}
     >
       <main className="relative isolate overflow-hidden">
+        {normalizedSettings.stickyHeader && (
+          <div className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur" style={{ borderColor: themeTokens.mutedBorder }}>
+            <div className={cn("mx-auto flex min-h-14 items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8", contentWidthClass)}>
+              <div className="flex min-w-0 items-center gap-2">
+                {communityData.logo && <img src={communityData.logo} alt="" className="h-8 w-8 rounded object-cover" style={{ borderRadius: themeTokens.radius }} />}
+                <span className="truncate text-sm font-semibold text-gray-900">{normalizedSettings.wordmark || communityData.name}</span>
+              </div>
+              <a
+                href={/^https:\/\/[^\s]+$/i.test(normalizedSettings.navigationCtaUrl) ? normalizedSettings.navigationCtaUrl : "#join-section"}
+                target={/^https:\/\/[^\s]+$/i.test(normalizedSettings.navigationCtaUrl) ? "_blank" : undefined}
+                rel={/^https:\/\/[^\s]+$/i.test(normalizedSettings.navigationCtaUrl) ? "noopener noreferrer" : undefined}
+                className="shrink-0 px-3 py-2 text-xs font-semibold shadow-sm"
+                style={{ background: themeTokens.gradient, color: themeTokens.primaryText, borderRadius: themeTokens.buttonRadius }}
+              >
+                {normalizedSettings.navigationCtaLabel || "Join community"}
+              </a>
+            </div>
+          </div>
+        )}
         {normalizedSettings.showHero && (
           <CommunityHero
             community={{
@@ -664,6 +714,10 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
             headerStyle={normalizedSettings.headerStyle}
             heroLayout={normalizedSettings.heroLayout}
             showStats={normalizedSettings.showStats}
+            wordmark={normalizedSettings.wordmark}
+            tagline={normalizedSettings.tagline}
+            brandCtaLabel={normalizedSettings.navigationCtaLabel}
+            brandCtaUrl={normalizedSettings.navigationCtaUrl}
           />
         )}
 
@@ -771,18 +825,45 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
                 const type = String(section.type || "text").toLowerCase()
                 const href = type === "link" ? normalizeExternalHref(content) : ""
                 const mediaUrl = type === "image" ? resolveImageUrl(content, apiBaseForImages) : getEmbeddableVideoUrl(content)
+                const stats = type === "stats"
+                  ? content.split(/\n|\|/).map((item) => item.trim()).filter(Boolean).slice(0, 6)
+                  : []
+                const actionHref = type === "cta" && content.trim()
+                  ? normalizeExternalHref(content)
+                  : "#join-section"
 
                 return (
                   <article
                     key={String(section.id || `${title}-${index}`)}
-                    className="overflow-hidden border bg-white p-5 shadow-sm"
+                    className={cn(
+                      "overflow-hidden border bg-white p-5 shadow-sm",
+                      (type === "quote" || type === "cta") && "md:col-span-2",
+                    )}
                     style={{
                       borderColor: themeTokens.mutedBorder,
                       borderRadius: themeTokens.radiusLg,
                     }}
                   >
                     <h2 className="text-xl font-bold tracking-tight text-gray-900">{title}</h2>
-                    {type === "image" && mediaUrl ? (
+                    {type === "quote" ? (
+                      <blockquote className="mt-4 border-l-4 py-2 pl-4 text-lg font-medium leading-8 text-gray-800" style={{ borderColor: themeTokens.primary }}>
+                        <p>“{content}”</p>
+                        <footer className="mt-3 text-sm font-semibold not-italic" style={{ color: themeTokens.primary }}>{title}</footer>
+                      </blockquote>
+                    ) : type === "stats" && stats.length > 0 ? (
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {stats.map((stat, statIndex) => {
+                          const [value, ...labelParts] = stat.split(":")
+                          const label = labelParts.join(":").trim()
+                          return (
+                            <div key={`${stat}-${statIndex}`} className="rounded-lg border p-4" style={{ borderColor: themeTokens.mutedBorder, borderRadius: themeTokens.radius }}>
+                              <p className="text-2xl font-bold" style={{ color: themeTokens.primary }}>{value.trim()}</p>
+                              {label && <p className="mt-1 text-sm text-gray-600">{label}</p>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : type === "image" && mediaUrl ? (
                       <img
                         src={mediaUrl}
                         alt={title}
@@ -804,19 +885,19 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
                           <video src={mediaUrl} className="aspect-video w-full bg-black" controls />
                         )}
                       </div>
-                    ) : type === "link" && href ? (
+                    ) : (type === "link" && href) || type === "cta" ? (
                       <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={type === "cta" ? actionHref : href}
+                        target={type === "cta" ? undefined : "_blank"}
+                        rel={type === "cta" ? undefined : "noopener noreferrer"}
                         className="mt-4 inline-flex rounded-md px-4 py-2 text-sm font-semibold shadow-sm"
                         style={{
                           background: themeTokens.gradient,
                           color: themeTokens.primaryText,
-                          borderRadius: themeTokens.radius,
+                          borderRadius: themeTokens.buttonRadius,
                         }}
                       >
-                        Open link
+                        {type === "cta" ? title : "Open link"}
                       </a>
                     ) : (
                       <p className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-600">{content}</p>
@@ -936,6 +1017,14 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
           />
         )}
       </main>
+
+      {normalizedSettings.footerText && (
+        <section className="border-t bg-white" style={{ borderColor: themeTokens.mutedBorder }}>
+          <div className={cn("mx-auto px-4 py-5 text-center text-sm text-gray-600 sm:px-6 lg:px-8", contentWidthClass)}>
+            {normalizedSettings.footerText}
+          </div>
+        </section>
+      )}
 
       <Footer />
     </div>

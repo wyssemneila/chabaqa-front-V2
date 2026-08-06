@@ -40,6 +40,10 @@ interface CommunityHeroProps {
   headerStyle?: "default" | "centered" | "minimal"
   heroLayout?: "centered" | "split" | "media-left" | "media-right"
   showStats?: boolean
+  wordmark?: string
+  tagline?: string
+  brandCtaLabel?: string
+  brandCtaUrl?: string
 }
 
 export function CommunityHero({
@@ -50,6 +54,10 @@ export function CommunityHero({
   headerStyle = "default",
   heroLayout = "split",
   showStats = true,
+  wordmark = "",
+  tagline = "",
+  brandCtaLabel = "",
+  brandCtaUrl = "",
 }: CommunityHeroProps) {
   // Helpers moved inside client component
   const formatPrice = (price: number, priceType: string) => {
@@ -89,15 +97,17 @@ export function CommunityHero({
     : isInviteRequired
       ? "Invitation Required"
       : "Join Community"
-  const heroCTA = heroContent?.ctaButtonText?.trim() || defaultCTA
+  const heroCTA = heroContent?.ctaButtonText?.trim() || brandCtaLabel || defaultCTA
 
-  const ctaLink = isMember
+  const externalCtaUrl = /^https:\/\/[^\s]+$/i.test(brandCtaUrl.trim()) ? brandCtaUrl.trim() : ""
+  const ctaLink = externalCtaUrl || (isMember
     ? `/community/${community.slug}/home`
     : isInviteRequired
       ? "#"
-      : `#join-section`
+      : `#join-section`)
 
   const handleCTAClick = (e: React.MouseEvent) => {
+    if (externalCtaUrl) return
     if (isInviteRequired) {
       e.preventDefault()
       return
@@ -200,8 +210,8 @@ export function CommunityHero({
                   <img src={displayLogo} alt={`${community.name} logo`} className="h-full w-full object-cover" />
                 </div>
                 <div className={cn("min-w-0", isCentered ? "text-left" : "")}>
-                  <p className="truncate text-sm font-semibold text-gray-900">{community.name}</p>
-                  <p className="truncate text-xs text-gray-500">{community.category || "Community"}</p>
+                  <p className="truncate text-sm font-semibold text-gray-900">{wordmark || community.name}</p>
+                  <p className="truncate text-xs text-gray-500">{tagline || community.category || "Community"}</p>
                 </div>
               </div>
             )}
@@ -381,13 +391,15 @@ export function CommunityHero({
               <Link
                 href={ctaLink}
                 onClick={handleCTAClick}
+                target={externalCtaUrl ? "_blank" : undefined}
+                rel={externalCtaUrl ? "noopener noreferrer" : undefined}
                 className={`group w-full rounded-lg px-6 py-3 text-center text-sm font-semibold shadow-md transition-all duration-300 sm:w-auto ${
                   isInviteRequired ? "opacity-70 cursor-not-allowed" : "hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
                 }`}
                 style={{
                   backgroundImage: gradient,
                   color: themeTokens?.primaryText || "#fff",
-                  borderRadius: radius,
+                  borderRadius: themeTokens?.buttonRadius || radius,
                 }}
               >
                 <span className="flex items-center justify-center gap-1.5">

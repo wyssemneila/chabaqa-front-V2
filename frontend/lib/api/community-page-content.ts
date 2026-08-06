@@ -6,9 +6,9 @@ const PUBLIC_PAGE_CONTENT_REVALIDATE_SECONDS = 60;
 /**
  * Get published page content for a community (public - no auth required)
  */
-export async function getCommunityPageContent(slug: string) {
+export async function getCommunityPageContent(slug: string, apiBaseUrl = API_BASE_URL) {
   try {
-    const response = await fetch(`${API_BASE_URL}/communities/${slug}/page-content`, {
+    const response = await fetch(`${apiBaseUrl}/communities/${slug}/page-content`, {
       cache: 'force-cache',
       next: {
         revalidate: PUBLIC_PAGE_CONTENT_REVALIDATE_SECONDS,

@@ -1,4 +1,4 @@
-import { buildCommunityTheme } from "@/lib/community-theme"
+import { buildCommunityTheme, getContrastRatio } from "@/lib/community-theme"
 import { normalizeCommunitySettings } from "@/lib/community-settings"
 import {
   buildCommunityUpdatePayload,
@@ -64,6 +64,32 @@ describe("community customize model", () => {
     expect(theme.pageBackground).toContain("radial-gradient")
   })
 
+  it("normalizes the versioned Brand Studio configuration and keeps only safe typed sections", () => {
+    const settings = normalizeCommunitySettings({
+      ...community.settings,
+      brand: {
+        version: 2,
+        colors: { accent: "#ff8800", text: "#101010" },
+        typography: { headingFont: "Space Grotesk", scale: "spacious" },
+        layout: { buttonStyle: "pill", sectionSpacing: "generous" },
+        sections: [
+          { id: "quote-1", type: "quote", title: "Member story", content: "A meaningful result", visible: true, order: 3 },
+          { id: "unsafe", type: "script", title: "", content: "", visible: true },
+        ],
+      },
+    } as any, community.name)
+
+    expect(settings.brandVersion).toBe(2)
+    expect(settings.accentColor).toBe("#ff8800")
+    expect(settings.headingFont).toBe("Space Grotesk")
+    expect(settings.buttonStyle).toBe("pill")
+    expect(settings.sectionSpacing).toBe("generous")
+    expect(settings.brandSections).toEqual([
+      expect.objectContaining({ id: "quote-1", type: "quote", title: "Member story", order: 3 }),
+    ])
+    expect(getContrastRatio("#000000", "#ffffff")).toBeGreaterThanOrEqual(21)
+  })
+
   it("maps draft values to existing backend save payloads", () => {
     const draft = createCustomizeDraft(community)
     draft.settings.primaryColor = "#000000"
@@ -89,6 +115,10 @@ describe("community customize model", () => {
       benefits: ["Launch faster"],
       template: "immersive",
       videoUrl: "https://youtube.com/watch?v=demo",
+      brand: expect.objectContaining({
+        version: 1,
+        sections: [expect.objectContaining({ id: "section-1", type: "text", title: "Bonus" })],
+      }),
     })
 
     expect(buildPageContentUpdatePayload(draft).hero).toMatchObject({

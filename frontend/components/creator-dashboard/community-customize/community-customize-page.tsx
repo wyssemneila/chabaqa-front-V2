@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ExternalLink,
   FileText,
+  GripVertical,
   ImageIcon,
   LayoutTemplate,
   Loader2,
@@ -17,9 +18,11 @@ import {
   Palette,
   Plus,
   RotateCcw,
+  Redo2,
   Save,
   Sparkles,
   Trash2,
+  Undo2,
   Upload,
   Video,
 } from "lucide-react"
@@ -45,9 +48,9 @@ import { useToast } from "@/components/ui/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
 import { communitiesApi } from "@/lib/api"
 import { communityPageContentApi } from "@/lib/api/community-page-content"
-import { mediaApi, type MediaPurpose } from "@/lib/api/media.api"
+import { mediaApi, type MediaAsset, type MediaPurpose } from "@/lib/api/media.api"
 import { normalizeCommunitySettings } from "@/lib/community-settings"
-import { buildCommunityTheme } from "@/lib/community-theme"
+import { buildCommunityTheme, getContrastRatio } from "@/lib/community-theme"
 import { resolveImageUrl } from "@/lib/resolve-image-url"
 import { cn } from "@/lib/utils"
 import {
@@ -73,11 +76,34 @@ const palettePresets = [
 
 const fontOptions = ["Inter", "Manrope", "Poppins", "Space Grotesk", "System", "Serif", "Mono"]
 
+const templatePresets = [
+  { id: "modern", name: "Modern", description: "Clean, confident, conversion-focused.", primary: "#8e78fb", secondary: "#f48fb1", font: "Inter" },
+  { id: "editorial", name: "Editorial", description: "Story-first, refined, and spacious.", primary: "#111827", secondary: "#d97706", font: "Serif" },
+  { id: "minimal", name: "Minimal", description: "Quiet, direct, and content-led.", primary: "#2563eb", secondary: "#14b8a6", font: "Manrope" },
+  { id: "immersive", name: "Immersive", description: "High-impact visuals and bold energy.", primary: "#7c3aed", secondary: "#ec4899", font: "Space Grotesk" },
+] as const
+
 type CommunityCustomizePageProps = {
   slug: string
 }
 
-type UploadTarget = "logo" | "cover" | "hero" | "gallery" | "cta" | null
+type UploadTarget = "logo" | "favicon" | "cover" | "hero" | "gallery" | "cta" | "video" | null
+
+function getImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const image = new Image()
+    const url = URL.createObjectURL(file)
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve({ width: image.naturalWidth, height: image.naturalHeight })
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(null)
+    }
+    image.src = url
+  })
+}
 
 export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
   const { toast } = useToast()
@@ -87,8 +113,13 @@ export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState<UploadTarget>(null)
+  const [assetLibrary, setAssetLibrary] = useState<MediaAsset[]>([])
+  const [loadingAssetLibrary, setLoadingAssetLibrary] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("brand")
+  const [undoStack, setUndoStack] = useState<CommunityCustomizeDraft[]>([])
+  const [redoStack, setRedoStack] = useState<CommunityCustomizeDraft[]>([])
+  const [submittingDomainRequest, setSubmittingDomainRequest] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -114,6 +145,8 @@ export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
         const nextDraft = createCustomizeDraft(community, pageContent)
         setDraft(nextDraft)
         setSavedDraft(cloneCustomizeDraft(nextDraft))
+        setUndoStack([])
+        setRedoStack([])
         if (nextDraft.id) setSelectedCommunityId(nextDraft.id)
       } catch (loadError: any) {
         if (!mounted) return
@@ -129,16 +162,68 @@ export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
     }
   }, [slug, setSelectedCommunityId])
 
+  useEffect(() => {
+    if (!draft?.id) return
+    let active = true
+    setLoadingAssetLibrary(true)
+    void mediaApi.listAssets({ entityType: "community", entityId: draft.id, limit: 48 })
+      .then((assets) => { if (active) setAssetLibrary(assets) })
+      .catch(() => { if (active) setAssetLibrary([]) })
+      .finally(() => { if (active) setLoadingAssetLibrary(false) })
+    return () => { active = false }
+  }, [draft?.id])
+
   const dirty = useMemo(() => {
     if (!draft || !savedDraft) return false
     return JSON.stringify(serializeCustomizeDraft(draft)) !== JSON.stringify(serializeCustomizeDraft(savedDraft))
   }, [draft, savedDraft])
 
   const validationErrors = useMemo(() => (draft ? validateCustomizeDraft(draft) : []), [draft])
+  const brandReadiness = useMemo(() => (draft ? getBrandReadiness(draft) : { score: 0, missing: [] as string[] }), [draft])
   const publicHref = `/community/${encodeURIComponent(draft?.slug || slug)}`
 
   const patchDraft = (updater: (current: CommunityCustomizeDraft) => CommunityCustomizeDraft) => {
-    setDraft((current) => (current ? updater(cloneCustomizeDraft(current)) : current))
+    setDraft((current) => {
+      if (!current) return current
+      const next = updater(cloneCustomizeDraft(current))
+      if (JSON.stringify(next) !== JSON.stringify(current)) {
+        setUndoStack((history) => [...history, cloneCustomizeDraft(current)].slice(-60))
+        setRedoStack([])
+      }
+      return next
+    })
+  }
+
+  const undo = () => {
+    if (!draft || undoStack.length === 0) return
+    const previous = undoStack[undoStack.length - 1]
+    setUndoStack((history) => history.slice(0, -1))
+    setRedoStack((history) => [...history, cloneCustomizeDraft(draft)].slice(-60))
+    setDraft(cloneCustomizeDraft(previous))
+  }
+
+  const redo = () => {
+    if (!draft || redoStack.length === 0) return
+    const next = redoStack[redoStack.length - 1]
+    setRedoStack((history) => history.slice(0, -1))
+    setUndoStack((history) => [...history, cloneCustomizeDraft(draft)].slice(-60))
+    setDraft(cloneCustomizeDraft(next))
+  }
+
+  const validateBrandAsset = async (file: File, target: Exclude<UploadTarget, null>): Promise<string | null> => {
+    const isVideo = file.type.startsWith("video/")
+    const allowedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon"]
+    if (isVideo && target !== "video") return "Use the Video upload area for videos."
+    if (!isVideo && !allowedImageTypes.includes(file.type)) return "Use a JPG, PNG, WebP, GIF, or SVG image."
+    if (file.size > (isVideo ? 100 : 10) * 1024 * 1024) return `${isVideo ? "Videos" : "Images"} must be smaller than ${isVideo ? "100" : "10"} MB.`
+    if (isVideo || file.type === "image/svg+xml") return null
+
+    const dimensions = await getImageDimensions(file)
+    if (!dimensions) return null
+    const ratio = dimensions.width / dimensions.height
+    if (target === "logo" && (ratio < 0.8 || ratio > 1.25)) return "Tip: a square logo (1:1) stays sharp in every community surface."
+    if ((target === "cover" || target === "hero") && (ratio < 1.5 || ratio > 2.1)) return "Tip: a wide 16:9 image gives the best hero result across desktop and mobile."
+    return null
   }
 
   const uploadAsset = async (
@@ -155,6 +240,13 @@ export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
       return
     }
 
+    const assetMessage = await validateBrandAsset(file, target)
+    if (assetMessage?.startsWith("Use ") || assetMessage?.includes("must be") || assetMessage?.includes("only")) {
+      toast({ title: "Choose another file", description: assetMessage, variant: "destructive" })
+      return
+    }
+    if (assetMessage) toast({ title: "Asset guidance", description: assetMessage })
+
     setUploading(target)
     try {
       const asset = await mediaApi.uploadSmart(file, {
@@ -163,12 +255,14 @@ export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
         entityId: draft.id,
         visibility: "public",
       })
+      setAssetLibrary((assets) => [asset, ...assets.filter((item) => item.assetId !== asset.assetId)])
       const url = asset.url
       patchDraft((next) => {
         if (target === "logo") {
           next.logo = url
           next.settings.logo = url
         }
+        if (target === "favicon") next.settings.favicon = url
         if (target === "cover") {
           next.coverImage = url
           next.settings.heroBackground = url
@@ -177,6 +271,9 @@ export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
         if (target === "hero") {
           next.settings.heroBackground = url
           next.pageContent.hero.customBanner = url
+        }
+        if (target === "video") {
+          next.settings.videoUrl = url
         }
         if (target === "gallery") {
           next.settings.gallery = [...next.settings.gallery, url]
@@ -243,6 +340,17 @@ export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
     }
   }
 
+  const submitDomainRequest = async (request: { domain: string; businessName: string; contactEmail: string; purpose: string }) => {
+    if (!draft?.id) return
+    setSubmittingDomainRequest(true)
+    try {
+      await communitiesApi.submitCustomDomainRequest(draft.id, request)
+      toast({ title: "Domain request submitted", description: "An administrator will verify and approve it before it becomes active." })
+    } catch (error: any) {
+      toast({ title: "Could not submit domain request", description: error?.message || "Please check the form and try again.", variant: "destructive" })
+    } finally { setSubmittingDomainRequest(false) }
+  }
+
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
       <DashSidebar />
@@ -264,8 +372,13 @@ export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
                 dirty={dirty}
                 saving={saving}
                 validationErrors={validationErrors}
+                brandReadiness={brandReadiness}
                 publicHref={publicHref}
-                onReset={() => savedDraft && setDraft(cloneCustomizeDraft(savedDraft))}
+                canUndo={undoStack.length > 0}
+                canRedo={redoStack.length > 0}
+                onUndo={undo}
+                onRedo={redo}
+                onReset={() => { if (savedDraft) { setDraft(cloneCustomizeDraft(savedDraft)); setUndoStack([]); setRedoStack([]) } }}
                 onSave={handleSave}
               />
 
@@ -288,7 +401,7 @@ export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.62fr)]">
                   <div className="min-w-0">
                     <TabsContent value="brand" className="mt-0">
-                      <BrandPanel draft={draft} patchDraft={patchDraft} />
+                      <BrandPanel draft={draft} patchDraft={patchDraft} onOpenMedia={() => setActiveTab("media")} />
                     </TabsContent>
                     <TabsContent value="layout" className="mt-0">
                       <LayoutPanel draft={draft} patchDraft={patchDraft} />
@@ -302,10 +415,12 @@ export function CommunityCustomizePage({ slug }: CommunityCustomizePageProps) {
                         patchDraft={patchDraft}
                         uploading={uploading}
                         uploadAsset={uploadAsset}
+                        assetLibrary={assetLibrary}
+                        loadingAssetLibrary={loadingAssetLibrary}
                       />
                     </TabsContent>
                     <TabsContent value="access" className="mt-0">
-                      <AccessPanel draft={draft} patchDraft={patchDraft} />
+                      <AccessPanel draft={draft} patchDraft={patchDraft} submittingDomainRequest={submittingDomainRequest} onSubmitDomainRequest={submitDomainRequest} />
                     </TabsContent>
                   </div>
 
@@ -339,7 +454,12 @@ function CustomizeHeader({
   dirty,
   saving,
   validationErrors,
+  brandReadiness,
   publicHref,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
   onReset,
   onSave,
 }: {
@@ -347,7 +467,12 @@ function CustomizeHeader({
   dirty: boolean
   saving: boolean
   validationErrors: string[]
+  brandReadiness: { score: number; missing: string[] }
   publicHref: string
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void
+  onRedo: () => void
   onReset: () => void
   onSave: () => void
 }) {
@@ -369,11 +494,23 @@ function CustomizeHeader({
           <p className="mt-1 text-sm text-slate-500">
             Manual-save editor for the public page, theme, media, content, and access settings.
           </p>
+          <p className="mt-1 text-xs text-slate-600">
+            Brand readiness: <span className="font-semibold text-slate-900">{brandReadiness.score}%</span>
+            {brandReadiness.missing.length > 0 ? ` · Add ${brandReadiness.missing.slice(0, 2).join(" and ")}` : " · Ready to publish"}
+          </p>
           {validationErrors.length > 0 && (
             <p className="mt-1 text-xs font-medium text-red-600">{validationErrors[0]}</p>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={onUndo} disabled={!canUndo || saving} aria-label="Undo last change">
+            <Undo2 className="h-4 w-4" />
+            Undo
+          </Button>
+          <Button variant="outline" size="sm" onClick={onRedo} disabled={!canRedo || saving} aria-label="Redo last change">
+            <Redo2 className="h-4 w-4" />
+            Redo
+          </Button>
           <Button variant="outline" size="sm" onClick={onReset} disabled={!dirty || saving}>
             <RotateCcw className="h-4 w-4" />
             Reset
@@ -427,49 +564,105 @@ function Field({
 function BrandPanel({
   draft,
   patchDraft,
+  onOpenMedia,
 }: {
   draft: CommunityCustomizeDraft
   patchDraft: (updater: (current: CommunityCustomizeDraft) => CommunityCustomizeDraft) => void
+  onOpenMedia: () => void
 }) {
   return (
-    <Panel title="Brand" description="Name, positioning, colors, type, and the visible community identity.">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Field label="Community name">
-          <Input
-            value={draft.name}
-            onChange={(event) => patchDraft((next) => ({ ...next, name: event.target.value }))}
-          />
-        </Field>
-        <Field label="Category">
-          <Input
-            value={draft.category}
-            onChange={(event) => patchDraft((next) => ({ ...next, category: event.target.value }))}
-          />
-        </Field>
+    <Panel title="Brand Studio" description="Everything visitors recognize: identity, visual language, typography, assets, and brand links. Changes are reflected in the live preview before you save.">
+      <div className="rounded-lg border border-violet-100 bg-violet-50/60 p-3 text-sm text-slate-600">
+        <span className="font-semibold text-slate-800">Brand essentials</span> are saved with your community settings. Use high-contrast colors and complete your logo, social links, and SEO title for a consistent public presence.
       </div>
 
-      <Field label="Short description">
-        <Textarea
-          value={draft.description}
-          onChange={(event) => patchDraft((next) => ({ ...next, description: event.target.value }))}
-          rows={3}
-        />
-      </Field>
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h4 className="font-medium text-slate-900">Start from a design system</h4>
+          <p className="text-xs text-slate-500">Choosing a template preserves your current content and settings. Reset visual style only if you want its recommended colors and type pairing.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {templatePresets.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={cn("rounded-lg border p-3 text-left transition hover:border-slate-400", draft.settings.template === preset.id && "border-violet-500 ring-2 ring-violet-100")}
+              onClick={() => patchDraft((next) => { next.settings.template = preset.id; return next })}
+            >
+              <span className="mb-3 flex h-8 overflow-hidden rounded-md">
+                <span className="flex-1" style={{ backgroundColor: preset.primary }} />
+                <span className="flex-1" style={{ backgroundColor: preset.secondary }} />
+              </span>
+              <span className="block text-sm font-semibold text-slate-900">{preset.name}</span>
+              <span className="mt-1 block text-xs leading-5 text-slate-500">{preset.description}</span>
+            </button>
+          ))}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => patchDraft((next) => {
+            const preset = templatePresets.find((item) => item.id === next.settings.template) || templatePresets[0]
+            next.settings.primaryColor = preset.primary
+            next.settings.secondaryColor = preset.secondary
+            next.settings.accentColor = preset.secondary
+            next.settings.fontFamily = preset.font
+            next.settings.headingFont = preset.font
+            next.settings.bodyFont = preset.font
+            return next
+          })}
+        >
+          <RotateCcw className="h-4 w-4" />
+          Reset visual style to this template
+        </Button>
+      </div>
 
-      <Field label="Long description">
-        <Textarea
-          value={draft.longDescription}
-          onChange={(event) => patchDraft((next) => ({ ...next, longDescription: event.target.value }))}
-          rows={5}
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h4 className="font-medium text-slate-900">Navigation & footer</h4>
+          <p className="text-xs text-slate-500">Set the community-facing call to action and a short footer note for members and visitors.</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Field label="Primary CTA label">
+            <Input value={draft.settings.navigationCtaLabel} placeholder="Join the community" onChange={(event) => patchDraft((next) => { next.settings.navigationCtaLabel = event.target.value; return next })} />
+          </Field>
+          <Field label="Primary CTA URL" hint="Optional external destination. Leave empty to use the join flow.">
+            <Input value={draft.settings.navigationCtaUrl} placeholder="https://..." onChange={(event) => patchDraft((next) => { next.settings.navigationCtaUrl = event.target.value; return next })} />
+          </Field>
+        </div>
+        <Field label="Footer note">
+          <Textarea value={draft.settings.footerText} rows={2} placeholder="Built for people who want to learn and grow together." onChange={(event) => patchDraft((next) => { next.settings.footerText = event.target.value; return next })} />
+        </Field>
+        <SwitchRow
+          label="Use a sticky community header"
+          description="Keeps the community identity and join action within reach while visitors explore the page."
+          checked={draft.settings.stickyHeader}
+          onCheckedChange={(checked) => patchDraft((next) => { next.settings.stickyHeader = checked; return next })}
         />
-      </Field>
+      </div>
 
-      <TextListEditor
-        title="Tags"
-        values={draft.tags}
-        placeholder="Add tag"
-        onChange={(tags) => patchDraft((next) => ({ ...next, tags }))}
-      />
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h4 className="font-medium text-slate-900">Brand assets</h4>
+          <p className="text-xs text-slate-500">Upload every image or video from Media. Assets are saved to this community’s Brand Library and can be reused without copying links.</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="col-span-full flex flex-wrap items-center justify-between gap-3 rounded-md bg-slate-50 p-3">
+            <p className="text-xs text-slate-600">Logo, cover, hero, favicon, gallery, and video are all managed by upload.</p>
+            <Button type="button" size="sm" onClick={onOpenMedia}><Upload className="h-4 w-4" /> Open Media uploads</Button>
+          </div>
+          <Field label="Brand welcome message" hint="Used as supporting copy in the public benefits area.">
+            <Input value={draft.settings.welcomeMessage} onChange={(event) => patchDraft((next) => { next.settings.welcomeMessage = event.target.value; return next })} />
+          </Field>
+          <Field label="Wordmark" hint="Optional short text displayed with your logo.">
+            <Input value={draft.settings.wordmark} placeholder="Your brand name" onChange={(event) => patchDraft((next) => { next.settings.wordmark = event.target.value; return next })} />
+          </Field>
+          <Field label="Brand tagline">
+            <Input value={draft.settings.tagline} placeholder="A memorable promise for your members" onChange={(event) => patchDraft((next) => { next.settings.tagline = event.target.value; return next })} />
+          </Field>
+        </div>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ColorField
@@ -491,6 +684,16 @@ function BrandPanel({
               return next
             })
           }
+        />
+        <ColorField
+          label="Accent color"
+          value={draft.settings.accentColor}
+          onChange={(value) => patchDraft((next) => { next.settings.accentColor = value; return next })}
+        />
+        <ColorField
+          label="Page text color"
+          value={draft.settings.pageTextColor}
+          onChange={(value) => patchDraft((next) => { next.settings.pageTextColor = value; return next })}
         />
       </div>
 
@@ -517,6 +720,11 @@ function BrandPanel({
         ))}
       </div>
 
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h4 className="font-medium text-slate-900">Typography & visual style</h4>
+          <p className="text-xs text-slate-500">The selected font, template, corner radius, and colors are applied to the public landing page.</p>
+        </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <SelectField
           label="Template"
@@ -545,6 +753,33 @@ function BrandPanel({
             })
           }
         />
+        <SelectField
+          label="Heading font"
+          value={draft.settings.headingFont}
+          options={fontOptions.map((font) => [font, font])}
+          onChange={(value) => patchDraft((next) => { next.settings.headingFont = value; return next })}
+        />
+        <SegmentedField
+          label="Button shape"
+          value={draft.settings.buttonStyle}
+          options={[["rounded", "Rounded"], ["pill", "Pill"], ["square", "Square"]]}
+          onChange={(value) => patchDraft((next) => { next.settings.buttonStyle = value as typeof next.settings.buttonStyle; return next })}
+        />
+      </div>
+      </div>
+
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h4 className="font-medium text-slate-900">Social & brand links</h4>
+          <p className="text-xs text-slate-500">Only filled links are shown on the public page. Use complete https:// URLs.</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {Object.entries(draft.settings.socialLinks).map(([key, value]) => (
+            <Field key={key} label={`${key.charAt(0).toUpperCase()}${key.slice(1)} URL`}>
+              <Input placeholder="https://..." value={value || ""} onChange={(event) => patchDraft((next) => { next.settings.socialLinks = { ...next.settings.socialLinks, [key]: event.target.value }; return next })} />
+            </Field>
+          ))}
+        </div>
       </div>
     </Panel>
   )
@@ -679,6 +914,28 @@ function ContentPanel({
 }) {
   return (
     <Panel title="Content" description="Edit the copy and repeatable sections shown on the public page.">
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h4 className="font-medium text-slate-900">Community basics</h4>
+          <p className="text-xs text-slate-500">These describe your community everywhere it appears. Visual identity is managed in the Brand tab.</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Field label="Community name">
+            <Input value={draft.name} onChange={(event) => patchDraft((next) => ({ ...next, name: event.target.value }))} />
+          </Field>
+          <Field label="Category">
+            <Input value={draft.category} onChange={(event) => patchDraft((next) => ({ ...next, category: event.target.value }))} />
+          </Field>
+        </div>
+        <Field label="Short description">
+          <Textarea value={draft.description} onChange={(event) => patchDraft((next) => ({ ...next, description: event.target.value }))} rows={3} />
+        </Field>
+        <Field label="Long description">
+          <Textarea value={draft.longDescription} onChange={(event) => patchDraft((next) => ({ ...next, longDescription: event.target.value }))} rows={5} />
+        </Field>
+        <TextListEditor title="Tags" values={draft.tags} placeholder="Add tag" onChange={(tags) => patchDraft((next) => ({ ...next, tags }))} />
+      </div>
+
       <Field label="Welcome message">
         <Textarea
           value={draft.settings.welcomeMessage}
@@ -921,14 +1178,18 @@ function MediaPanel({
   patchDraft,
   uploading,
   uploadAsset,
+  assetLibrary,
+  loadingAssetLibrary,
 }: {
   draft: CommunityCustomizeDraft
   uploading: UploadTarget
   patchDraft: (updater: (current: CommunityCustomizeDraft) => CommunityCustomizeDraft) => void
   uploadAsset: (file: File, target: Exclude<UploadTarget, null>, purpose: MediaPurpose) => Promise<void>
+  assetLibrary: MediaAsset[]
+  loadingAssetLibrary: boolean
 }) {
   return (
-    <Panel title="Media" description="Upload or paste media URLs for logo, hero, gallery, video, and custom sections.">
+    <Panel title="Media" description="Upload your brand assets once, then reuse them across your community. No image links required.">
       <div className="grid gap-4 lg:grid-cols-2">
         <UploadField
           label="Logo"
@@ -937,13 +1198,15 @@ function MediaPanel({
           purpose="community_logo"
           uploading={uploading}
           onUpload={uploadAsset}
-          onUrlChange={(value) =>
-            patchDraft((next) => {
-              next.logo = value
-              next.settings.logo = value
-              return next
-            })
-          }
+        />
+        <UploadField
+          label="Favicon"
+          value={draft.settings.favicon}
+          target="favicon"
+          purpose="community_logo"
+          uploading={uploading}
+          onUpload={uploadAsset}
+          accept="image/png,image/svg+xml,image/x-icon,image/vnd.microsoft.icon"
         />
         <UploadField
           label="Cover image"
@@ -952,13 +1215,6 @@ function MediaPanel({
           purpose="community_cover"
           uploading={uploading}
           onUpload={uploadAsset}
-          onUrlChange={(value) =>
-            patchDraft((next) => {
-              next.coverImage = value
-              next.settings.heroBackground = value
-              return next
-            })
-          }
         />
         <UploadField
           label="Hero background"
@@ -967,13 +1223,6 @@ function MediaPanel({
           purpose="community_cover"
           uploading={uploading}
           onUpload={uploadAsset}
-          onUrlChange={(value) =>
-            patchDraft((next) => {
-              next.settings.heroBackground = value
-              next.pageContent.hero.customBanner = value
-              return next
-            })
-          }
         />
         <UploadField
           label="CTA background"
@@ -982,36 +1231,16 @@ function MediaPanel({
           purpose="generic"
           uploading={uploading}
           onUpload={uploadAsset}
-          onUrlChange={(value) =>
-            patchDraft((next) => {
-              next.pageContent.cta.customBackground = value
-              return next
-            })
-          }
         />
       </div>
 
-      <Field label="Video URL">
-        <div className="flex gap-2">
-          <Video className="mt-2 h-4 w-4 shrink-0 text-slate-400" />
-          <Input
-            value={draft.settings.videoUrl}
-            placeholder="https://youtube.com/watch?v=..."
-            onChange={(event) =>
-              patchDraft((next) => {
-                next.settings.videoUrl = event.target.value
-                return next
-              })
-            }
-          />
-        </div>
-      </Field>
+      <UploadField label="Community video" value={draft.settings.videoUrl} target="video" purpose="generic" uploading={uploading} onUpload={uploadAsset} accept="video/*" />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h4 className="text-sm font-semibold text-slate-900">Gallery</h4>
-            <p className="text-xs text-slate-500">Public image URLs are saved in settings.</p>
+            <p className="text-xs text-slate-500">Upload images from your computer. They are saved to this community’s Brand Library.</p>
           </div>
           <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-slate-50">
             {uploading === "gallery" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -1032,16 +1261,7 @@ function MediaPanel({
           {draft.settings.gallery.map((item, index) => (
             <div key={`${item}-${index}`} className="rounded-lg border p-3">
               <MediaThumb url={item} alt={`Gallery ${index + 1}`} />
-              <div className="mt-2 flex gap-2">
-                <Input
-                  value={item}
-                  onChange={(event) =>
-                    patchDraft((next) => {
-                      next.settings.gallery[index] = event.target.value
-                      return next
-                    })
-                  }
-                />
+              <div className="mt-2 flex justify-end gap-2">
                 <IconButton
                   label="Remove gallery item"
                   onClick={() =>
@@ -1057,20 +1277,31 @@ function MediaPanel({
             </div>
           ))}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            patchDraft((next) => {
-              next.settings.gallery.push("")
-              return next
-            })
-          }
-        >
-          <Plus className="h-4 w-4" />
-          Add URL
-        </Button>
+      </div>
+
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h4 className="font-medium text-slate-900">Brand Library</h4>
+          <p className="text-xs text-slate-500">Reuse assets uploaded to this community instead of copying URLs.</p>
+        </div>
+        {loadingAssetLibrary ? (
+          <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading your assets…</div>
+        ) : assetLibrary.filter((asset) => asset.mediaType === "image").length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {assetLibrary.filter((asset) => asset.mediaType === "image").map((asset) => (
+              <div key={asset.assetId} className="overflow-hidden rounded-lg border bg-white p-2">
+                <img src={asset.url} alt="Uploaded brand asset" className="aspect-video w-full rounded-md object-cover" loading="lazy" />
+                <div className="mt-2 grid grid-cols-3 gap-1">
+                  <Button type="button" variant="outline" size="sm" className="px-1 text-[11px]" onClick={() => patchDraft((next) => { next.logo = asset.url; next.settings.logo = asset.url; return next })}>Logo</Button>
+                  <Button type="button" variant="outline" size="sm" className="px-1 text-[11px]" onClick={() => patchDraft((next) => { next.coverImage = asset.url; next.settings.heroBackground = asset.url; next.pageContent.hero.customBanner = asset.url; return next })}>Hero</Button>
+                  <Button type="button" variant="outline" size="sm" className="px-1 text-[11px]" onClick={() => patchDraft((next) => { if (!next.settings.gallery.includes(asset.url)) next.settings.gallery.push(asset.url); return next })}>Gallery</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-500">Upload an image above to build your reusable brand library.</p>
+        )}
       </div>
 
       <CustomSectionsEditor draft={draft} patchDraft={patchDraft} />
@@ -1081,10 +1312,18 @@ function MediaPanel({
 function AccessPanel({
   draft,
   patchDraft,
+  submittingDomainRequest,
+  onSubmitDomainRequest,
 }: {
   draft: CommunityCustomizeDraft
   patchDraft: (updater: (current: CommunityCustomizeDraft) => CommunityCustomizeDraft) => void
+  submittingDomainRequest: boolean
+  onSubmitDomainRequest: (request: { domain: string; businessName: string; contactEmail: string; purpose: string }) => Promise<void>
 }) {
+  const [domain, setDomain] = useState("")
+  const [businessName, setBusinessName] = useState("")
+  const [contactEmail, setContactEmail] = useState("")
+  const [purpose, setPurpose] = useState("")
   return (
     <Panel title="Access & SEO" description="Control visibility, pricing, publishing, and search metadata.">
       <div className="grid gap-4 lg:grid-cols-2">
@@ -1208,24 +1447,39 @@ function AccessPanel({
         />
       </Field>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {Object.entries(draft.settings.socialLinks).map(([key, value]) => (
-          <Field key={key} label={`${key.charAt(0).toUpperCase()}${key.slice(1)} URL`}>
-            <Input
-              value={value || ""}
-              onChange={(event) =>
-                patchDraft((next) => {
-                  next.settings.socialLinks = {
-                    ...next.settings.socialLinks,
-                    [key]: event.target.value,
-                  }
-                  return next
-                })
-              }
-            />
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h4 className="font-medium text-slate-900">Sharing & search controls</h4>
+          <p className="text-xs text-slate-500">These values are rendered as server-side metadata for reliable Google and social previews.</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Field label="Open Graph image URL" hint="Use a 1.91:1 image for the best social preview.">
+            <Input value={draft.settings.ogImage} placeholder="https://..." onChange={(event) => patchDraft((next) => { next.settings.ogImage = event.target.value; return next })} />
           </Field>
-        ))}
+          <Field label="Canonical URL" hint="Optional: use only the final public HTTPS address.">
+            <Input value={draft.settings.canonicalUrl} placeholder="https://your-domain.com" onChange={(event) => patchDraft((next) => { next.settings.canonicalUrl = event.target.value; return next })} />
+          </Field>
+        </div>
+        <SwitchRow
+          label="Hide this page from search engines"
+          description="Useful for private launches and invite-only communities. Members can still open the page directly."
+          checked={draft.settings.noIndex}
+          onCheckedChange={(checked) => patchDraft((next) => { next.settings.noIndex = checked; return next })}
+        />
       </div>
+
+      <div className="space-y-4 rounded-lg border border-violet-200 bg-violet-50/40 p-4">
+        <div><h4 className="font-medium text-slate-900">Custom domain request</h4><p className="text-xs text-slate-600">Domains are never activated automatically. Submit the ownership and contact details below; an admin reviews the request, then activates the domain after approval.</p></div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Field label="Requested domain" hint="Example: community.yourbrand.com — no http:// or page path."><Input value={domain} onChange={(event) => setDomain(event.target.value)} placeholder="community.yourbrand.com" /></Field>
+          <Field label="Business or organization name"><Input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Your organization" /></Field>
+          <Field label="Technical contact email"><Input type="email" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} placeholder="ops@yourbrand.com" /></Field>
+          <Field label="Why this domain?" hint="Include DNS ownership or launch context."><Textarea value={purpose} onChange={(event) => setPurpose(event.target.value)} rows={2} /></Field>
+        </div>
+        <Button type="button" disabled={submittingDomainRequest || !domain || !businessName || !contactEmail || !purpose} onClick={() => void onSubmitDomainRequest({ domain, businessName, contactEmail, purpose })}>{submittingDomainRequest ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Submit for admin review</Button>
+      </div>
+
+      <p className="text-xs text-slate-500">Social and website links are managed in Brand Studio.</p>
 
     </Panel>
   )
@@ -1241,8 +1495,16 @@ function ColorField({
   onChange: (value: string) => void
 }) {
   const valid = isValidHexColor(value)
+  const contrastOnWhite = valid ? getContrastRatio(value, "#ffffff") : 0
+  const contrastOnBlack = valid ? getContrastRatio(value, "#111827") : 0
+  const bestContrast = Math.max(contrastOnWhite, contrastOnBlack)
+  const contrastHint = !valid
+    ? "Use #RGB or #RRGGBB."
+    : bestContrast >= 4.5
+      ? `AA-ready contrast available (${bestContrast.toFixed(1)}:1 against ${contrastOnWhite >= contrastOnBlack ? "white" : "dark"} text).`
+      : `Low contrast (${bestContrast.toFixed(1)}:1). Choose a darker or lighter color for readable buttons.`
   return (
-    <Field label={label} hint={valid ? "Contrast-safe text is calculated for public buttons." : "Use #RGB or #RRGGBB."}>
+    <Field label={label} hint={contrastHint}>
       <div className="flex gap-2">
         <Input
           value={value}
@@ -1767,8 +2029,8 @@ function CustomSectionsEditor({
     <div className="space-y-3 rounded-lg border p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h4 className="text-sm font-semibold text-slate-900">Custom sections</h4>
-          <p className="text-xs text-slate-500">Saved in settings for public-page extensions.</p>
+          <h4 className="text-sm font-semibold text-slate-900">Page sections</h4>
+          <p className="text-xs text-slate-500">Safe, ordered blocks rendered on the public page. No arbitrary HTML, scripts, or components are allowed.</p>
         </div>
         <Button
           type="button"
@@ -1776,12 +2038,13 @@ function CustomSectionsEditor({
           size="sm"
           onClick={() =>
             patchDraft((next) => {
-              next.settings.customSections.push({
+              next.settings.brandSections.push({
                 id: makeCustomizeId("section"),
                 type: "text",
                 title: "",
                 content: "",
                 visible: true,
+                order: next.settings.brandSections.length,
               })
               return next
             })
@@ -1792,30 +2055,65 @@ function CustomSectionsEditor({
         </Button>
       </div>
 
-      {draft.settings.customSections.map((section, index) => (
-        <div key={String(section.id || index)} className="space-y-3 rounded-lg border bg-slate-50 p-3">
+      {draft.settings.brandSections.map((section, index) => (
+        <div
+          key={String(section.id || index)}
+          draggable
+          onDragStart={(event) => {
+            event.dataTransfer.effectAllowed = "move"
+            event.dataTransfer.setData("text/plain", String(index))
+          }}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault()
+            const from = Number(event.dataTransfer.getData("text/plain"))
+            if (!Number.isInteger(from) || from === index) return
+            patchDraft((next) => {
+              const [moved] = next.settings.brandSections.splice(from, 1)
+              next.settings.brandSections.splice(index, 0, moved)
+              next.settings.brandSections = next.settings.brandSections.map((item, order) => ({ ...item, order }))
+              return next
+            })
+          }}
+          className="space-y-3 rounded-lg border bg-slate-50 p-3"
+        >
           <div className="flex items-center justify-between gap-2">
-            <SwitchRow
-              label={section.title || `Section ${index + 1}`}
-              checked={section.visible !== false}
-              onCheckedChange={(checked) =>
-                patchDraft((next) => {
-                  next.settings.customSections[index] = { ...next.settings.customSections[index], visible: checked }
+            <div className="flex min-w-0 items-center gap-1">
+              <GripVertical className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+              <SwitchRow
+                label={section.title || `Section ${index + 1}`}
+                checked={section.visible !== false}
+                onCheckedChange={(checked) =>
+                  patchDraft((next) => {
+                    next.settings.brandSections[index] = { ...next.settings.brandSections[index], visible: checked }
+                    return next
+                  })
+                }
+              />
+            </div>
+            <div className="flex gap-1">
+              <MoveButtons
+                index={index}
+                length={draft.settings.brandSections.length}
+                onMove={(from, to) => patchDraft((next) => {
+                  const [moved] = next.settings.brandSections.splice(from, 1)
+                  next.settings.brandSections.splice(to, 0, moved)
+                  next.settings.brandSections = next.settings.brandSections.map((item, order) => ({ ...item, order }))
                   return next
-                })
-              }
-            />
-            <IconButton
-              label="Remove custom section"
-              onClick={() =>
-                patchDraft((next) => {
-                  next.settings.customSections.splice(index, 1)
-                  return next
-                })
-              }
-            >
-              <Trash2 className="h-4 w-4" />
-            </IconButton>
+                })}
+              />
+              <IconButton
+                label="Remove custom section"
+                onClick={() =>
+                  patchDraft((next) => {
+                    next.settings.brandSections.splice(index, 1)
+                    return next
+                  })
+                }
+              >
+                <Trash2 className="h-4 w-4" />
+              </IconButton>
+            </div>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <SelectField
@@ -1825,11 +2123,14 @@ function CustomSectionsEditor({
                 ["text", "Text"],
                 ["image", "Image"],
                 ["video", "Video"],
+                ["quote", "Quote"],
+                ["stats", "Stats"],
+                ["cta", "Call to action"],
                 ["link", "Link"],
               ]}
               onChange={(value) =>
                 patchDraft((next) => {
-                  next.settings.customSections[index] = { ...next.settings.customSections[index], type: value }
+                  next.settings.brandSections[index] = { ...next.settings.brandSections[index], type: value as typeof next.settings.brandSections[number]["type"] }
                   return next
                 })
               }
@@ -1839,8 +2140,8 @@ function CustomSectionsEditor({
                 value={String(section.title || "")}
                 onChange={(event) =>
                   patchDraft((next) => {
-                    next.settings.customSections[index] = {
-                      ...next.settings.customSections[index],
+                    next.settings.brandSections[index] = {
+                      ...next.settings.brandSections[index],
                       title: event.target.value,
                     }
                     return next
@@ -1853,10 +2154,21 @@ function CustomSectionsEditor({
             <Textarea
               rows={3}
               value={String(section.content || "")}
+              placeholder={
+                section.type === "stats"
+                  ? "12k: Members\n4.9: Average rating\n92%: Completion rate"
+                  : section.type === "quote"
+                    ? "The member quote to highlight."
+                    : section.type === "image" || section.type === "video"
+                      ? "Paste a public media URL."
+                      : section.type === "link" || section.type === "cta"
+                        ? "Paste an HTTPS destination URL (CTA can be left empty to open the join flow)."
+                        : "Write the section copy shown to visitors."
+              }
               onChange={(event) =>
                 patchDraft((next) => {
-                  next.settings.customSections[index] = {
-                    ...next.settings.customSections[index],
+                  next.settings.brandSections[index] = {
+                    ...next.settings.brandSections[index],
                     content: event.target.value,
                   }
                   return next
@@ -1877,7 +2189,7 @@ function UploadField({
   purpose,
   uploading,
   onUpload,
-  onUrlChange,
+  accept = "image/*",
 }: {
   label: string
   value: string
@@ -1885,8 +2197,9 @@ function UploadField({
   purpose: MediaPurpose
   uploading: UploadTarget
   onUpload: (file: File, target: Exclude<UploadTarget, null>, purpose: MediaPurpose) => Promise<void>
-  onUrlChange: (value: string) => void
+  accept?: string
 }) {
+  const isVideo = target === "video"
   const resolved = resolveImageUrl(value) || value
   return (
     <div className="space-y-3 rounded-lg border p-3">
@@ -1897,7 +2210,7 @@ function UploadField({
           Upload
           <input
             type="file"
-            accept="image/*,video/*"
+            accept={accept}
             className="sr-only"
             onChange={(event) => {
               const file = event.target.files?.[0]
@@ -1907,8 +2220,8 @@ function UploadField({
           />
         </label>
       </div>
-      <MediaThumb url={resolved} alt={label} />
-      <Input value={value} placeholder="Paste a public URL" onChange={(event) => onUrlChange(event.target.value)} />
+      {isVideo && resolved ? <video src={resolved} className="aspect-video w-full rounded-lg border bg-black object-contain" controls preload="metadata" /> : <MediaThumb url={resolved} alt={label} />}
+      <p className="text-xs text-slate-500">{value ? "Uploaded and ready to use." : "Choose a file from your computer."}</p>
     </div>
   )
 }
@@ -1978,6 +2291,7 @@ function IconButton({
 }
 
 function LivePreview({ draft }: { draft: CommunityCustomizeDraft }) {
+  const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop")
   const normalized = normalizeCommunitySettings(
     {
       ...draft.settings,
@@ -1995,7 +2309,7 @@ function LivePreview({ draft }: { draft: CommunityCustomizeDraft }) {
   const visibleBenefits = draft.pageContent.benefits.benefits.filter((benefit) => benefit.visible !== false)
   const visibleTestimonials = draft.pageContent.testimonials.testimonials.filter((item) => item.visible !== false)
   const socialEntries = Object.entries(normalized.socialLinks).filter(([, value]) => value.trim())
-  const visibleCustomSections = normalized.customSections.filter((section) => {
+  const visibleCustomSections = (normalized.brandSections.length > 0 ? normalized.brandSections : normalized.customSections).filter((section) => {
     const title = typeof section.title === "string" ? section.title.trim() : ""
     const content = typeof section.content === "string" ? section.content.trim() : ""
     return section.visible !== false && (title || content)
@@ -2008,13 +2322,19 @@ function LivePreview({ draft }: { draft: CommunityCustomizeDraft }) {
           <h3 className="text-sm font-semibold text-slate-950">Live public preview</h3>
           <p className="text-xs text-slate-500">Scripts are not executed here.</p>
         </div>
-        <Badge variant="outline" className="rounded-md">
-          {normalized.template}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-md border p-0.5" aria-label="Preview device">
+            {(["desktop", "tablet", "mobile"] as const).map((value) => (
+              <button key={value} type="button" onClick={() => setDevice(value)} className={cn("rounded px-2 py-1 text-[11px] font-medium capitalize", device === value ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100")}>{value}</button>
+            ))}
+          </div>
+          <Badge variant="outline" className="rounded-md">{normalized.template}</Badge>
+        </div>
       </div>
 
+      <div className="max-h-[calc(100vh-168px)] overflow-auto bg-slate-100 p-2">
       <div
-        className="max-h-[calc(100vh-168px)] overflow-auto"
+        className={cn("mx-auto overflow-hidden bg-white transition-[max-width] duration-200", device === "desktop" ? "max-w-none" : device === "tablet" ? "max-w-[768px]" : "max-w-[390px]")}
         style={{
           background: theme.pageBackground,
           fontFamily: theme.fontFamily,
@@ -2235,8 +2555,22 @@ function LivePreview({ draft }: { draft: CommunityCustomizeDraft }) {
           </div>
         </div>
       </div>
+      </div>
     </section>
   )
+}
+
+function getBrandReadiness(draft: CommunityCustomizeDraft): { score: number; missing: string[] } {
+  const checks = [
+    ["a logo", Boolean(draft.logo || draft.settings.logo)],
+    ["a hero image", Boolean(draft.coverImage || draft.settings.heroBackground || draft.pageContent.hero.customBanner)],
+    ["a public CTA", Boolean(draft.pageContent.hero.ctaButtonText.trim())],
+    ["an SEO title", Boolean(draft.settings.metaTitle.trim())],
+    ["an SEO description", Boolean(draft.settings.metaDescription.trim())],
+    ["a branded color palette", isValidHexColor(draft.settings.primaryColor) && isValidHexColor(draft.settings.secondaryColor)],
+  ] as const
+  const missing = checks.filter(([, complete]) => !complete).map(([label]) => label)
+  return { score: Math.round(((checks.length - missing.length) / checks.length) * 100), missing }
 }
 
 function PreviewSection({

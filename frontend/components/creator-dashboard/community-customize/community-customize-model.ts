@@ -317,9 +317,55 @@ export function buildSettingsUpdatePayload(draft: CommunityCustomizeDraft) {
     gallery: sanitizeList(settings.gallery),
     videoUrl: settings.videoUrl.trim(),
     socialLinks: settings.socialLinks,
-    customSections: settings.customSections,
+    // Keep legacy consumers working while Brand Studio owns the typed source of truth.
+    customSections: settings.brandSections,
     metaTitle: settings.metaTitle.trim(),
     metaDescription: settings.metaDescription.trim(),
+    brand: {
+      version: settings.brandVersion,
+      status: settings.brandStatus,
+      identity: {
+        wordmark: settings.wordmark.trim(),
+        favicon: settings.favicon.trim(),
+        tagline: settings.tagline.trim(),
+      },
+      colors: {
+        accent: settings.accentColor.trim(),
+        surface: settings.surfaceColor.trim(),
+        text: settings.pageTextColor.trim(),
+        mutedText: settings.mutedTextColor.trim(),
+        border: settings.borderColor.trim(),
+      },
+      typography: {
+        headingFont: settings.headingFont.trim(),
+        bodyFont: settings.bodyFont.trim(),
+        scale: settings.typeScale,
+      },
+      layout: {
+        buttonStyle: settings.buttonStyle,
+        cardDensity: settings.cardDensity,
+        sectionSpacing: settings.sectionSpacing,
+      },
+      navigation: {
+        sticky: settings.stickyHeader,
+        ctaLabel: settings.navigationCtaLabel.trim(),
+        ctaUrl: settings.navigationCtaUrl.trim(),
+        footerText: settings.footerText.trim(),
+      },
+      seo: {
+        ogImage: settings.ogImage.trim(),
+        canonicalUrl: settings.canonicalUrl.trim(),
+        noIndex: settings.noIndex,
+      },
+      sections: settings.brandSections.map((section, order) => ({
+        ...section,
+        id: section.id || makeCustomizeId("brand-section"),
+        title: section.title.trim(),
+        content: section.content?.trim(),
+        visible: section.visible !== false,
+        order,
+      })).filter((section) => section.title || section.content),
+    },
   }
 }
 

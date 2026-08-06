@@ -1704,6 +1704,10 @@ export const adminApi = {
 
     compareCommunities: (communityA: string, communityB: string, period?: string) =>
       apiClient.get('/admin/communities/analytics/compare', { communityA, communityB, period }),
+
+    getCustomDomainRequests: () => apiClient.get('/admin/communities/custom-domain-requests'),
+    reviewCustomDomainRequest: (communityId: string, data: { action: 'approve' | 'reject'; note?: string }) =>
+      apiClient.put(`/admin/communities/${communityId}/custom-domain-request`, data),
   },
 
   // ==================== CONTENT MODERATION ====================

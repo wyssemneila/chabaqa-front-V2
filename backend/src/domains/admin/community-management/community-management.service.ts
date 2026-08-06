@@ -327,6 +327,26 @@ export class CommunityManagementService {
     }
   }
 
+  async getCustomDomainRequests(): Promise<any[]> {
+    return this.communityModel.find({ 'settings.customDomainRequest.status': 'pending' })
+      .select('name slug createur settings.customDomainRequest').populate('createur', 'username email').sort({ 'settings.customDomainRequest.requestedAt': -1 }).lean().exec();
+  }
+
+  async reviewCustomDomainRequest(communityId: string, adminId: string, input: { action?: string; note?: string }): Promise<any> {
+    const community = await this.communityModel.findById(communityId).exec();
+    if (!community) throw new NotFoundException('Community not found');
+    const request: any = (community.settings as any)?.customDomainRequest;
+    if (!request || request.status !== 'pending') throw new BadRequestException('There is no pending custom domain request');
+    const action = input.action === 'approve' ? 'approve' : input.action === 'reject' ? 'reject' : '';
+    if (!action) throw new BadRequestException('Action must be approve or reject');
+    const note = String(input.note || '').trim().slice(0, 1000);
+    const reviewed = { ...request, status: action === 'approve' ? 'approved' : 'rejected', reviewedAt: new Date().toISOString(), reviewedBy: adminId, reviewNote: note };
+    community.settings = { ...(community.settings as any), customDomainRequest: reviewed, ...(action === 'approve' ? { customDomain: request.domain } : {}) } as any;
+    await community.save();
+    await this.invalidateExploreAndCommunityCaches(community);
+    return community.toObject();
+  }
+
   async getCommunityDetails(
     communityId: string,
     adminUserId: string,

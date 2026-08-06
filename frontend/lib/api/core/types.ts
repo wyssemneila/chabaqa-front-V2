@@ -126,6 +126,7 @@ export interface CommunitySettings {
   metaDescription?: string;
   customDomain?: string;
   headerScripts?: string;
+  brand?: import('../types').CommunityBrandConfig;
 }
 
 export interface CommunityMember {
