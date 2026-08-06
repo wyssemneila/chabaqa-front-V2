@@ -144,6 +144,25 @@ export class MediaController {
     return this.mediaService.completeUpload(dto, requester.userId);
   }
 
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List media assets owned by the requester, optionally scoped to an entity' })
+  async listAssets(
+    @Query('entityType') entityType: string | undefined,
+    @Query('entityId') entityId: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Request() req: any,
+  ) {
+    this.ensureMediaEnabled();
+    const requestedLimit = Number(limit);
+    return this.mediaService.listAssets(this.getRequester(req), {
+      entityType: entityType?.trim() || undefined,
+      entityId: entityId?.trim() || undefined,
+      limit: Number.isFinite(requestedLimit) ? requestedLimit : undefined,
+    });
+  }
+
   @Get('private/:assetId/file')
   @ApiOperation({ summary: 'Stream a private media file with signed token access' })
   async streamPrivateFile(

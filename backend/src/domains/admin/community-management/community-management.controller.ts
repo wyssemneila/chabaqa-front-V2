@@ -59,6 +59,16 @@ export class CommunityManagementController {
     private readonly communityManagementService: CommunityManagementService
   ) {}
 
+  @Get('custom-domain-requests')
+  async getCustomDomainRequests() {
+    return { success: true, data: await this.communityManagementService.getCustomDomainRequests() };
+  }
+
+  @Put(':communityId/custom-domain-request')
+  async reviewCustomDomainRequest(@Param('communityId') communityId: string, @Body() body: { action?: string; note?: string }, @Req() req: ExpressRequest & AdminRequest) {
+    return { success: true, data: await this.communityManagementService.reviewCustomDomainRequest(communityId, req.user.id, body || {}) };
+  }
+
   @Get()
   @ApiOperation({
     summary: 'Get Communities',

@@ -1019,6 +1019,15 @@ export class CommunityAffCreaJoinController {
     return this.performCommunityUpdate(communityIdOrSlug, { settings } as any, req);
   }
 
+  @Post(':id/custom-domain-request')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async submitCustomDomainRequest(@Param('id') id: string, @Body() body: { domain?: string; businessName?: string; contactEmail?: string; purpose?: string }, @Request() req: any) {
+    const userId = req.user?._id || req.user?.id || req.user?.userId;
+    const data = await this.communityService.submitCustomDomainRequest(id, userId, body || {});
+    return { success: true, message: 'Custom domain request submitted for admin review', data };
+  }
+
   /**
    * Diagnostics endpoint to verify route availability on deployed environment.
    */

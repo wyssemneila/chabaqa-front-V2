@@ -47,6 +47,7 @@ import {
   FileCode2,
   BellRing,
   Headphones,
+  Globe2,
 } from "lucide-react"
 
 type SidebarIcon = React.ComponentType<{ className?: string }>
@@ -165,6 +166,12 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
       href: "/admin/communities",
       icon: Building2,
       badge: pendingCounts.communities,
+      hidden: !capabilities.communities,
+    },
+    {
+      title: "Domain Requests",
+      href: "/admin/communities/custom-domain-requests",
+      icon: Globe2,
       hidden: !capabilities.communities,
     },
     {

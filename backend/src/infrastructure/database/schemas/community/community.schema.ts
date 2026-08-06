@@ -78,8 +78,10 @@ export const SocialLinksSchema = SchemaFactory.createForClass(SocialLinks);
  */
 @Schema({ _id: false })
 export class CustomSection {
-  @Prop({ required: true, type: Number })
-  id: number;
+  // Client-created section IDs are stable strings; Mongoose also casts older
+  // numeric IDs to strings so existing communities remain compatible.
+  @Prop({ required: true, type: String })
+  id: string;
 
   @Prop({ required: true })
   type: string;
@@ -212,8 +214,21 @@ export class CommunitySettings {
   @Prop()
   customDomain?: string;
 
+  @Prop({ type: Object, default: {} })
+  customDomainRequest?: Record<string, unknown>;
+
   @Prop()
   headerScripts?: string;
+
+  // Versioned Brand Studio configuration. Stored separately so legacy flat
+  // customization fields remain readable during the gradual migration.
+  @Prop({ type: Object, default: {} })
+  brand?: Record<string, unknown>;
+
+  // Previous Brand Studio snapshots. This is deliberately community-scoped
+  // and capped by the service so a creator can safely restore recent work.
+  @Prop({ type: [Object], default: [] })
+  brandHistory?: Array<Record<string, unknown>>;
 }
 
 export const CommunitySettingsSchema =

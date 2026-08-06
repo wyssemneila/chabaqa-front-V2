@@ -67,4 +67,41 @@ describe('MediaService security regression', () => {
       service.streamPrivateAsset(assetId, 'bad-token', Math.floor(Date.now() / 1000) + 300, {}),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('lists only the requester-owned assets when building a community brand library', async () => {
+    const ownerId = new Types.ObjectId();
+    const asset = {
+      _id: new Types.ObjectId(),
+      visibility: MediaVisibility.PUBLIC,
+      status: MediaAssetStatus.UPLOADED,
+      mediaType: MediaType.IMAGE,
+      uploadedBy: ownerId,
+      url: 'https://api.chabaqa.io/uploads/image/logo.png',
+      storageKey: 'image/logo.png',
+      purpose: 'community_logo',
+      mimeType: 'image/png',
+      size: 42,
+      createdAt: new Date(),
+    };
+    const exec = jest.fn().mockResolvedValue([asset]);
+    const limit = jest.fn().mockReturnValue({ exec });
+    const sort = jest.fn().mockReturnValue({ limit });
+    const find = jest.fn().mockReturnValue({ sort });
+    const mediaModel = { find };
+    const service = new MediaService(mediaModel as any, {} as any, {} as any);
+
+    const result = await service.listAssets(
+      { userId: ownerId.toString() },
+      { entityType: 'community', entityId: 'community-1', limit: 999 },
+    );
+
+    expect(find).toHaveBeenCalledWith(expect.objectContaining({
+      uploadedBy: ownerId,
+      entityType: 'community',
+      entityId: 'community-1',
+      status: { $ne: MediaAssetStatus.DELETED },
+    }));
+    expect(limit).toHaveBeenCalledWith(100);
+    expect(result.data).toHaveLength(1);
+  });
 });

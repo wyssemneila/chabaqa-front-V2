@@ -182,6 +182,35 @@ export class MediaService {
     };
   }
 
+  async listAssets(
+    requester: { userId?: string; isAdmin?: boolean },
+    filters: { entityType?: string; entityId?: string; limit?: number } = {},
+  ) {
+    if (!requester.userId && !requester.isAdmin) {
+      throw new UnauthorizedException('Authentication is required to list media');
+    }
+    const query: Record<string, unknown> = {
+      status: { $ne: MediaAssetStatus.DELETED },
+    };
+    if (!requester.isAdmin) {
+      const owner = this.toObjectId(requester.userId);
+      if (!owner) throw new UnauthorizedException('Invalid media owner');
+      query.uploadedBy = owner;
+    }
+    if (filters.entityType) query.entityType = filters.entityType;
+    if (filters.entityId) query.entityId = filters.entityId;
+    const limit = Math.max(1, Math.min(100, Math.floor(filters.limit || 48)));
+    const assets = await this.mediaModel
+      .find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
+    return {
+      success: true,
+      data: assets.map((asset) => this.buildCanonicalData(asset)),
+    };
+  }
+
   async getAccess(assetId: string, requester?: { userId?: string; isAdmin?: boolean }) {
     const asset = await this.mediaModel.findById(assetId);
     if (!asset || asset.status === MediaAssetStatus.DELETED) {

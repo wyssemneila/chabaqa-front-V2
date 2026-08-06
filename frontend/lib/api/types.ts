@@ -129,6 +129,31 @@ export interface CommunitySettings {
   metaDescription?: string;
   customDomain?: string;
   headerScripts?: string;
+  /** Versioned Brand Studio configuration. Legacy flat settings remain supported. */
+  brand?: CommunityBrandConfig;
+}
+
+export type CommunityBrandSectionType = 'text' | 'image' | 'video' | 'quote' | 'stats' | 'cta' | 'link';
+
+export interface CommunityBrandSection {
+  id: string;
+  type: CommunityBrandSectionType;
+  title: string;
+  content?: string;
+  visible: boolean;
+  order: number;
+}
+
+export interface CommunityBrandConfig {
+  version: number;
+  status?: 'draft' | 'published';
+  identity?: { wordmark?: string; favicon?: string; tagline?: string };
+  colors?: { accent?: string; background?: string; surface?: string; text?: string; mutedText?: string; border?: string };
+  typography?: { headingFont?: string; bodyFont?: string; scale?: 'compact' | 'comfortable' | 'spacious' };
+  layout?: { buttonStyle?: 'rounded' | 'pill' | 'square'; cardDensity?: 'compact' | 'comfortable'; sectionSpacing?: 'compact' | 'normal' | 'generous' };
+  navigation?: { sticky?: boolean; ctaLabel?: string; ctaUrl?: string; footerText?: string };
+  seo?: { ogImage?: string; canonicalUrl?: string; noIndex?: boolean };
+  sections?: CommunityBrandSection[];
 }
 
 export interface CommunityMember {

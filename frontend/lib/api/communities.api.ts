@@ -366,6 +366,9 @@ export const communitiesApi = {
     throw lastError || new Error("Failed to update community settings");
   },
 
+  submitCustomDomainRequest: (id: string, data: { domain: string; businessName: string; contactEmail: string; purpose: string }) =>
+    apiClient.post(`/community-aff-crea-join/${encodeURIComponent(id)}/custom-domain-request`, data),
+
   // Get community stats
   getStats: async (id: string): Promise<ApiSuccessResponse<any>> => {
     return apiClient.get<ApiSuccessResponse<any>>(`/community-aff-crea-join/${id}/stats`);

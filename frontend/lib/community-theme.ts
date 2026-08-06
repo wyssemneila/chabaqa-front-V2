@@ -14,6 +14,12 @@ export type CommunityThemeTokens = {
   fontFamily: string
   pageBackground: string
   surfaceBackground: string
+  text: string
+  mutedText: string
+  border: string
+  headingFont: string
+  sectionSpacing: string
+  buttonRadius: string
 }
 
 export function normalizeHexColor(value: string | undefined, fallback: string): string {
@@ -56,6 +62,7 @@ function fontStack(fontFamily: string): string {
 export function buildCommunityTheme(settings: NormalizedCommunitySettings): CommunityThemeTokens {
   const primary = normalizeHexColor(settings.primaryColor, "#8e78fb")
   const secondary = normalizeHexColor(settings.secondaryColor, "#f48fb1")
+  const accent = normalizeHexColor(settings.accentColor, secondary)
   const radiusPx = Math.min(32, Math.max(0, Number(settings.borderRadius) || 0))
   const heroImage = settings.heroBackground ? `, url("${settings.heroBackground}")` : ""
   const pageBackground =
@@ -76,7 +83,7 @@ export function buildCommunityTheme(settings: NormalizedCommunitySettings): Comm
     secondary,
     primaryText: textOnColor(primary),
     secondaryText: textOnColor(secondary),
-    gradient: `linear-gradient(90deg, ${primary}, ${secondary})`,
+    gradient: `linear-gradient(90deg, ${primary}, ${accent})`,
     softPrimary: rgba(primary, 0.1),
     softSecondary: rgba(secondary, 0.12),
     mutedBorder: rgba(primary, 0.24),
@@ -91,8 +98,27 @@ export function buildCommunityTheme(settings: NormalizedCommunitySettings): Comm
           ? `linear-gradient(180deg, #ffffff 0%, ${rgba(secondary, 0.08)} 100%)`
           : settings.template === "immersive"
             ? `linear-gradient(135deg, ${rgba(primary, 0.12)} 0%, #ffffff 50%, ${rgba(secondary, 0.14)} 100%)`
-            : `linear-gradient(165deg, #ffffff 0%, ${rgba(primary, 0.07)} 100%)`,
+          : `linear-gradient(165deg, #ffffff 0%, ${rgba(primary, 0.07)} 100%)`,
+    text: normalizeHexColor(settings.pageTextColor, "#111827"),
+    mutedText: normalizeHexColor(settings.mutedTextColor, "#4b5563"),
+    border: normalizeHexColor(settings.borderColor, rgba(primary, 0.24)),
+    headingFont: fontStack(settings.headingFont),
+    sectionSpacing: settings.sectionSpacing === "compact" ? "2.5rem" : settings.sectionSpacing === "generous" ? "5rem" : "3.5rem",
+    buttonRadius: settings.buttonStyle === "pill" ? "9999px" : settings.buttonStyle === "square" ? "0px" : `${radiusPx}px`,
   }
+}
+
+/** WCAG contrast ratio for creator-side guidance. */
+export function getContrastRatio(foreground: string, background: string): number {
+  const luminance = (hex: string) => {
+    const { r, g, b } = hexToRgb(normalizeHexColor(hex, "#ffffff"))
+    return [r, g, b].map((channel) => {
+      const normalized = channel / 255
+      return normalized <= 0.03928 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4)
+    }).reduce((value, channel, index) => value + channel * [0.2126, 0.7152, 0.0722][index], 0)
+  }
+  const [light, dark] = [luminance(foreground), luminance(background)].sort((a, b) => b - a)
+  return (light + 0.05) / (dark + 0.05)
 }
 
 export function getContentWidthClass(

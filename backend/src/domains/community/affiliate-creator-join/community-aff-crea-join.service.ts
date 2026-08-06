@@ -663,6 +663,73 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
     return result;
   }
 
+  private normalizeBrandConfig(rawBrand: any = {}) {
+    const brand = rawBrand && typeof rawBrand === 'object' ? rawBrand : {};
+    const pickText = (value: unknown, max: number) =>
+      typeof value === 'string' ? value.trim().slice(0, max) : '';
+    const pickHex = (value: unknown, fallback = '') =>
+      typeof value === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim())
+        ? value.trim()
+        : fallback;
+    const allowedSectionTypes = new Set(['text', 'image', 'video', 'quote', 'stats', 'cta', 'link']);
+    const sections = Array.isArray(brand.sections)
+      ? brand.sections.slice(0, 20).flatMap((item: any, index: number) => {
+          if (!item || typeof item !== 'object') return [];
+          const title = pickText(item.title, 160);
+          const content = pickText(item.content, 4000);
+          if (!title && !content) return [];
+          return [{
+            id: pickText(item.id, 100) || `section-${index + 1}`,
+            type: allowedSectionTypes.has(item.type) ? item.type : 'text',
+            title: title || `Section ${index + 1}`,
+            content,
+            visible: item.visible !== false,
+            order: typeof item.order === 'number' && Number.isFinite(item.order) ? Math.max(0, Math.min(100, item.order)) : index,
+          }];
+        })
+      : [];
+
+    return {
+      version: typeof brand.version === 'number' && Number.isFinite(brand.version) ? Math.max(1, Math.min(100, brand.version)) : 1,
+      status: brand.status === 'draft' ? 'draft' : 'published',
+      identity: {
+        wordmark: pickText(brand.identity?.wordmark, 120),
+        favicon: pickText(brand.identity?.favicon, 1000),
+        tagline: pickText(brand.identity?.tagline, 240),
+      },
+      colors: {
+        accent: pickHex(brand.colors?.accent),
+        background: pickHex(brand.colors?.background),
+        surface: pickHex(brand.colors?.surface),
+        text: pickHex(brand.colors?.text),
+        mutedText: pickHex(brand.colors?.mutedText),
+        border: pickHex(brand.colors?.border),
+      },
+      typography: {
+        headingFont: pickText(brand.typography?.headingFont, 100),
+        bodyFont: pickText(brand.typography?.bodyFont, 100),
+        scale: ['compact', 'comfortable', 'spacious'].includes(brand.typography?.scale) ? brand.typography.scale : 'comfortable',
+      },
+      layout: {
+        buttonStyle: ['rounded', 'pill', 'square'].includes(brand.layout?.buttonStyle) ? brand.layout.buttonStyle : 'rounded',
+        cardDensity: ['compact', 'comfortable'].includes(brand.layout?.cardDensity) ? brand.layout.cardDensity : 'comfortable',
+        sectionSpacing: ['compact', 'normal', 'generous'].includes(brand.layout?.sectionSpacing) ? brand.layout.sectionSpacing : 'normal',
+      },
+      navigation: {
+        sticky: brand.navigation?.sticky === true,
+        ctaLabel: pickText(brand.navigation?.ctaLabel, 80),
+        ctaUrl: pickText(brand.navigation?.ctaUrl, 1000),
+        footerText: pickText(brand.navigation?.footerText, 280),
+      },
+      seo: {
+        ogImage: pickText(brand.seo?.ogImage, 1000),
+        canonicalUrl: pickText(brand.seo?.canonicalUrl, 1000),
+        noIndex: brand.seo?.noIndex === true,
+      },
+      sections,
+    };
+  }
+
   private normalizeCommunitySettings(communityName: string, rawSettings: any = {}) {
     const settings = rawSettings || {};
     const primaryColor = typeof settings.primaryColor === 'string' ? settings.primaryColor : '#3b82f6';
@@ -736,7 +803,21 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
           ? settings.metaDescription
           : '',
       customDomain: normalizedDomain,
+      customDomainRequest: settings.customDomainRequest && typeof settings.customDomainRequest === 'object'
+        ? settings.customDomainRequest
+        : {},
       headerScripts: typeof settings.headerScripts === 'string' ? settings.headerScripts : '',
+      brand: this.normalizeBrandConfig(settings.brand),
+      brandHistory: Array.isArray(settings.brandHistory)
+        ? settings.brandHistory
+            .filter((revision: any) => revision && typeof revision === 'object' && revision.snapshot)
+            .slice(0, 20)
+            .map((revision: any) => ({
+              id: typeof revision.id === 'string' ? revision.id.slice(0, 80) : '',
+              createdAt: typeof revision.createdAt === 'string' ? revision.createdAt : '',
+              snapshot: this.normalizeBrandConfig(revision.snapshot),
+            }))
+        : [],
     };
   }
 
@@ -1226,6 +1307,29 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
           ...currentSettings,
           ...incomingSettings,
         };
+        // A custom domain is an admin-controlled production setting. Creators
+        // may submit a request, but cannot activate or replace it via settings.
+        mergedSettings.customDomain = currentSettings.customDomain || '';
+
+        // Keep the last 20 complete brand snapshots. Only create a revision
+        // when the normalized brand actually changes, avoiding noisy history
+        // entries from unrelated community settings updates.
+        const currentBrand = this.normalizeBrandConfig(currentSettings.brand);
+        const nextBrand = this.normalizeBrandConfig(
+          incomingSettings.brand === undefined ? currentSettings.brand : incomingSettings.brand,
+        );
+        if (JSON.stringify(currentBrand) !== JSON.stringify(nextBrand)) {
+          mergedSettings.brandHistory = [
+            {
+              id: `brand-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              createdAt: new Date().toISOString(),
+              snapshot: currentBrand,
+            },
+            ...(Array.isArray(currentSettings.brandHistory) ? currentSettings.brandHistory : []),
+          ].slice(0, 20);
+        } else {
+          mergedSettings.brandHistory = currentSettings.brandHistory || [];
+        }
 
         // Keep socialLinks safely merged
         if (incomingSettings.socialLinks && typeof incomingSettings.socialLinks === 'object') {
@@ -1324,6 +1428,32 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       console.error('Erreur lors de la mise à jour de la communauté:', error);
       throw new InternalServerErrorException('Erreur lors de la mise à jour de la communauté');
     }
+  }
+
+  async submitCustomDomainRequest(idOrSlug: string, requesterId: string, input: { domain?: string; businessName?: string; contactEmail?: string; purpose?: string }): Promise<any> {
+    const community = await this.getCommunityById(idOrSlug);
+    if (!requesterId || !/^[0-9a-fA-F]{24}$/.test(requesterId) || String((community.createur as any)?._id || community.createur) !== requesterId) {
+      throw new ForbiddenException('Only the community creator can request a custom domain');
+    }
+    const domain = String(input.domain || '').trim().toLowerCase();
+    if (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) {
+      throw new BadRequestException('Enter a valid domain without http://, paths, or query parameters');
+    }
+    const conflict = await this.communityModel.exists({ _id: { $ne: community._id }, 'settings.customDomain': domain });
+    if (conflict) throw new ConflictException('This domain is already active for another community');
+    community.settings = {
+      ...(community.settings as any),
+      customDomainRequest: {
+        domain,
+        businessName: String(input.businessName || '').trim().slice(0, 120),
+        contactEmail: String(input.contactEmail || '').trim().toLowerCase().slice(0, 254),
+        purpose: String(input.purpose || '').trim().slice(0, 1000),
+        status: 'pending',
+        requestedAt: new Date().toISOString(),
+      },
+    } as any;
+    await community.save();
+    return this.transformCommunityForFrontend(community);
   }
 
   async getCommunityMembers(

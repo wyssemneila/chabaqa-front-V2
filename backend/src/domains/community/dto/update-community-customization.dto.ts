@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsHexColor,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Matches,
@@ -37,6 +38,26 @@ const toOptionalStringArray = (value: unknown): string[] | undefined => {
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
   return normalized;
+};
+
+const toSafeBrandSections = (value: unknown): Record<string, unknown>[] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  const allowedTypes = new Set(['text', 'image', 'video', 'quote', 'stats', 'cta', 'link']);
+  return value.slice(0, 20).flatMap((item, index) => {
+    if (!item || typeof item !== 'object') return [];
+    const source = item as Record<string, unknown>;
+    const title = typeof source.title === 'string' ? source.title.trim().slice(0, 160) : '';
+    const content = typeof source.content === 'string' ? source.content.trim().slice(0, 4000) : '';
+    if (!title && !content) return [];
+    return [{
+      id: typeof source.id === 'string' ? source.id.trim().slice(0, 100) : `section-${index + 1}`,
+      type: typeof source.type === 'string' && allowedTypes.has(source.type) ? source.type : 'text',
+      title: title || `Section ${index + 1}`,
+      content,
+      visible: source.visible !== false,
+      order: typeof source.order === 'number' && Number.isFinite(source.order) ? Math.max(0, Math.min(100, source.order)) : index,
+    }];
+  });
 };
 
 export enum CommunityPriceType {
@@ -190,6 +211,38 @@ export class UpdateCommunitySettingsDto {
   @MaxLength(1000)
   heroBackground?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => toOptionalTrimmedString(value))
+  @IsString()
+  @MaxLength(40)
+  template?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => toOptionalTrimmedString(value))
+  @IsString()
+  @MaxLength(100)
+  fontFamily?: string;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 32 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(32)
+  borderRadius?: number;
+
+  @ApiPropertyOptional({ enum: ['solid', 'soft', 'gradient', 'image'] })
+  @IsOptional()
+  @IsEnum(['solid', 'soft', 'gradient', 'image'])
+  backgroundStyle?: string;
+
+  @ApiPropertyOptional({ enum: ['centered', 'split', 'media-left', 'media-right'] })
+  @IsOptional()
+  @IsEnum(['centered', 'split', 'media-left', 'media-right'])
+  heroLayout?: string;
+
   @ApiPropertyOptional({ enum: HeaderStyle })
   @IsOptional()
   @IsEnum(HeaderStyle)
@@ -229,6 +282,61 @@ export class UpdateCommunitySettingsDto {
   @IsOptional()
   @IsBoolean()
   showStats?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  allowInvites?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  enableParallax?: boolean;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @Transform(({ value }) => toOptionalStringArray(value))
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(1000, { each: true })
+  gallery?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => toOptionalTrimmedString(value))
+  @IsString()
+  @MaxLength(1000)
+  videoUrl?: string;
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @Transform(({ value }) => toSafeBrandSections(value))
+  customSections?: Record<string, unknown>[];
+
+  @ApiPropertyOptional({
+    description: 'Versioned Brand Studio configuration. Arbitrary CSS and JavaScript are intentionally unsupported.',
+    type: Object,
+  })
+  @IsOptional()
+  @IsObject()
+  brand?: Record<string, unknown>;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => toOptionalTrimmedString(value))
+  @IsString()
+  @MaxLength(160)
+  metaTitle?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => toOptionalTrimmedString(value))
+  @IsString()
+  @MaxLength(500)
+  metaDescription?: string;
 
   @ApiPropertyOptional({
     description: 'Custom domain without protocol/path. Example: ai.chabaqa.io',
