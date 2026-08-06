@@ -29,6 +29,15 @@ jobs:
 
       - name: Validate compose file
         run: |
+          # Compose interpolation happens before service env_file files are read.
+          # Supply inert values only for the required variables so this check
+          # validates the production topology without accessing production secrets.
+          printf '%s\n' \
+            'REDIS_PASSWORD=validation-only-redis-password' \
+            'MINIO_ROOT_USER=validation-only-minio-user' \
+            'MINIO_ROOT_PASSWORD=validation-only-minio-password' \
+            'MEILI_MASTER_KEY=validation-only-meili-master-key' \
+            'GRAFANA_ADMIN_PASSWORD=validation-only-grafana-password' > .env
           touch frontend/.env
           touch backend/.env
           docker compose config --quiet
