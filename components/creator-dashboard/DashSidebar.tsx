@@ -12,6 +12,7 @@ const navGroups = [
     items: [
       { label: { en: 'Overview',    ar: 'نظرة عامة'   }, href: '/creator',             icon: 'grid'      },
       { label: { en: 'Communities', ar: 'المجتمعات'   }, href: '/creator/communities',  icon: 'users'     },
+      { label: { en: 'Branding',    ar: 'الهوية'      }, href: '/creator/branding',    icon: 'brush'     },
       { label: { en: 'Analytics',   ar: 'التحليلات'   }, href: '/creator/analytics',   icon: 'chart'     },
     ],
   },
