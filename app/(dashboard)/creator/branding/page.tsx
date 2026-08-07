@@ -12,7 +12,7 @@ import {
   Plus, Code, ExternalLink, Video, ShoppingBag, Upload, Link2,
 } from 'lucide-react'
 import {
-  Section, ProductsPage, GF_URL, FONTS, stack, LANDING_DRAFT_KEY,
+  Section, ProductsList, PageTabs, GF_URL, FONTS, stack, LANDING_DRAFT_KEY,
   DEFAULT_BLOCKS, DEFAULT_MEDIA, DEFAULT_PRODUCTS, DEFAULT_REVIEWS,
   DEFAULT_CONTENT, DEFAULT_DESIGN, PROD_CONF, ytId, mediaThumb,
   type BlockDef, type BlockType, type MediaItem, type ProductItem, type Review,
@@ -434,8 +434,11 @@ export default function BrandingPage() {
                 <div className="w-full transition-all duration-300"
                   style={{ maxWidth: frameWidth, background: pageBg, borderRadius: 16, overflow: 'hidden', boxShadow: '0 10px 44px rgba(26,23,48,.12)', height: 'fit-content', border: '1px solid #e4e2ef' }}
                   dir={isAr ? 'rtl' : 'ltr'}>
-                  {page === 'home' ? (
-                    blocks.filter(b => b.visible).map((b, idx) => (
+                  {(() => {
+                    const vis = blocks.filter(b => b.visible)
+                    const hero = vis.find(b => b.type === 'hero')
+                    const rest = vis.filter(b => b.type !== 'hero')
+                    const renderBlock = (b: BlockDef, idx: number) => (
                       <div key={b.id} ref={el => { secRefs.current[b.id] = el }}
                         style={selected === b.id ? { outline: `2px solid ${accent}`, outlineOffset: -2, position: 'relative' } : undefined}>
                         {selected === b.id && (
@@ -448,10 +451,22 @@ export default function BrandingPage() {
                           page={page} setPage={setPage} t={t}
                           openFaq={openFaq} setOpenFaq={setOpenFaq} openSec={openSec} setOpenSec={setOpenSec} />
                       </div>
-                    ))
-                  ) : (
-                    <ProductsPage c={content} design={design} device={device} products={products.filter(p => p.visible)} t={t} page={page} setPage={setPage} />
-                  )}
+                    )
+                    return (
+                      <>
+                        {/* hero stays mounted across both pages */}
+                        {hero && renderBlock(hero, 0)}
+                        {!hero && design.showProducts && (
+                          <div className="px-11 pt-8" style={{ background: '#fff' }}>
+                            <PageTabs page={page} setPage={setPage} design={design} t={t} />
+                          </div>
+                        )}
+                        {page === 'home'
+                          ? rest.map((b, i) => renderBlock(b, i + 1))
+                          : <ProductsList c={content} design={design} device={device} products={products.filter(p => p.visible)} t={t} />}
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
             </div>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Monitor, Tablet, Smartphone } from 'lucide-react'
 import {
-  Section, ProductsPage, GF_URL, LANDING_DRAFT_KEY, DEFAULT_DRAFT,
+  Section, ProductsList, PageTabs, GF_URL, LANDING_DRAFT_KEY, DEFAULT_DRAFT,
   type LandingDraft, type PageId, type Device,
 } from '@/components/creator-dashboard/landing-renderer'
 
@@ -66,17 +66,32 @@ export default function LandingPreviewPage() {
               borderRadius: 16, overflow: 'hidden', boxShadow: '0 10px 44px rgba(26,23,48,.12)',
               height: 'fit-content', border: '1px solid #e4e2ef',
             }}>
-            {page === 'home' ? (
-              draft.blocks.filter(b => b.visible).map((b, idx) => (
+            {(() => {
+              const vis = draft.blocks.filter(b => b.visible)
+              const hero = vis.find(b => b.type === 'hero')
+              const rest = vis.filter(b => b.type !== 'hero')
+              const render = (b: typeof vis[number], idx: number) => (
                 <Section key={b.id} block={b} c={content} design={design} device={device} index={idx}
                   media={draft.media} activeMedia={activeMedia} setActiveMedia={setActiveMedia}
                   reviews={draft.reviews} page={page} setPage={setPage} t={t}
                   openFaq={openFaq} setOpenFaq={setOpenFaq} openSec={openSec} setOpenSec={setOpenSec} />
-              ))
-            ) : (
-              <ProductsPage c={content} design={design} device={device}
-                products={draft.products.filter(p => p.visible)} t={t} page={page} setPage={setPage} />
-            )}
+              )
+              return (
+                <>
+                  {/* hero stays mounted across both pages */}
+                  {hero && render(hero, 0)}
+                  {!hero && design.showProducts && (
+                    <div className="px-11 pt-8" style={{ background: '#fff' }}>
+                      <PageTabs page={page} setPage={setPage} design={design} t={t} />
+                    </div>
+                  )}
+                  {page === 'home'
+                    ? rest.map((b, i) => render(b, i + 1))
+                    : <ProductsList c={content} design={design} device={device}
+                        products={draft.products.filter(p => p.visible)} t={t} />}
+                </>
+              )
+            })()}
           </div>
         </div>
       </div>

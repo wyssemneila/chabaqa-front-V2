@@ -195,7 +195,7 @@ export function Stars({ n, size = 14 }: { n: number; size?: number }) {
   )
 }
 
-function PageTabs({ page, setPage, design, t }: {
+export function PageTabs({ page, setPage, design, t }: {
   page: PageId; setPage: (p: PageId) => void; design: Design; t: (en: string, ar: string) => string
 }) {
   const tabs: { id: PageId; l: string }[] = [{ id: 'home', l: t('Home', 'الرئيسية') }]
@@ -619,9 +619,10 @@ export function Section({
 
 /* ═══════════════ PRODUCTS PAGE ═══════════════ */
 
-export function ProductsPage({ c, design, device, products, t, page, setPage }: {
+/** Just the product cards — the hero above already renders the header + tabs. */
+export function ProductsList({ c, design, device, products, t }: {
   c: Content; design: Design; device: Device; products: ProductItem[]
-  t: (en: string, ar: string) => string; page: PageId; setPage: (p: PageId) => void
+  t: (en: string, ar: string) => string
 }) {
   const { accent, accent2, radius, pill } = design
   const mob = device === 'mobile'
@@ -631,10 +632,8 @@ export function ProductsPage({ c, design, device, products, t, page, setPage }: 
 
   return (
     <div style={{ fontFamily: stack(design.bodyFont), background: design.bg === 'white' ? '#fff' : '#fbfaff' }}>
-      <div className={mob ? 'px-5 pt-8' : 'px-11 pt-10'}>
-        <h1 className="font-extrabold tracking-tight text-center" style={{ color: INK, fontSize: mob ? 24 : 30, fontFamily: stack('Montserrat') }}>{c.name}</h1>
-        <p className="text-center text-[14px] mt-2" style={{ color: INK3 }}>{c.productsTitle}</p>
-        <div className="mt-6"><PageTabs page={page} setPage={setPage} design={design} t={t} /></div>
+      <div className={mob ? 'px-5 pt-8 text-center' : 'px-11 pt-10 text-center'}>
+        <p className="text-[14px]" style={{ color: INK3 }}>{c.productsTitle}</p>
       </div>
 
       <div className={pad}>
