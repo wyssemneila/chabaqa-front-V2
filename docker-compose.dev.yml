@@ -10,10 +10,9 @@ services:
       dockerfile: Dockerfile.dev
     container_name: chabaqa-backend-dev
     volumes:
-      - ./backend/src:/app/src
-      - ./backend/scripts:/app/scripts
-      - ./backend/public:/app/public
-      - ./backend/package.json:/app/package.json
+      # Keep dependencies in a named volume. Source is copied into the dev image;
+      # mounting the full backend tree on Docker Desktop for Windows can stall
+      # Nest's initial TypeScript compilation on the 9P filesystem bridge.
       - backend-node-modules:/app/node_modules
     environment:
       NODE_ENV: development
