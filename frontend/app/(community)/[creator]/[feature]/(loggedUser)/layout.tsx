@@ -44,6 +44,14 @@ export default async function CreatorLayout({
 }: CreatorLayoutProps) {
   const { creator, feature } = await params
 
+  // `/creator/dashboard` is an application dashboard route, not a community
+  // route. Without this guard, the dynamic `[creator]/[feature]` match treats
+  // `dashboard` as a community slug and issues requests for a nonexistent
+  // community named `creator`.
+  if (creator === "creator" && feature === "dashboard") {
+    return <main className="min-h-screen">{children}</main>
+  }
+
   return (
     <>
       <CommunityHeader currentCommunity={feature} creatorSlug={creator} />
