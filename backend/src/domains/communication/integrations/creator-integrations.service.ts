@@ -12,6 +12,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { createHash, createHmac, randomBytes, randomUUID } from 'crypto';
 import { lookup } from 'dns/promises';
 import { isIP } from 'net';
+import { request as httpsRequest } from 'https';
 import { Model, Types } from 'mongoose';
 import {
   CreatorApiKey,
@@ -101,6 +102,11 @@ interface OAuthSpec {
   accountUrl: string;
 }
 
+interface SafeWebhookTarget {
+  url: URL;
+  addresses: string[];
+}
+
 @Injectable()
 export class CreatorIntegrationsService {
   private readonly logger = new Logger(CreatorIntegrationsService.name);
@@ -178,7 +184,7 @@ export class CreatorIntegrationsService {
     );
   }
 
-  private async assertSafeWebhookUrl(value: unknown): Promise<string> {
+  private async resolveSafeWebhookTarget(value: unknown): Promise<SafeWebhookTarget> {
     let url: URL;
     try {
       url = new URL(String(value || ''));
@@ -192,8 +198,9 @@ export class CreatorIntegrationsService {
     if (host === 'localhost' || host.endsWith('.localhost')) {
       throw new BadRequestException('Webhook URL cannot target localhost or private networks');
     }
+    let addresses: Array<{ address: string }>;
     try {
-      const addresses = isIP(host)
+      addresses = isIP(host)
         ? [{ address: host }]
         : await lookup(host, { all: true, verbatim: true });
       if (!addresses.length || addresses.some(({ address }) => this.isPrivateAddress(address))) {
@@ -203,7 +210,11 @@ export class CreatorIntegrationsService {
       if (error instanceof BadRequestException) throw error;
       throw new BadRequestException('Webhook hostname could not be resolved');
     }
-    return url.toString();
+    return { url, addresses: addresses.map(({ address }) => address) };
+  }
+
+  private async assertSafeWebhookUrl(value: unknown): Promise<string> {
+    return (await this.resolveSafeWebhookTarget(value)).url.toString();
   }
 
   private cleanString(value: unknown, max = 256): string | undefined {
@@ -218,6 +229,35 @@ export class CreatorIntegrationsService {
 
   private isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  /** A community mapping overrides a creator-wide mapping for the same provider. */
+  private effectiveCommunityMappings(integrations: any[], communityId?: string | Types.ObjectId): any[] {
+    const selected = new Map<string, any>();
+    for (const integration of integrations) {
+      const isGlobal = !integration.communityId;
+      const isSpecific = Boolean(communityId && integration.communityId && String(integration.communityId) === String(communityId));
+      if (!isGlobal && !isSpecific) continue;
+      const existing = selected.get(String(integration.provider));
+      if (isSpecific || !existing) selected.set(String(integration.provider), integration);
+    }
+    return [...selected.values()];
+  }
+
+  private async activeContactMapping(
+    creatorId: Types.ObjectId,
+    communityId: Types.ObjectId,
+    provider: CredentialProvider,
+  ): Promise<any | null> {
+    const mappings = await this.integrationModel.find({
+      creatorId,
+      provider,
+      status: 'connected',
+      'config.contactSyncEnabled': true,
+      $or: [{ communityId: { $exists: false } }, { communityId }],
+    }).select('communityId provider config').lean();
+    return this.effectiveCommunityMappings(mappings, communityId)
+      .find((mapping: any) => mapping.provider === provider) || null;
   }
 
   private selectedEvents(value: unknown, fallback = [...EVENTS]): string[] {
@@ -881,14 +921,11 @@ export class CreatorIntegrationsService {
     if (!community) throw new NotFoundException('Community not found');
     const isMember = Array.isArray((community as any).members) && (community as any).members.some((member: any) => String(member) === String(this.id(userId)));
     if (!isMember && (community as any).isPrivate) throw new NotFoundException('Community not found');
-    const activeMapping = await this.integrationModel.exists({
-      creatorId: (community as any).createur,
-      provider,
-      status: 'connected',
-      'config.contactSyncEnabled': true,
-      $or: [{ communityId: { $exists: false } }, { communityId }],
-    });
+    const activeMapping = await this.activeContactMapping((community as any).createur, communityId, provider);
     if (!activeMapping) throw new BadRequestException('This community does not have an active contact-sync mapping for that provider');
+    const activePolicyVersion = this.cleanString((activeMapping.config as any)?.policyVersion, 100);
+    if (!activePolicyVersion) throw new BadRequestException('This provider mapping does not have an approved policy version');
+    if (policyVersion !== activePolicyVersion) throw new BadRequestException('The consent policy version is no longer current. Refresh and review the current policy.');
     const granted = body?.granted === true;
     const consent = await this.contactConsentModel.findOneAndUpdate(
       { userId: this.id(userId), communityId, provider },
@@ -913,14 +950,14 @@ export class CreatorIntegrationsService {
       status: 'connected',
       'config.contactSyncEnabled': true,
       $or: [{ communityId: { $exists: false } }, { communityId }],
-    }).select('provider config').lean();
+    }).select('communityId provider config').lean();
     const consents = await this.contactConsentModel.find({
       userId: memberId,
       communityId,
       provider: { $in: CREDENTIAL_PROVIDERS },
     }).select('provider consentedAt revokedAt').lean();
     const consentByProvider = new Map(consents.map((consent: any) => [consent.provider, consent]));
-    return integrations.map((integration: any) => {
+    return this.effectiveCommunityMappings(integrations, communityId).map((integration: any) => {
       const consent = consentByProvider.get(integration.provider) as any;
       return {
         communityId: String(communityId),
@@ -972,12 +1009,10 @@ export class CreatorIntegrationsService {
       consent,
     ]));
 
-    return communities.flatMap((community: any) => integrations
-      .filter((integration: any) =>
-        String(integration.creatorId) === String(community.createur) &&
-        (!integration.communityId || String(integration.communityId) === String(community._id)),
-      )
-      .map((integration: any) => {
+    return communities.flatMap((community: any) => this.effectiveCommunityMappings(
+      integrations.filter((integration: any) => String(integration.creatorId) === String(community.createur)),
+      community._id,
+    ).map((integration: any) => {
         const consent = consentByScope.get(`${String(community._id)}:${integration.provider}`) as any;
         const policyVersion = this.cleanString((integration.config as any)?.policyVersion, 100);
         return {
@@ -1202,6 +1237,28 @@ export class CreatorIntegrationsService {
     });
   }
 
+  private async sendWebhookToAddress(target: SafeWebhookTarget, address: string, raw: string, headers: Record<string, string>): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const request = httpsRequest({
+        protocol: 'https:',
+        hostname: address,
+        port: Number(target.url.port) || 443,
+        path: `${target.url.pathname}${target.url.search}`,
+        method: 'POST',
+        servername: target.url.hostname,
+        family: isIP(address) === 6 ? 6 : 4,
+        headers: { ...headers, host: target.url.host },
+        timeout: 10_000,
+      }, (response) => {
+        response.resume();
+        response.on('end', () => resolve(response.statusCode || 0));
+      });
+      request.once('timeout', () => request.destroy(new Error('webhook_timeout')));
+      request.once('error', reject);
+      request.end(raw);
+    });
+  }
+
   private async deliverWebhook(id: string): Promise<void> {
     const delivery = await this.deliveryModel.findById(id);
     if (!delivery || delivery.status === 'delivered') return;
@@ -1209,23 +1266,31 @@ export class CreatorIntegrationsService {
     if (!hook || !hook.active) return;
     const raw = JSON.stringify(delivery.payload);
     try {
-      const response = await fetch(hook.url, {
-        method: 'POST',
-        redirect: 'error',
-        headers: {
-          'content-type': 'application/json',
-          'user-agent': 'Chabaqa-Webhooks/1.0',
-          'x-chabaqa-event': delivery.event,
-          'x-chabaqa-event-id': delivery.eventId,
-          'x-chabaqa-timestamp': String(Date.now()),
-          'x-chabaqa-signature': `sha256=${createHmac('sha256', hook.secret).update(raw).digest('hex')}`,
-        },
-        body: raw,
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) throw new Error(`webhook_http_${response.status}`);
+      // Resolve and validate immediately before delivery, then connect to that
+      // IP directly. This prevents a hostname from rebinding after validation.
+      const target = await this.resolveSafeWebhookTarget(hook.url);
+      const headers = {
+        'content-type': 'application/json',
+        'user-agent': 'Chabaqa-Webhooks/1.0',
+        'x-chabaqa-event': delivery.event,
+        'x-chabaqa-event-id': delivery.eventId,
+        'x-chabaqa-timestamp': String(Date.now()),
+        'x-chabaqa-signature': `sha256=${createHmac('sha256', hook.secret).update(raw).digest('hex')}`,
+      };
+      let status = 0;
+      let lastError: unknown;
+      for (const address of target.addresses) {
+        try {
+          status = await this.sendWebhookToAddress(target, address, raw, headers);
+          break;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      if (!status) throw lastError || new Error('webhook_connection_failed');
+      if (status < 200 || status >= 300) throw new Error(`webhook_http_${status}`);
       delivery.status = 'delivered';
-      delivery.responseStatus = response.status;
+      delivery.responseStatus = status;
       delivery.deliveredAt = new Date();
       delivery.nextAttemptAt = undefined;
       hook.lastDeliveredAt = new Date();
@@ -1252,10 +1317,13 @@ export class CreatorIntegrationsService {
     return false;
   }
 
-  private eventIdentity(event: string, data: Record<string, unknown>): string {
+  private eventIdentity(event: string, data: Record<string, unknown>, communityId?: string): string {
     const keys = ['orderId', 'subscriptionId', 'bookingId', 'sessionId', 'memberId', 'participantId', 'enrollmentId', 'eventRegistrationId', 'postId', 'submissionId', 'challengeId'];
     const value = keys.map((key) => data[key]).find((candidate) => typeof candidate === 'string' && candidate.length > 0);
-    return `${event}:${String(value || JSON.stringify(data, Object.keys(data).sort()))}`;
+    const membershipOccurrence = ['member.joined', 'member.left'].includes(event)
+      ? String(data.joinedAt || data.leftAt || data.occurredAt || '')
+      : '';
+    return `${String(communityId || 'creator')}::${event}:${String(value || JSON.stringify(data, Object.keys(data).sort()))}:${membershipOccurrence}`;
   }
 
   private async queueProviderDeliveries(creatorId: string, event: string, data: Record<string, unknown>, communityId?: string): Promise<void> {
@@ -1264,10 +1332,12 @@ export class CreatorIntegrationsService {
       provider: { $in: PROVIDER_OUTBOX_PROVIDERS },
       status: 'connected',
     }).lean();
-    await Promise.all(integrations.map(async (integration: any) => {
-      if (communityId && integration.communityId && String(integration.communityId) !== communityId) return;
+    const effectiveIntegrations = communityId
+      ? this.effectiveCommunityMappings(integrations, communityId)
+      : integrations.filter((integration: any) => !integration.communityId);
+    await Promise.all(effectiveIntegrations.map(async (integration: any) => {
       if (!this.providerShouldReceive(integration, event)) return;
-      const idempotencyKey = createHash('sha256').update(`${integration._id}:${this.eventIdentity(event, data)}`).digest('hex');
+      const idempotencyKey = createHash('sha256').update(`${integration._id}:${this.eventIdentity(event, data, communityId)}`).digest('hex');
       const delivery = await this.providerDeliveryModel.findOneAndUpdate(
         { idempotencyKey },
         {
@@ -1294,11 +1364,14 @@ export class CreatorIntegrationsService {
     const userId = [data.memberId, data.buyerId, data.participantId, data.learnerId].find((value) => typeof value === 'string' && Types.ObjectId.isValid(value as string)) as string | undefined;
     const scopedCommunityId = (delivery.payload as any)?.communityId || integration.communityId;
     if (!userId || !scopedCommunityId || !Types.ObjectId.isValid(String(scopedCommunityId))) return null;
+    const activePolicyVersion = this.cleanString((integration.config as any)?.policyVersion, 100);
+    if (!activePolicyVersion) return null;
     const consent = await this.contactConsentModel.exists({
       userId: this.id(userId),
       creatorId: integration.creatorId,
       communityId: this.id(String(scopedCommunityId)),
       provider: integration.provider,
+      policyVersion: activePolicyVersion,
       revokedAt: { $exists: false },
     });
     if (!consent) return null;
