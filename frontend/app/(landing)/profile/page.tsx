@@ -735,7 +735,7 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
       try {
         if (!user?._id && !user?.id) return
         setProductsLoading(true)
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+        const apiBase = "/api"
 
         // Fetch products with pagination
         const listUrl = `${apiBase}/products/by-user/${encodeURIComponent(user._id || user.id)}?page=${productsPage}&limit=12&type=all`
@@ -773,7 +773,7 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
 
       try {
         setCoursesLoading(true)
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+        const apiBase = "/api"
         const coursesUrl = `${apiBase}/cours/by-user/${encodeURIComponent(user._id || user.id)}?page=${coursesPage}&limit=12&type=all`
         const response = await fetch(coursesUrl)
 
@@ -814,7 +814,7 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
 
       try {
         setChallengesLoading(true)
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+        const apiBase = "/api"
         const challengesUrl = `${apiBase}/challenges/by-user/${encodeURIComponent(user._id || user.id)}?page=${challengesPage}&limit=12&type=all`
         const response = await fetch(challengesUrl)
 
