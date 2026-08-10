@@ -1,6 +1,7 @@
 import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ResourceService } from '@/domains/content/resource/resource.service';
+import { ContentAccessService } from '@/shared/services/content-access.service';
 import { CreateResourceDto, ResourceSummaryDto } from '@/domains/content/resource/dto/create-resource.dto';
 import { AdminGuard } from '@/domains/auth/guards/admin.guard';
 import { JwtAuthGuard } from '@/domains/auth/guards/jwt-auth.guard';
@@ -12,7 +13,10 @@ import { ResourceType } from '@/infrastructure/database/schemas/content/resource
 @ApiTags('Resources')
 @Controller('resources')
 export class ResourceController {
-  constructor(private readonly resourceService: ResourceService) {}
+  constructor(
+    private readonly resourceService: ResourceService,
+    private readonly contentAccessService: ContentAccessService,
+  ) {}
 
   /**
    * Obtenir toutes les ressources (endpoint simple)
@@ -330,7 +334,8 @@ export class ResourceController {
     status: 404,
     description: 'Ressource non trouvée'
   })
-  async getResourceById(@Param('id') id: string) {
+  async getResourceById(@Param('id') id: string, @Request() req: any) {
+    await this.contentAccessService.assertResourceAccess(String(req.user?._id || req.user?.sub || req.user?.userId), id);
     return await this.resourceService.findById(id);
   }
 

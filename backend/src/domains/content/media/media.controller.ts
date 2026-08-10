@@ -187,9 +187,9 @@ export class MediaController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get media asset metadata' })
-  async getAsset(@Param('assetId') assetId: string) {
+  async getAsset(@Param('assetId') assetId: string, @Request() req: any) {
     this.ensureMediaEnabled();
-    return this.mediaService.getAsset(assetId);
+    return this.mediaService.getAsset(assetId, this.getRequester(req));
   }
 
   @Delete(':assetId')

@@ -23,6 +23,7 @@ import { DiskStorageAdapter } from '@/domains/content/media/storage/disk-storage
 import { S3StorageAdapter } from '@/domains/content/media/storage/s3-storage.adapter';
 import { StorageAdapter } from '@/domains/content/media/storage/storage-adapter.interface';
 import { getMediaPrivateTokenSecret } from '@/shared/utils/security-config.util';
+import { ContentAccessService } from '@/shared/services/content-access.service';
 
 @Injectable()
 export class MediaService {
@@ -37,6 +38,7 @@ export class MediaService {
     @InjectModel(MediaAsset.name) private readonly mediaModel: Model<MediaAssetDocument>,
     private readonly diskStorageAdapter: DiskStorageAdapter,
     private readonly s3StorageAdapter: S3StorageAdapter,
+    private readonly contentAccessService: ContentAccessService,
   ) {}
 
   getStorageDriver(): 'disk' | 's3' {
@@ -171,11 +173,22 @@ export class MediaService {
     return MediaType.DOCUMENT;
   }
 
-  async getAsset(assetId: string) {
+  private async assertAssetAccess(asset: MediaAssetDocument, requester?: { userId?: string; isAdmin?: boolean }): Promise<void> {
+    const requesterId = requester?.userId || '';
+    if (requester?.isAdmin || (asset.uploadedBy && String(asset.uploadedBy) === requesterId)) return;
+    if (!requesterId) throw new UnauthorizedException('Authentication is required');
+    if (asset.entityType === 'course') return void await this.contentAccessService.assertCourseAccess(requesterId, String(asset.entityId));
+    if (asset.entityType === 'challenge') return void await this.contentAccessService.assertChallengeAccess(requesterId, String(asset.entityId));
+    if (asset.entityType === 'resource') return void await this.contentAccessService.assertResourceAccess(requesterId, String(asset.entityId));
+    if (asset.visibility === MediaVisibility.PRIVATE) throw new ForbiddenException('You do not have access to this media');
+  }
+
+  async getAsset(assetId: string, requester?: { userId?: string; isAdmin?: boolean }) {
     const asset = await this.mediaModel.findById(assetId);
     if (!asset || asset.status === MediaAssetStatus.DELETED) {
       throw new NotFoundException('Media asset not found');
     }
+    await this.assertAssetAccess(asset, requester);
     return {
       success: true,
       data: this.buildCanonicalData(asset),
@@ -218,11 +231,7 @@ export class MediaService {
     }
 
     if (asset.visibility === MediaVisibility.PRIVATE && this.privateEnforcement) {
-      const ownerId = asset.uploadedBy ? String(asset.uploadedBy) : '';
-      const requesterId = requester?.userId || '';
-      if (!requester?.isAdmin && ownerId && ownerId !== requesterId) {
-        throw new ForbiddenException('You do not have access to this media');
-      }
+      await this.assertAssetAccess(asset, requester);
       return {
         success: true,
         data: {

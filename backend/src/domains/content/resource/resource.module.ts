@@ -7,6 +7,7 @@ import { ResourceService } from '@/domains/content/resource/resource.service';
 import { Resource, ResourceSchema } from '@/infrastructure/database/schemas/content/resource.schema';
 import { AdminGuard } from '@/domains/auth/guards/admin.guard';
 import { AuthModule } from '@/domains/auth/auth.module';
+import { PolicyModule } from '@/shared/modules/policy.module';
 
 /**
  * Module pour la gestion des ressources
@@ -17,7 +18,8 @@ import { AuthModule } from '@/domains/auth/auth.module';
       { name: Resource.name, schema: ResourceSchema }
     ]),
     PassportModule,
-    AuthModule
+    AuthModule,
+    PolicyModule
   ],
   controllers: [ResourceController],
   providers: [
