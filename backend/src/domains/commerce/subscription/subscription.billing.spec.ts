@@ -70,6 +70,9 @@ describe('SubscriptionService billing records', () => {
       whatsappCampaignModel: {
         aggregate: jest.fn().mockResolvedValue([]),
       },
+      creatorIntegrationsService: {
+        emit: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides,
     };
 
@@ -88,6 +91,7 @@ describe('SubscriptionService billing records', () => {
       models.emailCampaignModel as any,
       models.whatsappCampaignModel as any,
       (overrides.stripePaymentService || { cancelSubscriptionAtPeriodEnd: jest.fn() }) as any,
+      models.creatorIntegrationsService as any,
     );
 
     return { service, models };

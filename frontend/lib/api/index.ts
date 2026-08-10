@@ -10,6 +10,7 @@ export * from "./community-home.api";
 export * from "./courses.api";
 export * from "./courses-community.api";
 export * from "./creator-analytics.api";
+export * from "./creator-integrations.api";
 export * from "./creator-writing.api";
 export * from "./email-campaigns.api";
 export * from "./events.api";

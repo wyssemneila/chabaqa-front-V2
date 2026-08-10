@@ -66,6 +66,7 @@ import { CommunityDmBroadcastModule } from '@/domains/community/dm-broadcast/com
 import { CommunityAccessModule } from '@/domains/community/access/community-access.module';
 import { VideoModule } from '@/domains/shared/video/video.module';
 import { SearchModule } from '@/domains/search/search.module';
+import { CreatorIntegrationsModule } from '@/domains/communication/integrations/creator-integrations.module';
 
 // Import new admin schemas
 import { AdminUser, AdminUserSchema } from '@/domains/admin/schemas/admin-user.schema';
@@ -212,6 +213,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     CommunityAccessModule,
     VideoModule,
     SearchModule,
+    CreatorIntegrationsModule,
   ],
   controllers: [AppController, UserController, TrackingController, PaymentController],
   providers: [

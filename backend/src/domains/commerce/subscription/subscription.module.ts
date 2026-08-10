@@ -23,10 +23,12 @@ import { SubscriptionScheduler } from '@/domains/commerce/subscription/subscript
 import { AdminGuard } from '@/domains/auth/guards/admin.guard';
 import { InternalServiceTokenGuard } from '@/shared/guards/internal-service-token.guard';
 import { StripePaymentService } from '@/shared/services/stripe-payment.service';
+import { CreatorIntegrationsModule } from '@/domains/communication/integrations/creator-integrations.module';
 
 @Module({
   imports: [
     ConfigModule,
+    CreatorIntegrationsModule,
     MongooseModule.forFeature([
       { name: Subscription.name, schema: SubscriptionSchema },
       { name: Plan.name, schema: PlanSchema },
@@ -48,4 +50,3 @@ import { StripePaymentService } from '@/shared/services/stripe-payment.service';
   exports: [SubscriptionService],
 })
 export class SubscriptionModule {}
-

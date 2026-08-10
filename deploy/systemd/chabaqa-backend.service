@@ -1,0 +1,23 @@
+[Unit]
+Description=Chabaqa Backend
+After=network-online.target mongod.service redis-server.service
+Wants=network-online.target
+Requires=mongod.service redis-server.service
+
+[Service]
+Type=simple
+User=chabaqa
+WorkingDirectory=/opt/chabaqa/current/backend
+EnvironmentFile=/etc/chabaqa/backend.env
+Environment=UPLOAD_PATH=/opt/chabaqa/shared/uploads
+Environment=HLS_PATH=/opt/chabaqa/shared/hls-output
+ExecStart=/home/ubuntu/.local/node-v22.19.0-linux-x64/bin/node --max-old-space-size=768 --max-semi-space-size=32 dist/src/main.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=30s
+MemoryMax=1G
+CPUQuota=150%
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

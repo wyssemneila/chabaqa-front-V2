@@ -80,3 +80,21 @@ groups:
         annotations:
           summary: 'Container churn detected for {{ $labels.name }}'
           description: 'cAdvisor reports repeated container restarts/instability.'
+
+      - alert: IntegrationDeliveryExhausted
+        expr: shabaka_integration_delivery_exhausted > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Creator integration delivery exhausted retries'
+          description: 'One or more provider or webhook deliveries exhausted all retries. Review the creator integrations delivery health panel.'
+
+      - alert: IntegrationCredentialFailure
+        expr: increase(shabaka_integration_credential_encryption_failures_total[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Creator integration credential encryption failure'
+          description: 'Credential encryption or decryption failed. Check INTEGRATIONS_ENCRYPTION_KEY before changing any provider configuration.'

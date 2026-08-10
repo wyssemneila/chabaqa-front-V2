@@ -20,6 +20,7 @@ import { EmailService, SessionBookingEmailData } from '@/domains/communication/e
 import { Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CacheService } from '@/shared/services/cache.service';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 type MeetStatus = 'not_required' | 'pending' | 'created' | 'failed';
 type MeetProvisioningSource = 'book_session' | 'confirm_booking' | 'manual' | 'worker';
@@ -40,6 +41,7 @@ export class SessionService {
     private readonly googleCalendarService: GoogleCalendarService,
     private readonly emailService: EmailService,
     private readonly cacheService: CacheService,
+    private readonly creatorIntegrationsService: CreatorIntegrationsService,
   ) { }
 
   /**
@@ -862,6 +864,9 @@ export class SessionService {
     }
 
     const community = await this.communityModel.findOne({ id: sessionDoc.communityId }).session(session);
+    void this.creatorIntegrationsService.emit(String(sessionDoc.creatorId), 'session.booked', {
+      sessionId: sessionDoc.id || String(sessionDoc._id), bookingId: booking.id, participantId: String(userId), scheduledAt: scheduledAt.toISOString(), status: initialStatus,
+    }, community ? String(community._id) : undefined);
     return this.transformToResponseDto(sessionDoc, community || undefined, userId);
   }
 
@@ -971,6 +976,10 @@ export class SessionService {
       throw new BadRequestException('Cette réservation est déjà terminée');
     }
 
+    const participantId = booking.userId.toString();
+    const scheduledAt = booking.scheduledAt;
+    const canceledBy = session.creatorId.toString() === userId ? 'creator' : 'participant';
+
     // Mettre à jour la réservation
     booking.status = 'cancelled';
     if (cancelBookingDto.reason) {
@@ -981,21 +990,17 @@ export class SessionService {
     await session.save();
     await this.invalidateSessionCaches(session.creatorId.toString());
 
-    try {
-      await this.trackingService.trackComplete(
-        booking.userId.toString(),
-        session._id.toString(),
-        TrackableContentType.SESSION,
-        {
-          source: 'session_booking_complete',
-          bookingId,
-        },
-      );
-    } catch (error: any) {
-      this.logger.warn(`[completeSession] Failed to track session complete: ${error?.message || error}`);
-    }
-
     const community = await this.communityModel.findOne({ id: session.communityId });
+    void this.creatorIntegrationsService.emit(String(session.creatorId), 'session.canceled', {
+      sessionId: session.id || String(session._id),
+      bookingId,
+      participantId,
+      scheduledAt: scheduledAt?.toISOString?.() || undefined,
+      canceledAt: new Date().toISOString(),
+      canceledBy,
+    }, community ? String(community._id) : undefined).catch((error) => {
+      this.logger.warn(`[cancelBooking] Session integration event failed: ${error?.message || error}`);
+    });
     return this.transformToResponseDto(session, community || undefined);
   }
 
@@ -1938,6 +1943,13 @@ export class SessionService {
       throw new ForbiddenException('Vous ne pouvez pas annuler ce créneau');
     }
 
+    const participantId = slot.bookedBy?.toString();
+    if (!participantId) {
+      throw new BadRequestException('Ce créneau n\'est pas réservé');
+    }
+    const scheduledAt = slot.startTime;
+    const canceledBy = session.creatorId.toString() === userId ? 'creator' : 'participant';
+
     // Annuler le créneau
     const success = session.cancelSlot(slotId);
     if (!success) {
@@ -1947,7 +1959,7 @@ export class SessionService {
     // Annuler la réservation correspondante si elle existe
     const correspondingBooking = session.bookings.find(booking =>
       booking.scheduledAt.getTime() === slot.startTime.getTime() &&
-      booking.userId.toString() === userId
+      booking.userId.toString() === participantId
     );
 
     if (correspondingBooking) {
@@ -1959,6 +1971,16 @@ export class SessionService {
     await this.invalidateSessionCaches(session.creatorId.toString());
 
     const community = await this.communityModel.findOne({ id: session.communityId });
+    void this.creatorIntegrationsService.emit(String(session.creatorId), 'session.canceled', {
+      sessionId: session.id || String(session._id),
+      bookingId: correspondingBooking?.id || slotId,
+      participantId,
+      scheduledAt: scheduledAt?.toISOString?.() || undefined,
+      canceledAt: new Date().toISOString(),
+      canceledBy,
+    }, community ? String(community._id) : undefined).catch((error) => {
+      this.logger.warn(`[cancelSlot] Session integration event failed: ${error?.message || error}`);
+    });
     return this.transformToResponseDto(session, community || undefined);
   }
 
