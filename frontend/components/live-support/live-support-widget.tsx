@@ -105,7 +105,7 @@ export function LiveSupportWidget() {
   useEffect(() => {
     if (!open || !isAuthenticated || !token) return
 
-    const socketUrl = resolveSocketBaseUrl(process.env.NEXT_PUBLIC_API_URL)
+    const socketUrl = resolveSocketBaseUrl()
     const socket = io(`${socketUrl}/live-support`, {
       auth: { token: `Bearer ${token}` },
       reconnectionAttempts: 5,

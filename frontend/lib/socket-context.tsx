@@ -64,7 +64,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Initialize socket
-    const socketUrl = resolveSocketBaseUrl(process.env.NEXT_PUBLIC_API_URL)
+    const socketUrl = resolveSocketBaseUrl()
     
     // Connect to /dm namespace
     const newSocket = io(`${socketUrl}/dm`, {
