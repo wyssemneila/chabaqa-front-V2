@@ -129,9 +129,9 @@ export class MediaController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Presign upload URL for direct-to-storage flow' })
-  async presignUpload(@Body() dto: MediaPresignDto) {
+  async presignUpload(@Body() dto: MediaPresignDto, @Request() req: any) {
     this.ensureMediaEnabled();
-    return this.mediaService.createPresign(dto);
+    return this.mediaService.createPresign(dto, this.getRequester(req).userId);
   }
 
   @Post('complete')

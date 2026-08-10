@@ -277,8 +277,8 @@ export class ChapterAccessService {
 
 
     if (!hasEnrollment) {
-      // Strict playback policy: only the first chapter is available before enrollment.
-      if (descriptor.index === 0) {
+      // Preview access is opt-in; never infer it from the chapter's position.
+      if (descriptor.chapter?.isPreview === true && descriptor.chapter?.isPaidChapter !== true) {
         return {
           canAccess: true,
           lockCode: 'allowed',

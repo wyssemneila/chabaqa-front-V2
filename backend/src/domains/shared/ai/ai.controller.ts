@@ -17,6 +17,7 @@ import {
 } from '@/domains/shared/ai/dto/tutor-settings.dto';
 import { LearnerProfileService } from '@/domains/shared/ai/learner/learner-profile.service';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ContentAccessService } from '@/shared/services/content-access.service';
 
 @ApiTags('AI')
 @Controller('ai')
@@ -25,6 +26,7 @@ export class AiController {
   constructor(
     private readonly aiService: AiService,
     private readonly learnerProfileService: LearnerProfileService,
+    private readonly contentAccessService: ContentAccessService,
   ) {}
 
   @Post('courses/:courseId/chapters/:chapterId/ask')
@@ -34,6 +36,7 @@ export class AiController {
     @Body() body: AskQuestionDto,
     @Request() req: any,
   ) {
+    await this.contentAccessService.assertCourseAccess(req?.user?._id, courseId);
     return this.aiService.askChapterQuestion(
       courseId,
       chapterId,
@@ -49,6 +52,7 @@ export class AiController {
     @Param('chapterId') chapterId: string,
     @Request() req: any,
   ) {
+    await this.contentAccessService.assertCourseAccess(req?.user?._id, courseId);
     return this.aiService.getChapterHistory(
       courseId,
       chapterId,

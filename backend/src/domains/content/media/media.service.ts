@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { createHmac } from 'crypto';
+import { createHmac, randomUUID } from 'crypto';
 import { createReadStream, existsSync } from 'fs';
 import { Model, Types } from 'mongoose';
 import { basename, extname, isAbsolute, join, relative, resolve } from 'path';
@@ -18,18 +18,33 @@ import {
   MediaType,
   MediaVisibility,
   PURPOSE_DEFAULT_VISIBILITY,
+  TYPE_MAX_BYTES,
 } from '@/domains/content/media/media.types';
 import { DiskStorageAdapter } from '@/domains/content/media/storage/disk-storage.adapter';
 import { S3StorageAdapter } from '@/domains/content/media/storage/s3-storage.adapter';
-import { StorageAdapter } from '@/domains/content/media/storage/storage-adapter.interface';
+import { StorageAdapter, StorageObjectMetadata } from '@/domains/content/media/storage/storage-adapter.interface';
 import { getMediaPrivateTokenSecret } from '@/shared/utils/security-config.util';
 import { ContentAccessService } from '@/shared/services/content-access.service';
+import { getAllowedUploadCategory, isAllowedUploadMime } from '@/domains/shared/upload/upload-security.policy';
+
+interface DirectUploadDetails {
+  fileName: string;
+  mimeType: string;
+  size: number;
+  checksum: string;
+  checksumSha256: string;
+  purpose: MediaPurpose;
+  visibility: MediaVisibility;
+  entityType?: string;
+  entityId?: string;
+  mediaType: MediaType;
+  extension: string;
+}
 
 @Injectable()
 export class MediaService {
   private readonly uploadsRoot = join(process.cwd(), process.env.UPLOAD_PATH || 'uploads');
   private readonly publicBaseUrl = (process.env.MEDIA_PUBLIC_BASE_URL || process.env.SERVER_URL || 'https://api.chabaqa.io').replace(/\/+$/, '');
-  private readonly privateEnforcement = process.env.MEDIA_PRIVATE_ENFORCEMENT === 'true';
   private readonly tokenSecret = getMediaPrivateTokenSecret();
   private readonly presignedEnabled = process.env.MEDIA_PRESIGNED_ENABLED === 'true';
   private readonly storageReadPreference = (process.env.MEDIA_STORAGE_READ_PREFERENCE || process.env.MEDIA_STORAGE_DRIVER || 'disk').toLowerCase();
@@ -58,6 +73,125 @@ export class MediaService {
     if (visibility) return visibility;
     if (!purpose) return MediaVisibility.PUBLIC;
     return PURPOSE_DEFAULT_VISIBILITY[purpose] || MediaVisibility.PUBLIC;
+  }
+
+  private getPurpose(value?: string): MediaPurpose {
+    if (!value) return MediaPurpose.GENERIC;
+    if (!Object.values(MediaPurpose).includes(value as MediaPurpose)) {
+      throw new BadRequestException('Invalid media purpose');
+    }
+    return value as MediaPurpose;
+  }
+
+  private getRequestedVisibility(purpose: MediaPurpose, value?: string): MediaVisibility {
+    if (value && !Object.values(MediaVisibility).includes(value as MediaVisibility)) {
+      throw new BadRequestException('Invalid media visibility');
+    }
+    return this.getVisibility(purpose, value as MediaVisibility | undefined);
+  }
+
+  private normalizeEntityValue(value: string | undefined, maxLength: number): string | undefined {
+    const normalized = value?.trim();
+    if (normalized && normalized.length > maxLength) {
+      throw new BadRequestException('Invalid media entity reference');
+    }
+    return normalized || undefined;
+  }
+
+  private encodeMetadataValue(value?: string): string {
+    return value ? `v_${Buffer.from(value, 'utf8').toString('base64url')}` : 'none';
+  }
+
+  private requireRequesterId(userId?: string): string {
+    if (!userId || !Types.ObjectId.isValid(userId)) {
+      throw new UnauthorizedException('Authenticated media owner is required');
+    }
+    return new Types.ObjectId(userId).toString();
+  }
+
+  private getDirectUploadDetails(dto: MediaPresignDto | MediaCompleteDto): DirectUploadDetails {
+    const fileName = String(dto.fileName || '').trim();
+    if (
+      !fileName ||
+      fileName.length > 255 ||
+      fileName.includes('/') ||
+      fileName.includes('\\') ||
+      fileName.includes('\0')
+    ) {
+      throw new BadRequestException('Invalid media file name');
+    }
+
+    const category = getAllowedUploadCategory(fileName);
+    if (!category) throw new BadRequestException('Unsupported media file type');
+    const mimeType = String(dto.mimeType || '').trim().toLowerCase();
+    if (!isAllowedUploadMime(category, mimeType)) {
+      throw new BadRequestException('Invalid MIME type for media file');
+    }
+
+    const mediaType = category as MediaType;
+    const size = dto.size;
+    if (!Number.isSafeInteger(size) || size < 1 || size > TYPE_MAX_BYTES[mediaType]) {
+      throw new BadRequestException('Invalid media file size');
+    }
+
+    const checksum = String(dto.checksum || '').toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(checksum)) {
+      throw new BadRequestException('A SHA-256 checksum is required');
+    }
+
+    const purpose = this.getPurpose(dto.purpose);
+    return {
+      fileName,
+      mimeType,
+      size,
+      checksum,
+      checksumSha256: Buffer.from(checksum, 'hex').toString('base64'),
+      purpose,
+      visibility: this.getRequestedVisibility(purpose, dto.visibility),
+      entityType: this.normalizeEntityValue(dto.entityType, 80),
+      entityId: this.normalizeEntityValue(dto.entityId, 120),
+      mediaType,
+      extension: extname(fileName).toLowerCase(),
+    };
+  }
+
+  private getDirectUploadMetadata(ownerId: string, details: DirectUploadDetails): Record<string, string> {
+    return {
+      'media-owner': ownerId,
+      'media-purpose': details.purpose,
+      'media-entity-type': this.encodeMetadataValue(details.entityType),
+      'media-entity-id': this.encodeMetadataValue(details.entityId),
+      'media-visibility': details.visibility,
+      'media-size': String(details.size),
+      'media-mime-type': details.mimeType,
+      'media-checksum': details.checksum,
+    };
+  }
+
+  private validateDirectStorageKey(storageKey: string, purpose: MediaPurpose, extension: string): string {
+    const providedKey = String(storageKey || '');
+    const key = providedKey.replace(/^\/+/, '');
+    const keyPattern = new RegExp(
+      `^${purpose}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}${extension.replace('.', '\\.')}$`,
+      'i',
+    );
+    if (providedKey !== key || !keyPattern.test(key)) {
+      throw new BadRequestException('Invalid direct upload storage key');
+    }
+    return key;
+  }
+
+  private isDirectObjectValid(
+    object: StorageObjectMetadata | null,
+    expectedMetadata: Record<string, string>,
+    details: DirectUploadDetails,
+  ): boolean {
+    if (!object || object.contentLength !== details.size || object.contentType !== details.mimeType) return false;
+    if (object.checksumSha256 !== details.checksumSha256) return false;
+    const metadata = Object.fromEntries(
+      Object.entries(object.metadata || {}).map(([key, value]) => [key.toLowerCase(), value]),
+    );
+    return Object.entries(expectedMetadata).every(([key, value]) => metadata[key] === value);
   }
 
   private buildPublicFileUrl(storageKey: string): string {
@@ -100,7 +234,7 @@ export class MediaService {
     };
   }
 
-  async createPresign(dto: MediaPresignDto) {
+  async createPresign(dto: MediaPresignDto, userId?: string) {
     if (!this.presignedEnabled) {
       return {
         success: true,
@@ -114,48 +248,80 @@ export class MediaService {
       };
     }
 
-    const purpose = dto.purpose || MediaPurpose.GENERIC;
-    const storageKey = `${purpose}/${Date.now()}-${dto.fileName}`;
+    if (this.getStorageDriver() !== 's3') {
+      const result = await this.getStorageAdapter().presignUpload({
+        fileName: dto.fileName,
+        mimeType: dto.mimeType,
+        size: dto.size,
+      });
+      return {
+        success: true,
+        data: result,
+      };
+    }
+
+    const ownerId = this.requireRequesterId(userId);
+    const details = this.getDirectUploadDetails(dto);
+    const storageKey = `${details.purpose}/${randomUUID()}${details.extension}`;
     const result = await this.getStorageAdapter().presignUpload({
-      fileName: dto.fileName,
-      mimeType: dto.mimeType,
-      size: dto.size,
+      fileName: details.fileName,
+      mimeType: details.mimeType,
+      size: details.size,
       storageKey,
+      checksumSha256: details.checksumSha256,
+      metadata: this.getDirectUploadMetadata(ownerId, details),
     });
 
     return {
       success: true,
       data: {
         ...result,
-        purpose,
+        purpose: details.purpose,
+        visibility: details.visibility,
       },
     };
   }
 
   async completeUpload(dto: MediaCompleteDto, userId?: string) {
-    const purpose = (dto.purpose as MediaPurpose | undefined) || MediaPurpose.GENERIC;
-    const visibility = this.getVisibility(purpose, dto.visibility as MediaVisibility | undefined);
-    const mediaType = this.detectTypeFromKey(dto.storageKey);
-    const baseUrl = this.buildPublicFileUrl(dto.storageKey);
+    if (!this.presignedEnabled || this.getStorageDriver() !== 's3') {
+      throw new BadRequestException('Direct uploads are not enabled');
+    }
+
+    const ownerId = this.requireRequesterId(userId);
+    const details = this.getDirectUploadDetails(dto);
+    const storageKey = this.validateDirectStorageKey(dto.storageKey, details.purpose, details.extension);
+    const expectedMetadata = this.getDirectUploadMetadata(ownerId, details);
+    const existing = await this.mediaModel.findOne({
+      storageKey,
+      status: { $ne: MediaAssetStatus.DELETED },
+    });
+    if (existing) throw new BadRequestException('Direct upload has already been completed');
+
+    const object = await this.getStorageAdapter().getObjectMetadata(storageKey);
+    if (!this.isDirectObjectValid(object, expectedMetadata, details)) {
+      throw new BadRequestException('Direct upload verification failed');
+    }
+
+    const baseUrl = this.buildPublicFileUrl(storageKey);
     const asset = await this.mediaModel.create({
-      mediaType,
-      purpose,
-      visibility,
+      mediaType: details.mediaType,
+      purpose: details.purpose,
+      visibility: details.visibility,
       status: MediaAssetStatus.UPLOADED,
-      filename: dto.fileName,
-      originalName: dto.fileName,
-      storageKey: dto.storageKey.replace(/^\/+/, ''),
+      filename: details.fileName,
+      originalName: details.fileName,
+      storageKey,
       url: baseUrl,
-      mimeType: dto.mimeType,
-      size: dto.size,
-      checksum: dto.checksum,
-      uploadedBy: this.toObjectId(userId),
-      entityType: dto.entityType,
-      entityId: dto.entityId,
+      mimeType: details.mimeType,
+      size: details.size,
+      checksum: details.checksum,
+      uploadedBy: this.toObjectId(ownerId),
+      entityType: details.entityType,
+      entityId: details.entityId,
     });
 
-    if (visibility === MediaVisibility.PRIVATE && this.privateEnforcement) {
-      asset.url = this.buildPrivateStreamUrl(String(asset._id));
+    if (details.visibility === MediaVisibility.PRIVATE) {
+      asset.url = `${this.publicBaseUrl}/api/media/${asset._id}/access`;
       await asset.save();
     }
 
@@ -163,14 +329,6 @@ export class MediaService {
       success: true,
       data: this.buildCanonicalData(asset),
     };
-  }
-
-  private detectTypeFromKey(storageKey: string): MediaType {
-    const key = storageKey.toLowerCase();
-    if (key.includes('/video/') || /\.(mp4|avi|mov|wmv|flv|webm|mkv|m4v)$/.test(key)) return MediaType.VIDEO;
-    if (key.includes('/audio/') || /\.(mp3|wav|ogg|aac|flac)$/.test(key)) return MediaType.AUDIO;
-    if (key.includes('/image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/.test(key)) return MediaType.IMAGE;
-    return MediaType.DOCUMENT;
   }
 
   private async assertAssetAccess(asset: MediaAssetDocument, requester?: { userId?: string; isAdmin?: boolean }): Promise<void> {
@@ -181,6 +339,27 @@ export class MediaService {
     if (asset.entityType === 'challenge') return void await this.contentAccessService.assertChallengeAccess(requesterId, String(asset.entityId));
     if (asset.entityType === 'resource') return void await this.contentAccessService.assertResourceAccess(requesterId, String(asset.entityId));
     if (asset.visibility === MediaVisibility.PRIVATE) throw new ForbiddenException('You do not have access to this media');
+  }
+
+  async getStorageAccess(storageKey: string): Promise<MediaVisibility | 'blocked' | undefined> {
+    const key = storageKey.replace(/^\/+/, '');
+    const privateAsset = await this.mediaModel.exists({
+      storageKey: key,
+      visibility: MediaVisibility.PRIVATE,
+    });
+    if (privateAsset) return MediaVisibility.PRIVATE;
+
+    const publicAsset = await this.mediaModel.exists({
+      storageKey: key,
+      visibility: MediaVisibility.PUBLIC,
+      status: {
+        $in: [MediaAssetStatus.UPLOADED, MediaAssetStatus.ATTACHED, MediaAssetStatus.ORPHANED],
+      },
+    });
+    if (publicAsset) return MediaVisibility.PUBLIC;
+
+    const registeredAsset = await this.mediaModel.exists({ storageKey: key });
+    return registeredAsset ? 'blocked' : undefined;
   }
 
   async getAsset(assetId: string, requester?: { userId?: string; isAdmin?: boolean }) {
@@ -230,7 +409,7 @@ export class MediaService {
       throw new NotFoundException('Media asset not found');
     }
 
-    if (asset.visibility === MediaVisibility.PRIVATE && this.privateEnforcement) {
+    if (asset.visibility === MediaVisibility.PRIVATE) {
       await this.assertAssetAccess(asset, requester);
       return {
         success: true,

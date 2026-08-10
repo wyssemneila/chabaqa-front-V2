@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsEnum, IsHash, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { MediaPurpose, MediaVisibility } from '@/domains/content/media/media.types';
 
 export class MediaUploadBodyDto {
@@ -42,6 +42,10 @@ export class MediaPresignDto {
   @Min(1)
   size: number;
 
+  @ApiProperty({ description: 'SHA-256 checksum of the upload, encoded as lowercase hexadecimal' })
+  @IsHash('sha256')
+  checksum: string;
+
   @ApiPropertyOptional({ enum: MediaPurpose, default: MediaPurpose.GENERIC })
   @IsOptional()
   @IsEnum(MediaPurpose)
@@ -58,6 +62,11 @@ export class MediaPresignDto {
   @IsString()
   @MaxLength(120)
   entityId?: string;
+
+  @ApiPropertyOptional({ enum: MediaVisibility })
+  @IsOptional()
+  @IsEnum(MediaVisibility)
+  visibility?: string;
 }
 
 export class MediaCompleteDto {
@@ -86,19 +95,20 @@ export class MediaCompleteDto {
   @IsEnum(MediaPurpose)
   purpose?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  checksum?: string;
+  @ApiProperty({ description: 'SHA-256 checksum of the upload, encoded as lowercase hexadecimal' })
+  @IsHash('sha256')
+  checksum: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(80)
   entityType?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   entityId?: string;
 
   @ApiPropertyOptional({ enum: MediaVisibility })
@@ -106,4 +116,3 @@ export class MediaCompleteDto {
   @IsEnum(MediaVisibility)
   visibility?: string;
 }
-

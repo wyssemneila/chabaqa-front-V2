@@ -397,7 +397,7 @@ export class UploadService {
       entityId: context?.entityId,
     });
 
-    if (visibility === MediaVisibility.PRIVATE && process.env.MEDIA_PRIVATE_ENFORCEMENT === 'true') {
+    if (visibility === MediaVisibility.PRIVATE) {
       created.url = `${this.baseUrl}/api/media/${created._id}/access`;
       await created.save();
     }

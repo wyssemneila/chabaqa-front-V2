@@ -3,9 +3,6 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { extname, basename } from 'path';
-import { resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
 import { attachMongoSlowQueryLogger } from '@/shared/database/mongo-slow-query';
 
 import { AppController } from '@/app/app.controller';
@@ -84,45 +81,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
 
-    // 2) Configuration pour servir les fichiers statiques
-    // NOTE: Video files are served via X-Accel-Redirect through VideoModule.
-    // ServeStaticModule only serves images, documents, and audio.
-    ServeStaticModule.forRoot({
-      rootPath: resolveUploadsRoot(),
-      serveRoot: '/uploads',
-      serveStaticOptions: {
-        index: false,
-        setHeaders: (res, filePath) => {
-          const extension = extname(filePath).toLowerCase();
-          const filename = basename(filePath).replace(/["\r\n]/g, '_');
-          const inlineSafeExtensions = new Set([
-            '.jpg',
-            '.jpeg',
-            '.png',
-            '.gif',
-            '.webp',
-            '.mp3',
-            '.wav',
-            '.ogg',
-            '.aac',
-            '.flac',
-            '.mp4',
-            '.mov',
-            '.webm',
-          ]);
-
-          res.setHeader('X-Content-Type-Options', 'nosniff');
-          res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-          res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
-
-          if (!inlineSafeExtensions.has(extension)) {
-            res.setHeader('Content-Disposition', `attachment; filename="${filename || 'download'}"`);
-          }
-        },
-      },
-    }),
-
-    // 3) connexion MongoDB + test immédiat
+    // 2) connexion MongoDB + test immédiat
     MongooseModule.forRootAsync({
       useFactory: () => ({
         uri: process.env.MONGO_URI,

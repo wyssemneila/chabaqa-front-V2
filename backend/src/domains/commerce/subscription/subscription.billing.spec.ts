@@ -49,11 +49,16 @@ describe('SubscriptionService billing records', () => {
       },
       memberSubscriptionModel: {
         findOneAndUpdate: jest.fn(),
+        findOne: jest.fn(),
         find: jest.fn(),
         countDocuments: jest.fn(),
       },
       communityModel: {
         find: jest.fn().mockReturnValue(chain([])),
+        updateOne: jest.fn(),
+      },
+      userModel: {
+        updateOne: jest.fn(),
       },
       courseModel: {
         countDocuments: jest.fn().mockResolvedValue(0),
@@ -85,6 +90,7 @@ describe('SubscriptionService billing records', () => {
       models.addonModel as any,
       models.memberSubscriptionModel as any,
       models.communityModel as any,
+      models.userModel as any,
       models.courseModel as any,
       models.communityStaffModel as any,
       models.storageUsageModel as any,
@@ -349,6 +355,101 @@ describe('SubscriptionService billing records', () => {
     expect(stripePaymentService.cancelSubscriptionAtPeriodEnd).not.toHaveBeenCalled();
     expect(subscription.cancelAtPeriodEnd).toBe(true);
     expect(subscription.save).toHaveBeenCalled();
+  });
+
+  it('keeps an active recurring subscription through its current period when renewal payment fails', async () => {
+    const currentPeriodEnd = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const attemptedRenewalEnd = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000);
+    const subscription = {
+      _id: objectId(),
+      providerSubscriptionId: 'sub_renewal_failure',
+      status: SubscriptionStatus.ACTIVE,
+      currentPeriodStart: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000),
+      currentPeriodEnd,
+      save: jest.fn(),
+    };
+    const { service, models } = buildService();
+    models.subModel.findOne.mockResolvedValue(subscription);
+    models.memberSubscriptionModel.findOne.mockResolvedValue(null);
+
+    await service.handleWebhook({
+      id: 'evt_failed_renewal',
+      type: 'invoice.payment_failed',
+      data: {
+        object: {
+          subscription: 'sub_renewal_failure',
+          period_end: Math.floor(attemptedRenewalEnd.getTime() / 1000),
+          amount_due: 15900,
+        },
+      },
+    } as any);
+
+    expect(subscription.status).toBe(SubscriptionStatus.ACTIVE);
+    expect(subscription.currentPeriodEnd).toEqual(currentPeriodEnd);
+    expect(subscription.save).not.toHaveBeenCalled();
+  });
+
+  it('reconciles a successful member renewal and restores its membership safely', async () => {
+    const subscriberId = objectId();
+    const communityId = objectId();
+    const currentPeriodEnd = new Date(Date.now() - 60 * 60 * 1000);
+    const renewedPeriodEnd = new Date(Date.now() + 29 * 24 * 60 * 60 * 1000);
+    const memberSubscription = {
+      _id: objectId(),
+      providerSubscriptionId: 'sub_member_renewal',
+      subscriberId,
+      communityId,
+      status: 'past_due',
+      currentPeriodStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      currentPeriodEnd,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const { service, models } = buildService();
+    models.subModel.findOne.mockResolvedValue(null);
+    models.memberSubscriptionModel.findOne.mockResolvedValue(memberSubscription);
+    models.communityModel.updateOne.mockReturnValue(chain({ matchedCount: 1 }));
+    models.userModel.updateOne.mockReturnValue(chain({ modifiedCount: 1 }));
+
+    await service.reconcileRecurringSubscription('sub_member_renewal', {
+      currentPeriodStart: new Date(Date.now()),
+      currentPeriodEnd: renewedPeriodEnd,
+      paymentOutcome: 'succeeded',
+    });
+
+    expect(memberSubscription.status).toBe('active');
+    expect(memberSubscription.currentPeriodEnd).toEqual(renewedPeriodEnd);
+    expect(memberSubscription.save).toHaveBeenCalled();
+    expect(models.communityModel.updateOne).toHaveBeenCalled();
+    expect(models.userModel.updateOne).toHaveBeenCalledWith(
+      { _id: subscriberId },
+      { $addToSet: { joinedCommunities: communityId } },
+    );
+  });
+
+  it('ignores a stale recurring event that would shorten a paid period', async () => {
+    const currentPeriodEnd = new Date(Date.now() + 29 * 24 * 60 * 60 * 1000);
+    const subscription = {
+      _id: objectId(),
+      providerSubscriptionId: 'sub_stale_event',
+      status: SubscriptionStatus.ACTIVE,
+      cancelAtPeriodEnd: false,
+      currentPeriodStart: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      currentPeriodEnd,
+      save: jest.fn(),
+    };
+    const { service, models } = buildService();
+    models.subModel.findOne.mockResolvedValue(subscription);
+    models.memberSubscriptionModel.findOne.mockResolvedValue(null);
+
+    await service.reconcileRecurringSubscription('sub_stale_event', {
+      status: SubscriptionStatus.CANCELED,
+      currentPeriodEnd: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
+    expect(subscription.status).toBe(SubscriptionStatus.ACTIVE);
+    expect(subscription.cancelAtPeriodEnd).toBe(false);
+    expect(subscription.currentPeriodEnd).toEqual(currentPeriodEnd);
+    expect(subscription.save).not.toHaveBeenCalled();
   });
 
   it('rejects provider-owned fields in generic admin subscription updates', async () => {

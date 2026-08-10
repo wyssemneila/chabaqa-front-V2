@@ -63,9 +63,11 @@ export const mediaApi = {
     fileName: string;
     mimeType: string;
     size: number;
+    checksum: string;
     purpose?: MediaPurpose;
     entityType?: string;
     entityId?: string;
+    visibility?: MediaVisibility;
   }) => {
     const res = await apiClient.post<MediaApiResponse<{
       uploadMode: 'direct' | 'proxy';
@@ -86,7 +88,7 @@ export const mediaApi = {
     fileName: string;
     mimeType: string;
     size: number;
-    checksum?: string;
+    checksum: string;
     purpose?: MediaPurpose;
     entityType?: string;
     entityId?: string;
@@ -105,25 +107,7 @@ export const mediaApi = {
       visibility?: MediaVisibility;
     },
   ): Promise<MediaAsset> => {
-    const shouldTryPresign = file.size > 25 * 1024 * 1024 || file.type.startsWith('video/');
-    if (!shouldTryPresign) {
-      return mediaApi.upload(file, opts);
-    }
-
-    const presign = await mediaApi.presign({
-      fileName: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      size: file.size,
-      purpose: opts?.purpose,
-      entityType: opts?.entityType,
-      entityId: opts?.entityId,
-    });
-
-    if (presign.uploadMode !== 'direct') {
-      return mediaApi.upload(file, opts);
-    }
-
-    // Placeholder direct-upload branch: fallback to proxy in this build until S3 direct flow is wired.
+    // Direct upload is not yet consumed by this client. Do not buffer large files solely to preflight a checksum.
     return mediaApi.upload(file, opts);
   },
 

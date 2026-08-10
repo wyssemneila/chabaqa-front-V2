@@ -23,6 +23,7 @@ import { CacheTTL, CacheDuration } from '@/shared/decorators/cache-ttl.decorator
 import { UpdateIncrementalWatchTimeDto } from '@/shared/dto/update-watch-time.dto';
 import { TranscriptionService } from '@/domains/shared/ai/transcription/transcription.service';
 import { parsePagination, parsePositiveInteger } from '@/shared/utils/pagination.util';
+import { ContentAccessService } from '@/shared/services/content-access.service';
 
 interface AuthenticatedUser {
 	_id: string;
@@ -64,8 +65,9 @@ export class CoursController {
 		private readonly coursEnrollmentService: CoursEnrollmentService,
 		private readonly coursTrackingService: CoursTrackingService,
 		private readonly coursProgressionService: CoursProgressionService,
-			private readonly coursNotesService: CoursNotesService,
+		private readonly coursNotesService: CoursNotesService,
 		private readonly transcriptionService: TranscriptionService,
+		private readonly contentAccessService: ContentAccessService,
 		) { }
 
 		private getRequestUserId(req: any): string {
@@ -749,6 +751,7 @@ export class CoursController {
 	@ApiResponse({ status: 404, description: 'Cours non trouvé' })
 	async trackView(@Param('id') id: string, @Req() req, @Body('metadata') metadata?: any) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		const enriched = enrichTrackingMetadata(req, metadata);
 		return await this.coursTrackingService.trackCoursView(id, user._id, enriched);
 	}
@@ -767,6 +770,7 @@ export class CoursController {
 	@ApiResponse({ status: 404, description: 'Cours non trouvé' })
 	async trackStart(@Param('id') id: string, @Req() req, @Body('metadata') metadata?: any) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		const enriched = enrichTrackingMetadata(req, metadata);
 		return await this.coursTrackingService.trackCoursStart(id, user._id, enriched);
 	}
@@ -785,6 +789,7 @@ export class CoursController {
 	@ApiResponse({ status: 404, description: 'Cours non trouvé' })
 	async trackComplete(@Param('id') id: string, @Req() req, @Body('metadata') metadata?: any) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		const enriched = enrichTrackingMetadata(req, metadata);
 		return await this.coursTrackingService.trackCoursComplete(id, user._id, enriched);
 	}
@@ -805,6 +810,7 @@ export class CoursController {
 	@ApiResponse({ status: 404, description: 'Cours non trouvé' })
 	async updateWatchTime(@Param('id') id: string, @Body() body: UpdateIncrementalWatchTimeDto, @Req() req) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		return await this.coursTrackingService.updateCoursWatchTime(id, user._id, body.additionalTime);
 	}
 
@@ -822,6 +828,7 @@ export class CoursController {
 	@ApiBody({ schema: { type: 'object', properties: { metadata: { type: 'object' } } } })
 	async trackLike(@Param('id') id: string, @Req() req, @Body('metadata') metadata?: any) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		const enriched = enrichTrackingMetadata(req, metadata);
 		return await this.coursTrackingService.trackCoursLike(id, user._id, enriched);
 	}
@@ -840,6 +847,7 @@ export class CoursController {
 	@ApiBody({ schema: { type: 'object', properties: { metadata: { type: 'object' } } } })
 	async trackShare(@Param('id') id: string, @Req() req, @Body('metadata') metadata?: any) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		const enriched = enrichTrackingMetadata(req, metadata);
 		return await this.coursTrackingService.trackCoursShare(id, user._id, enriched);
 	}
@@ -858,6 +866,7 @@ export class CoursController {
 	@ApiBody({ schema: { type: 'object', properties: { metadata: { type: 'object' } } } })
 	async trackDownload(@Param('id') id: string, @Req() req, @Body('metadata') metadata?: any) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		const enriched = enrichTrackingMetadata(req, metadata);
 		return await this.coursTrackingService.trackCoursDownload(id, user._id, enriched);
 	}
@@ -884,6 +893,7 @@ export class CoursController {
 	@ApiResponse({ status: 404, description: 'Cours non trouvé' })
 	async addBookmark(@Param('id') id: string, @Body('bookmarkId') bookmarkId: string, @Req() req) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		return await this.coursTrackingService.addCoursBookmark(id, user._id, bookmarkId);
 	}
 
@@ -901,6 +911,7 @@ export class CoursController {
 	@ApiResponse({ status: 404, description: 'Cours ou bookmark non trouvé' })
 	async removeBookmark(@Param('id') id: string, @Param('bookmarkId') bookmarkId: string, @Req() req) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		return await this.coursTrackingService.removeCoursBookmark(id, user._id, bookmarkId);
 	}
 
@@ -928,6 +939,7 @@ export class CoursController {
 	@ApiResponse({ status: 400, description: 'Note invalide (doit être entre 1 et 5)' })
 	async addRating(@Param('id') id: string, @Body('rating') rating: number, @Req() req, @Body('review') review?: string) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		return await this.coursTrackingService.addCoursRating(id, user._id, rating, review);
 	}
 
@@ -967,6 +979,7 @@ export class CoursController {
 	@ApiResponse({ status: 404, description: 'Cours non trouvé' })
 	async getProgress(@Param('id') id: string, @Req() req) {
 		const user = req.user as AuthenticatedUser;
+		await this.contentAccessService.assertCourseAccess(user._id, id);
 		return await this.coursTrackingService.getCoursProgress(id, user._id);
 	}
 

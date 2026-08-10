@@ -9,7 +9,12 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createReadStream } from 'fs';
 import { Readable } from 'stream';
-import { PresignRequest, PresignResult, StorageAdapter } from '@/domains/content/media/storage/storage-adapter.interface';
+import {
+  PresignRequest,
+  PresignResult,
+  StorageAdapter,
+  StorageObjectMetadata,
+} from '@/domains/content/media/storage/storage-adapter.interface';
 
 @Injectable()
 export class S3StorageAdapter implements StorageAdapter {
@@ -71,20 +76,37 @@ export class S3StorageAdapter implements StorageAdapter {
 
   async presignUpload(req: PresignRequest): Promise<PresignResult> {
     const key = this.normalizeKey(req.storageKey || req.fileName);
+    const signedHeaders = new Set([
+      'content-type',
+      'content-length',
+      'x-amz-checksum-sha256',
+      ...Object.keys(req.metadata || {}).map((name) => `x-amz-meta-${name}`),
+    ]);
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
       ContentType: req.mimeType || 'application/octet-stream',
       ContentLength: req.size,
+      ChecksumSHA256: req.checksumSha256,
+      Metadata: req.metadata,
     });
-    const uploadUrl = await getSignedUrl(this.getClient(), command, { expiresIn: 900 });
+    const uploadUrl = await getSignedUrl(this.getClient(), command, {
+      expiresIn: 900,
+      signableHeaders: signedHeaders,
+      unhoistableHeaders: signedHeaders,
+    });
+    const headers: Record<string, string> = {
+      'Content-Type': req.mimeType || 'application/octet-stream',
+    };
+    if (req.checksumSha256) headers['x-amz-checksum-sha256'] = req.checksumSha256;
+    for (const [name, value] of Object.entries(req.metadata || {})) {
+      headers[`x-amz-meta-${name}`] = value;
+    }
     return {
       uploadMode: 'direct',
       uploadUrl,
       method: 'PUT',
-      headers: {
-        'Content-Type': req.mimeType || 'application/octet-stream',
-      },
+      headers,
       expiresInSeconds: 900,
       storageKey: key,
     };
@@ -108,6 +130,25 @@ export class S3StorageAdapter implements StorageAdapter {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async getObjectMetadata(storageKey: string): Promise<StorageObjectMetadata | null> {
+    try {
+      const key = this.normalizeKey(storageKey);
+      const result = await this.getClient().send(new HeadObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        ChecksumMode: 'ENABLED',
+      }));
+      return {
+        contentType: result.ContentType,
+        contentLength: result.ContentLength,
+        checksumSha256: result.ChecksumSHA256,
+        metadata: result.Metadata,
+      };
+    } catch {
+      return null;
     }
   }
 }

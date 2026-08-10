@@ -12,7 +12,7 @@ import { MonitoringService } from '@/shared/services/monitoring.service';
 import os from 'os';
 import { randomUUID, webcrypto } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { extname, isAbsolute, relative, resolve } from 'node:path';
+import { basename, extname, isAbsolute, relative, resolve } from 'node:path';
 import {
   getAllowedCorsOrigins,
   isCorsOriginAllowed,
@@ -25,6 +25,7 @@ import { csrfProtectionMiddleware } from '@/shared/middleware/csrf-protection.mi
 import { SecurityMiddleware } from '@/shared/middleware/security.middleware';
 import { resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
 import { S3StorageAdapter } from '@/domains/content/media/storage/s3-storage.adapter';
+import { MediaService } from '@/domains/content/media/media.service';
 import { writeStructuredLog } from '@/shared/utils/log-sanitizer.util';
 import { RedisIoAdapter } from '@/infrastructure/realtime/redis-io.adapter';
 
@@ -70,6 +71,7 @@ async function bootstrap() {
   const monitoringService = app.get(MonitoringService);
   const securityMiddleware = app.get(SecurityMiddleware);
   const s3StorageAdapter = app.get(S3StorageAdapter, { strict: false });
+  const mediaService = app.get(MediaService);
   const storageReadPreference = (process.env.MEDIA_STORAGE_READ_PREFERENCE || process.env.MEDIA_STORAGE_DRIVER || 'disk').toLowerCase();
   expressApp.disable('x-powered-by');
 
@@ -105,7 +107,6 @@ async function bootstrap() {
   app.use('/api/payment/stripe-link/webhook', express.raw({ type: 'application/json' }));
 
   app.use(express.static('public'));
-  // app.use('/uploads', cors(), express.static('uploads')); // Handled by ServeStaticModule in AppModule
   const streamUploadFromObjectStorage = async (storageKey: string, res: any): Promise<boolean> => {
     try {
       const object = await s3StorageAdapter.getObjectStream(storageKey);
@@ -135,6 +136,20 @@ async function bootstrap() {
     }
   };
 
+  const setMediaResponseHeaders = (storageKey: string, res: any) => {
+    const extension = extname(storageKey).toLowerCase();
+    const filename = basename(storageKey).replace(/["\r\n]/g, '_');
+    const inlineSafeExtensions = new Set([
+      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp3', '.wav', '.ogg', '.aac', '.flac', '.mp4', '.mov', '.webm',
+    ]);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    if (!inlineSafeExtensions.has(extension)) {
+      res.setHeader('Content-Disposition', `attachment; filename="${filename || 'download'}"`);
+    }
+  };
+
   app.use('/uploads', async (req: any, res: any, next: any) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       next();
@@ -160,16 +175,36 @@ async function bootstrap() {
       return;
     }
 
-    if (storageReadPreference === 's3' && await streamUploadFromObjectStorage(storageKey, res)) {
+    let access: 'public' | 'private' | 'blocked' | undefined;
+    try {
+      access = await mediaService.getStorageAccess(storageKey);
+    } catch {
+      res.status(503).end();
+      return;
+    }
+    if (access === 'private' || access === 'blocked') {
+      res.status(404).end();
+      return;
+    }
+
+    setMediaResponseHeaders(storageKey, res);
+
+    if (
+      access === 'public' &&
+      storageReadPreference === 's3' &&
+      await streamUploadFromObjectStorage(storageKey, res)
+    ) {
       return;
     }
 
     if (existsSync(filePath)) {
-      next();
+      res.sendFile(filePath, (error: Error | null) => {
+        if (error && !res.headersSent) next(error);
+      });
       return;
     }
 
-    if (await streamUploadFromObjectStorage(storageKey, res)) {
+    if (access === 'public' && await streamUploadFromObjectStorage(storageKey, res)) {
       return;
     }
 

@@ -29,7 +29,19 @@ export class ContentAccessService {
   }
 
   async assertCourseAccess(userId: string, courseId: string): Promise<any> {
-    const course: any = await this.courseModel.findById(this.id(courseId)).select('communityId creatorId createur').lean();
+    let course: any = null;
+    if (Types.ObjectId.isValid(courseId)) {
+      course = await this.courseModel
+        .findById(this.id(courseId))
+        .select('communityId creatorId createur')
+        .lean();
+    }
+    if (!course) {
+      course = await this.courseModel
+        .findOne({ id: courseId })
+        .select('communityId creatorId createur')
+        .lean();
+    }
     if (!course) throw new NotFoundException('Course not found');
     const ownerId = String(course.creatorId || course.createur || '');
     if (ownerId === String(userId)) return course;

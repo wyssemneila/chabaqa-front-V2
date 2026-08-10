@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { PresignRequest, PresignResult, StorageAdapter } from '@/domains/content/media/storage/storage-adapter.interface';
+import { PresignRequest, PresignResult, StorageAdapter, StorageObjectMetadata } from '@/domains/content/media/storage/storage-adapter.interface';
 import { resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
 
 @Injectable()
@@ -27,5 +27,14 @@ export class DiskStorageAdapter implements StorageAdapter {
 
   async exists(storageKey: string): Promise<boolean> {
     return existsSync(join(this.uploadsRoot, storageKey));
+  }
+
+  async getObjectMetadata(storageKey: string): Promise<StorageObjectMetadata | null> {
+    try {
+      const stats = await fs.stat(join(this.uploadsRoot, storageKey));
+      return stats.isFile() ? { contentLength: stats.size } : null;
+    } catch {
+      return null;
+    }
   }
 }

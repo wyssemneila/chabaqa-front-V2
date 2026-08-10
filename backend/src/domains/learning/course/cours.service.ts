@@ -189,25 +189,18 @@ export class CoursService {
   private async hasFullCourseAccess(course: CoursDocument, userId?: string): Promise<boolean> {
     if (!userId || !Types.ObjectId.isValid(userId)) return false;
     if (this.isCourseCreator(course, userId)) return true;
-    if (Number((course as any)?.prix || 0) <= 0 && !(course as any)?.isPaidCourse) return true;
 
-    const courseObjectId = String((course as any)?._id || '');
-    const coursePublicId = String((course as any)?.id || '');
-    const [enrollment, paidOrder] = await Promise.all([
-      this.courseEnrollmentModel.findOne({
-        userId: new Types.ObjectId(userId),
-        courseId: (course as any)._id,
-        isActive: true,
-      }).select('_id').lean(),
-      this.orderModel.exists({
-        buyerId: new Types.ObjectId(userId),
-        contentType: { $in: [TrackableContentType.COURSE, 'course'] },
-        contentId: { $in: [courseObjectId, coursePublicId].filter(Boolean) },
-        status: 'paid',
-      }),
-    ]);
+    const enrollment = await this.courseEnrollmentModel.findOne({
+      userId: new Types.ObjectId(userId),
+      courseId: (course as any)._id,
+      isActive: true,
+    }).select('_id').lean();
 
-    return Boolean(enrollment || paidOrder);
+    return Boolean(enrollment);
+  }
+
+  private isExplicitPreviewChapter(chapter: any): boolean {
+    return chapter?.isPreview === true && chapter?.isPaidChapter !== true;
   }
 
   private sanitizeLockedChapter<T extends Record<string, any>>(chapter: T, canViewChapter: boolean): T {
@@ -1561,7 +1554,7 @@ export class CoursService {
   } {
     const rawUrl = chapitre.videoUrl || '';
     const storageKey = this.extractVideoStorageKey(rawUrl);
-    const isPremium = !chapitre.isPreview;
+    const isPremium = !this.isExplicitPreviewChapter(chapitre);
 
     // Premium chapter with local video → protect it
     if (isPremium && storageKey) {
@@ -1594,14 +1587,11 @@ export class CoursService {
 
       // Safely extract sections and chapters
       const sections = Array.isArray(cours.sections) ? cours.sections : [];
-      let flatChapterIndex = 0;
       const tousLesChapitres = sections.flatMap(section => {
         const chapitres = Array.isArray(section.chapitres) ? section.chapitres : [];
         return chapitres.map(chapitre => {
           const videoFields = this.resolveChapterVideoFields(chapitre);
-          const canViewChapter = Boolean(options.fullAccess || chapitre.isPreview || flatChapterIndex === 0);
-          flatChapterIndex += 1;
-
+          const canViewChapter = Boolean(options.fullAccess || this.isExplicitPreviewChapter(chapitre));
           return this.sanitizeLockedChapter({
             id: chapitre.id,
             titre: chapitre.titre,
@@ -1609,7 +1599,7 @@ export class CoursService {
             videoUrl: videoFields.videoUrl,
             videoStorageKey: videoFields.videoStorageKey,
             hasProtectedVideo: videoFields.hasProtectedVideo,
-            isPaid: !chapitre.isPreview, // Inverse de isPreview
+            isPaid: !this.isExplicitPreviewChapter(chapitre),
             ordre: chapitre.ordre,
             duree: chapitre.duree?.toString(),
             courseId: section.courseId,
@@ -1658,7 +1648,6 @@ export class CoursService {
         ratingCount: (cours as any).ratingCount !== undefined ? Number((cours as any).ratingCount) : Number(cours.ratingCount || 0),
         // Nouveaux champs du schéma - mapping correct des sections
         sections: (() => {
-          let sectionChapterIndex = 0;
           return sections.map(section => {
           const chapitres = Array.isArray(section.chapitres) ? section.chapitres : [];
           return {
@@ -1670,9 +1659,7 @@ export class CoursService {
             createdAt: section.createdAt,
             chapitres: chapitres.map(chapitre => {
               const videoFields = this.resolveChapterVideoFields(chapitre);
-              const canViewChapter = Boolean(options.fullAccess || chapitre.isPreview || sectionChapterIndex === 0);
-              sectionChapterIndex += 1;
-
+              const canViewChapter = Boolean(options.fullAccess || this.isExplicitPreviewChapter(chapitre));
               return this.sanitizeLockedChapter({
                 id: chapitre.id,
                 titre: chapitre.titre,
@@ -1680,15 +1667,15 @@ export class CoursService {
                 videoUrl: videoFields.videoUrl,
                 videoStorageKey: videoFields.videoStorageKey,
                 hasProtectedVideo: videoFields.hasProtectedVideo,
-                isPaid: !chapitre.isPreview,
-                isPreview: Boolean(chapitre.isPreview),
+                isPaid: !this.isExplicitPreviewChapter(chapitre),
+                isPreview: this.isExplicitPreviewChapter(chapitre),
                 ordre: chapitre.ordre,
                 duree: chapitre.duree?.toString(),
                 courseId: section.courseId,
                 sectionId: chapitre.sectionId,
                 prix: chapitre.prix,
                 price: chapitre.prix,
-                isPaidChapter: chapitre.isPaidChapter || !chapitre.isPreview,
+                isPaidChapter: chapitre.isPaidChapter || !this.isExplicitPreviewChapter(chapitre),
                 notes: chapitre.notes,
                 ressources: Array.isArray(chapitre.ressources) ? chapitre.ressources.map(res => ({
                   id: res.id,
