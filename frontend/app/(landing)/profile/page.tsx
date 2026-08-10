@@ -846,7 +846,7 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
 
       try {
         setSessionsLoading(true)
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+        const apiBase = "/api"
         const sessionsUrl = `${apiBase}/sessions/by-user/${encodeURIComponent(user._id || user.id)}?page=${sessionsPage}&limit=12&type=all`
         const response = await fetch(sessionsUrl)
 
@@ -885,7 +885,7 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
 
       try {
         setCommunitiesLoading(true)
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+        const apiBase = "/api"
         const communitiesUrl = `${apiBase}/communities/by-user/${encodeURIComponent(user._id || user.id)}?page=${communitiesPage}&limit=12&type=all`
         const response = await fetch(communitiesUrl)
 
@@ -947,7 +947,7 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
     const fetchViewerCommunities = async () => {
       try {
         setViewerCommunitiesLoading(true)
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+        const apiBase = "/api"
         const viewerId = viewer?._id || viewer?.id
         const communitiesUrl = `${apiBase}/communities/by-user/${encodeURIComponent(viewerId)}?page=1&limit=100&type=all`
         const token = tokenManager.getAccessToken()
@@ -986,7 +986,7 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
       if (!user?._id && !user?.id) return
       try {
         setAchievementsLoading(true)
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+        const apiBase = "/api"
         const token = tokenManager.getAccessToken()
         const headers: HeadersInit = { 'Content-Type': 'application/json' }
         if (token) headers['Authorization'] = `Bearer ${token}`
@@ -1021,7 +1021,7 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
       if (!user?._id && !user?.id) return
       try {
         setActivityLoading(true)
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+        const apiBase = "/api"
         const token = tokenManager.getAccessToken()
         const headers: HeadersInit = { 'Content-Type': 'application/json' }
         if (token) headers['Authorization'] = `Bearer ${token}`
