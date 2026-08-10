@@ -412,7 +412,9 @@ export class CreatorIntegrationsService {
         clientId: process.env.ZOOM_CLIENT_ID,
         clientSecret: process.env.ZOOM_CLIENT_SECRET,
         redirectUri: callback('ZOOM_REDIRECT_URI'),
-        scopes: ['user:read:user', 'meeting:read:meeting', 'meeting:write:meeting'],
+        // Zoom is connection-readiness only in this release. Do not request
+        // meeting write scopes before the product enables meeting creation.
+        scopes: ['user:read:user'],
         tokenAuth: 'basic',
         usePkce: false,
         accountUrl: 'https://api.zoom.us/v2/users/me',
@@ -504,7 +506,7 @@ export class CreatorIntegrationsService {
       kit: ['consented_contact_sync', 'tag_automations'],
       brevo: ['consented_contact_sync', 'list_sync'],
       zoom: ['creator_oauth', 'meeting_readiness'],
-      discord: ['creator_oauth', 'bot_announcements', 'role_mapping_readiness'],
+      discord: ['creator_oauth', 'bot_announcements'],
     };
     return map[provider] || [];
   }
@@ -525,11 +527,11 @@ export class CreatorIntegrationsService {
       },
       [CreatorIntegrationProvider.ZOOM]: {
         type: 'oauth',
-        requires: ['Zoom Marketplace OAuth app', 'approved redirect URI and requested scopes', 'explicit meeting and attendance behavior'],
+        requires: ['Zoom Marketplace OAuth app', 'approved redirect URI', 'creator account verification'],
       },
       [CreatorIntegrationProvider.DISCORD]: {
         type: 'oauth_plus_bot',
-        requires: ['Discord OAuth app', 'server-held bot token and guild installation', 'selected guild/channel/role mapping'],
+        requires: ['Discord OAuth app', 'server-held bot token and guild installation', 'selected guild and announcement channel'],
       },
     };
     return requirements[provider] || {};
@@ -715,6 +717,14 @@ export class CreatorIntegrationsService {
       }).select('+encryptedCredentials');
       const mergedConfig = { ...(this.isRecord(current?.config) ? current!.config : {}), ...(record.config || {}) };
       const expiresAt = typeof token.expires_in === 'number' ? Date.now() + token.expires_in * 1000 : undefined;
+      if (provider === CreatorIntegrationProvider.GOOGLE_SHEETS) {
+        const spreadsheetId = this.identifier((mergedConfig as any).spreadsheetId, 'spreadsheet ID', true)!;
+        await this.providerFetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=spreadsheetId,properties.title`,
+          { headers: { authorization: `Bearer ${token.access_token}` } },
+        );
+      }
+      const needsProviderMappingTest = provider === CreatorIntegrationProvider.DISCORD && (mergedConfig as any).announcePosts === true;
       const integration = await this.integrationModel.findOneAndUpdate(
         {
           creatorId: record.creatorId,
@@ -723,7 +733,7 @@ export class CreatorIntegrationsService {
         },
         {
           $set: {
-            status: 'connected',
+            status: needsProviderMappingTest ? 'needs_attention' : 'connected',
             config: mergedConfig,
             encryptedCredentials: this.encryptCredentials({
               accessToken: token.access_token,
@@ -879,6 +889,15 @@ export class CreatorIntegrationsService {
         if (provider === CreatorIntegrationProvider.DISCORD && (integration.config as any)?.announcePosts) {
           const botToken = String(process.env.DISCORD_BOT_TOKEN || '').trim();
           if (!botToken) throw new Error('discord_bot_not_configured');
+          const guildId = this.identifier((integration.config as any)?.guildId, 'Discord guild ID', true)!;
+          const channelId = this.identifier((integration.config as any)?.channelId, 'Discord channel ID', true)!;
+          await this.providerFetch(`https://discord.com/api/v10/guilds/${encodeURIComponent(guildId)}`, {
+            headers: { authorization: `Bot ${botToken}` },
+          });
+          const channel = await this.providerFetch(`https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}`, {
+            headers: { authorization: `Bot ${botToken}` },
+          });
+          if (String((channel.body as any)?.guild_id || '') !== guildId) throw new Error('discord_channel_guild_mismatch');
         }
       } else {
         throw new BadRequestException('This connector has no native connection test');
