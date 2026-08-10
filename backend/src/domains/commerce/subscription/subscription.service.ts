@@ -1035,7 +1035,9 @@ export class SubscriptionService {
         subscription.currentPeriodEnd = new Date(data.current_period_end * 1000);
         subscription.nextBillingAt = subscription.currentPeriodEnd;
       }
-      subscription.cancelAtPeriodEnd = data.cancel_at_period_end || false;
+      if (typeof data.cancel_at_period_end === 'boolean') {
+        subscription.cancelAtPeriodEnd = data.cancel_at_period_end;
+      }
       await subscription.save();
       this.emitSubscriptionCanceled(subscription, previousStatus);
     }
@@ -1057,6 +1059,11 @@ export class SubscriptionService {
     if (subscription) {
       const previousStatus = subscription.status;
       subscription.status = SubscriptionStatus.CANCELED;
+      if (data.current_period_end) {
+        subscription.currentPeriodEnd = new Date(data.current_period_end * 1000);
+        subscription.nextBillingAt = subscription.currentPeriodEnd;
+      }
+      subscription.cancelAtPeriodEnd = false;
       await subscription.save();
       this.emitSubscriptionCanceled(subscription, previousStatus);
     }

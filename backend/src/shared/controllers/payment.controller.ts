@@ -1016,6 +1016,29 @@ export class PaymentController {
     }
   }
 
+  private async markPendingStripeOrderFailed(providerId: string, source: string, details: Record<string, unknown> = {}): Promise<void> {
+    if (!providerId) return;
+    const order: any = await this.orderModel.findOne({
+      $or: [
+        { paymentId: providerId },
+        { paymentIntentId: providerId },
+        { 'metadata.providerCheckoutSessionId': providerId },
+      ],
+      status: { $in: ['pending', 'failed'] },
+    }).exec();
+    if (!order || order.status === 'failed') return;
+    order.status = 'failed';
+    order.metadata = {
+      ...(order.metadata || {}),
+      failure: { source, failedAt: new Date().toISOString(), ...details },
+    };
+    await order.save();
+    await this.auditPaymentEvent({
+      orderId: String(order._id), eventType: 'payment_failed', provider: 'stripe',
+      paymentMethod: order.paymentMethod, previousStatus: 'pending', nextStatus: 'failed', reason: source,
+    });
+  }
+
   // ==================== STRIPE LINK ENDPOINTS ====================
 
   @Post('stripe-link/init/community')
@@ -2780,6 +2803,21 @@ export class PaymentController {
             }
           }
           break;
+
+        case 'checkout.session.expired': {
+          const checkout = stripeEvent.data.object as any;
+          await this.markPendingStripeOrderFailed(String(checkout.id || ''), 'stripe_checkout_session_expired');
+          break;
+        }
+
+        case 'payment_intent.payment_failed': {
+          const intent = stripeEvent.data.object as any;
+          await this.markPendingStripeOrderFailed(String(intent.id || ''), 'stripe_payment_intent_failed', {
+            code: intent.last_payment_error?.code,
+            message: intent.last_payment_error?.message,
+          });
+          break;
+        }
 
         case 'charge.refunded':
           await this.reconcileStripeChargeRefund(stripeEvent.data.object as any);
