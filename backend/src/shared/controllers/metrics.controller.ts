@@ -1,4 +1,4 @@
-import { Controller, Get, Res } from '@nestjs/common';
+import { Controller, Get, Res, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { MonitoringService } from '@/shared/services/monitoring.service';
 import { SecurityService } from '@/shared/services/security.service';
@@ -6,9 +6,11 @@ import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
 import { CacheService } from '@/infrastructure/cache/cache.service';
 import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 import { Response } from 'express';
+import { InternalMetricsGuard } from '@/shared/guards/internal-metrics.guard';
 
 @ApiTags('Health & Monitoring')
 @Controller('metrics')
+@UseGuards(InternalMetricsGuard)
 export class MetricsController {
   constructor(
     private monitoringService: MonitoringService,

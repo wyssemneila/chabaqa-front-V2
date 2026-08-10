@@ -16,8 +16,8 @@ const FALLBACK_ENDPOINTS: Endpoint[] = [
 ]
 
 function initialBaseUrl() {
-  if (typeof window === 'undefined') return ''
-  return localStorage.getItem('chabaqa-playground-base-url') || `${window.location.origin}/api`
+  if (typeof window === 'undefined') return '/api'
+  return `${window.location.origin}/api`
 }
 
 export default function ApiPlaygroundPage() {
@@ -55,11 +55,8 @@ export default function ApiPlaygroundPage() {
   const resolvedPath = useMemo(() => endpointPath.replace(/:([A-Za-z0-9_]+)/g, (_, name) => encodeURIComponent(pathValues[name] || `:${name}`)), [endpointPath, pathValues])
   const requestUrl = `${baseUrl.replace(/\/+$/, '')}${resolvedPath}`
 
-  const saveSettings = () => {
-    localStorage.setItem('chabaqa-playground-base-url', baseUrl.replace(/\/+$/, ''))
-  }
   const runRequest = async () => {
-    saveSettings(); setRunning(true); setResult(null)
+    setRunning(true); setResult(null)
     const started = performance.now()
     try {
       const response = await fetch(requestUrl, { headers: { 'X-Chabaqa-Api-Key': apiKey, Accept: 'application/json' } })
@@ -74,7 +71,7 @@ export default function ApiPlaygroundPage() {
   const copy = async (value: string) => { await navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1600) }
 
   return <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}><DashSidebar /><div className="md:ml-[220px] flex min-h-screen flex-1 flex-col"><DashTopbar title="API playground" subtitle="Make live requests against your Chabaqa data with a creator API key." /><main className="mx-auto w-full max-w-7xl space-y-5 p-5 sm:p-7">
-    <section className="rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: 'var(--bd)' }}><div className="flex flex-col gap-4 lg:flex-row lg:items-end"><div className="flex-1"><label className="mb-1.5 flex items-center gap-2 text-sm font-semibold"><Server className="h-4 w-4 text-[var(--p)]" />Base URL</label><input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} onBlur={saveSettings} placeholder="https://api.example.com/api" className="w-full rounded-xl border bg-[var(--bg)] px-3 py-2.5 font-mono text-sm outline-none focus:ring-2 focus:ring-[var(--p)]" /><p className="mt-1.5 text-xs text-[var(--t3)]">Include the API prefix. Only this non-secret URL is saved in this browser.</p></div><div className="flex-1"><label className="mb-1.5 flex items-center gap-2 text-sm font-semibold"><KeyRound className="h-4 w-4 text-[var(--p)]" />Creator API key</label><input value={apiKey} onChange={e => setApiKey(e.target.value)} type="password" autoComplete="off" placeholder="chq_…" className="w-full rounded-xl border bg-[var(--bg)] px-3 py-2.5 font-mono text-sm outline-none focus:ring-2 focus:ring-[var(--p)]" /><p className="mt-1.5 text-xs text-[var(--t3)]">Kept in memory for this page only; it is never saved to local storage.</p></div><Button variant="outline" onClick={() => { setBaseUrl(`${window.location.origin}/api`); setApiKey(''); setResult(null) }}><RotateCcw className="mr-2 h-4 w-4" />Reset</Button></div></section>
+    <section className="rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: 'var(--bd)' }}><div className="flex flex-col gap-4 lg:flex-row lg:items-end"><div className="flex-1"><label className="mb-1.5 flex items-center gap-2 text-sm font-semibold"><Server className="h-4 w-4 text-[var(--p)]" />Base URL</label><input value={baseUrl} readOnly className="w-full rounded-xl border bg-[var(--bg)] px-3 py-2.5 font-mono text-sm" /><p className="mt-1.5 text-xs text-[var(--t3)]">Requests are restricted to this Chabaqa origin so an API key cannot be sent to another host.</p></div><div className="flex-1"><label className="mb-1.5 flex items-center gap-2 text-sm font-semibold"><KeyRound className="h-4 w-4 text-[var(--p)]" />Creator API key</label><input value={apiKey} onChange={e => setApiKey(e.target.value)} type="password" autoComplete="off" placeholder="chq_…" className="w-full rounded-xl border bg-[var(--bg)] px-3 py-2.5 font-mono text-sm outline-none focus:ring-2 focus:ring-[var(--p)]" /><p className="mt-1.5 text-xs text-[var(--t3)]">Kept in memory for this page only; it is never saved to local storage.</p></div><Button variant="outline" onClick={() => { setBaseUrl(`${window.location.origin}/api`); setApiKey(''); setResult(null) }}><RotateCcw className="mr-2 h-4 w-4" />Reset</Button></div></section>
     <div className="grid gap-5 lg:grid-cols-[290px_minmax(0,1fr)]"><aside className="overflow-hidden rounded-2xl border bg-white" style={{ borderColor: 'var(--bd)' }}><div className="border-b p-4"><p className="font-semibold">Endpoints</p><p className="mt-1 text-xs text-[var(--t3)]">{contract ? 'Loaded from the live API contract' : 'Using built-in API reference'}</p></div><div className="p-2">{endpoints.map((item, index) => <button key={`${item.method}-${item.path}`} onClick={() => { setSelected(index); setPathValues({}); setResult(null) }} className={`mb-1 w-full rounded-xl p-3 text-left transition ${index === selected ? 'bg-[var(--p)] text-white shadow-sm' : 'hover:bg-[var(--bg)]'}`}><span className="text-[11px] font-bold">{item.method}</span><span className="mt-1 block break-all font-mono text-xs">{item.path}</span></button>)}</div></aside>
       <section className="space-y-5"><div className="rounded-2xl border bg-white p-5 shadow-sm" style={{ borderColor: 'var(--bd)' }}><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><span className="rounded-md bg-emerald-50 px-2 py-1 font-mono text-xs font-bold text-emerald-700">{endpoint.method}</span><h2 className="font-mono text-base font-semibold">{endpoint.path}</h2></div><p className="mt-2 text-sm text-[var(--t3)]">{endpoint.description || 'Live Chabaqa API endpoint.'}</p></div><span className="rounded-full bg-[var(--bg)] px-2.5 py-1 text-xs">Scope: {endpoint.scope || 'read'}</span></div>
         {(endpoint.parameters || []).map(param => <div key={param.name} className="mt-4"><label className="mb-1 block text-sm font-medium">{param.name}{param.required && <span className="text-red-500"> *</span>}</label><input value={pathValues[param.name] || ''} onChange={e => setPathValues({ ...pathValues, [param.name]: e.target.value })} placeholder={param.description || param.name} className="w-full rounded-xl border bg-[var(--bg)] px-3 py-2 font-mono text-sm" /></div>)}

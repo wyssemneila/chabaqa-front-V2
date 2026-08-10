@@ -1383,7 +1383,9 @@ export class WhatsappService {
 
   private verifyWebhookSecret(secretHeader?: string): void {
     const expected = String(process.env.OPENWA_WEBHOOK_SECRET || '').trim();
-    if (!expected) return;
+    if (!expected) {
+      throw new ForbiddenException('OpenWA webhook secret is not configured');
+    }
     const provided = String(secretHeader || '').trim();
     const left = Buffer.from(provided);
     const right = Buffer.from(expected);
