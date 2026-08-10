@@ -40,7 +40,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className={cn(isWideDashboard ? "bg-white" : "bg-gray-50")}>
+    <div className={cn(isWideDashboard ? "bg-[var(--white)]" : "bg-[var(--bg)]")}>
       <CreatorLayout>
         <div
           className={cn(

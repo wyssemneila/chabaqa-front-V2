@@ -58,6 +58,7 @@ import { api } from "@/lib/api"
 import type { Conversation } from "@/lib/api/types"
 import { useSocket } from "@/lib/socket-context"
 import { NotificationsBell } from "./notifications-bell"
+import { ThemeMenu } from "@/components/theme-menu"
 
 
 interface CommunityHeaderProps {
@@ -310,7 +311,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
   )
   if (loading) {
     return (
-      <header className="community-mobile-header sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b shadow-sm">
+      <header className="community-mobile-header sticky top-0 z-50 w-full bg-[var(--nav-bg)] backdrop-blur-md border-b shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -326,7 +327,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
     )
   }
   return (
-    <header className="community-mobile-header sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b shadow-sm">
+    <header className="community-mobile-header sticky top-0 z-50 w-full bg-[var(--nav-bg)] backdrop-blur-md border-b shadow-sm">
       <div className="container mx-auto px-4">
         {/* Top Bar */}
         <div className="flex h-16 items-center justify-between">
@@ -441,6 +442,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
 
           {/* Right Actions */}
           <div className="flex items-center space-x-2">
+            <ThemeMenu className="h-9 w-9 rounded-full" />
             {/* Messages Link */}
             <Link href={messagesHref}>
               <Button variant="ghost" size="icon" className="relative rounded-full">
@@ -669,7 +671,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
         </div>
 
         {/* Navigation Bar (Desktop only) */}
-        <div className="hidden sm:block border-t bg-white/50">
+        <div className="hidden border-t border-[var(--bd)] bg-[var(--nav-bg)] backdrop-blur-md sm:block">
           <div className="flex items-center space-x-1 py-2 overflow-x-auto">
             {headerNavigationItems.map((item) => {
               const href = `${communityBasePath}${item.href}`
@@ -696,7 +698,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
 
         <nav
           aria-label="Mobile navigation"
-          className="fixed inset-x-0 bottom-0 z-[60] border-t border-gray-100/60 bg-white/98 backdrop-blur-xl supports-[backdrop-filter]:bg-white/95 sm:hidden shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)]"
+          className="fixed inset-x-0 bottom-0 z-[60] border-t border-[var(--bd)] bg-[var(--nav-bg)] backdrop-blur-xl sm:hidden shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)]"
         >
           <div
             className="mx-auto flex max-w-lg items-center justify-between gap-1 px-2 pt-2"
@@ -716,7 +718,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                   href={href}
                   className={cn(
                     "flex h-14 min-w-[60px] flex-1 flex-col items-center justify-center rounded-2xl text-[10px] font-semibold tracking-tight transition-all duration-200 active:scale-95",
-                    isActive ? "bg-gradient-to-b from-primary-50 to-primary-100/70 text-primary-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]" : "text-gray-400 hover:text-gray-700 hover:bg-gray-50/80",
+                    isActive ? "bg-gradient-to-b from-primary-50 to-primary-100/70 text-primary-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]" : "text-muted-foreground hover:text-foreground hover:bg-muted/80",
                   )}
                 >
                   <item.icon className={cn("h-5 w-5", isActive && "text-primary-700")} />
@@ -732,7 +734,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
                 "flex h-14 min-w-[60px] flex-1 flex-col items-center justify-center rounded-2xl text-[10px] font-semibold tracking-tight transition-all duration-200 active:scale-95",
                 isMoreActive || mobileMenuOpen
                   ? "bg-primary-50 text-primary-700"
-                  : "text-gray-500 hover:text-gray-900",
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Menu className={cn("h-5 w-5", (isMoreActive || mobileMenuOpen) && "text-primary-700")} />

@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
 import { adminApi, type AdminNotificationFeedItem } from "@/lib/api/admin-api"
+import { ThemeMenu } from "@/components/theme-menu"
 
 interface BreadcrumbItem {
   label: string
@@ -109,7 +110,7 @@ export function AdminHeader({
   return (
     <header
       className={cn(
-        "sticky top-4 z-30 flex h-16 items-center gap-4 rounded-3xl border border-[hsl(var(--admin-border)/0.75)] bg-white/80 px-4 shadow-[0_18px_40px_-30px_rgba(95,74,180,0.3)] backdrop-blur-xl sm:px-6",
+        "sticky top-4 z-30 flex h-16 items-center gap-4 rounded-3xl border border-[hsl(var(--admin-border)/0.75)] bg-[hsl(var(--admin-surface)/0.88)] px-4 shadow-[0_18px_40px_-30px_hsl(var(--admin-shadow)/0.3)] backdrop-blur-xl sm:px-6",
         className
       )}
       role="banner"
@@ -128,7 +129,7 @@ export function AdminHeader({
 
       {/* Breadcrumbs or Title */}
       <div className="flex flex-1 items-center gap-3">
-        <div className="hidden rounded-2xl border border-[hsl(var(--admin-border)/0.8)] bg-white/75 px-3 py-2 lg:flex lg:items-center lg:gap-2">
+        <div className="hidden rounded-2xl border border-[hsl(var(--admin-border)/0.8)] bg-[hsl(var(--admin-surface)/0.75)] px-3 py-2 lg:flex lg:items-center lg:gap-2">
           <Image src="/Logos/PNG/brandmark.png" alt="Chabaqa" width={20} height={20} sizes="20px" className="h-5 w-5 object-contain" />
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-[hsl(var(--admin-muted))]">Operations</span>
         </div>
@@ -216,6 +217,7 @@ export function AdminHeader({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <ThemeMenu className="h-10 w-10 rounded-2xl border-[hsl(var(--admin-border)/0.85)] bg-[hsl(var(--admin-surface)/0.7)] text-foreground hover:bg-[hsl(var(--admin-surface-alt))]" />
       <LanguageSwitcher />
 
       {/* Admin Profile Dropdown */}
@@ -223,7 +225,7 @@ export function AdminHeader({
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="relative h-10 w-10 rounded-2xl border border-[hsl(var(--admin-border)/0.85)] bg-white/70"
+            className="relative h-10 w-10 rounded-2xl border border-[hsl(var(--admin-border)/0.85)] bg-[hsl(var(--admin-surface)/0.7)]"
             aria-label={t("openAdminMenu")}
             aria-haspopup="true"
           >

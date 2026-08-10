@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AnalyticsService } from '@/domains/analytics/analytics.service';
@@ -7,11 +7,12 @@ import { AnalyticsWeeklyReport, AnalyticsWeeklyReportDocument } from '@/infrastr
 import { CreatorInsightsService } from '@/domains/analytics/creator-insights.service';
 
 @Injectable()
-export class AnalyticsScheduler implements OnModuleInit {
+export class AnalyticsScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AnalyticsScheduler.name);
   private hourlyTimer?: NodeJS.Timeout;
   private dailyTimer?: NodeJS.Timeout;
   private weeklyTimer?: NodeJS.Timeout;
+  private isShuttingDown = false;
 
   constructor(
     private readonly analyticsService: AnalyticsService,
@@ -20,6 +21,7 @@ export class AnalyticsScheduler implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    this.isShuttingDown = false;
     const hourlyMs = Number(process.env.ANALYTICS_HOURLY_MS || 60 * 60 * 1000);
     this.hourlyTimer = setInterval(() => {
       this.runHourly().catch(err => this.logger.error('Hourly rollup failed', err.stack));
@@ -28,6 +30,18 @@ export class AnalyticsScheduler implements OnModuleInit {
     this.scheduleDaily(2, 15);
     this.scheduleWeekly(1, 9, 0); // Monday 09:00
     this.logger.log('Analytics rollup scheduler started (hourly + daily + weekly)');
+  }
+
+  onModuleDestroy(): void {
+    this.isShuttingDown = true;
+
+    if (this.hourlyTimer) clearInterval(this.hourlyTimer);
+    if (this.dailyTimer) clearTimeout(this.dailyTimer);
+    if (this.weeklyTimer) clearTimeout(this.weeklyTimer);
+
+    this.hourlyTimer = undefined;
+    this.dailyTimer = undefined;
+    this.weeklyTimer = undefined;
   }
 
   private async runHourly() {
@@ -41,6 +55,8 @@ export class AnalyticsScheduler implements OnModuleInit {
 
   private scheduleDaily(hour: number, minute: number) {
     const scheduleNext = () => {
+      if (this.isShuttingDown) return;
+
       const now = new Date();
       const next = new Date();
       next.setHours(hour, minute, 0, 0);
@@ -58,7 +74,7 @@ export class AnalyticsScheduler implements OnModuleInit {
         } catch (err) {
           this.logger.error('Daily rollup failed', err.stack);
         } finally {
-          scheduleNext();
+          if (!this.isShuttingDown) scheduleNext();
         }
       }, delay);
     };
@@ -67,6 +83,8 @@ export class AnalyticsScheduler implements OnModuleInit {
 
   private scheduleWeekly(dayOfWeek: number, hour: number, minute: number) {
     const scheduleNext = () => {
+      if (this.isShuttingDown) return;
+
       const now = new Date();
       const next = new Date();
       next.setHours(hour, minute, 0, 0);
@@ -85,7 +103,7 @@ export class AnalyticsScheduler implements OnModuleInit {
         } catch (err) {
           this.logger.error('Weekly report generation failed', err.stack);
         } finally {
-          scheduleNext();
+          if (!this.isShuttingDown) scheduleNext();
         }
       }, delay);
     };

@@ -28,8 +28,17 @@ export function Footer() {
   ]
 
   return (
-    <footer className="bg-white border-t border-gray-200">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+    <footer className="relative isolate overflow-hidden border-t border-gray-200 bg-white dark:!bg-[var(--section-alt)]">
+      {/* Decorative brand watermark: gives the footer a confident finish without competing with its links. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 flex justify-center overflow-hidden select-none"
+      >
+        <span className="translate-y-[16%] whitespace-nowrap font-black leading-none tracking-[-0.09em] text-[clamp(4.75rem,19vw,17rem)] text-violet-700/[0.055]">
+          CHABAQA
+        </span>
+      </div>
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         {/* Main Footer Content */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 lg:gap-12 mb-12">
           {/* Brand Column */}

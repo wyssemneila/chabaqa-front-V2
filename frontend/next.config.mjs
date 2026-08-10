@@ -41,9 +41,9 @@ const contentSecurityPolicy = [
     'https://yt3.ggpht.com',
     'https://yt3.googleusercontent.com',
   ].join(' '),
-  "font-src 'self' data:",
+  "font-src 'self' data: https://fonts.gstatic.com",
   scriptSrcDirective,
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   [
     "connect-src 'self'",
     apiOrigin,
@@ -101,6 +101,9 @@ const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   experimental: {
+    // The production VPS has two CPUs. A single build worker prevents Next
+    // from spawning parallel compiler processes that exhaust its memory.
+    cpus: 1,
     optimizePackageImports: ['lucide-react'],
   },
   images: {

@@ -5,7 +5,8 @@ import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import { useAuthContext } from '@/app/providers/auth-provider'
-import { dmApi } from '@/lib/api/dm.api'
+import { dmApi, normalizeDmMessage } from '@/lib/api/dm.api'
+import { useSocket } from '@/lib/socket-context'
 import { dmBroadcastsApi, type DmAutomation, type DmBroadcast } from '@/lib/api/dm-broadcasts.api'
 import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
 import type { Conversation as ApiConversation, Message as ApiMessage, MessageParticipant } from '@/lib/api/types'
@@ -83,7 +84,7 @@ const getMyUnreadCount = (conversation: ApiConversation, myId: string): number =
 
 const toUiMessage = (message: ApiMessage, myId: string): Message => ({
   id: message.id,
-  from: message.senderId === myId ? 'creator' : 'member',
+  from: normalizeId(message.senderId || message.sender) === myId ? 'creator' : 'member',
   text: message.deletedAt ? 'Message deleted' : (message.text || (message.attachments?.[0]?.type === 'image' ? 'Image attachment' : 'Attachment')),
   time: formatMessageTime(message.createdAt),
 })
@@ -116,6 +117,7 @@ const toUiConversation = (
 
 function ConversationsView({ lang }: { lang: string }) {
   const { user } = useAuthContext()
+  const { socket, isConnected } = useSocket()
   const myId = getUserId(user)
   const [convs, setConvs]     = useState<Conversation[]>([])
   const [selected, setSelected] = useState<string>('')
@@ -124,6 +126,7 @@ function ConversationsView({ lang }: { lang: string }) {
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const loadInboxRef = useRef<() => Promise<void>>(async () => undefined)
 
   const thread = convs.find(c => String(c.id) === selected)
   const filtered = convs.filter(c =>
@@ -152,6 +155,8 @@ function ConversationsView({ lang }: { lang: string }) {
     }
   }
 
+  loadInboxRef.current = loadInbox
+
   const loadMessages = async (conversationId: string, baseConvs = convs) => {
     if (!conversationId || !myId) return
     try {
@@ -174,14 +179,15 @@ function ConversationsView({ lang }: { lang: string }) {
     setInput('')
     setError('')
     const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    const optimistic: Message = { id: `pending-${Date.now()}`, from: 'creator', text, time: now }
+    const clientRequestId = `creator-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const optimistic: Message = { id: `pending-${clientRequestId}`, from: 'creator', text, time: now }
     setConvs(prev => prev.map(c =>
       String(c.id) === selected
         ? { ...c, messages: [...c.messages, optimistic], lastMessage: text, lastTime: 'Now', unread: 0 }
         : c
     ))
     try {
-      const res = await dmApi.sendMessage(selected, { text })
+      const res = await dmApi.sendMessage(selected, { text, clientRequestId })
       setConvs(prev => prev.map(c =>
         String(c.id) === selected
           ? {
@@ -208,7 +214,78 @@ function ConversationsView({ lang }: { lang: string }) {
     void loadMessages(conversationId)
   }
 
-  useEffect(() => { void loadInbox() }, [myId])
+  useEffect(() => {
+    if (myId) void loadInboxRef.current()
+  }, [myId])
+
+  useEffect(() => {
+    if (!socket) return
+    const handleNewMessage = (payload: any) => {
+      const message = normalizeDmMessage(payload?.message || payload)
+      const conversationId = message.conversationId || payload?.conversationId
+      if (!conversationId || !message.id) {
+        void loadInboxRef.current()
+        return
+      }
+
+      setConvs(previous => {
+        const index = previous.findIndex(conversation => String(conversation.id) === String(conversationId))
+        if (index < 0) {
+          void loadInboxRef.current()
+          return previous
+        }
+
+        const current = previous[index]
+        const localMessage = toUiMessage(message, myId)
+        const messages = current.messages.some(item => String(item.id) === String(localMessage.id))
+          ? current.messages
+          : [...current.messages.filter(item => !String(item.id).startsWith('pending-')), localMessage]
+        const next = {
+          ...current,
+          messages,
+          lastMessage: message.text || (message.attachments?.length ? 'Attachment' : current.lastMessage),
+          lastTime: formatMessageTime(message.createdAt) || 'Now',
+          unread: String(conversationId) === selected || localMessage.from === 'creator' ? 0 : current.unread + 1,
+        }
+        return [next, ...previous.filter((_, itemIndex) => itemIndex !== index)]
+      })
+    }
+
+    const refreshInbox = () => { void loadInboxRef.current() }
+
+    socket.on('connect', refreshInbox)
+    socket.on('dm:message:new', handleNewMessage)
+    socket.on('dm:message:updated', refreshInbox)
+    socket.on('dm:message:deleted', refreshInbox)
+
+    return () => {
+      socket.off('connect', refreshInbox)
+      socket.off('dm:message:new', handleNewMessage)
+      socket.off('dm:message:updated', refreshInbox)
+      socket.off('dm:message:deleted', refreshInbox)
+    }
+  }, [myId, selected, socket])
+
+  useEffect(() => {
+    if (!socket || !selected) return
+    const conversationId = selected
+    const joinConversation = () => socket.emit('dm:join', { conversationId })
+    socket.on('connect', joinConversation)
+    if (socket.connected) joinConversation()
+    return () => {
+      socket.off('connect', joinConversation)
+      socket.emit('dm:leave', { conversationId })
+    }
+  }, [selected, socket])
+
+  useEffect(() => {
+    if (isConnected || !myId) return
+    const interval = window.setInterval(() => {
+      void loadInboxRef.current()
+    }, 20000)
+    return () => window.clearInterval(interval)
+  }, [isConnected, myId])
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [selected, thread?.messages.length])
 
   const totalUnread = convs.reduce((s, c) => s + c.unread, 0)

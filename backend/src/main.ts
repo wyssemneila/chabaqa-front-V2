@@ -295,6 +295,7 @@ async function bootstrap() {
       'Origin',
       'X-CSRF-Token',
       'X-API-Key',
+      'X-Chabaqa-Api-Key',
       'Cache-Control',
       'Pragma'
     ],

@@ -52,6 +52,10 @@ export class HttpCacheInterceptor implements NestInterceptor {
       '/track/progress',
       '/chapters/',
       '/chapitres/',
+      // The public landing document must reflect a creator save immediately.
+      // Its route lives under /communities, which otherwise receives the
+      // generic 15-minute discovery cache TTL below.
+      '/page-content',
     ];
 
     if (skipPatterns.some((pattern) => String(url).includes(pattern))) {

@@ -184,6 +184,7 @@ export class WhatsappService {
   ): Promise<WhatsappCampaignDocument> {
     const targetAudience =
       dto.targetAudience || WhatsappAudienceType.ALL_MEMBERS;
+    this.assertCampaignContent(dto.messageType || WhatsappMessageType.TEXT, dto.body, dto.mediaUrl);
     const recipients = await this.audienceService.buildRecipients(
       dto.communityId,
       targetAudience,
@@ -307,6 +308,8 @@ export class WhatsappService {
         ? { templateData: dto.templateData }
         : {}),
     });
+
+    this.assertCampaignContent(campaign.messageType, campaign.body, campaign.mediaUrl);
 
     if (dto.customAudienceIds) {
       campaign.customAudienceIds = dto.customAudienceIds.map(
@@ -715,15 +718,7 @@ export class WhatsappService {
         continue;
       }
 
-      if (sent >= remainingDailySends) {
-        await this.updateRecipientStatus(campaign._id, contactId, {
-          status: WhatsappRecipientStatus.SKIPPED,
-          errorMessage: 'Daily WhatsApp session send limit reached',
-        });
-        recipient.status = WhatsappRecipientStatus.SKIPPED;
-        skipped += 1;
-        continue;
-      }
+      if (sent >= remainingDailySends) break;
 
       const mergeData = {
         ...(campaign.templateData || {}),
@@ -800,6 +795,24 @@ export class WhatsappService {
         recipient.status = WhatsappRecipientStatus.FAILED;
         failed += 1;
       }
+    }
+
+    const pendingRecipients = campaign.recipients.filter((recipient: any) =>
+      [WhatsappRecipientStatus.PENDING, WhatsappRecipientStatus.QUEUED].includes(recipient.status),
+    ).length;
+    if (pendingRecipients > 0 && sent >= remainingDailySends) {
+      const resumeAt = this.nextUtcDay();
+      await this.campaignModel.updateOne(
+        { _id: campaign._id, status: { $ne: WhatsappCampaignStatus.CANCELLED } },
+        { $set: { status: WhatsappCampaignStatus.SCHEDULED, scheduledAt: resumeAt, lastProcessedAt: new Date() } },
+      );
+      await this.queueService.queueCampaignSend({
+        campaignId: String(campaign._id),
+        requestedBy: String(campaign.creatorId),
+        trigger: 'scheduled',
+        attempt: 0,
+      }, resumeAt);
+      return;
     }
 
     const terminalStatus =
@@ -1032,6 +1045,23 @@ export class WhatsappService {
     const separator = body.trim() ? '\n\n' : '';
     const availableBodyLength = maxLength - separator.length - footer.length;
     return `${body.trim().slice(0, availableBodyLength)}${separator}${footer}`;
+  }
+
+  private assertCampaignContent(
+    messageType: WhatsappMessageType,
+    body: string,
+    mediaUrl?: string,
+  ): void {
+    if (!String(body || '').trim()) throw new BadRequestException('WhatsApp campaign message is required');
+    if (messageType !== WhatsappMessageType.TEXT && !String(mediaUrl || '').trim()) {
+      throw new BadRequestException('Image, video, and document campaigns require a public media URL');
+    }
+  }
+
+  private nextUtcDay(): Date {
+    const next = new Date();
+    next.setUTCHours(24, 0, 0, 0);
+    return next;
   }
 
   private isInboundMessageEvent(eventType: string, payload?: any): boolean {

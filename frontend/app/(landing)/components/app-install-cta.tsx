@@ -8,7 +8,7 @@ export function AppInstallCTA() {
   const t = useTranslations("landing.appInstall")
 
   return (
-    <section className="py-12 sm:py-16 lg:py-20 bg-white">
+    <section className="py-12 sm:py-16 lg:py-20 bg-white dark:!bg-[var(--section-alt)]">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Banner Container with border */}
         <div className="relative w-full border-4 border-gray-200 rounded-2xl overflow-hidden">

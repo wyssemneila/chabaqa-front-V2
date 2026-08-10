@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
 export type MessageDocument = Message & Document;
+export type MessageActorModel = 'User' | 'Admin';
 
 @Schema({ _id: false })
 export class MessageAttachment {
@@ -45,7 +46,10 @@ export class MessageEditHistory {
   @Prop({ type: String })
   text?: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: String, enum: ['User', 'Admin'], default: 'User' })
+  editedByModel?: MessageActorModel;
+
+  @Prop({ type: Types.ObjectId, refPath: 'editedByModel', required: true })
   editedBy: Types.ObjectId;
 
   @Prop({ type: Date, default: Date.now })
@@ -61,10 +65,16 @@ export class Message {
   @Prop({ type: Types.ObjectId, ref: 'Conversation', required: true, index: true })
   conversationId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({ type: String, enum: ['User', 'Admin'], default: 'User' })
+  senderModel?: MessageActorModel;
+
+  @Prop({ type: Types.ObjectId, refPath: 'senderModel', required: true, index: true })
   senderId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({ type: String, enum: ['User', 'Admin'], default: 'User' })
+  recipientModel?: MessageActorModel;
+
+  @Prop({ type: Types.ObjectId, refPath: 'recipientModel', required: true, index: true })
   recipientId: Types.ObjectId;
 
   @Prop({ type: String })
@@ -88,7 +98,10 @@ export class Message {
   @Prop({ type: Date })
   editedAt?: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: String, enum: ['User', 'Admin'], default: 'User' })
+  editedByModel?: MessageActorModel;
+
+  @Prop({ type: Types.ObjectId, refPath: 'editedByModel' })
   editedBy?: Types.ObjectId;
 
   @Prop({ type: [MessageEditHistorySchema], default: [] })
@@ -97,13 +110,19 @@ export class Message {
   @Prop({ type: Date })
   deletedAt?: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: String, enum: ['User', 'Admin'], default: 'User' })
+  deletedByModel?: MessageActorModel;
+
+  @Prop({ type: Types.ObjectId, refPath: 'deletedByModel' })
   deletedBy?: Types.ObjectId;
 
   @Prop({ type: Date })
   pinnedAt?: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: String, enum: ['User', 'Admin'], default: 'User' })
+  pinnedByModel?: MessageActorModel;
+
+  @Prop({ type: Types.ObjectId, refPath: 'pinnedByModel' })
   pinnedBy?: Types.ObjectId;
 
   @Prop({ type: [Types.ObjectId], ref: 'User', default: [] })

@@ -17,8 +17,10 @@ import { normalizeCommunitySettings } from "@/lib/community-settings"
 import { buildCommunityTheme, getContentWidthClass } from "@/lib/community-theme"
 import { cn } from "@/lib/utils"
 import { absoluteUrl, generateAlternateLanguages, generateKeywords, generateTwitterMetadata } from "@/lib/seo-config"
+import { CommunityLandingExperience } from "@/components/community-landing-experience"
+import { normalizeCommunityLandingState } from "@/lib/community-landing-state"
+import { GF_URL } from "@/components/creator-dashboard/landing-renderer"
 
-const PUBLIC_COMMUNITY_DATA_REVALIDATE_SECONDS = 60
 const OPTIONAL_COMMUNITY_FETCH_TIMEOUT_MS = 4500
 
 // Resolve image URLs from API or absolute paths
@@ -35,6 +37,9 @@ function resolveImageUrl(raw?: string, apiBase?: string): string {
         const path = v.replace(/^http:\/\/[^/]+/, '');
         return `https://api.chabaqa.io${path}`;
       }
+      // Local upload URLs are valid in development and are explicitly allowed
+      // by next.config. Do not turn them into an unconfigured https host.
+      if (/^http:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\//i.test(v)) return v
       return v.replace('http://', 'https://');
     }
     return v
@@ -77,10 +82,9 @@ export async function generateMetadata({ params }: CommunityDetailsPageProps): P
   try {
     const response = await fetch(`${apiBase}/community-aff-crea-join/${encodeURIComponent(slug)}`, {
       method: "GET",
-      cache: "force-cache",
-      next: {
-        revalidate: PUBLIC_COMMUNITY_DATA_REVALIDATE_SECONDS,
-      },
+      // Community branding is edited live by its creator. Do not retain an
+      // old community/settings response after a successful save.
+      cache: "no-store",
     })
     if (response.ok) {
       const json = await response.json()
@@ -273,10 +277,7 @@ async function fetchLatestCommunityPosts(
   try {
     const res = await fetch(`${apiBase}/posts/community/${communityId}?page=1&limit=6`, {
       method: "GET",
-      cache: "force-cache",
-      next: {
-        revalidate: PUBLIC_COMMUNITY_DATA_REVALIDATE_SECONDS,
-      },
+      cache: "no-store",
     })
 
     if (!res.ok) {
@@ -360,10 +361,7 @@ async function fetchCommunityRatings(
     for (const endpoint of endpoints) {
       const res = await fetch(endpoint, {
         method: "GET",
-        cache: "force-cache",
-        next: {
-          revalidate: PUBLIC_COMMUNITY_DATA_REVALIDATE_SECONDS,
-        },
+        cache: "no-store",
       })
 
       if (!res.ok) {
@@ -598,6 +596,22 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
   const formatMembers = (count: number) => (count >= 1000 ? `${(count / 1000).toFixed(1)}k` : String(count))
 
   const pageContent = normalizePageContent(rawPageContent, apiBaseForImages)
+  const landingState = normalizeCommunityLandingState(pageContent?.landingPage)
+
+  // Customized communities use the exact same renderer as the creator
+  // builder. The legacy landing page remains only as a compatibility fallback
+  // for communities that have never saved a builder configuration.
+  if (landingState) {
+    return (
+      <>
+        <link rel="stylesheet" href={GF_URL} />
+        <CommunityLandingExperience
+          state={landingState}
+          language="en"
+        />
+      </>
+    )
+  }
 
   const overviewContent =
     pageContent?.overview && pageContent.overview.visible !== false ? pageContent.overview : null

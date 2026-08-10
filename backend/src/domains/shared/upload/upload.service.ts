@@ -598,6 +598,10 @@ export class UploadService {
       scanResult,
     );
 
+    // Base64 image uploads do not pass through Multer's normal upload flow.
+    // Mirror them explicitly so every persistent upload is available in S3.
+    await this.mirrorFileToObjectStorage(pseudoMulterFile, mediaRecord.storageKey);
+
     if (options?.userId) {
       await this.addUsageBytes(options.userId, buffer.length);
     }

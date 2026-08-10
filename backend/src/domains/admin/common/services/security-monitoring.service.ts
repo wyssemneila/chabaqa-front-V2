@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AuditLog, AuditLogDocument, AdminAction } from '@/domains/admin/schemas/audit-log.schema';
@@ -97,10 +97,12 @@ const DEFAULT_CONFIG: SecurityMonitoringConfig = {
  * Monitors admin activities for suspicious behavior and security threats
  */
 @Injectable()
-export class SecurityMonitoringService implements OnApplicationBootstrap {
+export class SecurityMonitoringService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(SecurityMonitoringService.name);
   private config: SecurityMonitoringConfig = DEFAULT_CONFIG;
   private alerts: Map<string, SecurityAlert> = new Map();
+  private periodicSecurityChecksTimer?: NodeJS.Timeout;
+  private alertCleanupTimer?: NodeJS.Timeout;
 
   constructor(
     @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
@@ -115,6 +117,18 @@ export class SecurityMonitoringService implements OnApplicationBootstrap {
 
   async onApplicationBootstrap(): Promise<void> {
     await this.hydrateOpenAlertsFromStore();
+  }
+
+  onModuleDestroy(): void {
+    if (this.periodicSecurityChecksTimer) {
+      clearInterval(this.periodicSecurityChecksTimer);
+      this.periodicSecurityChecksTimer = undefined;
+    }
+
+    if (this.alertCleanupTimer) {
+      clearInterval(this.alertCleanupTimer);
+      this.alertCleanupTimer = undefined;
+    }
   }
 
   /**
@@ -648,7 +662,7 @@ export class SecurityMonitoringService implements OnApplicationBootstrap {
    */
   private startPeriodicMonitoring(): void {
     // Run security checks every 5 minutes
-    setInterval(async () => {
+    this.periodicSecurityChecksTimer = setInterval(async () => {
       try {
         await this.performPeriodicSecurityChecks();
       } catch (error) {
@@ -657,7 +671,7 @@ export class SecurityMonitoringService implements OnApplicationBootstrap {
     }, 5 * 60 * 1000);
 
     // Clean up old alerts every hour
-    setInterval(() => {
+    this.alertCleanupTimer = setInterval(() => {
       this.cleanupOldAlerts();
     }, 60 * 60 * 1000);
   }

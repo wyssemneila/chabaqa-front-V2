@@ -1,14 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { Moon, Sun, Languages, ExternalLink, Home } from 'lucide-react'
+import { Languages, ExternalLink, Home } from 'lucide-react'
+import { ThemeMenu } from '@/components/theme-menu'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
 
 interface DashTopbarProps { title: string; subtitle: string }
 
 export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
-  const { dark, lang, toggleDark, toggleLang } = useDashPrefs()
+  const { lang, toggleLang } = useDashPrefs()
   const { selectedCommunity, isLoading: communityLoading } = useCreatorCommunity()
   const communitySlug = String(
     selectedCommunity?.slug ||
@@ -17,8 +18,14 @@ export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
     selectedCommunity?.id ||
     '',
   )
-  const communityHref = communitySlug
-    ? `/community/${encodeURIComponent(communitySlug)}`
+  const creatorName = String(
+    selectedCommunity?.creator?.name ||
+    selectedCommunity?.creatorName ||
+    selectedCommunity?.createur?.name ||
+    '',
+  ).trim()
+  const communityHref = communitySlug && creatorName
+    ? `/${encodeURIComponent(creatorName)}/${encodeURIComponent(communitySlug)}/home`
     : '/creator/communities'
 
   return (
@@ -68,18 +75,7 @@ export default function DashTopbar({ title, subtitle }: DashTopbarProps) {
           {lang === 'en' ? 'AR' : 'EN'}
         </button>
 
-        {/* dark mode toggle */}
-        <button
-          onClick={toggleDark}
-          aria-label="Toggle dark mode"
-          title="Toggle dark mode"
-          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-xl transition-all hover:opacity-80"
-          style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t2)' }}>
-          {dark
-            ? <Sun  className="w-3.5 h-3.5" />
-            : <Moon className="w-3.5 h-3.5" />
-          }
-        </button>
+        <ThemeMenu className="h-8 w-8 rounded-xl border-[1.5px] border-[var(--bd)] bg-[var(--bg)] text-[var(--t2)] hover:bg-[var(--p2)] hover:text-[var(--p)]" />
 
       </div>
     </header>

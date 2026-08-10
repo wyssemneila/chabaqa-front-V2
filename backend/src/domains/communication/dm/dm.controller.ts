@@ -13,6 +13,7 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { EditDmMessageDto, ReactDmMessageDto, SendDmMessageDto, TypingDmDto } from '@/domains/communication/dm/dto/dm-message.dto';
+import { DmConversationAccessGuard } from '@/domains/communication/dm/guards/dm-conversation-access.guard';
 
 const DM_ATTACHMENT_MAX_BYTES = 100 * 1024 * 1024;
 const DM_ATTACHMENT_ALLOWED_EXTENSIONS = new Set([
@@ -66,6 +67,11 @@ export class DmController {
   ) {}
   private getRequestUserId(req: any): string {
     return (req?.user?._id || req?.user?.userId || req?.user?.sub || req?.user?.id || '').toString();
+  }
+
+  private isAdminRequest(req: any): boolean {
+    const role = String(req?.user?.role || '').toLowerCase();
+    return req?.user?.isAdmin === true || ['admin', 'super_admin', 'moderator'].includes(role);
   }
 
   @Post('community/start')
@@ -222,7 +228,7 @@ export class DmController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lister les messages d\'une conversation' })
   async listMessages(@Param('conversationId') conversationId: string, @Query('page') page = 1, @Query('limit') limit = 30, @Request() req: any) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     const userId = (req.user?._id || req.user?.userId || req.user?.sub || req.user?.id || '').toString();
     return this.dmService.listMessagesRich(conversationId, userId, Number(page), Number(limit), { isAdmin });
   }
@@ -233,7 +239,7 @@ export class DmController {
   @ApiOperation({ summary: 'Envoyer un message' })
   @Throttle({ default: { ttl: 60, limit: 20 } } as any)
   async sendMessage(@Param('conversationId') conversationId: string, @Body() body: SendDmMessageDto, @Request() req: any) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     const message = await this.dmService.sendMessageRich(conversationId, this.getRequestUserId(req), body, { isAdmin });
     return { message };
   }
@@ -249,7 +255,7 @@ export class DmController {
     @Query('limit') limit = 20,
     @Request() req: any,
   ) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     return this.dmService.searchMessages(conversationId, this.getRequestUserId(req), q, Number(page), Number(limit), { isAdmin });
   }
 
@@ -258,7 +264,7 @@ export class DmController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lister les messages épinglés' })
   async listPinnedMessages(@Param('conversationId') conversationId: string, @Request() req: any) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     return this.dmService.listPinnedMessages(conversationId, this.getRequestUserId(req), { isAdmin });
   }
 
@@ -272,7 +278,7 @@ export class DmController {
     @Body() body: EditDmMessageDto,
     @Request() req: any,
   ) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     return this.dmService.editMessage(conversationId, messageId, this.getRequestUserId(req), body.text, { isAdmin });
   }
 
@@ -286,7 +292,7 @@ export class DmController {
     @Query('scope') scope: 'me' | 'everyone' = 'me',
     @Request() req: any,
   ) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     return this.dmService.deleteMessage(conversationId, messageId, this.getRequestUserId(req), scope, { isAdmin });
   }
 
@@ -300,7 +306,7 @@ export class DmController {
     @Body() body: ReactDmMessageDto,
     @Request() req: any,
   ) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     return this.dmService.toggleReaction(conversationId, messageId, this.getRequestUserId(req), body.emoji, { isAdmin });
   }
 
@@ -314,13 +320,13 @@ export class DmController {
     @Body('pinned') pinned: any = true,
     @Request() req: any,
   ) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     const shouldPin = pinned === false || pinned === 'false' ? false : true;
     return this.dmService.pinMessage(conversationId, messageId, this.getRequestUserId(req), shouldPin, { isAdmin });
   }
 
   @Post(':conversationId/attachments')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DmConversationAccessGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Uploader une pièce jointe et l\'envoyer dans la conversation' })
   @UseInterceptors(FileInterceptor('file', dmAttachmentUploadOptions))
@@ -340,7 +346,7 @@ export class DmController {
     });
     const attachmentType: 'image' | 'file' | 'video' =
       processed.type === FileType.IMAGE ? 'image' : processed.type === FileType.VIDEO ? 'video' : 'file';
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     const message = await this.dmService.sendMessageRich(conversationId, this.getRequestUserId(req), {
       attachments: [{
         url: processed.url,
@@ -358,7 +364,8 @@ export class DmController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Marquer comme lu' })
   async markRead(@Param('conversationId') conversationId: string, @Request() req: any) {
-    return this.dmService.markReadRich(conversationId, this.getRequestUserId(req));
+    const isAdmin = this.isAdminRequest(req);
+    return this.dmService.markReadRich(conversationId, this.getRequestUserId(req), { isAdmin });
   }
 
   @Post(':conversationId/typing')
@@ -366,7 +373,7 @@ export class DmController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Diffuser l\'indicateur de saisie' })
   async typing(@Param('conversationId') conversationId: string, @Body() body: TypingDmDto, @Request() req: any) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     return this.dmService.emitTyping(conversationId, this.getRequestUserId(req), body.isTyping, { isAdmin });
   }
 
@@ -379,7 +386,7 @@ export class DmController {
     @Body() body: { workflowStatus?: 'open' | 'waiting_on_member' | 'resolved' | 'archived'; label?: string | null },
     @Request() req: any,
   ) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     return this.dmService.updateConversationWorkflow(conversationId, this.getRequestUserId(req), body, { isAdmin });
   }
 
@@ -388,7 +395,7 @@ export class DmController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Mute or unmute a conversation for the authenticated user' })
   async setMuted(@Param('conversationId') conversationId: string, @Body('muted') muted: any, @Request() req: any) {
-    const isAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    const isAdmin = this.isAdminRequest(req);
     return this.dmService.setConversationMuted(conversationId, this.getRequestUserId(req), muted !== false && muted !== 'false', { isAdmin });
   }
 
@@ -413,9 +420,12 @@ export class DmController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtenir les informations de l\'admin pour une conversation d\'aide' })
-  async getHelpAdmin(@Param('conversationId') conversationId: string) {
-    const admin = await this.dmService.getHelpConversationAdmin(conversationId);
+  async getHelpAdmin(@Param('conversationId') conversationId: string, @Request() req: any) {
+    const admin = await this.dmService.getHelpConversationAdmin(
+      conversationId,
+      this.getRequestUserId(req),
+      { isAdmin: this.isAdminRequest(req) },
+    );
     return { admin };
   }
 }
-

@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { getUserProfileHandle } from "@/lib/profile-handle"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
+import { ThemeMenu } from "@/components/theme-menu"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -98,17 +99,6 @@ export function Header() {
             ? "bg-[var(--nav-bg)] backdrop-blur-md border-b border-[var(--bd)] shadow-sm"
             : "bg-transparent"
         }`}
-        style={{
-          "--nav-bg": "rgba(255, 255, 255, 0.95)",
-          "--bd": "#e5e7eb",
-          "--p": "#8e78fb",
-          "--p2": "#ede9ff",
-          "--p3": "#c4b8fd",
-          "--t1": "#111827",
-          "--t2": "#6b7280",
-          "--white": "#ffffff",
-          "--p-dark": "#7c66e8",
-        } as React.CSSProperties}
       >
         {/* Logo */}
         <Link href={withLocale("/")} aria-label="Chabaqa — go to homepage" className="flex-shrink-0">
@@ -143,6 +133,7 @@ export function Header() {
 
         {/* Right CTA */}
         <div className="flex items-center gap-2">
+          <ThemeMenu className="h-10 w-10 rounded-xl border-[var(--bd)] bg-[var(--white)] text-[var(--t2)] hover:border-[var(--p3)] hover:bg-[var(--p2)] hover:text-[var(--p)]" />
           {loading ? null : !isAuthenticated ? (
             <>
               <Link

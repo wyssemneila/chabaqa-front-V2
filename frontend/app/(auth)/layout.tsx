@@ -18,12 +18,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <>
+    <div className="auth-theme">
       <AuthProvider>
         <ExtensionErrorGuard />
         {children}
       </AuthProvider>
       <Toaster />
-    </>
+    </div>
   )
 }

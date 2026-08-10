@@ -230,6 +230,9 @@ export interface CommunityPageContentDocument extends Document {
   benefits: BenefitsSection;
   testimonials: TestimonialsSection;
   cta: CTASection;
+  landingPage?: Record<string, unknown>;
+  /** Legacy temporary field kept read-only so existing saved drafts migrate on next save. */
+  builderState?: Record<string, unknown>;
   isPublished: boolean;
   lastEditedBy: Types.ObjectId;
   version: number;
@@ -393,6 +396,14 @@ export class CommunityPageContent {
     })
   })
   cta: CTASection;
+
+  /** Complete creator-builder state. This preserves layout/order and design
+   * choices in the database instead of limiting them to one browser. */
+  @Prop({ type: Object, default: undefined })
+  landingPage?: Record<string, unknown>;
+
+  @Prop({ type: Object, default: undefined })
+  builderState?: Record<string, unknown>;
 
   /**
    * Publish state - only published content is shown to public

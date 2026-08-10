@@ -8,7 +8,7 @@ export function FAQ() {
   const [open, setOpen] = useState<number | null>(0)
 
   return (
-    <section className="py-24 px-6 md:px-10 bg-white" id="faq" aria-label="Frequently asked questions">
+    <section className="py-24 px-6 md:px-10 bg-white dark:!bg-[var(--section-alt)]" id="faq" aria-label="Frequently asked questions">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-14 reveal">
           <div className="text-xs font-bold uppercase tracking-[.1em] text-[#8e78fb] mb-3">{t('eyebrow')}</div>

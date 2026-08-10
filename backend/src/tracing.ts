@@ -23,7 +23,7 @@ if (enabled) {
   });
 }
 
-process.on('SIGTERM', () => {
+process.once('SIGTERM', () => {
   sdk?.shutdown()
     .then(() => writeStructuredLog('info', 'otel_shutdown'))
     .catch((error) => writeStructuredLog('error', 'otel_shutdown_failed', { error }));

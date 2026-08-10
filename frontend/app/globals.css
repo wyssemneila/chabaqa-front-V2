@@ -43,7 +43,8 @@
     --popover-foreground: 222.2 84% 4.9%;
     /* Bridged to Chabaqa brand purple (#8e78fb) so bg-primary matches var(--p) */
     --primary: 251 94% 73%;
-    --primary-foreground: 0 0% 100%;
+    /* The brand lavender is too light for white text (3.37:1). */
+    --primary-foreground: 248 30% 10%;
     --secondary: 250 100% 98%;
     --secondary-foreground: 248 26% 17%;
     --muted: 250 100% 98%;
@@ -61,6 +62,26 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --p: #8e78fb;
+    --p-dark: #6c52f0;
+    --p2: #ede9ff;
+    --p3: #c4b8fd;
+    --orange: #ff9b28;
+    --o2: #fff3e4;
+    --cyan: #47c7ea;
+    --c2: #e4f8fd;
+    --pink: #f65887;
+    --pk2: #ffe4ee;
+    --bg: #f7f7fe;
+    --white: #ffffff;
+    --t1: #1a1730;
+    --t2: #46426a;
+    --t3: #9590b8;
+    --bd: #e8e4ff;
+    --bd2: #d4ccff;
+    --nav-bg: rgba(247, 247, 254, 0.94);
+    --footer-bg: #1a1730;
+    --section-alt: #f0eefe;
   }
 
   .dark {
@@ -116,6 +137,14 @@
   * {
     @apply border-border;
   }
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
     @apply bg-background text-foreground;
     background: var(--bg);
@@ -124,7 +153,15 @@
   }
 
   .font-latin {
-    font-family: var(--font-latin), Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: var(--font-latin), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-synthesis: none;
+  }
+
+  /* SF Pro Display is intentionally kept calm across the product. The supplied
+     family stops at 700, so display-only 800/900 utilities use its 700 face. */
+  .font-latin .font-extrabold,
+  .font-latin .font-black {
+    font-weight: 700;
   }
 
   .font-arabic {
@@ -187,6 +224,46 @@
     --admin-chart-4: 33 95% 54%;
     --admin-chart-5: 152 61% 42%;
   }
+
+  .dark .admin-theme {
+    --background: 248 28% 9%;
+    --foreground: 250 60% 96%;
+    --card: 248 28% 12%;
+    --card-foreground: 250 60% 96%;
+    --popover: 248 28% 12%;
+    --popover-foreground: 250 60% 96%;
+    --primary: 251 94% 73%;
+    --primary-foreground: 248 30% 10%;
+    --secondary: 248 24% 18%;
+    --secondary-foreground: 250 60% 96%;
+    --muted: 248 24% 18%;
+    --muted-foreground: 248 16% 65%;
+    --accent: 248 24% 18%;
+    --accent-foreground: 250 60% 96%;
+    --border: 248 24% 20%;
+    --input: 248 24% 20%;
+    --ring: 251 94% 73%;
+
+    --admin-shell: 248 30% 9%;
+    --admin-shell-strong: 248 28% 11%;
+    --admin-surface: 248 28% 13%;
+    --admin-surface-alt: 248 26% 16%;
+    --admin-border: 248 22% 25%;
+    --admin-muted: 248 16% 65%;
+    --admin-primary: 251 94% 73%;
+    --admin-primary-strong: 251 94% 78%;
+    --admin-pink: 339 90% 72%;
+    --admin-cyan: 192 80% 68%;
+    --admin-success: 152 61% 52%;
+    --admin-warning: 33 95% 64%;
+    --admin-danger: 0 84% 70%;
+    --admin-shadow: 248 50% 2%;
+    --admin-chart-1: 251 94% 73%;
+    --admin-chart-2: 339 90% 72%;
+    --admin-chart-3: 192 80% 68%;
+    --admin-chart-4: 33 95% 64%;
+    --admin-chart-5: 152 61% 52%;
+  }
 }
 
 @layer components {
@@ -207,8 +284,11 @@
   }
 
   .admin-surface-muted {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 245, 255, 0.96));
+    background: linear-gradient(
+      180deg,
+      hsl(var(--admin-surface) / 0.96),
+      hsl(var(--admin-surface-alt) / 0.96)
+    );
     border: 1px solid hsl(var(--admin-border) / 0.85);
   }
 
@@ -221,12 +301,15 @@
   }
 
   .admin-kpi-card {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 247, 255, 0.94));
+    background: linear-gradient(
+      180deg,
+      hsl(var(--admin-surface) / 0.98),
+      hsl(var(--admin-surface-alt) / 0.94)
+    );
     border: 1px solid hsl(var(--admin-border) / 0.92);
     box-shadow:
       0 22px 40px -30px hsl(var(--admin-shadow) / 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      inset 0 1px 0 hsl(var(--foreground) / 0.04);
   }
 
   .admin-icon-chip {
@@ -814,56 +897,76 @@ html {
 }
 
 
-/* ── Chabaqa Brand Tokens ──────────────────────────────────────────────── */
-:root {
-  --p:          #8e78fb;
-  --p-dark:     #6c52f0;
-  --p2:         #ede9ff;
-  --p3:         #c4b8fd;
-  --orange:     #ff9b28;
-  --o2:         #fff3e4;
-  --cyan:       #47c7ea;
-  --c2:         #e4f8fd;
-  --pink:       #f65887;
-  --pk2:        #ffe4ee;
-  --bg:         #f7f7fe;
-  --white:      #ffffff;
-  --t1:         #1a1730;
-  --t2:         #46426a;
-  --t3:         #9590b8;
-  --bd:         #e8e4ff;
-  --bd2:        #d4ccff;
-  --nav-bg:     rgba(247,247,254,0.94);
-  --footer-bg:  #1a1730;
-  --section-alt:#f0eefe;
-}
-
-/* ── Dark mode brand token overrides live in @layer base above (single source of truth) ── */
-
-/* Creator dashboard compatibility layer for legacy light-only Tailwind utilities. */
-.dark .creator-theme .bg-white:not([data-preview-theme="light"]):not([data-preview-theme="light"] *) {
+/* Global compatibility layer for legacy light-only Tailwind utilities.
+   It intentionally applies to every product surface (landing, explore, auth,
+   creator, community, and admin), while preserving explicitly light previews. */
+.dark .bg-white:not([data-preview-theme="light"]):not([data-preview-theme="light"] *) {
   background-color: var(--white) !important;
 }
-.dark .creator-theme .bg-gray-50:not([data-preview-theme="light"] *),
-.dark .creator-theme .bg-gray-100:not([data-preview-theme="light"] *),
-.dark .creator-theme .bg-slate-50:not([data-preview-theme="light"] *),
-.dark .creator-theme .bg-slate-100:not([data-preview-theme="light"] *) {
+.dark :is(.bg-white\/95,.bg-white\/90,.bg-white\/80):not([data-preview-theme="light"] *) {
+  background-color: var(--white) !important;
+}
+.dark :is(.bg-gray-50,.bg-gray-100,.bg-slate-50,.bg-slate-100):not([data-preview-theme="light"] *) {
   background-color: var(--bg) !important;
 }
-.dark .creator-theme :is(.text-gray-950,.text-gray-900,.text-gray-800,.text-gray-700,.text-slate-950,.text-slate-900,.text-slate-800,.text-slate-700):not([data-preview-theme="light"] *) {
+.dark :is(.bg-gray-200,.bg-gray-300,.bg-slate-200,.bg-slate-300):not([data-preview-theme="light"] *) {
+  background-color: var(--p2) !important;
+}
+.dark :is(.text-gray-950,.text-gray-900,.text-gray-800,.text-gray-700,.text-slate-950,.text-slate-900,.text-slate-800,.text-slate-700):not([data-preview-theme="light"] *) {
   color: var(--t1) !important;
 }
-.dark .creator-theme :is(.text-gray-600,.text-gray-500,.text-gray-400,.text-slate-600,.text-slate-500,.text-slate-400):not([data-preview-theme="light"] *) {
+.dark :is(.text-gray-600,.text-gray-500,.text-gray-400,.text-gray-300,.text-slate-600,.text-slate-500,.text-slate-400,.text-slate-300):not([data-preview-theme="light"] *) {
   color: var(--t2) !important;
 }
-.dark .creator-theme :is(.border-gray-100,.border-gray-200,.border-gray-300,.border-slate-100,.border-slate-200,.border-slate-300):not([data-preview-theme="light"] *) {
+.dark :is(.border-gray-100,.border-gray-200,.border-gray-300,.border-gray-400,.border-slate-100,.border-slate-200,.border-slate-300,.border-slate-400):not([data-preview-theme="light"] *) {
   border-color: var(--bd) !important;
 }
-.dark .creator-theme :is(input,textarea,select):not([data-preview-theme="light"] *) {
+.dark :is(input,textarea,select):not([data-preview-theme="light"] *) {
   color-scheme: dark;
+}
+.dark :is(.hover\:bg-gray-50:hover,.hover\:bg-gray-100:hover,.hover\:bg-slate-50:hover,.hover\:bg-slate-100:hover):not([data-preview-theme="light"] *) {
+  background-color: var(--p2) !important;
+}
+.dark :is(.hover\:text-gray-900:hover,.hover\:text-gray-800:hover,.hover\:text-gray-700:hover,.hover\:text-slate-900:hover,.hover\:text-slate-800:hover):not([data-preview-theme="light"] *) {
+  color: var(--t1) !important;
 }
 [data-preview-theme="light"] {
   color-scheme: light;
+}
+
+/* Shared auth screens: one dark treatment for sign-in, sign-up, recovery,
+   reset, and verification, including the supplied dark gradient artwork. */
+.dark .auth-theme .gradient-fallback {
+  background: #1e2230 url('/gradient-background-dark.png') center / cover no-repeat;
+}
+.dark .auth-theme .gradient-fallback > img {
+  opacity: 0;
+}
+.dark .auth-theme :is(.bg-white\/25,.bg-white\/70,.bg-white\/80,.bg-white\/90,.bg-white\/95) {
+  background-color: hsl(var(--card) / 0.88) !important;
+}
+.dark .auth-theme :is(.border-white\/40,.border-white\/50,.border-white\/60) {
+  border-color: hsl(var(--border) / 0.95) !important;
+}
+.dark .auth-theme :is(.text-gray-900,.text-gray-800,.text-gray-700) {
+  color: var(--t1) !important;
+}
+.dark .auth-theme :is(.text-gray-600,.text-gray-500,.placeholder-gray-500) {
+  color: var(--t2) !important;
+}
+.dark .auth-theme :is(input, textarea, select) {
+  background-color: hsl(var(--background) / 0.82) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+.dark .auth-theme :is(input, textarea, select)::placeholder {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* The landing hero fades into a known dark surface.  This must not inherit a
+   light fallback while Next.js swaps themes during hydration. */
+.dark .hero-bottom-fade {
+  background: linear-gradient(to bottom, transparent 0%, rgba(22, 20, 36, 0.52) 48%, #161424 100%) !important;
 }
 
 /* ── Landing Page Animations ─────────────────────────────────────────── */

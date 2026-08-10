@@ -1,7 +1,6 @@
 import { apiClient, type ApiSuccessResponse } from "./client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-const PUBLIC_PAGE_CONTENT_REVALIDATE_SECONDS = 60;
 
 /**
  * Get published page content for a community (public - no auth required)
@@ -9,17 +8,16 @@ const PUBLIC_PAGE_CONTENT_REVALIDATE_SECONDS = 60;
 export async function getCommunityPageContent(slug: string, apiBaseUrl = API_BASE_URL) {
   try {
     const response = await fetch(`${apiBaseUrl}/communities/${slug}/page-content`, {
-      cache: 'force-cache',
-      next: {
-        revalidate: PUBLIC_PAGE_CONTENT_REVALIDATE_SECONDS,
-      },
+      // A creator expects a successful save to be visible immediately.  This
+      // endpoint is small and must never be hidden behind Next's data cache.
+      cache: 'no-store',
     });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch page content: ${response.status}`);
     }
 
-    return await response.json();
+    return unwrapPageContentResponse(await response.json());
   } catch (error) {
     console.error('Error fetching community page content:', error);
     // Return default structure on error
@@ -236,6 +234,7 @@ export interface PageContent {
     visible: boolean;
     customBackground?: string;
   };
+  landingPage?: Record<string, unknown>;
   isPublished: boolean;
   version: number;
 }
@@ -274,7 +273,7 @@ export interface Testimonial {
 
 export type CommunityPageContentUpdate = Partial<Pick<
   PageContent,
-  "hero" | "overview" | "benefits" | "testimonials" | "cta"
+  "hero" | "overview" | "benefits" | "testimonials" | "cta" | "landingPage"
 >>;
 
 function unwrapPageContentResponse(response: any): PageContent {
@@ -295,6 +294,17 @@ export const communityPageContentApi = {
   ): Promise<PageContent> => {
     const response = await apiClient.patch<ApiSuccessResponse<PageContent>>(
       `/community-page-content/${encodeURIComponent(communityId)}`,
+      updates,
+    );
+    return unwrapPageContentResponse(response);
+  },
+
+  saveAndPublish: async (
+    communityId: string,
+    updates: CommunityPageContentUpdate,
+  ): Promise<PageContent> => {
+    const response = await apiClient.put<ApiSuccessResponse<PageContent>>(
+      `/community-page-content/${encodeURIComponent(communityId)}/landing-page`,
       updates,
     );
     return unwrapPageContentResponse(response);

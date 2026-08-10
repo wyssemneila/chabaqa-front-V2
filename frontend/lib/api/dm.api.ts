@@ -129,7 +129,7 @@ const normalizeReplyMessage = (value: any): Message | string | undefined => {
   } as Message;
 };
 
-const normalizeMessage = (m: any): Message => {
+export const normalizeDmMessage = (m: any): Message => {
   if (!m) return { id: '', attachments: [] } as any;
   const raw = m._doc || m;
   const msg = withId(raw);
@@ -171,7 +171,7 @@ const normalizeMessage = (m: any): Message => {
   } as Message;
 };
 
-const normalizeConversation = (c: any): Conversation => {
+export const normalizeDmConversation = (c: any): Conversation => {
   if (!c) return { id: '', type: 'PEER_DM', unreadCountA: 0, unreadCountB: 0, isOpen: true } as any;
   const conv = withId(c);
   return {
@@ -190,25 +190,25 @@ export const dmApi = {
   startCommunityConversation: async (communityId: string): Promise<{ conversation: Conversation }> => {
     const res = await apiClient.post<any>('/dm/community/start', { communityId });
     const conv = extractConversationPayload(res);
-    return { conversation: normalizeConversation(conv) };
+    return { conversation: normalizeDmConversation(conv) };
   },
 
   startPeerConversation: async (communityId: string, targetUserId: string): Promise<{ conversation: Conversation }> => {
     const res = await apiClient.post<any>('/dm/peer/start', { communityId, targetUserId });
     const conv = extractConversationPayload(res);
-    return { conversation: normalizeConversation(conv) };
+    return { conversation: normalizeDmConversation(conv) };
   },
 
   startSessionConversation: async (bookingId: string): Promise<{ conversation: Conversation }> => {
     const res = await apiClient.post<any>('/dm/session/start', { bookingId });
     const conv = extractConversationPayload(res);
-    return { conversation: normalizeConversation(conv) };
+    return { conversation: normalizeDmConversation(conv) };
   },
 
   startHelpConversation: async (): Promise<{ conversation: Conversation }> => {
     const res = await apiClient.post<any>('/dm/help/start');
     const conv = extractConversationPayload(res);
-    return { conversation: normalizeConversation(conv) };
+    return { conversation: normalizeDmConversation(conv) };
   },
 
   listInbox: async (params?: { type?: 'community' | 'help' | 'peer' | 'session'; page?: number; limit?: number }): Promise<InboxResponse> => {
@@ -216,7 +216,7 @@ export const dmApi = {
     const data = res?.data ?? res;
     return {
       ...data,
-      conversations: (data.conversations || []).map(normalizeConversation),
+      conversations: (data.conversations || []).map(normalizeDmConversation),
     } as InboxResponse;
   },
 
@@ -225,8 +225,8 @@ export const dmApi = {
     const root = (res as any)?.data ?? res;
     return {
       ...root,
-      conversation: normalizeConversation(root.conversation),
-      messages: (root.messages || []).map(normalizeMessage),
+      conversation: normalizeDmConversation(root.conversation),
+      messages: (root.messages || []).map(normalizeDmMessage),
     } as MessagesResponse;
   },
 
@@ -249,13 +249,13 @@ export const dmApi = {
   ): Promise<{ message: Message }> => {
     const res = await apiClient.post<any>(`/dm/${conversationId}/messages`, payload);
     const msg = extractMessagePayload(res);
-    return { message: normalizeMessage(msg) };
+    return { message: normalizeDmMessage(msg) };
   },
 
   uploadAttachment: async (conversationId: ConversationId, file: File): Promise<{ message: Message }> => {
     const res = await apiClient.uploadFile<any>(`/dm/${conversationId}/attachments`, file, 'file');
     const msg = extractMessagePayload(res);
-    return { message: normalizeMessage(msg) };
+    return { message: normalizeDmMessage(msg) };
   },
 
   markRead: async (conversationId: ConversationId): Promise<{ ok: boolean; readAt: string }> => {
@@ -270,20 +270,20 @@ export const dmApi = {
     const root = (res as any)?.data ?? res;
     return {
       ...root,
-      messages: (root.messages || []).map(normalizeMessage),
+      messages: (root.messages || []).map(normalizeDmMessage),
     } as MessageSearchResponse;
   },
 
   listPinnedMessages: async (conversationId: ConversationId): Promise<{ messages: Message[] }> => {
     const res = await apiClient.get<any>(`/dm/${conversationId}/messages/pinned`);
     const root = (res as any)?.data ?? res;
-    return { messages: (root.messages || []).map(normalizeMessage) };
+    return { messages: (root.messages || []).map(normalizeDmMessage) };
   },
 
   editMessage: async (conversationId: ConversationId, messageId: string, text: string): Promise<{ message: Message }> => {
     const res = await apiClient.patch<any>(`/dm/${conversationId}/messages/${messageId}`, { text });
     const msg = extractMessagePayload(res);
-    return { message: normalizeMessage(msg) };
+    return { message: normalizeDmMessage(msg) };
   },
 
   deleteMessage: async (
@@ -312,7 +312,7 @@ export const dmApi = {
   pinMessage: async (conversationId: ConversationId, messageId: string, pinned: boolean): Promise<{ message: Message }> => {
     const res = await apiClient.patch<any>(`/dm/${conversationId}/messages/${messageId}/pin`, { pinned });
     const msg = extractMessagePayload(res);
-    return { message: normalizeMessage(msg) };
+    return { message: normalizeDmMessage(msg) };
   },
 
   typing: async (conversationId: ConversationId, isTyping: boolean): Promise<{ ok: boolean }> => {
@@ -321,15 +321,15 @@ export const dmApi = {
 
   helpQueue: async (): Promise<{ items: Conversation[] }> => {
     const res = await apiClient.get<{ items: any[] }>('/dm/help/queue');
-    return { items: (res.items || []).map(normalizeConversation) };
+    return { items: (res.items || []).map(normalizeDmConversation) };
   },
 
   assignHelp: async (conversationId: ConversationId): Promise<{ conversation: Conversation }> => {
     const res = await apiClient.patch<{ conversation: any }>(`/dm/help/${conversationId}/assign`);
     if ((res as any)?.conversation) {
-      return { conversation: normalizeConversation((res as any).conversation) };
+      return { conversation: normalizeDmConversation((res as any).conversation) };
     }
-    return { conversation: normalizeConversation(res as any) };
+    return { conversation: normalizeDmConversation(res as any) };
   },
 
   getHelpAdmin: async (conversationId: ConversationId): Promise<{ admin: any }> => {

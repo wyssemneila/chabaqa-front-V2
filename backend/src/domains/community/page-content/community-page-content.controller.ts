@@ -2,7 +2,8 @@ import {
   Controller, 
   Get, 
   Post, 
-  Patch, 
+  Patch,
+  Put,
   Delete, 
   Body, 
   Param, 
@@ -134,6 +135,26 @@ export class CommunityPageContentController {
       message: 'Content updated successfully',
       data: result
     };
+  }
+
+  /** Save the complete builder document and make that exact revision public. */
+  @Put(':communityId/landing-page')
+  @UseGuards(JwtAuthGuard, CommunityPermissionGuard)
+  @RequireCommunityPermission(CommunityPermission.COMMUNITY_MANAGE_SETTINGS)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Save and publish the complete community landing page' })
+  async saveLandingPage(
+    @Param('communityId') communityId: string,
+    @Body() updateDto: UpdateCommunityPageContentDto,
+    @Request() req,
+  ) {
+    const data = await this.pageContentService.saveAndPublishContent(
+      communityId,
+      this.getRequestUserId(req),
+      updateDto,
+    );
+    return { success: true, message: 'Landing page saved and published', data };
   }
 
   /**

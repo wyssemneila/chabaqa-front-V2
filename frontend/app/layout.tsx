@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { Inter, Tajawal } from "next/font/google"
+import { Tajawal } from "next/font/google"
+import localFont from "next/font/local"
 import Script from "next/script"
 import { cookies, headers } from "next/headers"
 import { NextIntlClientProvider } from "next-intl"
@@ -27,7 +28,16 @@ import {
   seoConfig,
 } from "@/lib/seo-config"
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-latin" })
+const sfProDisplay = localFont({
+  src: [
+    { path: "../public/fonts/SFProDisplay-Regular.otf", weight: "400", style: "normal" },
+    { path: "../public/fonts/SFProDisplay-Medium.otf", weight: "500", style: "normal" },
+    { path: "../public/fonts/SFProDisplay-Bold.otf", weight: "700", style: "normal" },
+  ],
+  variable: "--font-latin",
+  display: "swap",
+  fallback: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+})
 const tajawal = Tajawal({
   subsets: ["arabic"],
   variable: "--font-arabic",
@@ -85,7 +95,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#ffffff",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f7fe" },
+    { media: "(prefers-color-scheme: dark)", color: "#12111a" },
+  ],
 }
 
 export default async function RootLayout({
@@ -112,7 +125,6 @@ export default async function RootLayout({
         <link rel="alternate" hrefLang="x-default" href={appBaseUrl} />
         
         {/* Additional meta tags for better SEO */}
-        <meta name="theme-color" content="#ffffff" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Chabaqa" />
@@ -120,7 +132,7 @@ export default async function RootLayout({
         <meta name="application-name" content="Chabaqa" />
       </head>
       <body
-        className={`${inter.variable} ${tajawal.variable} ${locale === "ar" ? "font-arabic" : "font-latin"}`}
+        className={`${sfProDisplay.variable} ${tajawal.variable} ${locale === "ar" ? "font-arabic" : "font-latin"}`}
         suppressHydrationWarning
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
