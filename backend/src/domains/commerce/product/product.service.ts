@@ -1006,7 +1006,6 @@ export class ProductService {
     const files = (product.files || []).map((file) => ({
       id: file.id,
       name: file.name,
-      url: this.uploadService.ensureAbsoluteUrl(file.url),
       type: file.type,
       size: file.size,
       description: file.description,

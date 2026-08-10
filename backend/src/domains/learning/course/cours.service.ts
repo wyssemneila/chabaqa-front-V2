@@ -2807,9 +2807,11 @@ export class CoursService {
       console.log(`   ✅ Cours trouvé: ${cours.titre}`);
       console.log(`   🏢 Community ID: ${cours.communityId}`);
 
-      // 2. Standalone purchase: pas d'obligation d'appartenir à la communauté
       const userObjectId = new Types.ObjectId(userId);
-      console.log('   ✅ Standalone enrollment autorisé (pas d\'exigence de membership)');
+      const community = await this.communityModel.findById(cours.communityId).select('members').session(session);
+      if (!community || !community.members.some((member: any) => String(member) === String(userObjectId))) {
+        throw new ForbiddenException('You must be an active community member before enrolling in this course');
+      }
 
       const coursePrice = Number(cours.prix || 0);
       if (coursePrice > 0 && !paidFulfillment) {

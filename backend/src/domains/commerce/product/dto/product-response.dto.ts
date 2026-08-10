@@ -55,7 +55,9 @@ export class ProductFileResponseDto {
     description: 'URL du fichier',
     example: 'https://example.com/download/ui-kit'
   })
-  url: string;
+  // Public product responses expose file metadata only. Entitled users receive
+  // a short-lived URL from the protected download endpoint.
+  url?: string;
 
   @ApiProperty({
     description: 'Type de fichier',

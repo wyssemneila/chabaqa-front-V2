@@ -732,6 +732,23 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
     };
   }
 
+  private async assertCommunityJoinEntitlement(community: CommunityDocument, userId: string): Promise<void> {
+    const price = Number((community as any).fees_of_join || (community as any).price || 0);
+    if (price <= 0) return;
+    const paidOrder = await this.orderModel.exists({
+      buyerId: new Types.ObjectId(userId),
+      contentType: TrackableContentType.COMMUNITY,
+      contentId: { $in: [String(community._id), String((community as any).id || '')] },
+      status: 'paid',
+    });
+    if (!paidOrder) {
+      throw new HttpException(
+        { message: 'A completed payment is required before joining this community', initEndpoint: '/payment/stripe-link/init/community' },
+        HttpStatus.PAYMENT_REQUIRED,
+      );
+    }
+  }
+
   private normalizeCommunitySettings(communityName: string, rawSettings: any = {}) {
     const settings = rawSettings || {};
     const primaryColor = typeof settings.primaryColor === 'string' ? settings.primaryColor : '#3b82f6';
@@ -1908,6 +1925,8 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
         throw new ForbiddenException('Cette communauté est privée. Vous devez utiliser un lien d\'invitation pour la rejoindre.');
       }
 
+      await this.assertCommunityJoinEntitlement(community, userId);
+
       // Ajouter l'utilisateur à la communauté
       community.members.push(new Types.ObjectId(userId));
       community.membersCount = community.members.length;
@@ -2026,6 +2045,10 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
 
         return this.transformCommunityForFrontend(populatedCommunity);
       }
+
+      // An invite proves eligibility for a private community; it never replaces
+      // the completed payment required by a paid community.
+      await this.assertCommunityJoinEntitlement(community, userId);
 
       // Ajouter l'utilisateur à la communauté
       community.members.push(new Types.ObjectId(userId));
