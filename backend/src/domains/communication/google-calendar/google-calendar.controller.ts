@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Request, Res, UseGuards, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Body, Query, Request, Res, UseGuards, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '@/domains/auth/jwt-auth.guard';
@@ -41,10 +41,10 @@ export class GoogleCalendarController {
     }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  getAuthUrl(@Request() req): { authUrl: string } {
+  async getAuthUrl(@Request() req): Promise<{ authUrl: string }> {
     const userId = this.getUserId(req);
     this.logger.log(`[getAuthUrl] Generating auth URL for user: ${userId}`);
-    const authUrl = this.googleCalendarService.getAuthUrl(userId);
+    const authUrl = await this.googleCalendarService.getAuthUrl(userId);
     return { authUrl };
   }
 
@@ -85,76 +85,16 @@ export class GoogleCalendarController {
     @Query('state') state: string,
     @Res() res: Response
   ): Promise<void> {
-    this.logger.log(`[handleCallbackGet] Received callback with code: ${code?.substring(0, 10)}..., state (userId): ${state}`);
-    
-    // Helper to return HTML result page
-    const sendResultPage = (success: boolean, message: string) => {
-      const eventType = success ? 'GOOGLE_CALENDAR_SUCCESS' : 'GOOGLE_CALENDAR_ERROR';
-      const safeMessage = message.replace(/'/g, "\\'").replace(/\\/g, '\\\\');
-      
-      res.setHeader('Content-Type', 'text/html');
-      res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
-      res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
-      res.send(`<!DOCTYPE html>
-<html><head><title>Google Calendar - ${success ? 'Connected' : 'Error'}</title>
-<style>
-  body{font-family:system-ui,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f5}
-  .c{text-align:center;padding:20px}
-  .success{color:#16a34a;font-size:18px;font-weight:600}
-  .err{color:#dc2626;font-size:18px}
-  .sub{color:#666;margin-top:10px}
-</style>
-</head>
-<body>
-<div class="c">
-<p class="${success ? 'success' : 'err'}">${success ? '✓ Google Calendar connected successfully!' : message}</p>
-<p class="sub">You can close this window now.</p>
-</div>
-<script>
-(function(){
-  // Signal to parent window via localStorage
-  var result = JSON.stringify({type:'${eventType}',message:'${safeMessage}'});
-  localStorage.removeItem('google_calendar_oauth_pending');
-  localStorage.removeItem('google_calendar_oauth_token');
-  
-  // Set result multiple times to ensure storage event fires
-  localStorage.setItem('google_calendar_oauth_result', result);
-  
-  // Force storage event by toggling
-  setTimeout(function(){
-    localStorage.removeItem('google_calendar_oauth_result');
-    localStorage.setItem('google_calendar_oauth_result', result);
-  }, 100);
-  
-  // Try to close window (may not work due to browser security)
-  setTimeout(function(){
-    try { window.close(); } catch(e) {}
-  }, 1500);
-  
-  // Keep trying to close
-  var closeAttempts = 0;
-  var closeInterval = setInterval(function(){
-    closeAttempts++;
-    try { window.close(); } catch(e) {}
-    if (closeAttempts > 10) clearInterval(closeInterval);
-  }, 1000);
-})();
-</script>
-</body></html>`);
-    };
-
     if (!code || !state) {
-      sendResultPage(false, 'Missing code or state parameter');
+      res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'Missing OAuth callback parameters' });
       return;
     }
-    
     try {
-      // State contains the user ID (set in getAuthUrl)
       const result = await this.googleCalendarService.handleCallback(code, state);
-      sendResultPage(result.success, result.message);
+      res.status(HttpStatus.OK).json(result);
     } catch (error: any) {
       this.logger.error(`[handleCallbackGet] Error: ${error.message}`);
-      sendResultPage(false, error.message || 'Failed to connect Google Calendar');
+      res.status(HttpStatus.BAD_REQUEST).json({ success: false, message: 'Failed to connect Google Calendar' });
     }
   }
 
@@ -200,7 +140,7 @@ export class GoogleCalendarController {
       throw new Error('Missing authorization code');
     }
     
-    return this.googleCalendarService.handleCallback(code, userId);
+    throw new BadRequestException('OAuth callbacks must use the one-time authorization state flow');
   }
 
   /**
