@@ -40,6 +40,7 @@ import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
 import { AdminGuard } from '@/domains/auth/guards/admin.guard';
 import { EntitlementService } from '@/shared/services/entitlement.service';
 import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
+import { PaymentAccessRevocationService } from '@/shared/services/payment-access-revocation.service';
 
 
 @ApiTags('Payments')
@@ -77,6 +78,7 @@ export class PaymentController {
     private readonly affiliateCommissionService: AffiliateCommissionService,
     private readonly entitlementService: EntitlementService,
     private readonly creatorIntegrationsService: CreatorIntegrationsService,
+    @Optional() private readonly paymentAccessRevocationService?: PaymentAccessRevocationService,
     @Optional() private readonly webhookRetryService?: WebhookRetryService,
   ) { }
 
@@ -926,6 +928,7 @@ export class PaymentController {
     };
     await order.save();
     await this.entitlementService.revokeForOrder(orderId, reason);
+    await this.paymentAccessRevocationService?.revokeForOrder(order, reason);
 
     await this.affiliateCommissionService.onOrderRefunded(orderId).catch((error) => {
       this.logger.warn(`Affiliate refund reversal failed for order ${orderId}: ${error?.message || error}`);
@@ -985,6 +988,7 @@ export class PaymentController {
     };
     await order.save();
     await this.entitlementService.revokeForOrder(String(order._id), 'stripe_charge_refunded_webhook');
+    await this.paymentAccessRevocationService?.revokeForOrder(order, 'stripe_charge_refunded_webhook');
     await this.affiliateCommissionService.onOrderRefunded(String(order._id)).catch((error) => {
       this.logger.warn(`Affiliate refund reversal failed for Stripe webhook order ${String(order._id)}: ${error?.message || error}`);
     });

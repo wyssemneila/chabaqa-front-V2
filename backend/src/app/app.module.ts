@@ -27,8 +27,10 @@ import { PolicyModule } from '@/shared/modules/policy.module';
 import { StripePaymentService } from '@/shared/services/stripe-payment.service';
 import { PromoService } from '@/shared/services/promo.service';
 import { FeeService } from '@/shared/services/fee.service';
+import { PaymentAccessRevocationService } from '@/shared/services/payment-access-revocation.service';
 import { PromoCode, PromoCodeSchema } from '@/infrastructure/database/schemas/commerce/promo-code.schema';
 import { Subscription, SubscriptionSchema } from '@/infrastructure/database/schemas/commerce/subscription.schema';
+import { CommunityMemberSubscription, CommunityMemberSubscriptionSchema } from '@/infrastructure/database/schemas/commerce/community-member-subscription.schema';
 import { CourseEnrollmentSchema, CourseProgressSchema } from '@/infrastructure/database/schemas/learning/course.schema';
 import { StorageUsage, StorageUsageSchema } from '@/infrastructure/database/schemas/shared/storage-usage.schema';
 import { TrackingController } from '@/shared/controllers/tracking.controller';
@@ -172,6 +174,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
       { name: UserAchievement.name, schema: UserAchievementSchema },
       { name: PromoCode.name, schema: PromoCodeSchema },
       { name: Subscription.name, schema: SubscriptionSchema },
+      { name: CommunityMemberSubscription.name, schema: CommunityMemberSubscriptionSchema },
       { name: 'CourseEnrollment', schema: CourseEnrollmentSchema },
       { name: 'CourseProgress', schema: CourseProgressSchema },
       // New admin schemas
@@ -222,6 +225,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     StripePaymentService,
     PromoService,
     FeeService,
+    PaymentAccessRevocationService,
   ],
 })
 export class AppModule { }
