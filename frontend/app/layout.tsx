@@ -36,6 +36,9 @@ const sfProDisplay = localFont({
   ],
   variable: "--font-latin",
   display: "swap",
+  // These fonts are not required above the fold on every route; avoid unused
+  // preload warnings while retaining font-display swap behavior.
+  preload: false,
   fallback: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
 })
 const tajawal = Tajawal({

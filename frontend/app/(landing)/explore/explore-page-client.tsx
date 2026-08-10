@@ -24,8 +24,9 @@ async function fetchJoinedCommunitySlugs(): Promise<Set<string>> {
 
     if (!token) return new Set()
 
-    const apiBase =
-      (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "")
+    // Browser requests must use the same-origin proxy, never a build-time
+    // localhost/internal backend URL.
+    const apiBase = "/api"
     const authHeader = token.toLowerCase().startsWith("bearer ")
       ? token
       : `Bearer ${token}`

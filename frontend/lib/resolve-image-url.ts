@@ -2,6 +2,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
 const API_ORIGIN = API_BASE.replace(/\/api$/, "")
 const IMAGE_FILENAME_PATTERN = /^[^/?#]+\.(?:avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i
 const UPLOAD_IMAGE_PATH_PATTERN = /^\/uploads\/image\/[^?#]+\.(?:avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i
+const UNSUPPORTED_PLACEHOLDER_HOSTS = new Set([
+  "via.placeholder.com",
+  "placehold.co",
+])
 
 function getSecureApiOrigin(): string {
   const httpsOrigin = API_ORIGIN.replace("http://", "https://")
@@ -30,6 +34,9 @@ export function resolveImageUrl(value?: string): string | undefined {
   if (/^https?:\/\//i.test(raw)) {
     try {
       const url = new URL(raw)
+      if (UNSUPPORTED_PLACEHOLDER_HOSTS.has(url.hostname.toLowerCase())) {
+        return undefined
+      }
       const uploadPath = getSameOriginUploadPath(url.pathname)
       if (uploadPath) {
         return `${uploadPath}${url.search || ""}`

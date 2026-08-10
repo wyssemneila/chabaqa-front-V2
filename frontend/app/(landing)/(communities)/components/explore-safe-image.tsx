@@ -19,7 +19,7 @@ export function ExploreSafeImage({ src, fallbackSrc, alt, ...props }: ExploreSaf
     () => resolveImageUrl(typeof src === "string" ? src : "") || "",
     [src],
   )
-  const isGenericPlaceholder = /\/(?:placeholder|placeholder-logo)(?:[.-]|$)/i.test(resolvedSource)
+  const isGenericPlaceholder = /\/(?:placeholder|placeholder-logo)(?:[.-]|$)/i.test(resolvedSource) || !resolvedSource
   const initialSource = resolvedSource && !isGenericPlaceholder ? resolvedSource : resolvedFallback
 
   return (
