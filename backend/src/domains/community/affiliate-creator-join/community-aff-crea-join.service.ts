@@ -1598,6 +1598,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       await community.save();
       await this.userModel.findByIdAndUpdate(userId, { $addToSet: { joinedCommunities: community._id } });
       await this.notifyCreatorMemberJoined(community, userId);
+      void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+        communityId: String(community._id), memberId: String(userId), joinedAt: new Date().toISOString(), source: 'free_checkout',
+      }, String(community._id));
       void this.emailCampaignService.sendWelcomeEmailToNewMember(userId, community._id.toString());
       try {
         await this.trackingService.trackStart(userId, community._id.toString(), TrackableContentType.COMMUNITY, {
@@ -1652,6 +1655,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       await community.save();
       await this.userModel.findByIdAndUpdate(userId, { $addToSet: { joinedCommunities: community._id } });
       await this.notifyCreatorMemberJoined(community, userId);
+      void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+        communityId: String(community._id), memberId: String(userId), joinedAt: new Date().toISOString(), source: 'paid_order_join',
+      }, String(community._id));
       void this.emailCampaignService.sendWelcomeEmailToNewMember(userId, community._id.toString());
       try {
         await this.trackingService.trackStart(userId, community._id.toString(), TrackableContentType.COMMUNITY, {
@@ -1695,6 +1701,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
     await community.save();
     await this.userModel.findByIdAndUpdate(userId, { $addToSet: { joinedCommunities: community._id } });
     await this.notifyCreatorMemberJoined(community, userId);
+    void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+      communityId: String(community._id), memberId: String(userId), joinedAt: new Date().toISOString(), source: 'legacy_paid_join',
+    }, String(community._id));
     void this.emailCampaignService.sendWelcomeEmailToNewMember(userId, community._id.toString());
     try {
       await this.trackingService.trackStart(userId, community._id.toString(), TrackableContentType.COMMUNITY, {
@@ -1964,6 +1973,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       });
 
       await this.notifyCreatorMemberJoined(community, userId, this.resolveMemberDisplayName(user));
+      void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+        communityId: String(community._id), memberId: String(userId), joinedAt: new Date().toISOString(), source: 'invite_join',
+      }, String(community._id));
       await this.dmCampaignProcessor.queueNewMemberAutomations(community._id.toString(), userId).catch(() => undefined);
       void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
         communityId: String(community._id), communityName: community.name, memberId: String(userId), memberName: this.resolveMemberDisplayName(user),

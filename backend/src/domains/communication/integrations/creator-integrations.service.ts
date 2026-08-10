@@ -1114,7 +1114,13 @@ export class CreatorIntegrationsService {
     if (!original) throw new NotFoundException('Delivery not found');
     const hook = await this.webhookModel.findById(original.webhookId).select('+secret');
     if (!hook || !hook.active) throw new BadRequestException('Webhook is no longer active');
-    const delivery = await this.queueWebhook(hook, original.event, ((original.payload as any)?.data || {}) as Record<string, unknown>);
+    const delivery = await this.queueWebhook(
+      hook,
+      original.event,
+      ((original.payload as any)?.data || {}) as Record<string, unknown>,
+      original.eventId,
+      (original.payload as any)?.occurredAt,
+    );
     await this.deliverWebhook(String(delivery._id));
     return this.deliveryModel.findById(delivery._id).lean();
   }
@@ -1236,21 +1242,26 @@ export class CreatorIntegrationsService {
     const creatorObjectId = this.id(creatorId);
     const hooks = await this.webhookModel.find({ creatorId: creatorObjectId, active: true, events: event }).select('+secret');
     await Promise.all(hooks.map(async (hook) => {
-      if (communityId && hook.communityId && String(hook.communityId) !== communityId) return;
+      if (hook.communityId && String(hook.communityId) !== String(communityId || '')) return;
       const queued = await this.queueWebhook(hook, event, data);
       void this.deliverWebhook(String(queued._id));
     }));
     await this.queueProviderDeliveries(creatorId, event, data, communityId);
   }
 
-  private async queueWebhook(hook: CreatorWebhookDocument, event: string, data: Record<string, unknown>): Promise<CreatorWebhookDeliveryDocument> {
-    const eventId = randomUUID();
+  private async queueWebhook(
+    hook: CreatorWebhookDocument,
+    event: string,
+    data: Record<string, unknown>,
+    eventId: string = randomUUID(),
+    occurredAt = new Date().toISOString(),
+  ): Promise<CreatorWebhookDeliveryDocument> {
     return this.deliveryModel.create({
       webhookId: hook._id,
       creatorId: hook.creatorId,
       event,
       eventId,
-      payload: { event, eventId, occurredAt: new Date().toISOString(), data },
+      payload: { event, eventId, occurredAt, data },
       status: 'queued',
       nextAttemptAt: new Date(),
     });

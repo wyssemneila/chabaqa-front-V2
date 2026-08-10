@@ -954,7 +954,7 @@ export class PaymentController {
         buyerId: String((order as any).buyerId || ''),
         refundedAt: new Date().toISOString(),
         source: 'admin_refund',
-      }).catch((error) => this.logger.warn(`Refund integration event failed: ${error?.message || error}`));
+      }, (order as any).communityId?.toString?.() || (order as any).metadata?.communityId).catch((error) => this.logger.warn(`Refund integration event failed: ${error?.message || error}`));
     }
 
     return {
@@ -1012,7 +1012,7 @@ export class PaymentController {
         buyerId: String(order.buyerId || ''),
         refundedAt: new Date().toISOString(),
         source: 'stripe_charge_refunded_webhook',
-      }).catch((error) => this.logger.warn(`Stripe refund integration event failed: ${error?.message || error}`));
+      }, order.communityId?.toString?.() || order.metadata?.communityId).catch((error) => this.logger.warn(`Stripe refund integration event failed: ${error?.message || error}`));
     }
   }
 
@@ -2218,6 +2218,9 @@ export class PaymentController {
           await userUpdateQuery.exec();
 
           await this.notifyCommunityCreatorMemberJoined(community, order.buyerId);
+          void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+            communityId: String(community._id), memberId: String(order.buyerId), orderId: String(order._id), joinedAt: new Date().toISOString(), source: 'payment_fulfillment',
+          }, String(community._id));
           await this.subscriptionService.recordCommunityMemberSubscriptionFromOrder(order, {
             provider: stripeSessionMetadata?.provider || order.metadata?.provider || order.paymentMethod,
             providerCustomerId: stripePaymentDetails?.customerId,

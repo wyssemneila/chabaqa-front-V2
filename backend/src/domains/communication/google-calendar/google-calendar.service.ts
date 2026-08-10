@@ -68,6 +68,10 @@ export class GoogleCalendarService {
     return decryptFieldValue(value);
   }
 
+  private createOAuthClient(): OAuth2Client {
+    return new google.auth.OAuth2(this.calendarClientId, this.calendarClientSecret, this.oauthRedirectUri);
+  }
+
   private classifyGoogleError(error: any): GoogleCalendarFailureDetails {
     const errorMessage =
       error?.message ||
@@ -144,7 +148,7 @@ export class GoogleCalendarService {
       stateHash: createHash('sha256').update(state).digest('hex'),
       expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
-    const authUrl = this.oauth2Client.generateAuthUrl({
+    const authUrl = this.createOAuthClient().generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
       prompt: 'consent',
@@ -168,7 +172,7 @@ export class GoogleCalendarService {
       if (!stateRecord) throw new BadRequestException('OAuth state is expired, invalid, or already used');
       const userId = String(stateRecord.userId);
       this.logger.log(`[handleCallback] Exchanging code for tokens, userId: ${userId}`);
-      const { tokens } = await this.oauth2Client.getToken(code);
+      const { tokens } = await this.createOAuthClient().getToken(code);
       this.logger.log(`[handleCallback] Got tokens, scope: ${tokens.scope}`);
       
       // Verify the state matches the user ID for security
@@ -223,11 +227,12 @@ export class GoogleCalendarService {
       const googleTokens = this.decryptGoogleTokens(user?.googleTokens);
       if (!googleTokens?.refresh_token) return false;
 
-      this.oauth2Client.setCredentials({
+      const oauthClient = this.createOAuthClient();
+      oauthClient.setCredentials({
         refresh_token: googleTokens.refresh_token
       });
 
-      const { credentials } = await this.oauth2Client.refreshAccessToken();
+      const { credentials } = await oauthClient.refreshAccessToken();
       
       // Update user with new tokens
       await this.userModel.findByIdAndUpdate(userId, {
@@ -273,12 +278,13 @@ export class GoogleCalendarService {
       }
 
       // Set up OAuth client with creator's tokens
-      this.oauth2Client.setCredentials({
+      const oauthClient = this.createOAuthClient();
+      oauthClient.setCredentials({
         access_token: googleTokens.access_token,
         refresh_token: googleTokens.refresh_token
       });
 
-      const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+      const calendar = google.calendar({ version: 'v3', auth: oauthClient });
 
       // Create the event with Meet link
       const event = {
