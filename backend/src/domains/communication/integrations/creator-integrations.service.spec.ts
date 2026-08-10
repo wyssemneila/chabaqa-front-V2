@@ -112,4 +112,26 @@ describe('CreatorIntegrationsService contract safety', () => {
 
     await expect(monitoringService.getDeliveryStats()).resolves.toMatchObject({ retrying: 4, exhausted: 6, expiredOAuthStates: 5 });
   });
+
+  it('prefers a community mapping over the creator-wide provider mapping', () => {
+    const communityId = '64a1b2c3d4e5f6789abcdef0';
+    const mappings = (service as any).effectiveCommunityMappings([
+      { provider: 'kit', communityId: undefined, config: { policyVersion: 'global' } },
+      { provider: 'kit', communityId, config: { policyVersion: 'community' } },
+      { provider: 'brevo', communityId: undefined, config: { policyVersion: 'global' } },
+    ], communityId);
+
+    expect(mappings).toEqual([
+      expect.objectContaining({ provider: 'kit', config: { policyVersion: 'community' } }),
+      expect.objectContaining({ provider: 'brevo', config: { policyVersion: 'global' } }),
+    ]);
+  });
+
+  it('scopes lifecycle idempotency to the community and join occurrence', () => {
+    const identity = (service as any).eventIdentity.bind(service);
+    expect(identity('member.joined', { memberId: 'member-1', joinedAt: '2026-08-10T10:00:00.000Z' }, 'community-a'))
+      .not.toBe(identity('member.joined', { memberId: 'member-1', joinedAt: '2026-08-10T10:00:00.000Z' }, 'community-b'));
+    expect(identity('member.joined', { memberId: 'member-1', joinedAt: '2026-08-10T10:00:00.000Z' }, 'community-a'))
+      .not.toBe(identity('member.joined', { memberId: 'member-1', joinedAt: '2026-08-11T10:00:00.000Z' }, 'community-a'));
+  });
 });
