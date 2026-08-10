@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -12,6 +12,7 @@ import type { CommunityThemeTokens } from "@/lib/community-theme"
 import { PaymentProviderModal } from "@/components/payment-provider-modal"
 import { usePaymentProviderModal } from "@/lib/hooks/use-payment-provider-modal"
 import { Label } from "@/components/ui/label"
+import { creatorIntegrationsApi, type ContactConsentOption } from "@/lib/api/creator-integrations.api"
 
 interface CheckoutFormProps {
   community: any
@@ -34,6 +35,8 @@ export function CheckoutForm({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [alreadyMember, setAlreadyMember] = useState(false)
+  const [contactConsentOptions, setContactConsentOptions] = useState<ContactConsentOption[]>([])
+  const [selectedContactConsents, setSelectedContactConsents] = useState<Record<string, boolean>>({})
 
   const pricing = community as any
   const normalizedInviteCode = typeof inviteCode === "string" ? inviteCode.trim() : ""
@@ -56,6 +59,29 @@ export function CheckoutForm({
   const gradient = themeTokens?.gradient || "linear-gradient(90deg, #8e78fb, #f48fb1)"
   const primary = themeTokens?.primary || "#8e78fb"
   const mutedBorder = themeTokens?.mutedBorder
+
+  useEffect(() => {
+    const communityId = String(community?.id || community?._id || "")
+    if (!communityId) return
+    creatorIntegrationsApi.contactConsentOptionsForCommunity(communityId)
+      .then((response: any) => {
+        const options = response?.data || response || []
+        setContactConsentOptions(Array.isArray(options) ? options : [])
+        // Consent must always be an explicit checkout choice, never preselected.
+        setSelectedContactConsents({})
+      })
+      .catch(() => setContactConsentOptions([]))
+  }, [community?.id, community?._id])
+
+  const saveSelectedContactConsents = async () => {
+    const selected = contactConsentOptions.filter((option) => selectedContactConsents[`${option.communityId}:${option.provider}`])
+    await Promise.all(selected.map((option) => creatorIntegrationsApi.setContactConsent({
+      provider: option.provider,
+      communityId: option.communityId,
+      policyVersion: option.policyVersion,
+      granted: true,
+    })))
+  }
 
   const basePrice = useMemo(() => {
     const toNumber = (value: unknown): number => {
@@ -132,6 +158,13 @@ export function CheckoutForm({
 
     setError(null)
     setPromoError(null)
+
+    try {
+      await saveSelectedContactConsents()
+    } catch (err: any) {
+      setError(err?.message || "Unable to save your marketing consent. Please try again.")
+      return
+    }
 
     // For paid communities, open the payment provider modal
     if (basePrice > 0) {
@@ -371,6 +404,25 @@ export function CheckoutForm({
                 <span>{formatCurrency(total)}</span>
               </div>
             </div>
+
+            {contactConsentOptions.length > 0 && !success && (
+              <fieldset className="mb-6 space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <legend className="px-1 text-sm font-semibold text-amber-950">Optional marketing updates</legend>
+                <p className="text-xs text-amber-900">Choose separately for each provider. Nothing is selected by default, and you can withdraw consent later in Settings.</p>
+                {contactConsentOptions.map((option) => {
+                  const key = `${option.communityId}:${option.provider}`
+                  const providerName = option.provider === "kit" ? "Kit" : "Brevo"
+                  return <label key={key} className="flex cursor-pointer items-start gap-2 text-xs text-amber-950">
+                    <input
+                      type="checkbox"
+                      checked={selectedContactConsents[key] === true}
+                      onChange={(event) => setSelectedContactConsents((current) => ({ ...current, [key]: event.target.checked }))}
+                    />
+                    <span>I agree that {option.communityName} may share my contact details with {providerName} for updates and offers under policy version {option.policyVersion}.</span>
+                  </label>
+                })}
+              </fieldset>
+            )}
 
             {basePrice > 0 && !success && (
               <div className="mb-6 p-4 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm">

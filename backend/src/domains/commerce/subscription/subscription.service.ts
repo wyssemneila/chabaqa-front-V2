@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { StripePaymentService } from '@/shared/services/stripe-payment.service';
@@ -52,6 +52,7 @@ import {
   getDefaultCreatorPlanDoc,
   normalizeCreatorPlanTier,
 } from '@/domains/commerce/subscription/default-creator-plans';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 @Injectable()
 export class SubscriptionService {
@@ -119,6 +120,7 @@ export class SubscriptionService {
     @InjectModel(EmailCampaign.name) private readonly emailCampaignModel: Model<any>,
     @InjectModel(WhatsappCampaign.name) private readonly whatsappCampaignModel: Model<any>,
     private readonly stripePaymentService: StripePaymentService,
+    @Optional() private readonly creatorIntegrationsService?: CreatorIntegrationsService,
   ) {}
 
   getPlanAmount(plan: PlanDocument, interval: BillingInterval | 'month' | 'year' = BillingInterval.MONTH): number {
@@ -1024,6 +1026,7 @@ export class SubscriptionService {
     });
 
     if (subscription) {
+      const previousStatus = subscription.status;
       subscription.status = this.normalizeProviderStatus(data.status);
       if (data.current_period_start) {
         subscription.currentPeriodStart = new Date(data.current_period_start * 1000);
@@ -1034,6 +1037,7 @@ export class SubscriptionService {
       }
       subscription.cancelAtPeriodEnd = data.cancel_at_period_end || false;
       await subscription.save();
+      this.emitSubscriptionCanceled(subscription, previousStatus);
     }
 
     return {
@@ -1051,8 +1055,10 @@ export class SubscriptionService {
     });
 
     if (subscription) {
+      const previousStatus = subscription.status;
       subscription.status = SubscriptionStatus.CANCELED;
       await subscription.save();
+      this.emitSubscriptionCanceled(subscription, previousStatus);
     }
 
     return {
@@ -1060,6 +1066,22 @@ export class SubscriptionService {
       eventId: webhookEvent.id,
       status: 'success'
     };
+  }
+
+  private emitSubscriptionCanceled(subscription: SubscriptionDocument, previousStatus: SubscriptionStatus | string): void {
+    if (!this.creatorIntegrationsService || previousStatus === SubscriptionStatus.CANCELED || subscription.status !== SubscriptionStatus.CANCELED) {
+      return;
+    }
+    void this.creatorIntegrationsService.emit(String(subscription.creatorId), 'subscription.canceled', {
+      subscriptionId: String(subscription._id),
+      plan: String(subscription.plan || ''),
+      billingInterval: String(subscription.billingInterval || ''),
+      amount: Number(subscription.amount || 0),
+      currency: String(subscription.currency || 'TND'),
+      currentPeriodEnd: subscription.currentPeriodEnd?.toISOString?.(),
+      canceledAt: new Date().toISOString(),
+      provider: String(subscription.provider || 'stripe'),
+    }).catch((error) => this.logger.warn(`Subscription cancellation integration event failed: ${error?.message || error}`));
   }
 
   private async handleInvoicePaymentSucceeded(webhookEvent: WebhookEventDto): Promise<WebhookResponseDto> {

@@ -39,6 +39,7 @@ import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
 import { AdminGuard } from '@/domains/auth/guards/admin.guard';
 import { EntitlementService } from '@/shared/services/entitlement.service';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 
 @ApiTags('Payments')
@@ -75,6 +76,7 @@ export class PaymentController {
     private readonly affiliateAttributionService: AffiliateAttributionService,
     private readonly affiliateCommissionService: AffiliateCommissionService,
     private readonly entitlementService: EntitlementService,
+    private readonly creatorIntegrationsService: CreatorIntegrationsService,
     @Optional() private readonly webhookRetryService?: WebhookRetryService,
   ) { }
 
@@ -938,10 +940,76 @@ export class PaymentController {
       reason,
     });
 
+    const creatorId = (order as any).creatorId?.toString?.();
+    if (creatorId) {
+      void this.creatorIntegrationsService.emit(creatorId, 'purchase.refunded', {
+        orderId: String((order as any)._id),
+        contentId: String((order as any).contentId || (order as any).metadata?.contentId || ''),
+        contentType: String((order as any).contentType || ''),
+        amount: Number((order as any).amountDT || 0),
+        currency: String((order as any).currency || 'TND'),
+        buyerId: String((order as any).buyerId || ''),
+        refundedAt: new Date().toISOString(),
+        source: 'admin_refund',
+      }).catch((error) => this.logger.warn(`Refund integration event failed: ${error?.message || error}`));
+    }
+
     return {
       success: true,
       data: { orderId, status: 'refunded' },
     };
+  }
+
+  /** Reconcile a full refund completed directly in Stripe.  This is separate
+   * from the admin refund route so Stripe Dashboard actions cannot leave local
+   * entitlements, affiliate commissions, or creator automations stale. */
+  private async reconcileStripeChargeRefund(charge: any): Promise<void> {
+    if (!charge?.refunded) return;
+    const paymentIntentId = String(charge.payment_intent || charge.paymentIntentId || '');
+    if (!paymentIntentId) return;
+    const order: any = await this.orderModel.findOne({ paymentIntentId }).exec();
+    if (!order || order.status === 'refunded') return;
+    if (order.status !== 'paid') {
+      this.logger.warn(`Ignoring Stripe refund for non-paid order ${String(order._id)}`);
+      return;
+    }
+
+    order.status = 'refunded';
+    order.metadata = {
+      ...(order.metadata || {}),
+      refund: {
+        source: 'stripe_charge_refunded_webhook',
+        refundedAt: new Date().toISOString(),
+        providerChargeId: String(charge.id || ''),
+      },
+    };
+    await order.save();
+    await this.entitlementService.revokeForOrder(String(order._id), 'stripe_charge_refunded_webhook');
+    await this.affiliateCommissionService.onOrderRefunded(String(order._id)).catch((error) => {
+      this.logger.warn(`Affiliate refund reversal failed for Stripe webhook order ${String(order._id)}: ${error?.message || error}`);
+    });
+    await this.auditPaymentEvent({
+      orderId: String(order._id),
+      eventType: 'refund_completed',
+      provider: 'stripe',
+      paymentMethod: order.paymentMethod,
+      previousStatus: 'paid',
+      nextStatus: 'refunded',
+      reason: 'stripe_charge_refunded_webhook',
+    });
+    const creatorId = order.creatorId?.toString?.();
+    if (creatorId) {
+      void this.creatorIntegrationsService.emit(creatorId, 'purchase.refunded', {
+        orderId: String(order._id),
+        contentId: String(order.contentId || order.metadata?.contentId || ''),
+        contentType: String(order.contentType || ''),
+        amount: Number(order.amountDT || 0),
+        currency: String(order.currency || 'TND'),
+        buyerId: String(order.buyerId || ''),
+        refundedAt: new Date().toISOString(),
+        source: 'stripe_charge_refunded_webhook',
+      }).catch((error) => this.logger.warn(`Stripe refund integration event failed: ${error?.message || error}`));
+    }
   }
 
   // ==================== STRIPE LINK ENDPOINTS ====================
@@ -2687,9 +2755,30 @@ export class PaymentController {
               if (didCompleteFulfillment) {
                 await this.incrementProductSalesFromOrder(order);
                 await this.affiliateCommissionService.onOrderPaid(order).catch((e) => this.logger.error(`Affiliate onOrderPaid failed: ${e?.message}`));
+                const creatorId = order.creatorId?.toString?.();
+                if (creatorId) {
+                  void this.creatorIntegrationsService.emit(creatorId, 'purchase.paid', {
+                    orderId: String(order._id), contentId: String(order.contentId || order.metadata?.contentId || ''),
+                    contentType: order.contentType, amount: Number(order.amountDT || 0), currency: order.currency || 'TND', buyerId: String(order.buyerId || ''),
+                  });
+                }
+                if (order.contentType === TrackableContentType.SUBSCRIPTION) {
+                  const subscriberId = String(order.buyerId || '');
+                  if (subscriberId) {
+                    void this.creatorIntegrationsService.emit(subscriberId, 'subscription.started', {
+                      orderId: String(order._id), plan: String(order.metadata?.tier || order.contentId || ''),
+                      billingInterval: String(order.metadata?.billingInterval || ''), amount: Number(order.amountDT || 0),
+                      currency: order.currency || 'TND', provider: String(order.metadata?.provider || order.paymentMethod || 'stripe'),
+                    }).catch((e) => this.logger.warn(`Subscription integration event failed: ${e?.message || e}`));
+                  }
+                }
               }
             }
           }
+          break;
+
+        case 'charge.refunded':
+          await this.reconcileStripeChargeRefund(stripeEvent.data.object as any);
           break;
 
         case 'customer.subscription.created':

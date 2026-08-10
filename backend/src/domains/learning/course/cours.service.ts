@@ -26,6 +26,7 @@ import { ChapterAccessService } from '@/shared/services/chapter-access.service';
 import { CourseSessionDto } from '@/shared/dto/course-session.dto';
 import { CommunityAccessService } from '@/domains/community/access/community-access.service';
 import { CommunityRole } from '@/shared/permissions';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 import {
   isSupportedChapterVideoUrl,
   normalizeChapterVideoUrl,
@@ -70,6 +71,7 @@ export class CoursService {
     private readonly cacheService: CacheService,
     @Optional() private readonly chapterAccessService?: ChapterAccessService,
     @Optional() private readonly communityAccessService?: CommunityAccessService,
+    private readonly creatorIntegrationsService?: CreatorIntegrationsService,
   ) { }
 
   /** A global creator role or ordinary membership never bypasses paid playback. */
@@ -2868,6 +2870,20 @@ export class CoursService {
       cours.ajouterInscription(inscriptionEnregistree._id);
       await cours.save({ session });
       await this.invalidateCourseCaches(cours.creatorId?.toString?.());
+
+      void this.creatorIntegrationsService?.emit(
+        String(cours.creatorId),
+        'course.enrolled',
+        {
+          courseId: cours.id || String(cours._id),
+          courseTitle: cours.titre,
+          enrollmentId: String(inscriptionEnregistree._id),
+          learnerId: String(userObjectId),
+          enrolledAt: inscriptionEnregistree.enrolledAt?.toISOString(),
+          fulfillment: paidFulfillment ? 'paid' : 'free',
+        },
+        String(cours.communityId),
+      ).catch((error) => console.error('⚠️ [CoursService] Failed to emit course.enrolled integration event:', error?.message || error));
 
       console.log('   ✅ Référence ajoutée au cours');
 

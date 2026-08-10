@@ -31,6 +31,7 @@ import {
   ChapterAccessService,
 } from '@/shared/services/chapter-access.service';
 import { applyWatchTimePolicy } from '@/shared/utils/watch-time-policy.util';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 @Injectable()
 export class CourseEnrollmentService {
@@ -48,6 +49,7 @@ export class CourseEnrollmentService {
     private readonly achievementService: AchievementService,
     private readonly trackingService: ContentTrackingService,
     private readonly chapterAccessService: ChapterAccessService,
+    private readonly creatorIntegrationsService: CreatorIntegrationsService,
   ) {}
 
   private async resolveCourse(courseId: string): Promise<CoursDocument> {
@@ -218,6 +220,19 @@ export class CourseEnrollmentService {
           (error as any)?.message || error,
         );
       }
+      void this.creatorIntegrationsService.emit(
+        String(course.creatorId),
+        'course.completed',
+        {
+          courseId: this.getCourseTrackingId(course),
+          courseTitle: course.titre,
+          enrollmentId: String(enrollment._id),
+          learnerId: userId,
+          completedAt: enrollment.completedAt?.toISOString(),
+          source,
+        },
+        String(course.communityId),
+      ).catch((error) => console.error('⚠️ [CourseEnrollmentService] Failed to emit course.completed integration event:', error?.message || error));
     }
 
     await this.syncEnrollmentTrackingProgress(userId, course, enrollment, {

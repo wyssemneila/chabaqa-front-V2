@@ -37,7 +37,8 @@
     "db:seed:platform-demo": "DEMO_SEED_ALLOW_RESET=true node scripts/run-with-local-db-env.js node scripts/seed-platform-demo.js --reset",
     "audit:object-storage": "node scripts/audit-object-storage.js",
     "migrate:object-storage": "node scripts/migrate-uploads-to-object-storage.js",
-    "migrate:object-storage:dry": "node scripts/migrate-uploads-to-object-storage.js --dry-run"
+    "migrate:object-storage:dry": "node scripts/migrate-uploads-to-object-storage.js --dry-run",
+    "migrate:help-dm-admin-refs": "node scripts/migrate-help-dm-admin-refs.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1076.0",

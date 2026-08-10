@@ -75,6 +75,7 @@ describe('PaymentController webhook hardening', () => {
       { resolveAttributionFromRequest: jest.fn().mockReturnValue({}) } as any,
       { onOrderPaid: jest.fn().mockResolvedValue(null) } as any,
       { revokeForOrder: jest.fn().mockResolvedValue(undefined) } as any,
+      { emit: jest.fn().mockResolvedValue(undefined) } as any,
       overrides.webhookRetryService as any,
     );
     (controller as any).processedWebhookEventModel = processedWebhookEventModel;

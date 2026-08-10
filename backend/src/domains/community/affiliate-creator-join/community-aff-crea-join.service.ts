@@ -19,6 +19,7 @@ import { Post, PostDocument } from '@/infrastructure/database/schemas/content/po
 import { EmailCampaignService } from '@/domains/communication/email-campaign/email-campaign.service';
 import { CommunityStaff, CommunityStaffDocument } from '@/infrastructure/database/schemas/community/community-staff.schema';
 import { DmCampaignProcessor } from '@/domains/communication/dm/dm-campaign.processor';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 @Injectable()
 export class CommunityAffCreaJoinService implements OnModuleInit {
@@ -39,6 +40,7 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
     private readonly cacheService: CacheService,
     private readonly emailCampaignService: EmailCampaignService,
     private readonly dmCampaignProcessor: DmCampaignProcessor,
+    private readonly creatorIntegrationsService: CreatorIntegrationsService,
   ) { }
 
   async onModuleInit(): Promise<void> {
@@ -1944,6 +1946,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
 
       await this.notifyCreatorMemberJoined(community, userId, this.resolveMemberDisplayName(user));
       await this.dmCampaignProcessor.queueNewMemberAutomations(community._id.toString(), userId).catch(() => undefined);
+      void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+        communityId: String(community._id), communityName: community.name, memberId: String(userId), memberName: this.resolveMemberDisplayName(user),
+      }, String(community._id));
 
       // Retourner la communauté avec les relations peuplées
       const populatedCommunity = await this.communityModel
@@ -2298,6 +2303,14 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       await this.invalidateCommunityAndProfileCaches({
         communitySlug: community.slug,
         communityId: community._id?.toString?.(),
+      });
+
+      void this.creatorIntegrationsService.emit(String(community.createur), 'member.left', {
+        communityId: String(community._id),
+        memberId: String(userId),
+        leftAt: new Date().toISOString(),
+      }, String(community._id)).catch((error) => {
+        console.warn(`⚠️ [COMMUNITY] member.left integration event failed: ${error?.message || error}`);
       });
 
       return {
