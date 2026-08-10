@@ -3,8 +3,9 @@
  * Provides a typed HTTP client with automatic token management
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
-                    (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api` : "http://localhost:3000/api")
+const API_BASE_URL = typeof window !== 'undefined'
+  ? '/api'
+  : (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api')
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, any>

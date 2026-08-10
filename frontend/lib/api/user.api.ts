@@ -23,7 +23,9 @@ export interface DeleteAccountPayload {
   confirmText: string
 }
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+const apiBase = typeof window !== "undefined"
+  ? "/api"
+  : (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api")
 
 async function readApiError(res: Response, fallback: string): Promise<string> {
   const body = await res.json().catch(() => null)
