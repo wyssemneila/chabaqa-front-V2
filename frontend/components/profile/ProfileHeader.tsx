@@ -41,10 +41,10 @@ export function ProfileHeader({ user, onEdit, onShare }: ProfileHeaderProps) {
           </div>
           <div className="w-full sm:w-auto flex gap-2">
             <Button variant="default" onClick={onEdit}>
-              <Pencil className="h-4 w-4 mr-2" /> Edit Profile
+              <Pencil className="h-4 w-4 me-2" /> Edit Profile
             </Button>
             <Button variant="outline" onClick={onShare}>
-              <Share2 className="h-4 w-4 mr-2" /> Share Profile
+              <Share2 className="h-4 w-4 me-2" /> Share Profile
             </Button>
           </div>
         </div>
