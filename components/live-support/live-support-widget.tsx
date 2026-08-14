@@ -46,11 +46,15 @@ if (typeof window !== "undefined") {
     window.removeEventListener("scroll", unlock)
     window.removeEventListener("keydown", unlock)
     window.removeEventListener("touchstart", unlock)
+    window.removeEventListener("mousemove", unlock)
+    window.removeEventListener("pointerdown", unlock)
   }
   window.addEventListener("click", unlock, { once: false })
   window.addEventListener("scroll", unlock, { once: false })
   window.addEventListener("keydown", unlock, { once: false })
   window.addEventListener("touchstart", unlock, { once: false })
+  window.addEventListener("mousemove", unlock, { once: false })
+  window.addEventListener("pointerdown", unlock, { once: false })
 }
 
 function playNotifSound() {
