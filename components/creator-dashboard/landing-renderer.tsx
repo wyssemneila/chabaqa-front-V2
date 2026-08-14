@@ -1,8 +1,10 @@
 'use client'
 
+import React from 'react'
 import {
   Star, Play, Check, Lock, Users, ImageIcon, Ticket,
   BookOpen, Calendar, MessageSquare, ShoppingBag, Zap, Video,
+  Award, Heart, Target, Lightbulb, Mic, Globe, Rocket, Layers,
 } from 'lucide-react'
 
 /* ═══════════════════════════════════════════════════════════
@@ -69,6 +71,9 @@ export interface Review {
   rating: number; hasImage: boolean; image?: string
 }
 
+export interface HighlightItem { icon: string; title: string; desc: string }
+export interface FaqItem { q: string; a: string }
+
 export interface Content {
   name: string; tagline: string; slug: string; access: string
   ctaPrimary: string; price: string; origPrice: string; currency: string; period: string
@@ -76,6 +81,9 @@ export interface Content {
   rating: string; reviews: string; lessons: string
   creatorName: string; creatorRole: string; creatorBio: string
   productsTitle: string
+  highlights: HighlightItem[]
+  faqs: FaqItem[]
+  ctaHeading: string; ctaSubtext: string
 }
 
 export interface Design {
@@ -111,6 +119,21 @@ export const PROD_CONF: Record<ProdKind, { label: { en: string; ar: string }; bg
 }
 
 export const INK = '#1a1730', INK2 = '#46426a', INK3 = '#9590b8', LINE = '#ece9f6'
+
+export const HIGHLIGHT_ICONS: Record<string, React.ElementType> = {
+  book: BookOpen, chat: MessageSquare, calendar: Calendar, star: Star,
+  users: Users, zap: Zap, play: Play, check: Check, lock: Lock,
+  ticket: Ticket, bag: ShoppingBag, image: ImageIcon, award: Award,
+  heart: Heart, target: Target, bulb: Lightbulb, mic: Mic,
+  globe: Globe, rocket: Rocket, layers: Layers,
+}
+
+export function darken(hex: string, amount = 0.18): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return '#' + [r, g, b].map(c => Math.max(0, Math.round(c * (1 - amount))).toString(16).padStart(2, '0')).join('')
+}
 
 /* ── media helpers ── */
 export function ytId(url: string): string | null {
@@ -175,6 +198,19 @@ export const DEFAULT_CONTENT: Content = {
   creatorRole: 'Motion Designer & Community Host',
   creatorBio: 'Professional motion designer with 8+ years working with leading brands across MENA. I built this community to help the next generation of motion artists go from zero to portfolio-ready — together.',
   productsTitle: 'Everything available to members',
+  highlights: [
+    { icon: 'book', title: 'Structured courses', desc: 'One clear path from zero to pro.' },
+    { icon: 'chat', title: 'Active community', desc: 'Get feedback and stay accountable.' },
+    { icon: 'calendar', title: 'Live sessions', desc: 'Weekly calls and challenges.' },
+  ],
+  faqs: [
+    { q: 'How long do I have access?', a: 'As long as your membership is active, everything is yours — including updates.' },
+    { q: 'Do I need experience?', a: 'No. We start from zero and guide you through setup in the first lessons.' },
+    { q: 'What language is it in?', a: 'Arabic, with resources in both Arabic and French.' },
+    { q: 'Can I cancel anytime?', a: 'Yes — cancel in one click, no questions asked.' },
+  ],
+  ctaHeading: 'Ready to join',
+  ctaSubtext: 'members already leveling up.',
 }
 
 export const DEFAULT_DESIGN: Design = {
@@ -271,7 +307,9 @@ export function Section({
   block, c, design, device, t, index, media, activeMedia, setActiveMedia,
   reviews, page, setPage, openFaq, setOpenFaq, openSec, setOpenSec,
 }: SectionProps) {
-  const { accent, accent2, radius, pill } = design
+  const { radius, pill } = design
+  const accent = block.tint || design.accent
+  const accent2 = block.tint ? darken(block.tint) : design.accent2
   const mob = device === 'mobile'
   const stackCol = device !== 'desktop'
   const cols3 = mob ? 1 : device === 'tablet' ? 2 : 3
@@ -399,13 +437,8 @@ export function Section({
     }
 
     case 'highlights': {
-      const items = [
-        { Icon: BookOpen,      title: t('Structured courses', 'دورات منظّمة'),  desc: t('One clear path from zero to pro.', 'مسار واضح من الصفر للاحتراف.') },
-        { Icon: MessageSquare, title: t('Active community',   'مجتمع نشِط'),   desc: t('Get feedback and stay accountable.', 'احصل على ملاحظات وابقَ ملتزماً.') },
-        { Icon: Calendar,      title: t('Live sessions',      'جلسات مباشرة'), desc: t('Weekly calls and challenges.', 'مكالمات وتحديات أسبوعية.') },
-      ]
-      // On mobile: horizontal snap scroll with smaller cards.
-      // Desktop / tablet: original 3-col grid.
+      const items = c.highlights.map(h => ({ ...h, Icon: HIGHLIGHT_ICONS[h.icon] || BookOpen }))
+      if (items.length === 0) return null
       if (mob) {
         return wrap(
           <div className={pad} style={{ background: secBg, paddingInline: 0 }}>
@@ -593,12 +626,8 @@ export function Section({
     }
 
     case 'faq': {
-      const faqs = [
-        { q: t('How long do I have access?', 'كم مدة الوصول؟'), a: t('As long as your membership is active, everything is yours — including updates.', 'طالما عضويتك فعّالة، كل شيء لك — مع التحديثات.') },
-        { q: t('Do I need experience?', 'هل أحتاج خبرة؟'), a: t('No. We start from zero and guide you through setup in the first lessons.', 'لا. نبدأ من الصفر ونرشدك في الدروس الأولى.') },
-        { q: t('What language is it in?', 'ما اللغة؟'), a: t('Arabic, with resources in both Arabic and French.', 'العربية، مع مصادر بالعربية والفرنسية.') },
-        { q: t('Can I cancel anytime?', 'هل يمكنني الإلغاء؟'), a: t('Yes — cancel in one click, no questions asked.', 'نعم — إلغاء بنقرة واحدة دون أسئلة.') },
-      ]
+      const faqs = c.faqs
+      if (faqs.length === 0) return null
       return wrap(
         <div className={pad} style={{ background: secBg }}>
           <Eyebrow text={t('FAQ', 'الأسئلة')} />
@@ -624,8 +653,8 @@ export function Section({
           <div className="relative overflow-hidden text-center px-6 py-11" style={{ background: grad, borderRadius: radius }}>
             <div className="absolute rounded-full" style={{ width: 340, height: 240, background: '#fff', opacity: 0.08, top: -80, left: '50%', transform: 'translateX(-50%)' }} />
             <div className="relative">
-              <h2 className="font-extrabold tracking-tight text-white" style={{ fontSize: mob ? 23 : 29, fontFamily: headF }}>{t('Ready to join', 'جاهز للانضمام')} {c.name}?</h2>
-              <p className="mt-2 text-[14.5px]" style={{ color: 'rgba(255,255,255,.85)' }}>{t('Join', 'انضم إلى')} {c.members}+ {t('members already leveling up.', 'عضو يتطوّرون الآن.')}</p>
+              <h2 className="font-extrabold tracking-tight text-white" style={{ fontSize: mob ? 23 : 29, fontFamily: headF }}>{c.ctaHeading} {c.name}?</h2>
+              <p className="mt-2 text-[14.5px]" style={{ color: 'rgba(255,255,255,.85)' }}>{c.members}+ {c.ctaSubtext}</p>
               <button className="mt-6 px-8 text-[14px] font-bold hover:opacity-90" style={{ background: '#fff', color: accent, borderRadius: btnR, height: 48 }}>{c.ctaPrimary}</button>
             </div>
           </div>
@@ -671,21 +700,44 @@ export function ProductsList({ c, design, device, products, t }: {
   const btnR = pill ? 999 : Math.max(8, radius - 2)
   const pad = mob ? 'px-5 py-8' : 'px-11 py-10'
 
+  const [filter, setFilter] = React.useState<ProdKind | 'all'>('all')
+  const kinds = Array.from(new Set(products.map(p => p.kind)))
+  const filtered = filter === 'all' ? products : products.filter(p => p.kind === filter)
+
   return (
     <div style={{ fontFamily: stack(design.bodyFont), background: design.bg === 'white' ? '#fff' : '#fbfaff' }}>
       <div className={mob ? 'px-5 pt-8 text-center' : 'px-11 pt-10 text-center'}>
         <p className="text-[14px]" style={{ color: INK3 }}>{c.productsTitle}</p>
       </div>
 
+      {/* filter tabs */}
+      {kinds.length > 1 && (
+        <div className={mob ? 'px-5 pt-4' : 'px-11 pt-5'}>
+          <div className="flex flex-wrap gap-1.5 justify-center">
+            {([{ k: 'all' as const, l: t('All', 'الكل') }, ...kinds.map(k => ({ k, l: PROD_CONF[k].label.en }))] ).map(f => (
+              <button key={f.k} onClick={() => setFilter(f.k)}
+                className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-colors"
+                style={{
+                  background: filter === f.k ? accent : '#fff',
+                  color: filter === f.k ? '#fff' : INK2,
+                  border: `1px solid ${filter === f.k ? accent : LINE}`,
+                }}>
+                {f.l}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className={pad}>
-        {products.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="py-16 text-center">
             <ShoppingBag className="w-10 h-10 mx-auto mb-3" style={{ color: '#d8d4ea' }} />
             <p className="text-[14px] font-semibold" style={{ color: INK2 }}>{t('No products yet', 'لا توجد منتجات')}</p>
           </div>
         ) : (
           <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-            {products.map(p => {
+            {filtered.map(p => {
               const cf = PROD_CONF[p.kind]
               const isFree = p.price === 'free' || p.price === '0' || p.price === 0
               const cta = p.kind === 'session' ? t('Book', 'احجز')

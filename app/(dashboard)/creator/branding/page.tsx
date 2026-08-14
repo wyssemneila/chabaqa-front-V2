@@ -15,8 +15,10 @@ import {
   Section, ProductsList, PageTabs, GF_URL, FONTS, stack, LANDING_DRAFT_KEY,
   DEFAULT_BLOCKS, DEFAULT_MEDIA, DEFAULT_PRODUCTS, DEFAULT_REVIEWS,
   DEFAULT_CONTENT, DEFAULT_DESIGN, PROD_CONF, ytId, mediaThumb,
+  HIGHLIGHT_ICONS,
   type BlockDef, type BlockType, type MediaItem, type ProductItem, type Review,
   type Content, type Design, type Device, type PageId, type ProdKind,
+  type HighlightItem, type FaqItem,
 } from '@/components/creator-dashboard/landing-renderer'
 
 const E = { bg: '#ffffff', card: '#f6f5fb', card2: '#efedf8', bd: '#eceaf4', t1: '#1a1730', t2: '#46426a', t3: '#9590b8' }
@@ -789,17 +791,120 @@ function BlockEditor({ block, onBack, patch, remove, content, set, media, setMed
         </EditGroup>
       )}
 
-      {/* Blocks without dedicated fields — tell the user what they CAN change */}
-      {(['highlights', 'curriculum', 'faq', 'cta', 'footer'] as BlockType[]).includes(block.type) && (
-        <EditGroup title={t('Content', 'المحتوى')}>
+      {block.type === 'highlights' && (
+        <EditGroup title={`${t('Highlights', 'المميزات')} · ${content.highlights.length}`}>
+          {content.highlights.map((h, i) => (
+            <div key={i} className="p-2.5 rounded-xl flex flex-col gap-2" style={{ background: E.card, border: `1px solid ${E.bd}` }}>
+              <div className="flex items-center gap-2">
+                <Field label={t('Title', 'العنوان')} value={h.title} onChange={v => {
+                  const a = [...content.highlights]; a[i] = { ...a[i], title: v }; set('highlights', a)
+                }} />
+                <button onClick={() => set('highlights', content.highlights.filter((_, j) => j !== i))}
+                  className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-4" style={{ background: '#fee2e2', color: '#dc2626' }}>
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+              <Field label={t('Description', 'الوصف')} value={h.desc} onChange={v => {
+                const a = [...content.highlights]; a[i] = { ...a[i], desc: v }; set('highlights', a)
+              }} />
+              <div>
+                <label className="block text-[11px] font-medium mb-1.5" style={{ color: E.t2 }}>{t('Icon', 'الأيقونة')}</label>
+                <div className="flex flex-wrap gap-1">
+                  {Object.entries(HIGHLIGHT_ICONS).map(([key, Ic]) => (
+                    <button key={key} onClick={() => {
+                      const a = [...content.highlights]; a[i] = { ...a[i], icon: key }; set('highlights', a)
+                    }}
+                      className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
+                      style={{ background: h.icon === key ? `${accent}20` : '#fff', border: `1px solid ${h.icon === key ? accent : E.bd}` }}>
+                      <Ic className="w-3.5 h-3.5" style={{ color: h.icon === key ? accent : E.t2 }} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+          <button onClick={() => set('highlights', [...content.highlights, { icon: 'star', title: 'New highlight', desc: 'Describe this benefit.' }])}
+            className="w-full py-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1"
+            style={{ background: `${accent}12`, color: accent, border: `1px dashed ${accent}55` }}>
+            <Plus className="w-3 h-3" /> {t('Add highlight', 'إضافة ميزة')}
+          </button>
+        </EditGroup>
+      )}
+
+      {block.type === 'faq' && (
+        <EditGroup title={`${t('FAQ', 'الأسئلة')} · ${content.faqs.length}`}>
+          {content.faqs.map((f, i) => (
+            <div key={i} className="p-2.5 rounded-xl flex flex-col gap-2" style={{ background: E.card, border: `1px solid ${E.bd}` }}>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <Field label={t('Question', 'السؤال')} value={f.q} onChange={v => {
+                    const a = [...content.faqs]; a[i] = { ...a[i], q: v }; set('faqs', a)
+                  }} />
+                </div>
+                <button onClick={() => set('faqs', content.faqs.filter((_, j) => j !== i))}
+                  className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-4" style={{ background: '#fee2e2', color: '#dc2626' }}>
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+              <Field label={t('Answer', 'الإجابة')} value={f.a} onChange={v => {
+                const a = [...content.faqs]; a[i] = { ...a[i], a: v }; set('faqs', a)
+              }} textarea rows={2} />
+            </div>
+          ))}
+          <button onClick={() => set('faqs', [...content.faqs, { q: 'New question?', a: 'Type your answer here.' }])}
+            className="w-full py-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1"
+            style={{ background: `${accent}12`, color: accent, border: `1px dashed ${accent}55` }}>
+            <Plus className="w-3 h-3" /> {t('Add question', 'إضافة سؤال')}
+          </button>
+        </EditGroup>
+      )}
+
+      {block.type === 'cta' && (
+        <EditGroup title={t('Call to action', 'دعوة للانضمام')}>
+          <Field label={t('Heading', 'العنوان')} value={content.ctaHeading} onChange={v => set('ctaHeading', v)} />
+          <Field label={t('Subtext', 'النص الفرعي')} value={content.ctaSubtext} onChange={v => set('ctaSubtext', v)} />
+          <Field label={t('Button text', 'نص الزر')} value={content.ctaPrimary} onChange={v => set('ctaPrimary', v)} />
+        </EditGroup>
+      )}
+
+      {block.type === 'footer' && (
+        <EditGroup title={t('Footer', 'التذييل')}>
           <p className="text-[11.5px] leading-relaxed" style={{ color: E.t2 }}>
-            {t(
-              'This block uses smart defaults. Change the block font above, or tweak brand color & background from the Design tab.',
-              'يستخدم هذا القسم قيماً افتراضية. غيّر الخط أعلاه، أو عدّل الألوان والخلفية من تبويب التصميم.'
-            )}
+            {t('Footer uses your community name and brand colors automatically.', 'يستخدم التذييل اسم مجتمعك وألوانك تلقائياً.')}
           </p>
         </EditGroup>
       )}
+
+      {block.type === 'curriculum' && (
+        <EditGroup title={t('Curriculum', 'المحتوى')}>
+          <p className="text-[11.5px] leading-relaxed" style={{ color: E.t2 }}>
+            {t('Curriculum sections are auto-generated from your lessons. Update the lesson count from the global Content tab.', 'يتم إنشاء أقسام المنهج تلقائياً من دروسك.')}
+          </p>
+        </EditGroup>
+      )}
+
+      <EditGroup title={t('Block color', 'لون القسم')}>
+        <p className="text-[10px] mb-1.5" style={{ color: E.t3 }}>{t('Override the brand accent for this block only.', 'تجاوز اللون الأساسي لهذا القسم فقط.')}</p>
+        <div className="flex items-center gap-2">
+          <input type="color" value={block.tint || accent} onChange={e => patch(block.id, { tint: e.target.value })}
+            className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent p-0 shrink-0" />
+          <input value={block.tint || ''} placeholder={accent} onChange={e => patch(block.id, { tint: e.target.value })}
+            className="flex-1 text-[12px] font-mono outline-none bg-transparent" style={{ color: E.t1 }} />
+          {block.tint && (
+            <button onClick={() => patch(block.id, { tint: '' })} className="text-[10px] font-semibold px-2 py-1 rounded"
+              style={{ background: E.card2, color: E.t2 }}>
+              {t('Reset', 'إعادة')}
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
+          {['#8e78fb', '#f65887', '#47c7ea', '#ff9b28', '#52c41a', '#6c52f0', '#0ea5e9', '#ec4899', '#14b8a6', '#e89000'].map(c => (
+            <button key={c} onClick={() => patch(block.id, { tint: c })}
+              className="w-6 h-6 rounded-md transition-transform hover:scale-110"
+              style={{ background: c, outline: block.tint === c ? `2px solid ${c}` : 'none', outlineOffset: 2 }} />
+          ))}
+        </div>
+      </EditGroup>
     </div>
   )
 }
