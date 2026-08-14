@@ -21,26 +21,9 @@ const WELCOME_MSG = "Hey there! 👋 Welcome to Chabaqa — if you need anything
 const WELCOME_KEY = "chabaqa_support_welcomed"
 const NOTIF_SOUND_KEY = "chabaqa_support_sound"
 
-function playNotifSound() {
-  const audio = new Audio("/sounds/notification.mp3")
-  audio.volume = 1
-  const tryPlay = () => audio.play().catch(() => {
-    const retry = () => {
-      audio.play().catch(() => {})
-      window.removeEventListener("mousemove", retry)
-      window.removeEventListener("click", retry)
-      window.removeEventListener("scroll", retry)
-      window.removeEventListener("touchstart", retry)
-      window.removeEventListener("pointerdown", retry)
-    }
-    window.addEventListener("mousemove", retry, { once: true })
-    window.addEventListener("click", retry, { once: true })
-    window.addEventListener("scroll", retry, { once: true })
-    window.addEventListener("touchstart", retry, { once: true })
-    window.addEventListener("pointerdown", retry, { once: true })
-  })
-  tryPlay()
-}
+// playNotifSound is set by the component via ref
+let _playNotif: (() => void) | null = null
+function playNotifSound() { _playNotif?.() }
 
 function normalizeIncomingMessage(message: any): LiveSupportMessage {
   return {
@@ -68,6 +51,7 @@ export function LiveSupportWidget() {
   const [toastMsg,         setToastMsg]         = useState<string | null>(null)
 
   const scrollRef  = useRef<HTMLDivElement | null>(null)
+  const audioRef   = useRef<HTMLAudioElement | null>(null)
   const socketRef  = useRef<Socket | null>(null)
   const inputRef   = useRef<HTMLInputElement | null>(null)
   const prevMsgCount = useRef(0)
@@ -101,6 +85,17 @@ export function LiveSupportWidget() {
   useEffect(() => () => {
     window.removeEventListener("pointermove", onDragMove)
     window.removeEventListener("pointerup", onDragEnd)
+  }, [])
+
+  // ── wire up audio ref for playNotifSound ─────────────────────────────────────
+  useEffect(() => {
+    _playNotif = () => {
+      const el = audioRef.current
+      if (!el) return
+      el.currentTime = 0
+      el.play().catch(() => {})
+    }
+    return () => { _playNotif = null }
   }, [])
 
   // ── welcome auto-message (once per new tab, not on refresh) ─────────────────
@@ -236,6 +231,8 @@ export function LiveSupportWidget() {
   if (isAdmin) return null
 
   return (
+    <>
+    <audio ref={audioRef} src="/sounds/notification.mp3" preload="auto" />
     <div
       className="fixed z-[120]"
       style={{
@@ -487,5 +484,6 @@ export function LiveSupportWidget() {
       </div>
 
     </div>
+    </>
   )
 }
