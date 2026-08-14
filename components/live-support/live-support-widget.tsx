@@ -21,12 +21,45 @@ const WELCOME_MSG = "Hey there! 👋 Welcome to Chabaqa — if you need anything
 const WELCOME_KEY = "chabaqa_support_welcomed"
 const NOTIF_SOUND_KEY = "chabaqa_support_sound"
 
+let notifAudioUnlocked = false
+const notifAudio = typeof window !== "undefined" ? new Audio("/sounds/notification.mp3") : null
+if (notifAudio) notifAudio.volume = 1
+
+function unlockAndPlay() {
+  if (!notifAudio) return
+  notifAudio.play().catch(() => {})
+}
+
+if (typeof window !== "undefined") {
+  const unlock = () => {
+    if (notifAudioUnlocked) return
+    notifAudioUnlocked = true
+    if (notifAudio) {
+      notifAudio.load()
+      const pending = (window as any).__chabaqa_pending_sound
+      if (pending) {
+        delete (window as any).__chabaqa_pending_sound
+        setTimeout(() => unlockAndPlay(), 100)
+      }
+    }
+    window.removeEventListener("click", unlock)
+    window.removeEventListener("scroll", unlock)
+    window.removeEventListener("keydown", unlock)
+    window.removeEventListener("touchstart", unlock)
+  }
+  window.addEventListener("click", unlock, { once: false })
+  window.addEventListener("scroll", unlock, { once: false })
+  window.addEventListener("keydown", unlock, { once: false })
+  window.addEventListener("touchstart", unlock, { once: false })
+}
+
 function playNotifSound() {
-  try {
-    const audio = new Audio("/sounds/notification.mp3")
-    audio.volume = 1
-    audio.play().catch(() => {})
-  } catch { /* audio blocked */ }
+  if (notifAudioUnlocked && notifAudio) {
+    notifAudio.currentTime = 0
+    notifAudio.play().catch(() => {})
+  } else {
+    if (typeof window !== "undefined") (window as any).__chabaqa_pending_sound = true
+  }
 }
 
 function normalizeIncomingMessage(message: any): LiveSupportMessage {
@@ -104,7 +137,7 @@ export function LiveSupportWidget() {
 
       setTimeout(() => {
         setToastMsg(null)
-      }, 4000)
+      }, 40000)
     }, 2500)
 
     return () => clearTimeout(timer)
