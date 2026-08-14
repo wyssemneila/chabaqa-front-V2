@@ -30,10 +30,11 @@ function playNotifSound() {
     gain.connect(ctx.destination)
     osc.frequency.value = 880
     osc.type = "sine"
-    gain.gain.setValueAtTime(0.15, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
+    gain.gain.setValueAtTime(0.5, ctx.currentTime)
+    gain.gain.setValueAtTime(0.5, ctx.currentTime + 1.4)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2)
     osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 0.3)
+    osc.stop(ctx.currentTime + 2)
   } catch { /* audio blocked */ }
 }
 
@@ -138,7 +139,7 @@ export function LiveSupportWidget() {
           setUnread(u => u + 1)
           setToastMsg(newest.text?.slice(0, 80) || "New message")
           playNotifSound()
-          setTimeout(() => setToastMsg(null), 4000)
+          setTimeout(() => setToastMsg(null), 15000)
         }
       }
     }
