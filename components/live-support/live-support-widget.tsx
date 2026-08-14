@@ -1,8 +1,8 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useRef, useState, useMemo } from "react"
-import { X, Send, Loader2, LifeBuoy, Bot, GripVertical, MessageCircle } from "lucide-react"
+import { useEffect, useRef, useState, useMemo, useCallback } from "react"
+import { X, Send, Loader2, LifeBuoy, Bot, GripVertical, Headphones } from "lucide-react"
 import { io, Socket } from "socket.io-client"
 import { api } from "@/lib/api"
 import { resolveSocketBaseUrl } from "@/lib/socket-url"
@@ -17,6 +17,26 @@ const QUICK_QUESTIONS = [
   "How do I contact billing support?",
 ]
 
+const WELCOME_MSG = "Hey there! 👋 Welcome to Chabaqa — if you need anything at all, I'm right here for you!"
+const WELCOME_KEY = "chabaqa_support_welcomed"
+const NOTIF_SOUND_KEY = "chabaqa_support_sound"
+
+function playNotifSound() {
+  try {
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.value = 880
+    osc.type = "sine"
+    gain.gain.setValueAtTime(0.15, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.3)
+  } catch { /* audio blocked */ }
+}
+
 function normalizeIncomingMessage(message: any): LiveSupportMessage {
   return {
     ...message,
@@ -25,7 +45,6 @@ function normalizeIncomingMessage(message: any): LiveSupportMessage {
   }
 }
 
-// ─── Draggable bubble with full chat panel ────────────────────────────────────
 export function LiveSupportWidget() {
   const enabled = process.env.NEXT_PUBLIC_LIVE_SUPPORT_ENABLED !== "false"
   const { user, token, isAuthenticated } = useAuthContext()
@@ -40,9 +59,13 @@ export function LiveSupportWidget() {
   const [requestingAdmin,  setRequestingAdmin]  = useState(false)
   const [error,            setError]            = useState<string | null>(null)
 
+  const [unread,           setUnread]           = useState(0)
+  const [toastMsg,         setToastMsg]         = useState<string | null>(null)
+
   const scrollRef  = useRef<HTMLDivElement | null>(null)
   const socketRef  = useRef<Socket | null>(null)
   const inputRef   = useRef<HTMLInputElement | null>(null)
+  const prevMsgCount = useRef(0)
 
   // ── drag state ──────────────────────────────────────────────────────────────
   const [pos,      setPos]      = useState({ x: 0, y: 0 })
@@ -74,7 +97,53 @@ export function LiveSupportWidget() {
     window.removeEventListener("pointermove", onDragMove)
     window.removeEventListener("pointerup", onDragEnd)
   }, [])
-  // ── end drag ─────────────────────────────────────────────────────────────────
+
+  // ── welcome auto-message (once per new tab, not on refresh) ─────────────────
+  useEffect(() => {
+    const already = sessionStorage.getItem(WELCOME_KEY)
+    if (already) return
+
+    sessionStorage.setItem(WELCOME_KEY, "1")
+
+    const timer = setTimeout(() => {
+      setToastMsg(WELCOME_MSG)
+      setUnread(1)
+      playNotifSound()
+
+      setTimeout(() => {
+        setToastMsg(null)
+      }, 4000)
+    }, 2500)
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  // ── mark as read when user opens the panel ──────────────────────────────────
+  const handleOpen = useCallback(() => {
+    setOpen(v => {
+      if (!v) {
+        setUnread(0)
+        setToastMsg(null)
+      }
+      return !v
+    })
+  }, [])
+
+  // ── track incoming messages for unread badge + sound ────────────────────────
+  useEffect(() => {
+    if (messages.length > prevMsgCount.current && prevMsgCount.current > 0) {
+      const newest = messages[messages.length - 1]
+      if (newest && newest.senderType !== "user") {
+        if (!open) {
+          setUnread(u => u + 1)
+          setToastMsg(newest.text?.slice(0, 80) || "New message")
+          playNotifSound()
+          setTimeout(() => setToastMsg(null), 4000)
+        }
+      }
+    }
+    prevMsgCount.current = messages.length
+  }, [messages, open])
 
   const status = (ticket?.supportStatus || "BOT_ACTIVE") as LiveSupportStatus
   const statusLabel = useMemo(() => {
@@ -105,7 +174,7 @@ export function LiveSupportWidget() {
     }
   }
 
-  useEffect(() => { if (open) { loadData(); setTimeout(() => inputRef.current?.focus(), 300) } }, [open, isAuthenticated])
+  useEffect(() => { if (open && isAuthenticated) { loadData(); setTimeout(() => inputRef.current?.focus(), 300) } }, [open, isAuthenticated])
 
   useEffect(() => {
     if (!open || !isAuthenticated || !token) return
@@ -157,7 +226,9 @@ export function LiveSupportWidget() {
     finally { setRequestingAdmin(false) }
   }
 
-  if (!enabled || !isAuthenticated || !user || user.role === "admin") return null
+  if (!enabled) return null
+  const isAdmin = isAuthenticated && user?.role === "admin"
+  if (isAdmin) return null
 
   return (
     <div
@@ -172,30 +243,27 @@ export function LiveSupportWidget() {
       {/* ── chat panel ─────────────────────────────────────────────────────── */}
       {open && (
         <div
-          className="mb-3 w-[380px] max-w-[calc(100vw-2rem)] rounded-3xl overflow-hidden flex flex-col"
+          className="mb-3 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden flex flex-col"
           style={{
-            background: "var(--white, #fff)",
-            border: "1px solid rgba(142,120,251,.18)",
-            boxShadow: "0 24px 60px rgba(142,120,251,.22), 0 8px 24px rgba(0,0,0,.08)",
+            background: "#fff",
+            border: "1px solid rgba(142,120,251,.12)",
+            boxShadow: "0 12px 40px rgba(26,23,48,.12)",
           }}>
 
           {/* header */}
           <div
             className="relative px-4 py-3.5 flex flex-col gap-2.5 cursor-grab active:cursor-grabbing select-none"
-            style={{
-              background: "linear-gradient(135deg, #8e78fb 0%, #8e78fb 50%, #6c52f0 100%)",
-            }}
+            style={{ background: "linear-gradient(135deg, #8e78fb 0%, #6c52f0 100%)" }}
             onPointerDown={onDragStart}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                {/* AI icon badge */}
-                <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ background: "rgba(255,255,255,.15)", border: "1.5px solid rgba(255,255,255,.25)" }}>
-                  <MessageCircle className="w-4 h-4 text-white" />
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "rgba(255,255,255,.18)" }}>
+                  <Headphones className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <p className="text-[14px] font-bold leading-none text-white">Chabaqa AI Support</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,.75)" }}>
+                  <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,.7)" }}>
                     AI-powered · human handoff available
                   </p>
                 </div>
@@ -203,14 +271,13 @@ export function LiveSupportWidget() {
               <button
                 onPointerDown={e => e.stopPropagation()}
                 onClick={() => setOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all hover:bg-white/20"
+                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-white/20"
                 aria-label="Close"
                 style={{ color: "white" }}>
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* status badges */}
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full"
                 style={{ background: "rgba(255,255,255,.15)", color: "white" }}>
@@ -221,32 +288,31 @@ export function LiveSupportWidget() {
                 style={{ background: "rgba(255,255,255,.15)", color: "white" }}>
                 {socketConnected ? "Live" : "Polling"}
               </span>
-              {/* drag hint */}
-              <span className="ml-auto flex items-center gap-1 text-[9px] font-medium" style={{ color: "rgba(255,255,255,.5)" }}>
+              <span className="ml-auto flex items-center gap-1 text-[9px] font-medium" style={{ color: "rgba(255,255,255,.45)" }}>
                 <GripVertical className="w-3 h-3" /> drag to move
               </span>
             </div>
           </div>
 
           {/* messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" style={{ maxHeight: 380, minHeight: 200, background: "#f8f9ff" }}>
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" style={{ maxHeight: 380, minHeight: 200, background: "#faf9ff" }}>
             {loading ? (
-              <div className="flex items-center justify-center py-10 gap-2" style={{ color: "#94a3b8" }}>
+              <div className="flex items-center justify-center py-10 gap-2" style={{ color: "#9590b8" }}>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-[13px]">Loading conversation…</span>
               </div>
             ) : (
               <>
                 {messages.length === 0 && (
-                  <div className="rounded-2xl p-4" style={{ background: "white", border: "1px solid rgba(142,120,251,.12)", boxShadow: "0 2px 8px rgba(0,0,0,.04)" }}>
+                  <div className="rounded-xl p-4" style={{ background: "white", border: "1px solid #ece9f6" }}>
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 rounded-xl flex items-center justify-center"
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center"
                         style={{ background: "linear-gradient(135deg,#8e78fb,#6c52f0)" }}>
                         <Bot className="w-3.5 h-3.5 text-white" />
                       </div>
-                      <p className="text-[13px] font-bold" style={{ color: "#1e293b" }}>Ask me anything</p>
+                      <p className="text-[13px] font-bold" style={{ color: "#1a1730" }}>Ask me anything</p>
                     </div>
-                    <p className="text-[12px] leading-relaxed mb-3" style={{ color: "#64748b" }}>
+                    <p className="text-[12px] leading-relaxed mb-3" style={{ color: "#9590b8" }}>
                       I can help you with Chabaqa features, billing, communities, and more. You can also request a human agent anytime.
                     </p>
                     {status === "BOT_ACTIVE" && (
@@ -254,14 +320,10 @@ export function LiveSupportWidget() {
                         {QUICK_QUESTIONS.map(q => (
                           <button key={q} type="button" onClick={() => onSend(q).catch(()=>{})}
                             disabled={sending}
-                            className="text-[11px] font-semibold px-3 py-1.5 rounded-xl cursor-pointer transition-all disabled:opacity-50"
-                            style={{
-                              background: "rgba(142,120,251,.07)",
-                              border: "1px solid rgba(142,120,251,.2)",
-                              color: "#8e78fb",
-                            }}
-                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(142,120,251,.14)"}
-                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(142,120,251,.07)"}>
+                            className="text-[11px] font-semibold px-3 py-1.5 rounded-lg cursor-pointer transition-colors disabled:opacity-50"
+                            style={{ background: "#f4f2fc", color: "#8e78fb", border: "1px solid #ede9ff" }}
+                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "#ede9ff"}
+                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "#f4f2fc"}>
                             {q}
                           </button>
                         ))}
@@ -272,29 +334,27 @@ export function LiveSupportWidget() {
 
                 {messages.map(m => {
                   const isUser  = m.senderType === "user"
-                  const isAdmin = m.senderType === "admin"
-                  const label   = isUser ? null : isAdmin ? "Agent" : "AI"
+                  const isAdm   = m.senderType === "admin"
+                  const label   = isUser ? null : isAdm ? "Agent" : "AI"
                   return (
                     <div key={m.id} className={cn("flex", isUser ? "justify-end" : "justify-start gap-2")}>
                       {!isUser && (
-                        <div className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                          style={{ background: isAdmin ? "#f1f5f9" : "linear-gradient(135deg,#8e78fb,#6c52f0)" }}>
-                          {isAdmin
-                            ? <span className="text-[8px] font-black" style={{ color: "#475569" }}>HU</span>
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                          style={{ background: isAdm ? "#f4f2fc" : "linear-gradient(135deg,#8e78fb,#6c52f0)" }}>
+                          {isAdm
+                            ? <span className="text-[8px] font-black" style={{ color: "#6c52f0" }}>HU</span>
                             : <Bot className="w-3 h-3 text-white" />
                           }
                         </div>
                       )}
                       <div style={{ maxWidth: "82%" }}>
                         {label && (
-                          <p className="text-[10px] font-bold mb-1 px-1" style={{ color: "#94a3b8" }}>{label}</p>
+                          <p className="text-[10px] font-bold mb-1 px-1" style={{ color: "#9590b8" }}>{label}</p>
                         )}
-                        <div className="rounded-2xl px-3 py-2 text-[13px] leading-relaxed"
+                        <div className="rounded-xl px-3 py-2 text-[13px] leading-relaxed"
                           style={isUser
-                            ? { background: "linear-gradient(135deg,#8e78fb,#8e78fb)", color: "white", borderBottomRightRadius: 4 }
-                            : isAdmin
-                              ? { background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderBottomLeftRadius: 4, boxShadow:"0 1px 4px rgba(0,0,0,.05)" }
-                              : { background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderBottomLeftRadius: 4, boxShadow:"0 1px 4px rgba(0,0,0,.05)" }
+                            ? { background: "linear-gradient(135deg,#8e78fb,#6c52f0)", color: "white", borderBottomRightRadius: 4 }
+                            : { background: "white", color: "#1a1730", border: "1px solid #ece9f6", borderBottomLeftRadius: 4 }
                           }>
                           <p className="whitespace-pre-wrap break-words">{m.text}</p>
                         </div>
@@ -315,11 +375,11 @@ export function LiveSupportWidget() {
           )}
 
           {/* footer */}
-          <div className="px-4 py-3 space-y-2" style={{ background: "white", borderTop: "1px solid #f1f5f9" }}>
-            {status === "BOT_ACTIVE" && ticket?.id && (
+          <div className="px-4 py-3 space-y-2" style={{ background: "white", borderTop: "1px solid #ece9f6" }}>
+            {isAuthenticated && status === "BOT_ACTIVE" && ticket?.id && (
               <button onClick={onRequestAdmin} disabled={requestingAdmin}
-                className="w-full h-9 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed transition-all hover:opacity-80"
-                style={{ background: "rgba(142,120,251,.08)", color: "#8e78fb", border: "1.5px solid rgba(142,120,251,.2)" }}>
+                className="w-full h-9 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed transition-colors hover:opacity-80"
+                style={{ background: "#f4f2fc", color: "#8e78fb" }}>
                 {requestingAdmin
                   ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Connecting to agent…</>
                   : <><LifeBuoy className="w-3.5 h-3.5" /> Talk to a human agent</>
@@ -327,33 +387,65 @@ export function LiveSupportWidget() {
               </button>
             )}
 
-            <div className="flex gap-2">
-              <input
-                ref={inputRef}
-                value={text}
-                onChange={e => setText(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); onSend().catch(()=>{}) } }}
-                disabled={sending || loading}
-                placeholder={status === "CLOSED" ? "Send a message to reopen…" : "Ask anything…"}
-                className="flex-1 h-10 px-4 rounded-xl text-[13px] focus:outline-none transition-colors disabled:opacity-50"
-                style={{ background: "#f8f9ff", border: "1.5px solid #e2e8f0", color: "#1e293b" }}
-                onFocus={e => (e.target as HTMLElement).style.borderColor = "#8e78fb"}
-                onBlur={e  => (e.target as HTMLElement).style.borderColor = "#e2e8f0"}
-              />
-              <button
-                onClick={() => onSend().catch(()=>{})}
-                disabled={sending || loading || !text.trim()}
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-white cursor-pointer disabled:cursor-not-allowed transition-all hover:opacity-90 disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#8e78fb,#8e78fb)", boxShadow: "0 4px 12px rgba(142,120,251,.35)" }}>
-                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </button>
-            </div>
+            {!isAuthenticated ? (
+              <p className="text-[12px] text-center py-2" style={{ color: "#9590b8" }}>
+                Sign in to chat with us
+              </p>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  ref={inputRef}
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); onSend().catch(()=>{}) } }}
+                  disabled={sending || loading}
+                  placeholder={status === "CLOSED" ? "Send a message to reopen…" : "Ask anything…"}
+                  className="flex-1 h-10 px-4 rounded-xl text-[13px] focus:outline-none transition-colors disabled:opacity-50"
+                  style={{ background: "#faf9ff", border: "1.5px solid #ece9f6", color: "#1a1730" }}
+                  onFocus={e => (e.target as HTMLElement).style.borderColor = "#8e78fb"}
+                  onBlur={e  => (e.target as HTMLElement).style.borderColor = "#ece9f6"}
+                />
+                <button
+                  onClick={() => onSend().catch(()=>{})}
+                  disabled={sending || loading || !text.trim()}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white cursor-pointer disabled:cursor-not-allowed transition-all hover:opacity-90 disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg,#8e78fb,#6c52f0)" }}>
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </button>
+              </div>
+            )}
 
-            {!socketConnected && (
-              <p className="text-[10px] text-center" style={{ color: "#94a3b8" }}>
+            {isAuthenticated && !socketConnected && (
+              <p className="text-[10px] text-center" style={{ color: "#9590b8" }}>
                 Reconnecting realtime… using auto-refresh
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── toast preview bubble ────────────────────────────────────────────── */}
+      {!open && toastMsg && (
+        <div
+          className="mb-2 flex justify-end"
+          style={{ animation: "supportToastIn .3s ease both" }}
+        >
+          <style>{`
+            @keyframes supportToastIn {
+              from { opacity: 0; transform: translateY(8px) scale(.95); }
+              to   { opacity: 1; transform: translateY(0) scale(1); }
+            }
+          `}</style>
+          <div
+            className="max-w-[260px] px-3.5 py-2.5 rounded-xl text-[12px] leading-relaxed"
+            style={{
+              background: "#fff",
+              color: "#1a1730",
+              border: "1px solid #ece9f6",
+              boxShadow: "0 4px 16px rgba(26,23,48,.1)",
+            }}
+          >
+            {toastMsg}
           </div>
         </div>
       )}
@@ -362,30 +454,30 @@ export function LiveSupportWidget() {
       <div className="flex justify-end">
         <button
           onPointerDown={onDragStart}
-          onClick={e => { if (!dragging) setOpen(v => !v) }}
+          onClick={e => { if (!dragging) handleOpen() }}
           aria-label="Open AI Support"
           className={cn(
-            "relative w-14 h-14 rounded-2xl flex items-center justify-center text-white transition-all duration-200 cursor-pointer overflow-hidden",
+            "relative w-14 h-14 rounded-2xl flex items-center justify-center text-white transition-all duration-200 cursor-pointer",
             dragging ? "cursor-grabbing scale-95" : "hover:scale-105"
           )}
           style={{
-            background: open
-              ? "linear-gradient(135deg, #6c52f0 0%, #8e78fb 100%)"
-              : "linear-gradient(135deg, #8e78fb 0%, #8e78fb 50%, #6c52f0 100%)",
-            boxShadow: open
-              ? "0 8px 24px rgba(142,120,251,.45)"
-              : "0 8px 28px rgba(142,120,251,.5), 0 2px 8px rgba(6,182,212,.25)",
-            borderRadius: open ? "20px" : "18px",
+            background: "linear-gradient(135deg, #8e78fb 0%, #6c52f0 100%)",
+            boxShadow: "0 4px 14px rgba(142,120,251,.25)",
           }}>
-          {/* pulse ring */}
-          {!open && (
-            <span className="absolute inset-0 rounded-[18px] animate-ping opacity-20"
-              style={{ background: "linear-gradient(135deg,#8e78fb,#6c52f0)", animationDuration: "2.5s" }} />
-          )}
           {open
-            ? <X className="w-5 h-5 relative z-10" />
-            : <MessageCircle className="w-6 h-6 relative z-10" />
+            ? <X className="w-5 h-5" />
+            : <Headphones className="w-5.5 h-5.5" />
           }
+
+          {/* unread badge */}
+          {!open && unread > 0 && (
+            <span
+              className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
+              style={{ background: "#ef4444", boxShadow: "0 2px 6px rgba(239,68,68,.4)" }}
+            >
+              {unread}
+            </span>
+          )}
         </button>
       </div>
 
