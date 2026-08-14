@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { useEffect, useRef, useState, useMemo } from "react"
-import { X, Send, Loader2, LifeBuoy, Bot, GripVertical, Headphones } from "lucide-react"
+import { X, Send, Loader2, LifeBuoy, Bot, GripVertical, MessageCircle } from "lucide-react"
 import { io, Socket } from "socket.io-client"
 import { api } from "@/lib/api"
 import { resolveSocketBaseUrl } from "@/lib/socket-url"
@@ -175,15 +175,15 @@ export function LiveSupportWidget() {
           className="mb-3 w-[380px] max-w-[calc(100vw-2rem)] rounded-3xl overflow-hidden flex flex-col"
           style={{
             background: "var(--white, #fff)",
-            border: "1px solid rgba(99,102,241,.18)",
-            boxShadow: "0 24px 60px rgba(99,102,241,.22), 0 8px 24px rgba(0,0,0,.08)",
+            border: "1px solid rgba(142,120,251,.18)",
+            boxShadow: "0 24px 60px rgba(142,120,251,.22), 0 8px 24px rgba(0,0,0,.08)",
           }}>
 
           {/* header */}
           <div
             className="relative px-4 py-3.5 flex flex-col gap-2.5 cursor-grab active:cursor-grabbing select-none"
             style={{
-              background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #06b6d4 100%)",
+              background: "linear-gradient(135deg, #8e78fb 0%, #8e78fb 50%, #6c52f0 100%)",
             }}
             onPointerDown={onDragStart}>
             <div className="flex items-center justify-between gap-3">
@@ -191,7 +191,7 @@ export function LiveSupportWidget() {
                 {/* AI icon badge */}
                 <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
                   style={{ background: "rgba(255,255,255,.15)", border: "1.5px solid rgba(255,255,255,.25)" }}>
-                  <Headphones className="w-4 h-4 text-white" />
+                  <MessageCircle className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <p className="text-[14px] font-bold leading-none text-white">Chabaqa AI Support</p>
@@ -238,10 +238,10 @@ export function LiveSupportWidget() {
             ) : (
               <>
                 {messages.length === 0 && (
-                  <div className="rounded-2xl p-4" style={{ background: "white", border: "1px solid rgba(99,102,241,.12)", boxShadow: "0 2px 8px rgba(0,0,0,.04)" }}>
+                  <div className="rounded-2xl p-4" style={{ background: "white", border: "1px solid rgba(142,120,251,.12)", boxShadow: "0 2px 8px rgba(0,0,0,.04)" }}>
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-6 h-6 rounded-xl flex items-center justify-center"
-                        style={{ background: "linear-gradient(135deg,#4f46e5,#06b6d4)" }}>
+                        style={{ background: "linear-gradient(135deg,#8e78fb,#6c52f0)" }}>
                         <Bot className="w-3.5 h-3.5 text-white" />
                       </div>
                       <p className="text-[13px] font-bold" style={{ color: "#1e293b" }}>Ask me anything</p>
@@ -256,12 +256,12 @@ export function LiveSupportWidget() {
                             disabled={sending}
                             className="text-[11px] font-semibold px-3 py-1.5 rounded-xl cursor-pointer transition-all disabled:opacity-50"
                             style={{
-                              background: "rgba(99,102,241,.07)",
-                              border: "1px solid rgba(99,102,241,.2)",
-                              color: "#4f46e5",
+                              background: "rgba(142,120,251,.07)",
+                              border: "1px solid rgba(142,120,251,.2)",
+                              color: "#8e78fb",
                             }}
-                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,.14)"}
-                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,.07)"}>
+                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(142,120,251,.14)"}
+                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(142,120,251,.07)"}>
                             {q}
                           </button>
                         ))}
@@ -278,7 +278,7 @@ export function LiveSupportWidget() {
                     <div key={m.id} className={cn("flex", isUser ? "justify-end" : "justify-start gap-2")}>
                       {!isUser && (
                         <div className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                          style={{ background: isAdmin ? "#f1f5f9" : "linear-gradient(135deg,#4f46e5,#06b6d4)" }}>
+                          style={{ background: isAdmin ? "#f1f5f9" : "linear-gradient(135deg,#8e78fb,#6c52f0)" }}>
                           {isAdmin
                             ? <span className="text-[8px] font-black" style={{ color: "#475569" }}>HU</span>
                             : <Bot className="w-3 h-3 text-white" />
@@ -291,7 +291,7 @@ export function LiveSupportWidget() {
                         )}
                         <div className="rounded-2xl px-3 py-2 text-[13px] leading-relaxed"
                           style={isUser
-                            ? { background: "linear-gradient(135deg,#4f46e5,#6366f1)", color: "white", borderBottomRightRadius: 4 }
+                            ? { background: "linear-gradient(135deg,#8e78fb,#8e78fb)", color: "white", borderBottomRightRadius: 4 }
                             : isAdmin
                               ? { background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderBottomLeftRadius: 4, boxShadow:"0 1px 4px rgba(0,0,0,.05)" }
                               : { background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderBottomLeftRadius: 4, boxShadow:"0 1px 4px rgba(0,0,0,.05)" }
@@ -319,7 +319,7 @@ export function LiveSupportWidget() {
             {status === "BOT_ACTIVE" && ticket?.id && (
               <button onClick={onRequestAdmin} disabled={requestingAdmin}
                 className="w-full h-9 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed transition-all hover:opacity-80"
-                style={{ background: "rgba(99,102,241,.08)", color: "#4f46e5", border: "1.5px solid rgba(99,102,241,.2)" }}>
+                style={{ background: "rgba(142,120,251,.08)", color: "#8e78fb", border: "1.5px solid rgba(142,120,251,.2)" }}>
                 {requestingAdmin
                   ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Connecting to agent…</>
                   : <><LifeBuoy className="w-3.5 h-3.5" /> Talk to a human agent</>
@@ -337,14 +337,14 @@ export function LiveSupportWidget() {
                 placeholder={status === "CLOSED" ? "Send a message to reopen…" : "Ask anything…"}
                 className="flex-1 h-10 px-4 rounded-xl text-[13px] focus:outline-none transition-colors disabled:opacity-50"
                 style={{ background: "#f8f9ff", border: "1.5px solid #e2e8f0", color: "#1e293b" }}
-                onFocus={e => (e.target as HTMLElement).style.borderColor = "#6366f1"}
+                onFocus={e => (e.target as HTMLElement).style.borderColor = "#8e78fb"}
                 onBlur={e  => (e.target as HTMLElement).style.borderColor = "#e2e8f0"}
               />
               <button
                 onClick={() => onSend().catch(()=>{})}
                 disabled={sending || loading || !text.trim()}
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white cursor-pointer disabled:cursor-not-allowed transition-all hover:opacity-90 disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#4f46e5,#6366f1)", boxShadow: "0 4px 12px rgba(99,102,241,.35)" }}>
+                style={{ background: "linear-gradient(135deg,#8e78fb,#8e78fb)", boxShadow: "0 4px 12px rgba(142,120,251,.35)" }}>
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
             </div>
@@ -370,21 +370,21 @@ export function LiveSupportWidget() {
           )}
           style={{
             background: open
-              ? "linear-gradient(135deg, #4338ca 0%, #4f46e5 100%)"
-              : "linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #06b6d4 100%)",
+              ? "linear-gradient(135deg, #6c52f0 0%, #8e78fb 100%)"
+              : "linear-gradient(135deg, #8e78fb 0%, #8e78fb 50%, #6c52f0 100%)",
             boxShadow: open
-              ? "0 8px 24px rgba(99,102,241,.45)"
-              : "0 8px 28px rgba(99,102,241,.5), 0 2px 8px rgba(6,182,212,.25)",
+              ? "0 8px 24px rgba(142,120,251,.45)"
+              : "0 8px 28px rgba(142,120,251,.5), 0 2px 8px rgba(6,182,212,.25)",
             borderRadius: open ? "20px" : "18px",
           }}>
           {/* pulse ring */}
           {!open && (
             <span className="absolute inset-0 rounded-[18px] animate-ping opacity-20"
-              style={{ background: "linear-gradient(135deg,#4f46e5,#06b6d4)", animationDuration: "2.5s" }} />
+              style={{ background: "linear-gradient(135deg,#8e78fb,#6c52f0)", animationDuration: "2.5s" }} />
           )}
           {open
             ? <X className="w-5 h-5 relative z-10" />
-            : <Headphones className="w-6 h-6 relative z-10" />
+            : <MessageCircle className="w-6 h-6 relative z-10" />
           }
         </button>
       </div>
