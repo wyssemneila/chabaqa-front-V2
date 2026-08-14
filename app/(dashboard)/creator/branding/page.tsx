@@ -126,7 +126,11 @@ export default function BrandingPage() {
 
   const frameWidth = device === 'mobile' ? 400 : device === 'tablet' ? 760 : 1040
   const pageBg = design.bg === 'tint' ? '#faf9ff' : design.bg === 'gradient' ? '#fbfaff' : '#ffffff'
-  const editBlock = blocks.find(b => b.id === editing) || null
+  /* Content tab follows either the "editing" or "selected" block —
+     so clicking a block in Blocks + switching to Content just works,
+     instead of showing whatever was edited last (usually Hero). */
+  const activeBlockId = editing ?? selected
+  const editBlock = blocks.find(b => b.id === activeBlockId) || null
 
   return (
     <>
@@ -213,7 +217,11 @@ export default function BrandingPage() {
                           onDragLeave={() => setDragOver(null)}
                           onDrop={e => dropItem(e, i)}
                           onDragEnd={() => { setDragOver(null); dragFrom.current = null }}
-                          onClick={() => setSelected(isSel ? null : b.id)}
+                          onClick={() => {
+                            const next = isSel ? null : b.id
+                            setSelected(next)
+                            setEditing(next)
+                          }}
                           className="flex items-center gap-2 p-2 rounded-xl mb-1.5 cursor-pointer transition-all"
                           style={{
                             background: isSel ? `${accent}12` : E.card,
@@ -583,6 +591,11 @@ function BlockEditor({ block, onBack, patch, remove, content, set, media, setMed
     const src = await readFile(file)
     setMedia(ms => ms.map(x => x.id === id ? { ...x, src, type: 'image' } : x))
   }
+  const uploadVideo = async (file: File | undefined, id: string) => {
+    if (!file) return
+    const videoSrc = await readFile(file)
+    setMedia(ms => ms.map(x => x.id === id ? { ...x, videoSrc, url: undefined, type: 'video' } : x))
+  }
   const uploadReview = async (file: File | undefined, id: string) => {
     if (!file) return
     const image = await readFile(file)
@@ -668,14 +681,32 @@ function BlockEditor({ block, onBack, patch, remove, content, set, media, setMed
                       <input type="file" accept="image/*" hidden onChange={e => uploadImage(e.target.files?.[0], m.id)} />
                     </label>
                   ) : (
-                    <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg" style={{ background: '#fff', border: `1px solid ${badYt ? '#f87171' : E.bd}` }}>
-                      <Link2 className="w-3 h-3 shrink-0" style={{ color: E.t3 }} />
-                      <input value={m.url ?? ''} onChange={e => setMedia(ms => ms.map(x => x.id === m.id ? { ...x, url: e.target.value } : x))}
-                        placeholder={t('Paste YouTube link', 'الصق رابط يوتيوب')}
-                        className="flex-1 min-w-0 text-[11.5px] outline-none bg-transparent" style={{ color: E.t1 }} />
+                    <div className="flex flex-col gap-1.5">
+                      {/* upload video file — takes precedence when set */}
+                      <label className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-semibold cursor-pointer"
+                        style={{ background: '#fff', color: accent, border: `1px dashed ${accent}66` }}>
+                        <Upload className="w-3 h-3" /> {m.videoSrc ? t('Replace video file', 'استبدال ملف الفيديو') : t('Upload video file', 'رفع ملف فيديو')}
+                        <input type="file" accept="video/*" hidden onChange={e => uploadVideo(e.target.files?.[0], m.id)} />
+                      </label>
+
+                      {/* or paste a YouTube link */}
+                      <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg" style={{ background: '#fff', border: `1px solid ${badYt ? '#f87171' : E.bd}`, opacity: m.videoSrc ? 0.55 : 1 }}>
+                        <Link2 className="w-3 h-3 shrink-0" style={{ color: E.t3 }} />
+                        <input value={m.url ?? ''} disabled={!!m.videoSrc}
+                          onChange={e => setMedia(ms => ms.map(x => x.id === m.id ? { ...x, url: e.target.value } : x))}
+                          placeholder={t('…or paste a YouTube link', '…أو الصق رابط يوتيوب')}
+                          className="flex-1 min-w-0 text-[11.5px] outline-none bg-transparent" style={{ color: E.t1 }} />
+                      </div>
+
+                      {m.videoSrc && (
+                        <button onClick={() => setMedia(ms => ms.map(x => x.id === m.id ? { ...x, videoSrc: undefined } : x))}
+                          className="text-[10px] font-semibold" style={{ color: '#dc2626', alignSelf: 'flex-start' }}>
+                          {t('Remove uploaded file', 'إزالة الملف المرفوع')}
+                        </button>
+                      )}
                     </div>
                   )}
-                  {badYt && <p className="text-[10px]" style={{ color: '#dc2626' }}>{t('Not a valid YouTube link', 'رابط يوتيوب غير صالح')}</p>}
+                  {badYt && !m.videoSrc && <p className="text-[10px]" style={{ color: '#dc2626' }}>{t('Not a valid YouTube link', 'رابط يوتيوب غير صالح')}</p>}
                 </div>
               )
             })}
@@ -755,6 +786,18 @@ function BlockEditor({ block, onBack, patch, remove, content, set, media, setMed
       {block.type === 'about' && (
         <EditGroup title={t('About', 'حول')}>
           <Field label={t('Tagline', 'الوصف')} value={content.tagline} onChange={v => set('tagline', v)} textarea rows={4} />
+        </EditGroup>
+      )}
+
+      {/* Blocks without dedicated fields — tell the user what they CAN change */}
+      {(['highlights', 'curriculum', 'faq', 'cta', 'footer'] as BlockType[]).includes(block.type) && (
+        <EditGroup title={t('Content', 'المحتوى')}>
+          <p className="text-[11.5px] leading-relaxed" style={{ color: E.t2 }}>
+            {t(
+              'This block uses smart defaults. Change the block font above, or tweak brand color & background from the Design tab.',
+              'يستخدم هذا القسم قيماً افتراضية. غيّر الخط أعلاه، أو عدّل الألوان والخلفية من تبويب التصميم.'
+            )}
+          </p>
         </EditGroup>
       )}
     </div>

@@ -53,6 +53,8 @@ export interface MediaItem {
   src?: string
   /** YouTube / Vimeo URL for videos */
   url?: string
+  /** data-URL / object-URL for uploaded video files (takes precedence over url) */
+  videoSrc?: string
 }
 
 export type ProdKind = 'challenge' | 'event' | 'product' | 'session'
@@ -117,9 +119,12 @@ export function ytId(url: string): string | null {
 }
 export function mediaThumb(m: MediaItem): string | null {
   if (m.type === 'image' && m.src) return m.src
-  if (m.type === 'video' && m.url) {
-    const id = ytId(m.url)
-    if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`
+  if (m.type === 'video') {
+    if (m.url) {
+      const id = ytId(m.url)
+      if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`
+    }
+    // Uploaded video files render as a <video> in MediaFrame; no image thumb.
   }
   return null
 }
@@ -215,22 +220,35 @@ export function PageTabs({ page, setPage, design, t }: {
 /** 16:9 media frame — shows uploaded image / YouTube thumb, else a gradient placeholder */
 function MediaFrame({ item, grad, radius, big }: { item: MediaItem; grad: string; radius: number; big?: boolean }) {
   const thumb = mediaThumb(item)
+  // uploaded video files render inline; YouTube keeps the thumbnail + play button
+  const hasVideoFile = item.type === 'video' && !!item.videoSrc
+
   return (
     <div className="relative w-full flex items-center justify-center overflow-hidden"
       style={{
         aspectRatio: '16/9', borderRadius: radius,
-        background: thumb ? `#000 center/cover no-repeat url(${thumb})` : grad,
+        background: !hasVideoFile && thumb ? `#000 center/cover no-repeat url(${thumb})` : (hasVideoFile ? '#000' : grad),
       }}>
-      {!thumb && <div className="absolute rounded-full" style={{ width: 220, height: 220, background: '#fff', opacity: 0.08, top: -60, insetInlineEnd: 24 }} />}
-      {item.type === 'video' ? (
+
+      {hasVideoFile && (
+        <video src={item.videoSrc} controls playsInline preload="metadata"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      )}
+
+      {!hasVideoFile && !thumb && (
+        <div className="absolute rounded-full" style={{ width: 220, height: 220, background: '#fff', opacity: 0.08, top: -60, insetInlineEnd: 24 }} />
+      )}
+
+      {!hasVideoFile && item.type === 'video' ? (
         <button className="rounded-full flex items-center justify-center relative"
           style={{ width: big ? 48 : 34, height: big ? 48 : 34, background: 'rgba(255,255,255,.94)', boxShadow: '0 6px 20px rgba(0,0,0,.22)' }}>
           <Play className="fill-current" style={{ width: big ? 17 : 12, height: big ? 17 : 12, color: '#1a1730' }} />
         </button>
-      ) : !thumb ? (
+      ) : (!hasVideoFile && !thumb) ? (
         <ImageIcon className="relative" style={{ width: big ? 30 : 20, height: big ? 30 : 20, color: 'rgba(255,255,255,.85)' }} />
       ) : null}
-      {item.label && (
+
+      {item.label && !hasVideoFile && (
         <span className="absolute bottom-2 text-[10px] font-semibold px-2 py-0.5 rounded"
           style={{ insetInlineStart: 8, background: 'rgba(0,0,0,.5)', color: '#fff' }}>{item.label}</span>
       )}
@@ -380,15 +398,36 @@ export function Section({
       )
     }
 
-    case 'highlights':
+    case 'highlights': {
+      const items = [
+        { Icon: BookOpen,      title: t('Structured courses', 'دورات منظّمة'),  desc: t('One clear path from zero to pro.', 'مسار واضح من الصفر للاحتراف.') },
+        { Icon: MessageSquare, title: t('Active community',   'مجتمع نشِط'),   desc: t('Get feedback and stay accountable.', 'احصل على ملاحظات وابقَ ملتزماً.') },
+        { Icon: Calendar,      title: t('Live sessions',      'جلسات مباشرة'), desc: t('Weekly calls and challenges.', 'مكالمات وتحديات أسبوعية.') },
+      ]
+      // On mobile: horizontal snap scroll with smaller cards.
+      // Desktop / tablet: original 3-col grid.
+      if (mob) {
+        return wrap(
+          <div className={pad} style={{ background: secBg, paddingInline: 0 }}>
+            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth" style={{ paddingInline: 20, scrollbarWidth: 'none' }}>
+              {items.map((h, i) => (
+                <div key={i} className="shrink-0 snap-start p-4"
+                  style={{ width: 200, background: '#fff', border: `1px solid ${LINE}`, borderRadius: radius }}>
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2.5" style={{ background: `${accent}15` }}>
+                    <h.Icon className="w-4 h-4" style={{ color: accent }} />
+                  </div>
+                  <p className="text-[13.5px] font-bold" style={{ color: INK, fontFamily: headF }}>{h.title}</p>
+                  <p className="text-[11.5px] mt-1 leading-snug" style={{ color: INK3 }}>{h.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
       return wrap(
         <div className={pad} style={{ background: secBg }}>
           <div className="grid gap-3.5" style={{ gridTemplateColumns: `repeat(${cols3}, 1fr)` }}>
-            {[
-              { Icon: BookOpen, title: t('Structured courses', 'دورات منظّمة'), desc: t('One clear path from zero to pro.', 'مسار واضح من الصفر للاحتراف.') },
-              { Icon: MessageSquare, title: t('Active community', 'مجتمع نشِط'), desc: t('Get feedback and stay accountable.', 'احصل على ملاحظات وابقَ ملتزماً.') },
-              { Icon: Calendar, title: t('Live sessions', 'جلسات مباشرة'), desc: t('Weekly calls and challenges.', 'مكالمات وتحديات أسبوعية.') },
-            ].map((h, i) => (
+            {items.map((h, i) => (
               <div key={i} className="p-5 h-full" style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: radius }}>
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3" style={{ background: `${accent}15` }}>
                   <h.Icon className="w-5 h-5" style={{ color: accent }} />
@@ -400,6 +439,7 @@ export function Section({
           </div>
         </div>
       )
+    }
 
     case 'about':
       return wrap(
@@ -619,15 +659,16 @@ export function Section({
 
 /* ═══════════════ PRODUCTS PAGE ═══════════════ */
 
-/** Just the product cards — the hero above already renders the header + tabs. */
+/** Products grid — same visual language as the /explore card so the
+    community's Products tab feels consistent with discovery elsewhere. */
 export function ProductsList({ c, design, device, products, t }: {
   c: Content; design: Design; device: Device; products: ProductItem[]
   t: (en: string, ar: string) => string
 }) {
   const { accent, accent2, radius, pill } = design
   const mob = device === 'mobile'
+  const cols = mob ? 1 : device === 'tablet' ? 2 : 3
   const btnR = pill ? 999 : Math.max(8, radius - 2)
-  const grad = `linear-gradient(135deg,${accent},${accent2})`
   const pad = mob ? 'px-5 py-8' : 'px-11 py-10'
 
   return (
@@ -643,31 +684,55 @@ export function ProductsList({ c, design, device, products, t }: {
             <p className="text-[14px] font-semibold" style={{ color: INK2 }}>{t('No products yet', 'لا توجد منتجات')}</p>
           </div>
         ) : (
-          <div className="overflow-hidden" style={{ border: `1px solid ${LINE}`, background: '#fff', borderRadius: radius }}>
-            {products.map((p, i) => {
+          <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+            {products.map(p => {
               const cf = PROD_CONF[p.kind]
+              const isFree = p.price === 'free' || p.price === '0' || p.price === 0
+              const cta = p.kind === 'session' ? t('Book', 'احجز')
+                : p.kind === 'event' ? t('RSVP', 'سجّل')
+                : p.kind === 'challenge' ? t('Join', 'انضم')
+                : t('Buy', 'اشترِ')
               return (
-                <div key={p.id} className={`flex gap-5 p-5 ${mob ? 'flex-col' : ''}`} style={{ borderTop: i === 0 ? 'none' : `1px solid ${LINE}` }}>
-                  <div className="shrink-0 flex items-center justify-center" style={{ width: mob ? '100%' : 220, height: mob ? 150 : 124, background: '#f7f7fe', borderRadius: Math.max(8, radius - 4) }}>
-                    <cf.Icon className="w-9 h-9" style={{ color: '#c4b8fd' }} />
+                <div key={p.id} className="group overflow-hidden bg-white transition-shadow duration-300 hover:shadow-xl"
+                  style={{ border: `1px solid ${LINE}`, borderRadius: radius }}>
+                  {/* 16:9 media — placeholder gradient since ProductItem carries no image yet */}
+                  <div className="relative w-full" style={{ aspectRatio: '16/9', background: `linear-gradient(135deg, ${cf.color}22 0%, ${cf.color}0f 100%)` }}>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <cf.Icon className="w-10 h-10" style={{ color: cf.color, opacity: 0.85 }} />
+                    </div>
+                    {/* price badge */}
+                    <span className="absolute top-2.5 text-[11px] font-bold px-2 py-1 rounded-full text-white shadow"
+                      style={{
+                        insetInlineEnd: 10,
+                        background: isFree ? 'linear-gradient(90deg,#10b981,#059669)' : `linear-gradient(90deg,${accent},${accent2})`,
+                      }}>
+                      {isFree ? t('Free', 'مجاني') : `${p.price} ${c.currency}`}
+                    </span>
                   </div>
-                  <div className="flex-1 flex flex-col justify-between min-w-0">
-                    <div>
-                      <span className="text-xs font-medium px-2.5 py-1 rounded-md" style={{ background: cf.bg, color: cf.color }}>{cf.label.en}</span>
-                      <h3 className="text-base font-bold mt-2 truncate" style={{ color: INK }}>{p.title}</h3>
-                      <p className="text-sm mt-1 line-clamp-2" style={{ color: INK3 }}>{p.desc}</p>
-                      <p className="text-sm mt-2" style={{ color: INK3 }}>{p.meta}</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-3 gap-3">
-                      <span className="text-lg font-bold" style={{ color: accent }}>
-                        {p.price === 'free' || p.price === '0'
-                          ? t('Free', 'مجاني')
-                          : <>{p.price} <span className="text-sm font-medium">{c.currency}</span></>}
+
+                  {/* body */}
+                  <div className="px-3 pt-2.5 pb-3 space-y-1.5">
+                    <h3 className="text-[14px] font-bold line-clamp-2" style={{ color: INK, letterSpacing: '-0.01em' }}>{p.title}</h3>
+                    <p className="text-[11.5px] leading-relaxed line-clamp-2" style={{ color: INK3 }}>{p.desc}</p>
+
+                    {/* pills row: type + meta */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold px-2 py-0.5 rounded-full capitalize"
+                        style={{ background: cf.bg, color: cf.color, border: `1px solid ${cf.color}30` }}>
+                        {cf.label.en}
                       </span>
-                      <button className="px-5 text-sm font-semibold text-white shrink-0" style={{ background: grad, borderRadius: btnR, height: 40 }}>
-                        {p.kind === 'session' ? t('Book', 'احجز') : p.kind === 'event' ? t('RSVP', 'سجّل') : p.kind === 'challenge' ? t('Join', 'انضم') : t('Buy', 'اشترِ')}
-                      </button>
+                      {p.meta && (
+                        <span className="text-[10.5px] px-2 py-0.5 rounded-full font-medium"
+                          style={{ background: `${accent}12`, color: accent }}>
+                          {p.meta}
+                        </span>
+                      )}
                     </div>
+
+                    <button className="w-full mt-2 py-1.5 text-[12px] font-semibold text-white transition-all hover:opacity-90 hover:scale-[1.01]"
+                      style={{ background: `linear-gradient(90deg,${accent},${accent2})`, borderRadius: btnR }}>
+                      {cta}
+                    </button>
                   </div>
                 </div>
               )
