@@ -23,18 +23,9 @@ const NOTIF_SOUND_KEY = "chabaqa_support_sound"
 
 function playNotifSound() {
   try {
-    const ctx = new AudioContext()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.value = 880
-    osc.type = "sine"
-    gain.gain.setValueAtTime(0.5, ctx.currentTime)
-    gain.gain.setValueAtTime(0.5, ctx.currentTime + 1.4)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 2)
+    const audio = new Audio("/sounds/notification.mp3")
+    audio.volume = 1
+    audio.play().catch(() => {})
   } catch { /* audio blocked */ }
 }
 
@@ -139,7 +130,7 @@ export function LiveSupportWidget() {
           setUnread(u => u + 1)
           setToastMsg(newest.text?.slice(0, 80) || "New message")
           playNotifSound()
-          setTimeout(() => setToastMsg(null), 15000)
+          setTimeout(() => setToastMsg(null), 40000)
         }
       }
     }
