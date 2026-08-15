@@ -21,9 +21,11 @@ export default async function CommunityFeedPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-5">
 
-      {/* ── HERO BANNER ──── */}
-      <div className="rounded-2xl overflow-hidden relative" style={{ aspectRatio: '16/9', maxHeight: 180 }}>
-        <img src="/images/community/banner.png" alt="" className="w-full h-full object-cover" />
+      {/* ── HERO BANNER (16:9) ──── */}
+      <div className="rounded-2xl overflow-hidden relative w-full" style={{ aspectRatio: '16/9', background: '#ede9ff' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/community/banner.png" alt={community.name}
+          className="absolute inset-0 w-full h-full object-cover" />
       </div>
 
       {/* ── COMMUNITY TITLE + DESCRIPTION ───────── */}

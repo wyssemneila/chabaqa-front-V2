@@ -206,7 +206,7 @@ const MOTION_MASTERS: CommunityData = {
   activeTodayCount: 12,
   rating: 4.8,
   ratingCount: 32,
-  isJoined: false,
+  isJoined: true,
 }
 
 export const COMMUNITY_MAP: Record<string, CommunityData> = {
