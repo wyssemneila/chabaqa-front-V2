@@ -31,7 +31,8 @@ export default async function CommunityFeedPage({ params }: Props) {
         onlineCount={community.activeTodayCount}
         adminCount={adminCount}
         bannerSrc="/images/community/banner.png"
-        link={`chabaqa.io/communities/${slug}`}
+        avatarInitials={community.avatarInitials}
+        avatarColor={community.avatarColor}
       />
 
       {/* ── FILTER TABS ─────────────────────────── */}
