@@ -108,7 +108,8 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
     return `${base}/${id}`
   }
 
-  function activeTab(): CommunityTab {
+  function activeTab(): CommunityTab | 'channels' {
+    if (pathname.includes('/channels/')) return 'channels' as any
     const last = pathname.split('/').at(-1) as CommunityTab
     const subs: CommunityTab[] = ['courses','challenges','sessions','products','events','reviews','progress','members']
     return subs.includes(last) ? last : 'feed'
@@ -282,8 +283,8 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
         <>
           <div className="fixed inset-0 z-[90]" style={{ background: 'rgba(26,23,48,.25)', backdropFilter: 'blur(4px)' }}
             onClick={() => { setActiveChat(null); setChatOpen(false) }} />
-          <div className="fixed top-1/2 left-1/2 w-[520px] rounded-2xl overflow-hidden z-[100] flex flex-col"
-            style={{ background: '#fff', boxShadow: '0 24px 80px rgba(26,23,48,.2), 0 0 0 1px rgba(0,0,0,.06)', height: 560, animation: 'ckCenter .25s ease both' }}>
+          <div className="fixed w-[520px] rounded-2xl overflow-hidden z-[100] flex flex-col"
+            style={{ background: '#fff', boxShadow: '0 24px 80px rgba(26,23,48,.2), 0 0 0 1px rgba(0,0,0,.06)', height: 560, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
 
             <div className="flex items-center gap-3 px-5 py-3.5" style={{ background: 'linear-gradient(135deg, #8e78fb, #6c52f0)' }}>
               <button onClick={() => { setActiveChat(null); setChatOpen(true) }}
@@ -389,14 +390,23 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
             <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
               {isAr ? 'القنوات' : 'All Channels'}
             </p>
-            {(community.channels || ['General', 'Resources', 'Showcase']).map((ch: string, i: number) => (
-              <Link key={ch} href={`/communities/${community.slug}/channels/${ch.toLowerCase()}`}
-                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] text-gray-500 hover:bg-gray-100 transition-colors">
-                <Hash className="w-3 h-3 text-gray-400" strokeWidth={1.7} />
-                {ch}
-                {i === 0 && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-red-400" />}
-              </Link>
-            ))}
+            {(community.channels || ['General', 'Resources', 'Showcase']).map((ch: string, i: number) => {
+              const chSlug = ch.toLowerCase()
+              const isChActive = pathname.includes(`/channels/${chSlug}`)
+              return (
+                <Link key={ch} href={`/communities/${community.slug}/channels/${chSlug}`}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] transition-colors"
+                  style={{
+                    color: isChActive ? '#1a1730' : '#6b7280',
+                    background: isChActive ? '#ede9ff' : 'transparent',
+                    fontWeight: isChActive ? 600 : 400,
+                  }}>
+                  <Hash className="w-3 h-3" strokeWidth={1.7} style={{ color: isChActive ? '#8e78fb' : '#9ca3af' }} />
+                  {ch}
+                  {i === 0 && !isChActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-red-400" />}
+                </Link>
+              )
+            })}
           </div>
 
           <div className="mt-auto">

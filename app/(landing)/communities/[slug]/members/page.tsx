@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import {
-  Search, MessageSquare, Users, UserPlus,
+  Search, MessageSquare, Users, UserPlus, Calendar,
 } from 'lucide-react'
 
 interface Member {
@@ -135,7 +135,7 @@ export default function MembersPage() {
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Online now
                     </span>}
                     <span className="flex items-center gap-1 text-[11px] text-gray-400">
-                      📅 Joined {member.joinedDate}
+                      <Calendar className="w-3 h-3" strokeWidth={1.5} /> Joined {member.joinedDate}
                     </span>
                   </div>
                 </div>
