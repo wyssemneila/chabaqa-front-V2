@@ -137,6 +137,7 @@ export interface CommunityData {
   products: CommunityProduct[]
   events: CommunityEvent[]
   reviews: CommunityReview[]
+  channels?: string[]
 }
 
 const MOTION_SCHOOL: CommunityData = {

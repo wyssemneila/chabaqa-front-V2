@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   MessageSquare, BookOpen, Zap, Calendar, ShoppingBag,
-  UserCheck, Users, Trophy, Info, Search, Bell,
-  MessageCircle, Hash, ExternalLink, CheckCircle2, Circle,
-  Headphones, X, Send, Paperclip, Smile, ChevronLeft,
+  UserCheck, Search, Bell,
+  MessageCircle, Hash, CheckCircle2, Circle,
+  X, Send, Paperclip, Smile, ChevronLeft,
   Maximize2, MoreHorizontal,
 } from 'lucide-react'
 import type { CommunityData, CommunityTab } from '@/lib/community-data'
@@ -72,15 +72,13 @@ const MOCK_CONVERSATION: ChatMessage[] = [
   { id: '6', text: 'غالبًا بتكون حاجة بسيطة زي إن الكارت انتهى أو البنك موقف العملية، وتقدر تصلحها في ثواني من إعدادات الاشتراك', sender: 'them', time: '2:40pm' },
 ]
 
-const NAV: { id: CommunityTab; label: string; labelAr: string; Icon: React.ElementType }[] = [
+const SIDEBAR_NAV: { id: CommunityTab; label: string; labelAr: string; Icon: React.ElementType }[] = [
   { id: 'feed',       label: 'Feed',        labelAr: 'المنشورات', Icon: MessageSquare },
   { id: 'courses',    label: 'Courses',     labelAr: 'الدورات',   Icon: BookOpen },
   { id: 'events',     label: 'Events',      labelAr: 'الفعاليات', Icon: Calendar },
   { id: 'sessions',   label: 'Sessions',    labelAr: 'الجلسات',   Icon: UserCheck },
   { id: 'challenges', label: 'Challenges',  labelAr: 'التحديات',  Icon: Zap },
   { id: 'products',   label: 'Products',    labelAr: 'المنتجات',  Icon: ShoppingBag },
-  { id: 'members',    label: 'Members',     labelAr: 'الأعضاء',   Icon: Users },
-  { id: 'progress',   label: 'Leaderboards',labelAr: 'المتصدرين', Icon: Trophy },
 ]
 
 export function CommunityLayoutClient({ community, locale, children }: Props) {
@@ -97,15 +95,17 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false)
-      if (chatRef.current && !chatRef.current.contains(e.target as Node)) { setChatOpen(false); setActiveChat(null) }
+      if (chatRef.current && !chatRef.current.contains(e.target as Node) && !activeChat) setChatOpen(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+  }, [activeChat])
 
-  function tabHref(id: CommunityTab) {
+  function tabHref(id: CommunityTab | 'saved') {
     const base = `/communities/${community.slug}`
-    return id === 'feed' ? base : `${base}/${id}`
+    if (id === 'feed') return base
+    if (id === 'saved') return `${base}?tab=saved`
+    return `${base}/${id}`
   }
 
   function activeTab(): CommunityTab {
@@ -115,7 +115,7 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
   }
 
   const active = activeTab()
-  const visibleNav = NAV.filter(n => community.tabs.includes(n.id))
+  const visibleNav = SIDEBAR_NAV.filter(n => community.tabs.includes(n.id))
   const unreadNotifs = MOCK_NOTIFICATIONS.filter(n => n.unread).length
   const unreadChats = MOCK_CHATS.filter(c => c.unread).length
 
@@ -126,7 +126,6 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
       <header className="sticky top-0 z-50" style={{ background: '#fff', borderBottom: '1px solid #e8e8e8' }}>
         <div className="max-w-[1200px] mx-auto px-6 flex items-center h-[56px] gap-6">
 
-          {/* Logo / brand */}
           <Link href={tabHref('feed')} className="flex items-center gap-2.5 flex-shrink-0">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-white text-[10px]"
               style={{ background: community.avatarColor }}>
@@ -139,10 +138,7 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
 
           <div className="flex-1" />
 
-          {/* Right icons */}
           <div className="flex items-center gap-3">
-
-            {/* Search */}
             <button className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400">
               <Search className="w-[19px] h-[19px]" strokeWidth={1.7} />
             </button>
@@ -163,7 +159,8 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
               {notifOpen && (
                 <div className="absolute right-0 top-[calc(100%+8px)] w-[380px] rounded-2xl overflow-hidden"
                   style={{ background: '#fff', boxShadow: '0 20px 60px rgba(26,23,48,.14), 0 0 0 1px rgba(0,0,0,.06)', animation: 'ckSlide .2s ease both' }}>
-                  <style>{`@keyframes ckSlide { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }`}</style>
+                  <style>{`@keyframes ckSlide { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
+                    @keyframes ckCenter { from { opacity:0; transform:translate(-50%,-50%) scale(.96) } to { opacity:1; transform:translate(-50%,-50%) scale(1) } }`}</style>
 
                   <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid #f0f0f0' }}>
                     <h3 className="text-[15px] font-bold text-gray-900">Notifications</h3>
@@ -208,7 +205,7 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
             {/* Messages */}
             <div className="relative" ref={chatRef}>
               <button
-                onClick={() => { setChatOpen(v => !v); setNotifOpen(false); setActiveChat(null) }}
+                onClick={() => { setChatOpen(v => !v); setNotifOpen(false); if (activeChat) setActiveChat(null) }}
                 className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-500">
                 <MessageCircle className="w-[20px] h-[20px]" strokeWidth={1.7} />
                 {unreadChats > 0 && (
@@ -270,91 +267,8 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
                   </div>
                 </div>
               )}
-
-              {/* Conversation popup */}
-              {activeChat && (
-                <div className="fixed bottom-6 right-6 w-[420px] rounded-2xl overflow-hidden z-[100] flex flex-col"
-                  style={{ background: '#fff', boxShadow: '0 20px 60px rgba(26,23,48,.18), 0 0 0 1px rgba(0,0,0,.06)', height: 520, animation: 'ckSlide .25s ease both' }}>
-
-                  {/* Conversation header */}
-                  <div className="flex items-center gap-3 px-4 py-3" style={{ background: 'linear-gradient(135deg, #8e78fb, #6c52f0)' }}>
-                    <button onClick={() => setActiveChat(null)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors">
-                      <ChevronLeft className="w-4 h-4" strokeWidth={2} />
-                    </button>
-                    <div className="relative flex-shrink-0">
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-[10px]"
-                        style={{ background: 'rgba(255,255,255,.2)' }}>
-                        {activeChat.avatar}
-                      </div>
-                      {activeChat.online && <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#6c52f0]" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-white">{activeChat.name}</p>
-                      <p className="text-[11px] text-white/70">{activeChat.online ? 'online now' : 'offline'}</p>
-                    </div>
-                    <button className="w-7 h-7 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors">
-                      <Maximize2 className="w-3.5 h-3.5" strokeWidth={2} />
-                    </button>
-                    <button className="w-7 h-7 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors">
-                      <MoreHorizontal className="w-4 h-4" strokeWidth={2} />
-                    </button>
-                    <button onClick={() => { setActiveChat(null); setChatOpen(false) }}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors">
-                      <X className="w-4 h-4" strokeWidth={2} />
-                    </button>
-                  </div>
-
-                  {/* Messages area */}
-                  <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2" style={{ background: '#fafbfc' }}>
-                    {MOCK_CONVERSATION.map((msg, i) => (
-                      <div key={msg.id}>
-                        {msg.date && (
-                          <p className="text-center text-[11px] text-gray-400 my-3">{msg.date}</p>
-                        )}
-                        <div className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                          <div className="max-w-[80%] px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed"
-                            style={msg.sender === 'me'
-                              ? { background: 'linear-gradient(135deg, #8e78fb, #6c52f0)', color: '#fff', borderBottomRightRadius: 6 }
-                              : { background: '#fff', color: '#1a1730', border: '1px solid #eee', borderBottomLeftRadius: 6 }
-                            }>
-                            {msg.text}
-                            <span className="block text-[10px] mt-1 text-right" style={{ opacity: 0.5 }}>{msg.time}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Input */}
-                  <div className="px-4 py-3 flex items-center gap-2" style={{ borderTop: '1px solid #f0f0f0' }}>
-                    <input
-                      type="text"
-                      value={chatMsg}
-                      onChange={e => setChatMsg(e.target.value)}
-                      placeholder={`Message ${activeChat.name.split(' ')[0]}`}
-                      className="flex-1 text-[13px] outline-none text-gray-700 placeholder:text-gray-400 bg-transparent"
-                    />
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                      <Paperclip className="w-4 h-4" strokeWidth={1.7} />
-                    </button>
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                      <Smile className="w-4 h-4" strokeWidth={1.7} />
-                    </button>
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                      <span className="text-[11px] font-bold">GIF</span>
-                    </button>
-                    {chatMsg.trim() && (
-                      <button className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                        style={{ background: '#8e78fb', color: '#fff' }}>
-                        <Send className="w-3.5 h-3.5" strokeWidth={2} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Profile avatar */}
             <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-[10px] cursor-pointer ml-1"
               style={{ background: community.avatarColor }}>
               WN
@@ -363,6 +277,87 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
         </div>
       </header>
 
+      {/* ── Conversation popup (centered) ── */}
+      {activeChat && (
+        <>
+          <div className="fixed inset-0 z-[90]" style={{ background: 'rgba(26,23,48,.25)', backdropFilter: 'blur(4px)' }}
+            onClick={() => { setActiveChat(null); setChatOpen(false) }} />
+          <div className="fixed top-1/2 left-1/2 w-[520px] rounded-2xl overflow-hidden z-[100] flex flex-col"
+            style={{ background: '#fff', boxShadow: '0 24px 80px rgba(26,23,48,.2), 0 0 0 1px rgba(0,0,0,.06)', height: 560, animation: 'ckCenter .25s ease both' }}>
+
+            <div className="flex items-center gap-3 px-5 py-3.5" style={{ background: 'linear-gradient(135deg, #8e78fb, #6c52f0)' }}>
+              <button onClick={() => { setActiveChat(null); setChatOpen(true) }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors">
+                <ChevronLeft className="w-4 h-4" strokeWidth={2} />
+              </button>
+              <div className="relative flex-shrink-0">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-[10px]"
+                  style={{ background: 'rgba(255,255,255,.2)' }}>
+                  {activeChat.avatar}
+                </div>
+                {activeChat.online && <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#6c52f0]" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-semibold text-white">{activeChat.name}</p>
+                <p className="text-[11px] text-white/70">{activeChat.online ? 'online now' : 'offline'}</p>
+              </div>
+              <button className="w-7 h-7 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors">
+                <Maximize2 className="w-3.5 h-3.5" strokeWidth={2} />
+              </button>
+              <button className="w-7 h-7 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors">
+                <MoreHorizontal className="w-4 h-4" strokeWidth={2} />
+              </button>
+              <button onClick={() => { setActiveChat(null); setChatOpen(false) }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors">
+                <X className="w-4 h-4" strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3" style={{ background: '#fafbfc' }}>
+              {MOCK_CONVERSATION.map(msg => (
+                <div key={msg.id}>
+                  {msg.date && <p className="text-center text-[11px] text-gray-400 my-3">{msg.date}</p>}
+                  <div className={`flex items-end gap-2.5 ${msg.sender === 'me' ? 'flex-row-reverse' : ''}`}>
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-white text-[8px] flex-shrink-0"
+                      style={{ background: msg.sender === 'me' ? community.avatarColor : activeChat.avatarColor }}>
+                      {msg.sender === 'me' ? 'WN' : activeChat.avatar}
+                    </div>
+                    <div className="max-w-[75%] px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed"
+                      style={msg.sender === 'me'
+                        ? { background: 'linear-gradient(135deg, #8e78fb, #6c52f0)', color: '#fff', borderBottomRightRadius: 6 }
+                        : { background: '#fff', color: '#1a1730', border: '1px solid #eee', borderBottomLeftRadius: 6 }
+                      }>
+                      {msg.text}
+                      <span className="block text-[10px] mt-1 text-right" style={{ opacity: 0.5 }}>{msg.time}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="px-5 py-3.5 flex items-center gap-2" style={{ borderTop: '1px solid #f0f0f0' }}>
+              <input type="text" value={chatMsg} onChange={e => setChatMsg(e.target.value)}
+                placeholder={`Message ${activeChat.name.split(' ')[0]}`}
+                className="flex-1 text-[13px] outline-none text-gray-700 placeholder:text-gray-400 bg-transparent" />
+              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <Paperclip className="w-4 h-4" strokeWidth={1.7} />
+              </button>
+              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <Smile className="w-4 h-4" strokeWidth={1.7} />
+              </button>
+              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <span className="text-[11px] font-bold">GIF</span>
+              </button>
+              {chatMsg.trim() && (
+                <button className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#8e78fb', color: '#fff' }}>
+                  <Send className="w-3.5 h-3.5" strokeWidth={2} />
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ── 3-COLUMN BODY ────────────────────────── */}
       <div className="max-w-[1200px] mx-auto flex">
 
@@ -370,7 +365,6 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
         <aside className="hidden lg:flex flex-col w-[200px] flex-shrink-0 border-r border-gray-100 sticky top-[56px] h-[calc(100vh-56px)] overflow-y-auto py-4 px-3"
           style={{ background: '#fafbfc' }}>
 
-          {/* Navigation — no group label */}
           <nav className="flex flex-col gap-0.5">
             {visibleNav.map(({ id, label, labelAr, Icon }) => {
               const isActive = active === id
@@ -389,24 +383,22 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
             })}
           </nav>
 
-          {/* Divider */}
           <div className="my-4 border-t border-gray-100" />
 
-          {/* Channels section */}
           <div className="mb-4">
             <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
               {isAr ? 'القنوات' : 'All Channels'}
             </p>
-            {['General', 'Resources', 'Showcase'].map((ch, i) => (
-              <button key={ch} className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] text-gray-500 hover:bg-gray-100 transition-colors">
+            {(community.channels || ['General', 'Resources', 'Showcase']).map((ch: string, i: number) => (
+              <Link key={ch} href={`/communities/${community.slug}/channels/${ch.toLowerCase()}`}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] text-gray-500 hover:bg-gray-100 transition-colors">
                 <Hash className="w-3 h-3 text-gray-400" strokeWidth={1.7} />
                 {ch}
                 {i === 0 && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-red-400" />}
-              </button>
+              </Link>
             ))}
           </div>
 
-          {/* Complete your intro */}
           <div className="mt-auto">
             <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1">
               {isAr ? 'أكمل ملفك' : 'Complete Your Intro'}
@@ -429,7 +421,6 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
           </div>
         </aside>
 
-        {/* ── MAIN CONTENT ── */}
         <main className="flex-1 min-w-0 px-5 lg:px-8 py-6">
           {children}
         </main>

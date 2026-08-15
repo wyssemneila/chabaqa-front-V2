@@ -4,9 +4,10 @@ import {
   MessageSquare, Bookmark, Image as ImageIcon,
   Video, Link2, Search,
   Heart, MessageCircle, MoreHorizontal, Share2,
-  Trophy, Users,
+  Trophy, Users, Info, Smile,
 } from 'lucide-react'
 import { getCommunity } from '@/lib/community-data'
+import Link from 'next/link'
 
 interface Props { params: Promise<{ slug: string }> }
 
@@ -20,15 +21,15 @@ export default async function CommunityFeedPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-5">
 
-      {/* ── HERO BANNER (16:9) ──────────────────── */}
+      {/* ── HERO BANNER (smaller, ~33% aspect) ──── */}
       <div className="rounded-2xl overflow-hidden relative"
         style={{
-          paddingBottom: '56.25%',
+          paddingBottom: '33%',
           background: `linear-gradient(135deg, #ede9ff 0%, #e8e4ff 30%, #f7f7fe 60%, #ede9ff 100%)`,
         }}>
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <div className="w-16 h-16 rounded-xl flex items-center justify-center font-black text-white text-xl mx-auto mb-2 shadow-md"
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center font-black text-white text-lg mx-auto mb-2 shadow-md"
               style={{ background: community.avatarColor }}>
               {community.avatarInitials}
             </div>
@@ -49,12 +50,13 @@ export default async function CommunityFeedPage({ params }: Props) {
       {/* ── FILTER TABS ─────────────────────────── */}
       <div className="flex items-center gap-0 border-b border-gray-100">
         {[
-          { label: isAr ? 'المنشورات' : 'Feed', icon: MessageSquare, active: true },
-          { label: isAr ? 'المحفوظ' : 'Saved', icon: Bookmark, active: false },
-          { label: isAr ? 'المتصدرين' : 'Leaderboards', icon: Trophy, active: false },
-          { label: isAr ? 'الأعضاء' : 'Members', icon: Users, active: false },
+          { label: isAr ? 'المنشورات' : 'Feed', icon: MessageSquare, href: `/communities/${slug}`, active: true },
+          { label: isAr ? 'المحفوظ' : 'Saved', icon: Bookmark, href: `/communities/${slug}?tab=saved`, active: false },
+          { label: isAr ? 'حول' : 'About', icon: Info, href: `/communities/${slug}/reviews`, active: false },
+          { label: isAr ? 'المتصدرين' : 'Leaderboards', icon: Trophy, href: `/communities/${slug}/progress`, active: false },
+          { label: isAr ? 'الأعضاء' : 'Members', icon: Users, href: `/communities/${slug}/members`, active: false },
         ].map(tab => (
-          <button key={tab.label}
+          <Link key={tab.label} href={tab.href}
             className="flex items-center gap-1.5 px-4 pb-2.5 text-[13px] font-medium transition-colors"
             style={{
               color: tab.active ? '#1a1730' : '#999',
@@ -62,7 +64,7 @@ export default async function CommunityFeedPage({ params }: Props) {
             }}>
             <tab.icon className="w-3.5 h-3.5" strokeWidth={1.7} />
             {tab.label}
-          </button>
+          </Link>
         ))}
 
         <div className="ml-auto flex items-center gap-1.5 pb-1">
@@ -73,27 +75,42 @@ export default async function CommunityFeedPage({ params }: Props) {
         </div>
       </div>
 
-      {/* ── COMPOSER ─────────────────────────────── */}
+      {/* ── COMPOSER (for creators / joined members) ── */}
       {community.isJoined && (
-        <div className="flex items-center gap-3 py-2">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-[10px] flex-shrink-0"
-            style={{ background: community.avatarColor }}>
-            WN
-          </div>
-          <button className="flex-1 text-left px-4 py-2.5 rounded-full text-[13px] text-gray-400 border border-gray-200 hover:border-gray-300 transition-colors"
-            style={{ background: '#fafafa' }}>
-            {isAr ? 'ما الذي يدور في بالك؟' : "What's on your mind?"}
-          </button>
-          <div className="flex items-center gap-1">
-            {[
-              <ImageIcon key="img" className="w-[18px] h-[18px]" strokeWidth={1.5} />,
-              <Video key="vid" className="w-[18px] h-[18px]" strokeWidth={1.5} />,
-              <Link2 key="lnk" className="w-[18px] h-[18px]" strokeWidth={1.5} />,
-            ].map((icon, i) => (
-              <button key={i} className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                {icon}
-              </button>
-            ))}
+        <div className="rounded-xl p-4" style={{ background: '#fafbfc', border: '1px solid #f0f0f0' }}>
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-[10px] flex-shrink-0 mt-0.5"
+              style={{ background: community.avatarColor }}>
+              WN
+            </div>
+            <div className="flex-1">
+              <textarea
+                rows={3}
+                placeholder={isAr ? 'شارك شيئاً مع المجتمع... 💬' : "Share something with the community... 💬"}
+                className="w-full text-[13px] text-gray-700 placeholder:text-gray-400 bg-transparent outline-none resize-none leading-relaxed"
+                readOnly
+              />
+              <div className="flex items-center justify-between mt-2 pt-2" style={{ borderTop: '1px solid #f0f0f0' }}>
+                <div className="flex items-center gap-1">
+                  {[
+                    { icon: <ImageIcon className="w-[16px] h-[16px]" strokeWidth={1.5} />, tip: 'Photo' },
+                    { icon: <Video className="w-[16px] h-[16px]" strokeWidth={1.5} />, tip: 'Video' },
+                    { icon: <Link2 className="w-[16px] h-[16px]" strokeWidth={1.5} />, tip: 'Link' },
+                    { icon: <Smile className="w-[16px] h-[16px]" strokeWidth={1.5} />, tip: 'Emoji' },
+                    { icon: <span className="text-[10px] font-bold">GIF</span>, tip: 'GIF' },
+                  ].map((item, i) => (
+                    <button key={i} title={item.tip}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                      {item.icon}
+                    </button>
+                  ))}
+                </div>
+                <button className="h-8 px-4 rounded-lg text-[12px] font-semibold text-white transition-all hover:opacity-90"
+                  style={{ background: 'linear-gradient(135deg, #8e78fb, #6c52f0)' }}>
+                  {isAr ? 'نشر' : 'Post'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -112,8 +129,6 @@ export default async function CommunityFeedPage({ params }: Props) {
       ) : (
         community.posts.map(post => (
           <article key={post.id} className="py-4" style={{ borderBottom: '1px solid #f0f0f0' }}>
-
-            {/* Author row */}
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-[10px] flex-shrink-0"
                 style={{ background: post.authorColor }}>
@@ -139,12 +154,8 @@ export default async function CommunityFeedPage({ params }: Props) {
               </div>
             </div>
 
-            {/* Content */}
-            <p className="text-[14px] leading-[1.75] text-gray-700 mb-4">
-              {post.content}
-            </p>
+            <p className="text-[14px] leading-[1.75] text-gray-700 mb-4">{post.content}</p>
 
-            {/* Actions */}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-5">
                 <button className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors">
