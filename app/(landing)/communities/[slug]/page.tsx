@@ -1,8 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import {
-  MessageSquare, Bookmark, Search,
-  Trophy, Users, Info,
+  MessageSquare, Bookmark, Search, Info,
 } from 'lucide-react'
 import { getCommunity } from '@/lib/community-data'
 import Link from 'next/link'
@@ -41,8 +40,6 @@ export default async function CommunityFeedPage({ params }: Props) {
           { label: isAr ? 'المنشورات' : 'Feed', icon: MessageSquare, href: `/communities/${slug}`, active: true },
           { label: isAr ? 'المحفوظ' : 'Saved', icon: Bookmark, href: `/communities/${slug}?tab=saved`, active: false },
           { label: isAr ? 'حول' : 'About', icon: Info, href: `/communities/${slug}/reviews`, active: false },
-          { label: isAr ? 'المتصدرين' : 'Leaderboards', icon: Trophy, href: `/communities/${slug}/progress`, active: false },
-          { label: isAr ? 'الأعضاء' : 'Members', icon: Users, href: `/communities/${slug}/members`, active: false },
         ].map(tab => (
           <Link key={tab.label} href={tab.href}
             className="flex items-center gap-1.5 px-4 pb-2.5 text-[13px] font-medium transition-colors"
