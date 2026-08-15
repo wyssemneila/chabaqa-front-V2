@@ -7,6 +7,7 @@ import {
 import { getCommunity } from '@/lib/community-data'
 import Link from 'next/link'
 import FeedSection from '@/components/community/feed-section'
+import CommunityHero from '@/components/community/community-hero'
 
 interface Props { params: Promise<{ slug: string }> }
 
@@ -17,27 +18,22 @@ export default async function CommunityFeedPage({ params }: Props) {
   if (!community) notFound()
   const isAr = locale === 'ar'
 
+  const adminCount = community.members.filter(m => m.role === 'owner' || m.role === 'admin').length
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
 
-      {/* ── HERO BANNER (16:9, compact) ──── */}
-      <div className="flex justify-center">
-        <div className="rounded-2xl overflow-hidden w-full" style={{ maxWidth: 600, aspectRatio: '16/9', background: '#ede9ff' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/community/banner.png" alt={community.name}
-            className="w-full h-full object-cover" />
-        </div>
-      </div>
-
-      {/* ── COMMUNITY TITLE + DESCRIPTION ───────── */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">
-          {isAr ? community.nameAr : community.name}
-        </h1>
-        <p className="text-[13px] text-gray-500 mt-1.5 leading-relaxed max-w-[560px]">
-          {isAr ? community.descriptionAr : community.description}
-        </p>
-      </div>
+      {/* ── HERO: info left + banner right ──── */}
+      <CommunityHero
+        name={isAr ? community.nameAr : community.name}
+        description={isAr ? community.descriptionAr : community.description}
+        slug={slug}
+        membersCount={community.membersCount}
+        onlineCount={community.activeTodayCount}
+        adminCount={adminCount}
+        bannerSrc="/images/community/banner.png"
+        link={`chabaqa.io/communities/${slug}`}
+      />
 
       {/* ── FILTER TABS ─────────────────────────── */}
       <div className="flex items-center gap-0 border-b border-gray-100">
