@@ -1,13 +1,12 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import {
-  MessageSquare, Bookmark, Image as ImageIcon,
-  Video, Link2, Search,
-  Heart, MessageCircle, MoreHorizontal, Share2,
-  Trophy, Users, Info, Smile, Paperclip, BarChart3, ChevronDown, X,
+  MessageSquare, Bookmark, Search,
+  Trophy, Users, Info,
 } from 'lucide-react'
 import { getCommunity } from '@/lib/community-data'
 import Link from 'next/link'
+import FeedSection from '@/components/community/feed-section'
 
 interface Props { params: Promise<{ slug: string }> }
 
@@ -21,11 +20,13 @@ export default async function CommunityFeedPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-5">
 
-      {/* ── HERO BANNER (16:9) ──── */}
-      <div className="rounded-2xl overflow-hidden relative w-full" style={{ aspectRatio: '16/9', background: '#ede9ff' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/community/banner.png" alt={community.name}
-          className="absolute inset-0 w-full h-full object-cover" />
+      {/* ── HERO BANNER (16:9, compact) ──── */}
+      <div className="flex justify-center">
+        <div className="rounded-2xl overflow-hidden w-full" style={{ maxWidth: 600, aspectRatio: '16/9', background: '#ede9ff' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/community/banner.png" alt={community.name}
+            className="w-full h-full object-cover" />
+        </div>
       </div>
 
       {/* ── COMMUNITY TITLE + DESCRIPTION ───────── */}
@@ -66,144 +67,23 @@ export default async function CommunityFeedPage({ params }: Props) {
         </div>
       </div>
 
-      {/* ── COMPOSER (Skool-style) ── */}
-      {community.isJoined && (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #e4dffb' }}>
-          {/* Header */}
-          <div className="px-4 py-3 flex items-center gap-2" style={{ background: '#faf8ff', borderBottom: '1px solid #f0eeff' }}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-[9px] flex-shrink-0"
-              style={{ background: '#8e78fb' }}>
-              WN
-            </div>
-            <span className="text-[13px] text-gray-600">
-              <span className="font-semibold text-gray-900">Wyssem Neila</span>
-              {' '}{isAr ? 'ينشر في' : 'posting in'}{' '}
-              <span className="font-semibold" style={{ color: '#8e78fb' }}>{isAr ? community.nameAr : community.name}</span>
-            </span>
-          </div>
-
-          {/* Body */}
-          <div className="p-4 bg-white">
-            <input type="text" placeholder={isAr ? 'العنوان (اختياري)' : 'Title (optional)'}
-              className="w-full text-[15px] font-semibold text-gray-900 placeholder:text-gray-300 outline-none mb-3" readOnly />
-            <textarea rows={4}
-              placeholder={isAr ? 'اكتب شيئاً... 💬' : "Write something..."}
-              className="w-full text-[13.5px] text-gray-700 placeholder:text-gray-400 bg-transparent outline-none resize-none leading-relaxed"
-              readOnly />
-          </div>
-
-          {/* Footer toolbar */}
-          <div className="px-4 py-3 flex items-center justify-between" style={{ background: '#fafbfc', borderTop: '1px solid #f0f0f0' }}>
-            <div className="flex items-center gap-0.5">
-              {[
-                { icon: <Paperclip className="w-4 h-4" strokeWidth={1.5} />, tip: 'Attach file' },
-                { icon: <ImageIcon className="w-4 h-4" strokeWidth={1.5} />, tip: 'Image' },
-                { icon: <Video className="w-4 h-4" strokeWidth={1.5} />, tip: 'Video' },
-                { icon: <Link2 className="w-4 h-4" strokeWidth={1.5} />, tip: 'Link' },
-                { icon: <BarChart3 className="w-4 h-4" strokeWidth={1.5} />, tip: 'Poll' },
-                { icon: <Smile className="w-4 h-4" strokeWidth={1.5} />, tip: 'Emoji' },
-                { icon: <span className="text-[10px] font-bold leading-none">GIF</span>, tip: 'GIF' },
-              ].map((item, i) => (
-                <button key={i} title={item.tip}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                  {item.icon}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button className="h-8 px-3 rounded-lg text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-colors">
-                {isAr ? 'إلغاء' : 'CANCEL'}
-              </button>
-              <button className="h-8 px-5 rounded-lg text-[12px] font-bold text-white transition-all hover:opacity-90"
-                style={{ background: 'linear-gradient(135deg, #8e78fb, #6c52f0)' }}>
-                {isAr ? 'نشر' : 'POST'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── POSTS ─────────────────────────────────── */}
-      {community.posts.length === 0 ? (
-        <div className="py-16 text-center">
-          <MessageSquare className="w-10 h-10 mx-auto mb-3 text-gray-300" strokeWidth={1.3} />
-          <p className="text-sm font-medium text-gray-600">
-            {isAr ? 'لا توجد منشورات بعد' : 'No posts yet'}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {isAr ? 'كن أول من يشارك' : 'Be the first to share'}
-          </p>
-        </div>
-      ) : (
-        community.posts.map(post => (
-          <article key={post.id} className="py-4" style={{ borderBottom: '1px solid #f0f0f0' }}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-[10px] flex-shrink-0"
-                style={{ background: post.authorColor }}>
-                {post.authorInitials}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-semibold text-gray-900">{post.authorName}</span>
-                  <span className="text-[11px] text-gray-400">·</span>
-                  <span className="text-[11px] text-gray-400">{post.timeAgo}</span>
-                </div>
-                <span className="text-[11px] text-gray-400">
-                  {isAr ? `عضو منذ يوليو 2024` : `Member since July 18, 2024`}
-                </span>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button className="w-8 h-8 rounded-md flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-50 transition-colors">
-                  <Bookmark className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-                <button className="w-8 h-8 rounded-md flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-50 transition-colors">
-                  <MoreHorizontal className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-              </div>
-            </div>
-
-            <p className="text-[14px] leading-[1.75] text-gray-700 mb-4">{post.content}</p>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-5">
-                <button className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors">
-                  <Heart className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-                <button className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors">
-                  <MessageCircle className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-                <button className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors">
-                  <Share2 className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-              </div>
-
-              {(post.likes > 0 || post.comments > 0) && (
-                <div className="ml-auto flex items-center gap-3">
-                  {post.likes > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex -space-x-1">
-                        {community.members.slice(0, 2).map(m => (
-                          <div key={m.id} className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[6px] font-bold ring-2 ring-white"
-                            style={{ background: m.color }}>
-                            {m.initials}
-                          </div>
-                        ))}
-                      </div>
-                      <span className="text-[11px] text-gray-400">{post.likes} {isAr ? 'إعجاب' : 'likes'}</span>
-                    </div>
-                  )}
-                  {post.comments > 0 && (
-                    <span className="text-[11px] text-gray-400">
-                      {post.comments} {isAr ? 'تعليق' : 'comments'}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          </article>
-        ))
-      )}
+      {/* ── FEED (composer + posts) ──────────────── */}
+      <FeedSection
+        communityName={isAr ? community.nameAr : community.name}
+        avatarColor={community.avatarColor}
+        isJoined={community.isJoined}
+        initialPosts={community.posts.map(p => ({
+          id: p.id,
+          authorName: p.authorName,
+          authorInitials: p.authorInitials,
+          authorColor: p.authorColor,
+          content: p.content,
+          timeAgo: p.timeAgo,
+          likes: p.likes,
+          comments: p.comments,
+        }))}
+        members={community.members.slice(0, 3).map(m => ({ id: m.id, initials: m.initials, color: m.color }))}
+      />
     </div>
   )
 }
