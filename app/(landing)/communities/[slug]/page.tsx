@@ -4,7 +4,7 @@ import {
   MessageSquare, Bookmark, Image as ImageIcon,
   Video, Link2, Search,
   Heart, MessageCircle, MoreHorizontal, Share2,
-  Trophy, Users, Info, Smile,
+  Trophy, Users, Info, Smile, Paperclip, BarChart3, ChevronDown, X,
 } from 'lucide-react'
 import { getCommunity } from '@/lib/community-data'
 import Link from 'next/link'
@@ -21,21 +21,9 @@ export default async function CommunityFeedPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-5">
 
-      {/* ── HERO BANNER (smaller, ~33% aspect) ──── */}
-      <div className="rounded-2xl overflow-hidden relative"
-        style={{
-          aspectRatio: '16/9',
-          maxHeight: 200,
-          background: `linear-gradient(135deg, #ede9ff 0%, #e8e4ff 30%, #f7f7fe 60%, #ede9ff 100%)`,
-        }}>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center font-black text-white text-lg mx-auto mb-2 shadow-md"
-              style={{ background: community.avatarColor }}>
-              {community.avatarInitials}
-            </div>
-          </div>
-        </div>
+      {/* ── HERO BANNER ──── */}
+      <div className="rounded-2xl overflow-hidden relative" style={{ aspectRatio: '16/9', maxHeight: 180 }}>
+        <img src="/images/community/banner.png" alt="" className="w-full h-full object-cover" />
       </div>
 
       {/* ── COMMUNITY TITLE + DESCRIPTION ───────── */}
@@ -76,41 +64,59 @@ export default async function CommunityFeedPage({ params }: Props) {
         </div>
       </div>
 
-      {/* ── COMPOSER (for creators / joined members) ── */}
+      {/* ── COMPOSER (Skool-style) ── */}
       {community.isJoined && (
-        <div className="rounded-xl p-4" style={{ background: '#fafbfc', border: '1px solid #f0f0f0' }}>
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-[10px] flex-shrink-0 mt-0.5"
-              style={{ background: community.avatarColor }}>
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #e4dffb' }}>
+          {/* Header */}
+          <div className="px-4 py-3 flex items-center gap-2" style={{ background: '#faf8ff', borderBottom: '1px solid #f0eeff' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-[9px] flex-shrink-0"
+              style={{ background: '#8e78fb' }}>
               WN
             </div>
-            <div className="flex-1">
-              <textarea
-                rows={3}
-                placeholder={isAr ? 'شارك شيئاً مع المجتمع... 💬' : "Share something with the community... 💬"}
-                className="w-full text-[13px] text-gray-700 placeholder:text-gray-400 bg-transparent outline-none resize-none leading-relaxed"
-                readOnly
-              />
-              <div className="flex items-center justify-between mt-2 pt-2" style={{ borderTop: '1px solid #f0f0f0' }}>
-                <div className="flex items-center gap-1">
-                  {[
-                    { icon: <ImageIcon className="w-[16px] h-[16px]" strokeWidth={1.5} />, tip: 'Photo' },
-                    { icon: <Video className="w-[16px] h-[16px]" strokeWidth={1.5} />, tip: 'Video' },
-                    { icon: <Link2 className="w-[16px] h-[16px]" strokeWidth={1.5} />, tip: 'Link' },
-                    { icon: <Smile className="w-[16px] h-[16px]" strokeWidth={1.5} />, tip: 'Emoji' },
-                    { icon: <span className="text-[10px] font-bold">GIF</span>, tip: 'GIF' },
-                  ].map((item, i) => (
-                    <button key={i} title={item.tip}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                      {item.icon}
-                    </button>
-                  ))}
-                </div>
-                <button className="h-8 px-4 rounded-lg text-[12px] font-semibold text-white transition-all hover:opacity-90"
-                  style={{ background: 'linear-gradient(135deg, #8e78fb, #6c52f0)' }}>
-                  {isAr ? 'نشر' : 'Post'}
+            <span className="text-[13px] text-gray-600">
+              <span className="font-semibold text-gray-900">Wyssem Neila</span>
+              {' '}{isAr ? 'ينشر في' : 'posting in'}{' '}
+              <span className="font-semibold" style={{ color: '#8e78fb' }}>{isAr ? community.nameAr : community.name}</span>
+            </span>
+          </div>
+
+          {/* Body */}
+          <div className="p-4 bg-white">
+            <input type="text" placeholder={isAr ? 'العنوان (اختياري)' : 'Title (optional)'}
+              className="w-full text-[15px] font-semibold text-gray-900 placeholder:text-gray-300 outline-none mb-3" readOnly />
+            <textarea rows={4}
+              placeholder={isAr ? 'اكتب شيئاً... 💬' : "Write something..."}
+              className="w-full text-[13.5px] text-gray-700 placeholder:text-gray-400 bg-transparent outline-none resize-none leading-relaxed"
+              readOnly />
+          </div>
+
+          {/* Footer toolbar */}
+          <div className="px-4 py-3 flex items-center justify-between" style={{ background: '#fafbfc', borderTop: '1px solid #f0f0f0' }}>
+            <div className="flex items-center gap-0.5">
+              {[
+                { icon: <Paperclip className="w-4 h-4" strokeWidth={1.5} />, tip: 'Attach file' },
+                { icon: <ImageIcon className="w-4 h-4" strokeWidth={1.5} />, tip: 'Image' },
+                { icon: <Video className="w-4 h-4" strokeWidth={1.5} />, tip: 'Video' },
+                { icon: <Link2 className="w-4 h-4" strokeWidth={1.5} />, tip: 'Link' },
+                { icon: <BarChart3 className="w-4 h-4" strokeWidth={1.5} />, tip: 'Poll' },
+                { icon: <Smile className="w-4 h-4" strokeWidth={1.5} />, tip: 'Emoji' },
+                { icon: <span className="text-[10px] font-bold leading-none">GIF</span>, tip: 'GIF' },
+              ].map((item, i) => (
+                <button key={i} title={item.tip}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                  {item.icon}
                 </button>
-              </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button className="h-8 px-3 rounded-lg text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-colors">
+                {isAr ? 'إلغاء' : 'CANCEL'}
+              </button>
+              <button className="h-8 px-5 rounded-lg text-[12px] font-bold text-white transition-all hover:opacity-90"
+                style={{ background: 'linear-gradient(135deg, #8e78fb, #6c52f0)' }}>
+                {isAr ? 'نشر' : 'POST'}
+              </button>
             </div>
           </div>
         </div>
