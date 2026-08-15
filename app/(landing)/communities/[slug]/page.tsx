@@ -4,6 +4,7 @@ import {
   MessageSquare, Bookmark, Image as ImageIcon,
   Video, Link2, Search,
   Heart, MessageCircle, MoreHorizontal, Share2,
+  Trophy, Users,
 } from 'lucide-react'
 import { getCommunity } from '@/lib/community-data'
 
@@ -19,12 +20,15 @@ export default async function CommunityFeedPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-5">
 
-      {/* ── HERO BANNER ─────────────────────────── */}
-      <div className="rounded-2xl overflow-hidden h-[180px] relative"
-        style={{ background: `linear-gradient(135deg, #ede9ff 0%, #e8e4ff 30%, #f7f7fe 60%, #ede9ff 100%)` }}>
+      {/* ── HERO BANNER (16:9) ──────────────────── */}
+      <div className="rounded-2xl overflow-hidden relative"
+        style={{
+          paddingBottom: '56.25%',
+          background: `linear-gradient(135deg, #ede9ff 0%, #e8e4ff 30%, #f7f7fe 60%, #ede9ff 100%)`,
+        }}>
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center font-black text-white text-lg mx-auto mb-2 shadow-md"
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center font-black text-white text-xl mx-auto mb-2 shadow-md"
               style={{ background: community.avatarColor }}>
               {community.avatarInitials}
             </div>
@@ -45,17 +49,18 @@ export default async function CommunityFeedPage({ params }: Props) {
       {/* ── FILTER TABS ─────────────────────────── */}
       <div className="flex items-center gap-0 border-b border-gray-100">
         {[
-          { label: isAr ? 'الأحدث' : 'Latest', active: true },
-          { label: isAr ? 'الأكثر رواجاً' : 'Trending', active: false },
-          { label: isAr ? 'المتابَعون' : 'Following', active: false },
-          { label: isAr ? 'المحفوظ' : 'Saved', active: false },
+          { label: isAr ? 'المنشورات' : 'Feed', icon: MessageSquare, active: true },
+          { label: isAr ? 'المحفوظ' : 'Saved', icon: Bookmark, active: false },
+          { label: isAr ? 'المتصدرين' : 'Leaderboards', icon: Trophy, active: false },
+          { label: isAr ? 'الأعضاء' : 'Members', icon: Users, active: false },
         ].map(tab => (
           <button key={tab.label}
-            className="px-4 pb-2.5 text-[13px] font-medium transition-colors"
+            className="flex items-center gap-1.5 px-4 pb-2.5 text-[13px] font-medium transition-colors"
             style={{
-              color: tab.active ? '#111' : '#999',
-              borderBottom: tab.active ? '2px solid #111' : '2px solid transparent',
+              color: tab.active ? '#1a1730' : '#999',
+              borderBottom: tab.active ? '2px solid #8e78fb' : '2px solid transparent',
             }}>
+            <tab.icon className="w-3.5 h-3.5" strokeWidth={1.7} />
             {tab.label}
           </button>
         ))}
