@@ -24,7 +24,8 @@ export default async function CommunityFeedPage({ params }: Props) {
       {/* ── HERO BANNER (smaller, ~33% aspect) ──── */}
       <div className="rounded-2xl overflow-hidden relative"
         style={{
-          paddingBottom: '22%',
+          aspectRatio: '16/9',
+          maxHeight: 200,
           background: `linear-gradient(135deg, #ede9ff 0%, #e8e4ff 30%, #f7f7fe 60%, #ede9ff 100%)`,
         }}>
         <div className="absolute inset-0 flex items-center justify-center">

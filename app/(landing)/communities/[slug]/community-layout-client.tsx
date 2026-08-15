@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
   MessageSquare, BookOpen, Zap, Calendar, ShoppingBag,
-  UserCheck, Search, Bell,
+  UserCheck, Users, Trophy, Info, Search, Bell,
   MessageCircle, Hash, CheckCircle2, Circle,
   X, Send, Paperclip, Smile, ChevronLeft,
   Maximize2, MoreHorizontal,
@@ -89,13 +89,18 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
   const [chatOpen, setChatOpen] = useState(false)
   const [activeChat, setActiveChat] = useState<ChatUser | null>(null)
   const [chatMsg, setChatMsg] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [chatSearchQuery, setChatSearchQuery] = useState('')
   const notifRef = useRef<HTMLDivElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false)
       if (chatRef.current && !chatRef.current.contains(e.target as Node) && !activeChat) setChatOpen(false)
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -140,9 +145,39 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
           <div className="flex-1" />
 
           <div className="flex items-center gap-3">
-            <button className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400">
-              <Search className="w-[19px] h-[19px]" strokeWidth={1.7} />
-            </button>
+            {/* Search */}
+            <div className="relative" ref={searchRef}>
+              <button onClick={() => { setSearchOpen(v => !v); setNotifOpen(false); setChatOpen(false) }}
+                className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400">
+                <Search className="w-[19px] h-[19px]" strokeWidth={1.7} />
+              </button>
+              {searchOpen && (
+                <div className="absolute right-0 top-[calc(100%+8px)] w-[340px] rounded-2xl overflow-hidden"
+                  style={{ background: '#fff', boxShadow: '0 20px 60px rgba(26,23,48,.14), 0 0 0 1px rgba(0,0,0,.06)', animation: 'ckSlide .2s ease both' }}>
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: '#f5f5f5' }}>
+                      <Search className="w-4 h-4 text-gray-400" strokeWidth={1.7} />
+                      <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                        placeholder={isAr ? 'ابحث في المجتمع...' : 'Search community...'}
+                        className="text-[13px] bg-transparent outline-none flex-1 text-gray-700 placeholder:text-gray-400"
+                        autoFocus />
+                    </div>
+                    {searchQuery ? (
+                      <div className="mt-3 py-2">
+                        <p className="text-[12px] text-gray-400 px-1">
+                          {isAr ? `نتائج البحث عن "${searchQuery}"...` : `Searching for "${searchQuery}"...`}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mt-3 py-4 text-center">
+                        <Search className="w-8 h-8 mx-auto mb-2 text-gray-200" strokeWidth={1.3} />
+                        <p className="text-[12px] text-gray-400">{isAr ? 'ابحث عن منشورات، أعضاء، دورات...' : 'Search posts, members, courses...'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Notifications */}
             <div className="relative" ref={notifRef}>
@@ -235,12 +270,13 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
                   <div className="px-4 py-2.5">
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#f5f5f5' }}>
                       <Search className="w-3.5 h-3.5 text-gray-400" strokeWidth={1.7} />
-                      <input type="text" placeholder="Search users" className="text-[12px] bg-transparent outline-none flex-1 text-gray-700 placeholder:text-gray-400" />
+                      <input type="text" value={chatSearchQuery} onChange={e => setChatSearchQuery(e.target.value)}
+                        placeholder="Search users" className="text-[12px] bg-transparent outline-none flex-1 text-gray-700 placeholder:text-gray-400" />
                     </div>
                   </div>
 
                   <div className="max-h-[380px] overflow-y-auto">
-                    {MOCK_CHATS.map(chat => (
+                    {MOCK_CHATS.filter(c => !chatSearchQuery || c.name.toLowerCase().includes(chatSearchQuery.toLowerCase())).map(chat => (
                       <div key={chat.id}
                         onClick={() => setActiveChat(chat)}
                         className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -383,6 +419,33 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
               )
             })}
           </nav>
+
+          <div className="my-4 border-t border-gray-100" />
+
+          <div className="mb-1">
+            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+              {isAr ? 'المجتمع' : 'Community'}
+            </p>
+            {[
+              { id: 'members' as CommunityTab, label: isAr ? 'الأعضاء' : 'Members', labelAr: 'الأعضاء', Icon: Users },
+              { id: 'progress' as CommunityTab, label: isAr ? 'المتصدرين' : 'Leaderboards', labelAr: 'المتصدرين', Icon: Trophy },
+              { id: 'reviews' as CommunityTab, label: isAr ? 'حول' : 'About', labelAr: 'حول', Icon: Info },
+            ].map(({ id, label, Icon }) => {
+              const isActive = active === id
+              return (
+                <Link key={id} href={tabHref(id)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all"
+                  style={{
+                    color: isActive ? '#1a1730' : '#46426a',
+                    background: isActive ? '#ede9ff' : 'transparent',
+                  }}>
+                  <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.7}
+                    style={{ color: isActive ? '#8e78fb' : '#9590b8' }} />
+                  {label}
+                </Link>
+              )
+            })}
+          </div>
 
           <div className="my-4 border-t border-gray-100" />
 
