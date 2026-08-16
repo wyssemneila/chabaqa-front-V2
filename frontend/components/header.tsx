@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { LogOut, User as UserIcon, Plus, LayoutDashboard } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { LangToggle } from "@/components/lang-toggle"
 import { usePathname } from "next/navigation"
 import { SafeImage } from "@/components/media/safe-image"
 import { useAuth } from "@/hooks/use-auth"
@@ -23,11 +25,13 @@ export function Header() {
   const isAuthenticated = !!authUser
   const profileHandle = getUserProfileHandle(authUser)
   const withLocale = (href: string) => localizeHref(pathname, href)
+  // Arabic uses its own wordmark at a different aspect ratio; kept from the
+  // previous header so the RTL logo does not regress to the French one.
   const isArabic = pathname.startsWith("/ar")
   const logoSrc = isArabic ? "/Logos/PNG/arabic.png" : "/Logos/PNG/frensh1.png"
-  const logoWidth = isArabic ? 156 : 112
-  const logoHeight = isArabic ? 40 : 28
-  const logoClassName = isArabic ? "h-11 w-auto" : "h-9 w-auto"
+  const logoWidth = isArabic ? 156 : 140
+  const logoHeight = isArabic ? 40 : 44
+  const logoClassName = isArabic ? "h-11 w-auto" : "h-11 w-auto"
 
   const NAV_LINKS = [
     { href: "/#features", label: t("features") },
@@ -98,17 +102,6 @@ export function Header() {
             ? "bg-[var(--nav-bg)] backdrop-blur-md border-b border-[var(--bd)] shadow-sm"
             : "bg-transparent"
         }`}
-        style={{
-          "--nav-bg": "rgba(255, 255, 255, 0.95)",
-          "--bd": "#e5e7eb",
-          "--p": "#8e78fb",
-          "--p2": "#ede9ff",
-          "--p3": "#c4b8fd",
-          "--t1": "#111827",
-          "--t2": "#6b7280",
-          "--white": "#ffffff",
-          "--p-dark": "#7c66e8",
-        } as React.CSSProperties}
       >
         {/* Logo */}
         <Link href={withLocale("/")} aria-label="Chabaqa — go to homepage" className="flex-shrink-0">
@@ -143,20 +136,22 @@ export function Header() {
 
         {/* Right CTA */}
         <div className="flex items-center gap-2">
+          <LangToggle />
+          <ThemeToggle />
           {loading ? null : !isAuthenticated ? (
             <>
               <Link
                 href={withLocale("/signin")}
-                className="hidden md:inline-flex items-center h-10 px-4 rounded-xl text-sm font-semibold text-[var(--t2)] border border-[var(--bd)] bg-[var(--white)] hover:border-[var(--p3)] hover:text-[var(--p)] transition-colors"
+                className="hidden md:inline-flex items-center h-8 px-3 rounded-lg text-[12px] font-semibold text-[var(--t2)] border border-[var(--bd)] bg-[var(--white)] hover:border-[var(--p3)] hover:text-[var(--p)] transition-colors"
               >
                 {t("login")}
               </Link>
               <Link
                 href={withLocale("/dashboard/create-community")}
-                className="hidden md:inline-flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold text-white bg-[var(--p)] hover:bg-[var(--p-dark)] transition-colors shadow-[0_4px_16px_rgba(142,120,251,.35)]"
+                className="hidden md:inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-semibold text-white bg-[var(--p)] hover:bg-[var(--p-dark)] transition-colors shadow-[0_4px_12px_rgba(142,120,251,.35)]"
               >
                 {t("start")}
-                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="12" height="12" aria-hidden="true">
                   <line x1="5" y1="12" x2="19" y2="12" />
                   <polyline points="12 5 19 12 12 19" />
                 </svg>
@@ -255,13 +250,16 @@ export function Header() {
           </Link>
         ))}
         <div className="flex gap-2 mt-2 pt-2 border-t border-[var(--bd)]">
+          <LangToggle size="sm" />
+          <ThemeToggle size="sm" />
+          <div className="flex-1 flex gap-2">
           {loading ? null : !isAuthenticated ? (
             <>
               <Link
                 href={withLocale("/signin")}
                 onClick={() => setIsMenuOpen(false)}
                 tabIndex={isMenuOpen ? 0 : -1}
-                className="flex-1 flex items-center justify-center h-10 rounded-xl text-sm font-semibold text-[var(--t2)] border border-[var(--bd)] bg-[var(--white)]"
+                className="flex-1 flex items-center justify-center h-9 rounded-xl text-[13px] font-semibold text-[var(--t2)] border border-[var(--bd)] bg-[var(--white)]"
               >
                 {t("login")}
               </Link>
@@ -269,7 +267,7 @@ export function Header() {
                 href={withLocale("/dashboard/create-community")}
                 onClick={() => setIsMenuOpen(false)}
                 tabIndex={isMenuOpen ? 0 : -1}
-                className="flex-1 flex items-center justify-center h-10 rounded-xl text-sm font-semibold text-white bg-[var(--p)]"
+                className="flex-1 flex items-center justify-center h-9 rounded-xl text-[13px] font-semibold text-white bg-[var(--p)]"
               >
                 {t("start")} →
               </Link>
@@ -298,6 +296,7 @@ export function Header() {
               </button>
             </>
           )}
+          </div>
         </div>
       </div>
     </div>
