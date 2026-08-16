@@ -168,7 +168,7 @@ describe('ChapterAccessService', () => {
     expect(decision.lockCode).toBe('previous_chapter_incomplete');
   });
 
-  it('blocks enrolled users from later free chapters until the previous chapter is complete', async () => {
+  it('allows enrolled users to open later free chapters when sequential progression is disabled', async () => {
     const course: any = {
       ...baseCourse,
       sequentialProgression: false,
@@ -194,8 +194,8 @@ describe('ChapterAccessService', () => {
     );
 
     const decision = service.evaluateChapterAccess(context, 'chapter-2');
-    expect(decision.canAccess).toBe(false);
-    expect(decision.lockCode).toBe('previous_chapter_incomplete');
+    expect(decision.canAccess).toBe(true);
+    expect(decision.lockCode).toBe('allowed');
   });
 
   it('does not unlock a paid chapter from a whole-course purchase alone', async () => {
@@ -262,7 +262,7 @@ describe('ChapterAccessService', () => {
 
   // ── Preview chapter bypass (bug fix) ─────────────────────────────────────
 
-  it('blocks preview chapter at index > 0 for unenrolled users', async () => {
+  it('allows an explicit preview chapter at index > 0 for unenrolled users', async () => {
     const courseWithPreview: any = {
       ...baseCourse,
       sequentialProgression: true,
@@ -279,9 +279,28 @@ describe('ChapterAccessService', () => {
     const { service } = buildService({ enrollment: null });
     const context = await service.buildAccessContext('65f0f0f0f0f0f0f0f0f0f120', courseWithPreview);
     const decision = service.evaluateChapterAccess(context, 'chapter-2');
+    expect(decision.canAccess).toBe(true);
+    expect(decision.lockCode).toBe('allowed');
+    expect(decision.readOnlyPreview).toBe(true);
+  });
+
+  it('blocks an unmarked first chapter for unenrolled users', async () => {
+    const course: any = {
+      ...baseCourse,
+      sections: [{
+        ...baseCourse.sections[0],
+        chapitres: [{
+          ...baseCourse.sections[0].chapitres[0],
+          isPreview: false,
+        }],
+      }],
+    };
+    const { service } = buildService({ enrollment: null });
+    const context = await service.buildAccessContext('65f0f0f0f0f0f0f0f0f0f128', course);
+
+    const decision = service.evaluateChapterAccess(context, 'chapter-1');
     expect(decision.canAccess).toBe(false);
     expect(decision.lockCode).toBe('not_enrolled_preview_only');
-    expect(decision.readOnlyPreview).toBeFalsy();
   });
 
   it('blocks preview chapter for enrolled user without prior chapter completion (strict sequential)', async () => {

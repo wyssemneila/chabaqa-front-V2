@@ -8,6 +8,7 @@ import { ForgotPasswordDto } from '@/domains/auth/dto/forgot-password.dto';
 import { ResetPasswordDto } from '@/domains/auth/dto/reset-password.dto';
 import { ChangePasswordDto } from '@/domains/auth/dto/change-password.dto';
 import { DeleteAccountDto } from '@/domains/auth/dto/delete-account.dto';
+import { CreatorDashboardOnboardingDto } from '@/domains/user/dto/creator-dashboard-onboarding.dto';
 import { JwtAuthGuard } from '@/domains/auth/guards/jwt-auth.guard';
 import { HttpCacheInterceptor } from '@/shared/interceptors/cache.interceptor';
 import { CacheTTL } from '@/shared/decorators/cache-ttl.decorator';
@@ -536,6 +537,19 @@ export class UserController {
           details: err.message
         });
       }
+    }
+
+    @Put('creator-dashboard-onboarding')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Save creator dashboard onboarding progress' })
+    async updateCreatorDashboardOnboarding(@Request() req, @Body() dto: CreatorDashboardOnboardingDto) {
+      const userId = req.user.sub || req.user._id;
+      const user = await this.userService.updateCreatorDashboardOnboarding(userId, dto);
+      return {
+        success: true,
+        data: { creatorOnboarding: (user as any).creatorOnboarding || {} },
+      };
     }
 
 

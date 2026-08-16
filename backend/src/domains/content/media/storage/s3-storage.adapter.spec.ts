@@ -3,6 +3,7 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
 }));
 
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { BadRequestException } from '@nestjs/common';
 import { S3StorageAdapter } from '@/domains/content/media/storage/s3-storage.adapter';
 
 describe('S3StorageAdapter direct upload signing', () => {
@@ -51,8 +52,19 @@ describe('S3StorageAdapter direct upload signing', () => {
     }
     expect(result.headers).toEqual(expect.objectContaining({
       'Content-Type': 'video/mp4',
+      'Content-Length': '1024',
       'x-amz-checksum-sha256': Buffer.from('a'.repeat(64), 'hex').toString('base64'),
       'x-amz-meta-media-owner': 'owner-id',
     }));
   });
+
+  it.each(['', '../secret', 'image/../secret', 'image\\secret', 'image//secret'])(
+    'rejects unsafe object key %p',
+    async (storageKey) => {
+      const adapter = new S3StorageAdapter();
+
+      await expect(adapter.presignDownload(storageKey)).rejects.toBeInstanceOf(BadRequestException);
+      expect(getSignedUrl).not.toHaveBeenCalled();
+    },
+  );
 });

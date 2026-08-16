@@ -141,7 +141,12 @@ export default function CourseSidebar({
     name: course?.creator?.name || "Instructor",
   })
   const isUserEnrolled = Boolean(enrollment)
-  const firstChapterId = allChapters?.[0]?.id ? String(allChapters[0].id) : null
+  const orderedSections = useMemo(
+    () => [...(course?.sections || [])].sort(
+      (left: any, right: any) => Number(left?.order ?? 0) - Number(right?.order ?? 0),
+    ),
+    [course?.sections],
+  )
 
   const loadNotes = async () => {
     setLoadingNotes(true)
@@ -505,7 +510,7 @@ export default function CourseSidebar({
                 'h-[700px] md:h-[750px]'
               }`}>
                 <div className="space-y-1 px-3 md:px-4 pb-4">
-                  {course.sections.map((section: any, sectionIndex: number) => (
+                  {orderedSections.map((section: any, sectionIndex: number) => (
                     <div key={section.id} className="space-y-1">
                       <div className="flex items-center gap-2 py-2 px-2.5 md:px-3 bg-muted/40 rounded-lg mt-2">
                         <span className="text-xs md:text-sm font-bold text-muted-foreground">
@@ -517,7 +522,9 @@ export default function CourseSidebar({
                         </span>
                       </div>
                       <div className="space-y-1.5">
-                        {section.chapters.map((chapter: any, chapterIndex: number) => {
+                        {[...(section.chapters || [])]
+                          .sort((left: any, right: any) => Number(left?.order ?? 0) - Number(right?.order ?? 0))
+                          .map((chapter: any, chapterIndex: number) => {
                           const sessionChapter = Array.isArray(courseSession?.chapters) ? courseSession.chapters.find(
                             (entry) => String(entry.chapterId) === String(chapter.id),
                           ) : undefined
@@ -525,10 +532,6 @@ export default function CourseSidebar({
                           const isCompleted = Boolean(sessionChapter?.isCompleted || chapterProgress?.isCompleted)
                           const isActive = String(selectedChapter) === String(chapter.id)
                           const accessible = sessionChapter ? sessionChapter.access.canAccess : isChapterAccessible(String(chapter.id))
-                          const isFirstPreviewChapter =
-                            !isUserEnrolled &&
-                            Boolean(firstChapterId && String(chapter.id) === firstChapterId)
-
                           // Calculate chapter progress percentage
                           const watchTime = Number(chapterProgress?.watchTime ?? 0)
                           const duration = Number(chapterProgress?.videoDuration ?? chapter.duration ?? 0)
@@ -537,7 +540,7 @@ export default function CourseSidebar({
                             isCompleted: Boolean(isCompleted),
                             accessible,
                             isPaidChapter: Boolean(sessionChapter?.isPaidChapter ?? chapter.isPaidChapter),
-                            isPreview: Boolean(chapter.isPreview || isFirstPreviewChapter),
+                            isPreview: Boolean(chapter.isPreview && !chapter.isPaidChapter),
                             isActive,
                           })
 
@@ -561,11 +564,13 @@ export default function CourseSidebar({
                                     })
                                     return
                                   }
-                                  const reason = chapter.isPaidChapter
-                                    ? "Buy this chapter to continue learning."
-                                    : isUserEnrolled
-                                      ? "Finish the required previous chapter to unlock this lesson."
-                                      : "Enroll in the course to open this chapter."
+                                  const reason =
+                                    sessionChapter?.access.lockReason ||
+                                    (sessionChapter?.access.needsPayment || chapter.isPaidChapter
+                                      ? "Buy this chapter to continue learning."
+                                      : isUserEnrolled
+                                        ? "This chapter is currently locked."
+                                        : "Enroll in the course to open this chapter.")
                                   console.warn("[CourseNextFlow] Sidebar chapter click blocked", {
                                     chapterId,
                                     reason,
@@ -622,7 +627,7 @@ export default function CourseSidebar({
                               </div>
                             </button>
                           )
-                        })}
+                          })}
                       </div>
                     </div>
                   ))}

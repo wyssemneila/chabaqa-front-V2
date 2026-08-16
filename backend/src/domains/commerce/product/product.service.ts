@@ -1417,19 +1417,15 @@ export class ProductService {
       );
     }
 
-    // Increment download count
+    const downloadUrl = await this.uploadService.createProtectedDownloadUrl(file.url, file.name);
+
+    // Only count a download after an authorized S3 URL was minted.
     file.downloadCount = (file.downloadCount || 0) + 1;
     await product.save();
-
-    // Track the download
-    await this.trackingService.trackDownload(
-      userId,
-      product._id.toString(),
-      TrackableContentType.PRODUCT,
-    );
+    await this.trackingService.trackDownload(userId, product._id.toString(), TrackableContentType.PRODUCT);
 
     return {
-      downloadUrl: this.uploadService.ensureAbsoluteUrl(file.url),
+      downloadUrl,
       message: 'File ready for download',
     };
   }

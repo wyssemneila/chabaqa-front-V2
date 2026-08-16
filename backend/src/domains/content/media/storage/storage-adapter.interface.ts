@@ -30,4 +30,5 @@ export interface StorageAdapter {
   deleteByStorageKey(storageKey: string): Promise<void>;
   exists(storageKey: string): Promise<boolean>;
   getObjectMetadata(storageKey: string): Promise<StorageObjectMetadata | null>;
+  presignDownload(storageKey: string, fileName?: string, expiresInSeconds?: number): Promise<string>;
 }

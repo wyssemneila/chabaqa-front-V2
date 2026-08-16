@@ -171,7 +171,7 @@ describe("CoursePlayer paid chapter access cache", () => {
       />,
     )
 
-    expect(screen.getByTestId("chapter-1-access")).toHaveTextContent("true")
+    expect(screen.getByTestId("chapter-1-access")).toHaveTextContent("false")
     expect(screen.getByTestId("chapter-2-access")).toHaveTextContent("false")
     expect(screen.getByTestId("chapter-3-access")).toHaveTextContent("false")
   })

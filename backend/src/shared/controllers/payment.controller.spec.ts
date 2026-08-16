@@ -14,6 +14,7 @@ describe('PaymentController webhook hardening', () => {
     userFindById?: jest.Mock;
     feeService?: Record<string, any>;
     subscriptionService?: Record<string, any>;
+    sessionService?: Record<string, any>;
     paymentFulfillmentService?: Record<string, any>;
     webhookRetryService?: Record<string, any>;
     processedFindOne?: jest.Mock;
@@ -50,12 +51,12 @@ describe('PaymentController webhook hardening', () => {
 
     const controller = new PaymentController(
       stripe as any,
-      {} as any,
+       {} as any,
       (overrides.feeService || {}) as any,
       (overrides.paymentFulfillmentService || {}) as any,
       paymentAuditService as any,
       { fromPayload: jest.fn((_provider: string, payload: any) => payload) } as any,
-      {} as any,
+       {} as any,
       {} as any,
       {} as any,
       userModel as any,
@@ -69,14 +70,15 @@ describe('PaymentController webhook hardening', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
-      (overrides.subscriptionService || { handleWebhook: jest.fn().mockResolvedValue(undefined) }) as any,
-      {} as any,
-      { resolveAttributionFromRequest: jest.fn().mockReturnValue({}) } as any,
-      { onOrderPaid: jest.fn().mockResolvedValue(null) } as any,
-      { revokeForOrder: jest.fn().mockResolvedValue(undefined) } as any,
-      { emit: jest.fn().mockResolvedValue(undefined) } as any,
-      overrides.webhookRetryService as any,
+       (overrides.sessionService || {}) as any,
+       (overrides.subscriptionService || { handleWebhook: jest.fn().mockResolvedValue(undefined) }) as any,
+       {} as any,
+       { resolveAttributionFromRequest: jest.fn().mockReturnValue({}) } as any,
+       { onOrderPaid: jest.fn().mockResolvedValue(null) } as any,
+       { revokeForOrder: jest.fn().mockResolvedValue(undefined) } as any,
+       { emit: jest.fn().mockResolvedValue(undefined) } as any,
+       { revokeForOrder: jest.fn().mockResolvedValue(undefined) } as any,
+       overrides.webhookRetryService as any,
     );
     (controller as any).processedWebhookEventModel = processedWebhookEventModel;
 
@@ -351,6 +353,21 @@ describe('PaymentController webhook hardening', () => {
     await expect(controller.verifyStripeLink('cs_test', {
       user: { _id: '64a1b2c3d4e5f6789abcdef1' },
     })).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('confirms the order-linked booking instead of creating a generic session booking', async () => {
+    const confirmPaidBookingForOrder = jest.fn().mockResolvedValue({ bookingId: 'booking_1', sessionId: 'session_1' });
+    const { controller } = buildController({ sessionService: { confirmPaidBookingForOrder } });
+    const order = {
+      _id: { toString: () => '64a1b2c3d4e5f6789abcdef0' },
+      contentType: 'session',
+      buyerId: { toString: () => 'buyer_1' },
+      creatorId: { toString: () => 'creator_1' },
+    };
+
+    await (controller as any).grantAccess(order, null, {});
+
+    expect(confirmPaidBookingForOrder).toHaveBeenCalledWith(order, null);
   });
 
   it('refunds the Stripe payment intent rather than checkout session id', async () => {

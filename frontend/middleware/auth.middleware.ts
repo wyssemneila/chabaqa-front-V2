@@ -176,7 +176,6 @@ const CREATOR_ROUTES = [
 ]
 const CREATOR_ONBOARDING_ROUTES = [
   '/creator/create-community',
-  '/creator/onboarding',
 ]
 
 function allowsThirdPartyEmbeds(path: string): boolean {

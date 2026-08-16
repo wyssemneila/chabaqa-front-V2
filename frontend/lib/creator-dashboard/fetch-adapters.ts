@@ -400,7 +400,9 @@ export const mapSession = (item: any): CreatorSessionCard => {
     duration: number(item?.duration),
     priceType: number(item?.price) > 0 ? 'paid' : 'free',
     price: number(item?.price),
-    isActive: bool(item?.isActive, item?.status),
+    // The creator API exposes publication through isActive; status is only
+    // the session's upcoming/past scheduling state.
+    isActive: bool(item?.isActive),
     availabilityDays: number(item?.availabilityDays, item?.availableDays),
     totalSlots: number(item?.totalSlots, item?.availableSlots),
   }

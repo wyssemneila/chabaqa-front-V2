@@ -21,7 +21,6 @@ interface CourseListProps {
   getCoursePricing: (course: any) => any
   creatorSlug: string
   slug: string
-  onEnroll: (courseId: string) => void
 }
 
 export default function CourseList({
@@ -33,7 +32,6 @@ export default function CourseList({
   getCoursePricing,
   creatorSlug,
   slug,
-  onEnroll
 }: CourseListProps) {
   return (
     <div className="lg:col-span-2 space-y-6">
@@ -188,43 +186,16 @@ return (
               </Link>
             </Button>
           ) : pricing.type === "free" ? (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                onEnroll(routeCourseId)
-              }}
-            >
-              Enroll Free
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" asChild>
+              <Link href={`/${creatorSlug}/${slug}/courses/${routeCourseId}/overview`}>View course</Link>
             </Button>
           ) : pricing.type === "freemium" ? (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                onEnroll(routeCourseId)
-              }}
-            >
-              Start Free
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" asChild>
+              <Link href={`/${creatorSlug}/${slug}/courses/${routeCourseId}/overview`}>View course</Link>
             </Button>
           ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                onEnroll(routeCourseId)
-              }}
-            >
-              Enroll - {course.price} TND
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" asChild>
+              <Link href={`/${creatorSlug}/${slug}/courses/${routeCourseId}/overview`}>View course</Link>
             </Button>
           )}
         </div>

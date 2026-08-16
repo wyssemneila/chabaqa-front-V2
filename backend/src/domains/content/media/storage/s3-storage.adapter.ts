@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -48,7 +48,16 @@ export class S3StorageAdapter implements StorageAdapter {
   }
 
   private normalizeKey(storageKey: string): string {
-    return storageKey.replace(/^\/+/, '');
+    const key = String(storageKey || '').replace(/^\/+/, '');
+    if (
+      !key ||
+      key.includes('\\') ||
+      key.includes('\0') ||
+      key.split('/').some((segment) => !segment || segment === '.' || segment === '..')
+    ) {
+      throw new BadRequestException('Invalid media storage key');
+    }
+    return key;
   }
 
   async putFile(storageKey: string, filePath: string, contentType?: string): Promise<void> {
@@ -74,6 +83,17 @@ export class S3StorageAdapter implements StorageAdapter {
     };
   }
 
+  async presignDownload(storageKey: string, fileName?: string, expiresInSeconds = 300): Promise<string> {
+    const key = this.normalizeKey(storageKey);
+    const safeName = String(fileName || '').replace(/["\r\n]/g, '_');
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ...(safeName ? { ResponseContentDisposition: `attachment; filename="${safeName}"` } : {}),
+    });
+    return getSignedUrl(this.getClient(), command, { expiresIn: Math.min(Math.max(expiresInSeconds, 60), 900) });
+  }
+
   async presignUpload(req: PresignRequest): Promise<PresignResult> {
     const key = this.normalizeKey(req.storageKey || req.fileName);
     const signedHeaders = new Set([
@@ -97,6 +117,7 @@ export class S3StorageAdapter implements StorageAdapter {
     });
     const headers: Record<string, string> = {
       'Content-Type': req.mimeType || 'application/octet-stream',
+      'Content-Length': String(req.size),
     };
     if (req.checksumSha256) headers['x-amz-checksum-sha256'] = req.checksumSha256;
     for (const [name, value] of Object.entries(req.metadata || {})) {

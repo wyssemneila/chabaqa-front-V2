@@ -23,7 +23,7 @@ import { CacheService } from '@/shared/services/cache.service';
 import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 type MeetStatus = 'not_required' | 'pending' | 'created' | 'failed';
-type MeetProvisioningSource = 'book_session' | 'confirm_booking' | 'manual' | 'worker';
+type MeetProvisioningSource = 'book_session' | 'confirm_booking' | 'manual' | 'worker' | 'paid_payment';
 
 @Injectable()
 export class SessionService {
@@ -72,6 +72,15 @@ export class SessionService {
       throw new NotFoundException('Session non trouvée');
     }
     return session;
+  }
+
+  private async ensureCreatorGoogleCalendarAccess(creatorId: string): Promise<void> {
+    const hasGoogleAccess = await this.googleCalendarService.hasValidAccess(creatorId);
+    if (!hasGoogleAccess) {
+      throw new BadRequestException(
+        'Connect Google Calendar before publishing or accepting bookings for a session.',
+      );
+    }
   }
 
   private normalizeOptionalString(value?: string): string | undefined {
@@ -151,7 +160,6 @@ export class SessionService {
     creatorId: string;
     participantId: string;
     source: MeetProvisioningSource;
-    force?: boolean;
   }): Promise<{
     success: boolean;
     meetingUrl?: string;
@@ -160,13 +168,13 @@ export class SessionService {
     errorCategory?: string;
     errorDetails?: string;
   }> {
-    const { sessionDoc, bookingId, creatorId, participantId, source, force = false } = params;
+    const { sessionDoc, bookingId, creatorId, participantId, source } = params;
     const booking = this.getBookingById(sessionDoc, bookingId);
     if (!booking) {
       return { success: false, meetStatus: 'failed', errorCategory: 'booking_not_found', errorDetails: 'Booking not found' };
     }
 
-    if (!force && booking.meetingUrl) {
+    if (booking.meetingUrl) {
       booking.meetStatus = 'created';
       booking.meetFailureReason = undefined;
       booking.meetProvisioningSource = source;
@@ -230,7 +238,8 @@ export class SessionService {
         scheduledAt,
         endTime,
         sessionDoc.title,
-        sessionDoc.description
+        sessionDoc.description,
+        bookingId,
       );
 
       booking.meetingUrl = result.meetLink;
@@ -386,6 +395,8 @@ export class SessionService {
             thumbnail: sessionData.thumbnail || sessionData.image || 'https://placehold.co/400x300?text=Session',
             startTime: sessionData.startTime || sessionData.dateTime,
             duration: sessionData.duration || 60,
+            // Publication is independent from the upcoming/past scheduling status.
+            isActive: session.isActive,
             status: isUpcoming ? 'upcoming' : 'past',
             type: 'created',
             bookingsCount: sessionData.bookings?.length || 0,
@@ -473,6 +484,11 @@ export class SessionService {
       throw new ForbiddenException('Un abonnement actif est requis pour activer une session. Veuillez souscrire à un forfait.');
     }
 
+    const shouldBeActive = createSessionDto.isActive ?? true;
+    if (shouldBeActive) {
+      await this.ensureCreatorGoogleCalendarAccess(normalizedCreatorId);
+    }
+
     // Créer la session
     const session = new this.sessionModel({
       id: sessionId,
@@ -484,7 +500,7 @@ export class SessionService {
       currency: createSessionDto.currency,
       communityId: community._id.toString(),
       creatorId: new Types.ObjectId(creatorId),
-      isActive: createSessionDto.isActive ?? true,
+      isActive: shouldBeActive,
       category: createSessionDto.category,
       maxBookingsPerWeek: createSessionDto.maxBookingsPerWeek,
       notes: createSessionDto.notes,
@@ -657,6 +673,7 @@ export class SessionService {
           throw new ForbiddenException('Un abonnement actif est requis pour publier une session. Veuillez souscrire à un forfait.');
         }
       }
+      await this.ensureCreatorGoogleCalendarAccess(sessionCreatorId);
     }
 
     // Mettre à jour la session
@@ -702,6 +719,7 @@ export class SessionService {
     if (!sessionDoc.isActive) {
       throw new BadRequestException('Cette session n\'est plus active');
     }
+    await this.ensureCreatorGoogleCalendarAccess(sessionDoc.creatorId.toString());
 
     // Vérifier que l'utilisateur n'est pas le créateur
     if (sessionDoc.creatorId.toString() === userId) {
@@ -732,56 +750,17 @@ export class SessionService {
       throw new BadRequestException('Limite de réservations hebdomadaires atteinte');
     }
 
-    // Si la session est payante, vérifier le paiement avant de réserver
+    // Paid sessions must be fulfilled from the order-linked checkout flow.
+    // This public/manual path must never create a locally-paid booking.
     const FREE_MODE = process.env.FREE_MODE === 'true';
-    let hasPaidOrder = false;
     if (sessionDoc.price && sessionDoc.price > 0 && !FREE_MODE) {
-      // Check for existing paid order first
-      const existingOrder = await this.orderModel.findOne({
-        buyerId: new Types.ObjectId(userId),
-        contentType: TrackableContentType.SESSION,
-        contentId: sessionDoc._id.toString(),
-        status: 'paid'
-      }).session(session);
-
-      hasPaidOrder = Boolean(existingOrder);
-      if (!hasPaidOrder && this.isPaidOrderRequired()) {
+      if (initialStatus === 'pending' || this.isPaidOrderRequired()) {
         throw this.buildPaymentRequiredException({
           contentId: sessionDoc._id.toString(),
           amount: Number(sessionDoc.price || 0),
           initEndpoint: '/payment/stripe-link/init/session',
           message: 'Paiement requis pour réserver cette session',
         });
-      }
-
-      if (!hasPaidOrder) {
-        let effective = sessionDoc.price;
-        let discountDT = 0;
-        let appliedCode: string | undefined;
-        if (promoCode) {
-          const buyer = await this.userModel.findById(userId).select('email').session(session);
-          const promo = await this.promoService.validateAndApply(promoCode, sessionDoc.price, TrackableContentType.SESSION, sessionDoc._id.toString(), (buyer as any)?.email);
-          if (promo.valid) {
-            effective = promo.finalAmountDT;
-            discountDT = promo.discountDT;
-            appliedCode = promo.appliedCode;
-          }
-        }
-        const breakdown = await this.feeService.calculateForAmount(effective, sessionDoc.creatorId.toString());
-        await this.orderModel.create([{
-          buyerId: new Types.ObjectId(userId),
-          creatorId: sessionDoc.creatorId,
-          contentType: TrackableContentType.SESSION,
-          contentId: sessionDoc._id.toString(),
-          amountDT: breakdown.amountDT,
-          platformPercent: breakdown.platformPercent,
-          platformFixedDT: breakdown.platformFixedDT,
-          platformFeeDT: breakdown.platformFeeDT,
-          creatorNetDT: breakdown.creatorNetDT,
-          promoCode: appliedCode,
-          discountDT,
-          status: 'paid'
-        }], { session });
       }
     }
 
@@ -868,6 +847,215 @@ export class SessionService {
       sessionId: sessionDoc.id || String(sessionDoc._id), bookingId: booking.id, participantId: String(userId), scheduledAt: scheduledAt.toISOString(), status: initialStatus,
     }, community ? String(community._id) : undefined);
     return this.transformToResponseDto(sessionDoc, community || undefined, userId);
+  }
+
+  /** Reserve the selected time while Stripe checkout is open. */
+  async createPaidBookingIntent(params: {
+    sessionId: string;
+    userId: string;
+    orderId: string;
+    amountPaid: number;
+    bookingDto: BookSessionDto & { slotId?: string };
+  }): Promise<{ bookingId: string; scheduledAt: string; slotId?: string; holdExpiresAt: string }> {
+    const sessionDoc = await this.resolveSessionDocument(params.sessionId);
+    if (!sessionDoc.isActive) throw new BadRequestException('Cette session n\'est plus active');
+    if (sessionDoc.creatorId.toString() === params.userId) {
+      throw new BadRequestException('Vous ne pouvez pas réserver votre propre session');
+    }
+    await this.ensureCreatorGoogleCalendarAccess(sessionDoc.creatorId.toString());
+
+    let slot: any | undefined;
+    let scheduledAt: Date;
+    const slotId = this.normalizeOptionalString(params.bookingDto?.slotId);
+    if (slotId) {
+      slot = sessionDoc.getSlot(slotId);
+      if (!slot) throw new NotFoundException('Créneau non trouvé');
+      if (!slot.isAvailable) throw new BadRequestException('Ce créneau n\'est plus disponible');
+      scheduledAt = new Date(slot.startTime);
+      if (params.bookingDto?.scheduledAt) {
+        const requested = new Date(params.bookingDto.scheduledAt);
+        if (Number.isNaN(requested.getTime()) || requested.getTime() !== scheduledAt.getTime()) {
+          throw new BadRequestException('Le créneau sélectionné ne correspond pas à la date demandée');
+        }
+      }
+    } else {
+      if (!params.bookingDto?.scheduledAt) throw new BadRequestException('La date de la session est obligatoire');
+      scheduledAt = new Date(params.bookingDto.scheduledAt);
+    }
+
+    if (Number.isNaN(scheduledAt.getTime()) || scheduledAt <= new Date()) {
+      throw new BadRequestException('La date de la session doit être dans le futur');
+    }
+    if (!sessionDoc.isTimeSlotAvailable(scheduledAt)) {
+      throw new BadRequestException('Ce créneau horaire n\'est pas disponible');
+    }
+    if (!sessionDoc.canBookMore()) {
+      throw new BadRequestException('Limite de réservations hebdomadaires atteinte');
+    }
+
+    // Stripe Checkout requires expiry at least 30 minutes in the future.
+    const holdMinutes = Math.max(35, Math.min(Number(process.env.PAID_SESSION_CHECKOUT_HOLD_MINUTES || 35), 24 * 60));
+    const now = new Date();
+    const holdExpiresAt = new Date(now.getTime() + holdMinutes * 60 * 1000);
+    const bookingId = new Types.ObjectId().toString();
+    const booking: any = {
+      id: bookingId,
+      userId: new Types.ObjectId(params.userId),
+      scheduledAt,
+      status: 'awaiting_payment',
+      sourceOrderId: params.orderId,
+      slotId,
+      bookingOrigin: 'paid',
+      amountPaid: params.amountPaid,
+      paymentHoldExpiresAt: holdExpiresAt,
+      notes: this.normalizeOptionalString(params.bookingDto?.notes),
+      meetStatus: 'not_required',
+      meetRetryCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    if (slot) {
+      // The conditional update prevents two concurrent checkouts from holding
+      // the same generated slot between the availability read and Stripe.
+      const heldSession = await this.sessionModel.findOneAndUpdate(
+        {
+          _id: sessionDoc._id,
+          availableSlots: { $elemMatch: { id: slotId, isAvailable: true } },
+        },
+        {
+          $push: { bookings: booking },
+          $set: {
+            'availableSlots.$[slot].isAvailable': false,
+            'availableSlots.$[slot].bookedBy': booking.userId,
+            'availableSlots.$[slot].bookedAt': now,
+          },
+        },
+        {
+          new: true,
+          arrayFilters: [{ 'slot.id': slotId, 'slot.isAvailable': true }],
+        },
+      ).exec();
+      if (!heldSession) throw new BadRequestException('Ce créneau n\'est plus disponible');
+    } else {
+      sessionDoc.addBooking(booking);
+      sessionDoc.markModified('bookings');
+      await sessionDoc.save();
+    }
+    await this.invalidateSessionCaches(sessionDoc.creatorId.toString());
+
+    return {
+      bookingId,
+      scheduledAt: scheduledAt.toISOString(),
+      slotId,
+      holdExpiresAt: holdExpiresAt.toISOString(),
+    };
+  }
+
+  /** Confirm exactly the booking reserved for a paid order. */
+  async confirmPaidBookingForOrder(order: any, dbSession: any = null): Promise<{ bookingId: string; sessionId: string }> {
+    const orderId = String(order?._id || '');
+    if (!orderId) throw new BadRequestException('Order not found');
+
+    let query = this.sessionModel.findOne({ 'bookings.sourceOrderId': orderId });
+    if (dbSession) query = query.session(dbSession);
+    const sessionDoc = await query.exec();
+    if (!sessionDoc) throw new BadRequestException('Paid session booking intent not found');
+    const booking: any = (sessionDoc.bookings || []).find((item: any) => item.sourceOrderId === orderId);
+    if (!booking) throw new BadRequestException('Paid session booking intent not found');
+    if (booking.status === 'confirmed') return { bookingId: booking.id, sessionId: sessionDoc.id };
+    if (booking.status !== 'awaiting_payment') {
+      throw new BadRequestException('Paid session booking is no longer available');
+    }
+
+    if (booking.slotId) {
+      const slot: any = sessionDoc.getSlot(booking.slotId);
+      if (!slot || slot.isAvailable || String(slot.bookedBy || '') !== String(order.buyerId || '')) {
+        throw new BadRequestException('The selected session slot is no longer reserved for this payment');
+      }
+    }
+
+    booking.status = 'confirmed';
+    booking.amountPaid = Number(order.amountDT || booking.amountPaid || 0);
+    booking.paymentHoldExpiresAt = undefined;
+    booking.meetStatus = 'pending';
+    booking.meetFailureReason = undefined;
+    booking.meetProvisioningSource = 'paid_payment';
+    booking.updatedAt = new Date();
+    sessionDoc.markModified('bookings');
+    await sessionDoc.save(dbSession ? { session: dbSession } : undefined);
+    await this.invalidateSessionCaches(sessionDoc.creatorId.toString());
+    return { bookingId: booking.id, sessionId: sessionDoc.id };
+  }
+
+  /** Create the Meet link and send both emails after payment confirmation commits. */
+  async provisionPaidBookingMeet(orderId: string): Promise<void> {
+    const sessionDoc = await this.sessionModel.findOne({ 'bookings.sourceOrderId': orderId });
+    if (!sessionDoc) return;
+    const booking: any = (sessionDoc.bookings || []).find((item: any) => item.sourceOrderId === orderId);
+    if (!booking || booking.status !== 'confirmed') return;
+
+    const result = await this.provisionMeetForBooking({
+      sessionDoc,
+      bookingId: booking.id,
+      creatorId: sessionDoc.creatorId.toString(),
+      participantId: booking.userId.toString(),
+      source: 'paid_payment',
+    });
+    if (!result.success || !result.meetingUrl) return;
+
+    const refreshedBooking: any = this.getBookingById(sessionDoc, booking.id);
+    if (!refreshedBooking || refreshedBooking.meetLinkNotifiedAt) return;
+
+    try {
+      const [participant, creator] = await Promise.all([
+        this.userModel.findById(refreshedBooking.userId).select('email name'),
+        this.userModel.findById(sessionDoc.creatorId).select('email name'),
+      ]);
+      if (!participant?.email || !creator?.email) return;
+      const emailData: SessionBookingEmailData = {
+        sessionTitle: sessionDoc.title,
+        sessionDescription: sessionDoc.description,
+        creatorName: creator.name || 'Creator',
+        creatorEmail: creator.email,
+        participantName: participant.name || 'Participant',
+        participantEmail: participant.email,
+        scheduledAt: refreshedBooking.scheduledAt,
+        duration: sessionDoc.duration || 60,
+        meetingUrl: refreshedBooking.meetingUrl,
+        bookingId: refreshedBooking.id,
+        sessionId: sessionDoc.id,
+      };
+      await this.emailService.sendBookingConfirmation(emailData);
+      await this.emailService.sendBookingNotificationToCreator(emailData);
+      refreshedBooking.meetLinkNotifiedAt = new Date();
+      refreshedBooking.updatedAt = new Date();
+      sessionDoc.markModified('bookings');
+      await sessionDoc.save();
+    } catch (error: any) {
+      this.logger.warn(`[provisionPaidBookingMeet] Failed to notify booking ${booking.id}: ${error?.message || error}`);
+    }
+  }
+
+  async releasePaidBookingIntent(orderId: string): Promise<void> {
+    const sessionDoc = await this.sessionModel.findOne({ 'bookings.sourceOrderId': orderId });
+    if (!sessionDoc) return;
+    const booking: any = (sessionDoc.bookings || []).find((item: any) => item.sourceOrderId === orderId);
+    if (!booking || booking.status !== 'awaiting_payment') return;
+
+    booking.status = 'cancelled';
+    booking.paymentHoldExpiresAt = undefined;
+    booking.updatedAt = new Date();
+    if (booking.slotId) {
+      const slot: any = sessionDoc.getSlot(booking.slotId);
+      if (slot && !slot.isAvailable && String(slot.bookedBy || '') === String(booking.userId || '')) {
+        sessionDoc.cancelSlot(booking.slotId);
+      }
+    }
+    sessionDoc.markModified('bookings');
+    sessionDoc.markModified('availableSlots');
+    await sessionDoc.save();
+    await this.invalidateSessionCaches(sessionDoc.creatorId.toString());
   }
 
   /**
@@ -1045,8 +1233,10 @@ export class SessionService {
       creatorId: userId,
       participantId: booking.userId.toString(),
       source: 'manual',
-      force: true,
     });
+    if ((booking as any).sourceOrderId && result.success) {
+      await this.provisionPaidBookingMeet(String((booking as any).sourceOrderId));
+    }
     await this.invalidateSessionCaches(session.creatorId.toString());
 
     const updatedBooking = this.getBookingById(session, bookingId);
@@ -1150,11 +1340,13 @@ export class SessionService {
           creatorId: session.creatorId.toString(),
           participantId: booking.userId.toString(),
           source: 'worker',
-          force: true,
         });
 
         if (result.success) {
           succeeded++;
+          if ((booking as any).sourceOrderId) {
+            await this.provisionPaidBookingMeet(String((booking as any).sourceOrderId));
+          }
         } else {
           failed++;
         }
@@ -1175,6 +1367,45 @@ export class SessionService {
       }
     } catch (error: any) {
       this.logger.error(`[MeetRetryWorker] Failed: ${error.message}`, error.stack);
+    }
+  }
+
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async releaseExpiredPaidBookingHolds() {
+    const now = new Date();
+    const sessions = await this.sessionModel.find({
+      bookings: {
+        $elemMatch: {
+          status: 'awaiting_payment',
+          paymentHoldExpiresAt: { $lte: now },
+        },
+      },
+    });
+
+    for (const sessionDoc of sessions) {
+      let changed = false;
+      for (const booking of sessionDoc.bookings || []) {
+        const item: any = booking;
+        if (item.status !== 'awaiting_payment' || !item.paymentHoldExpiresAt || item.paymentHoldExpiresAt > now) continue;
+        const order = item.sourceOrderId ? await this.orderModel.findById(item.sourceOrderId).select('status') : null;
+        // Stripe has already accepted this checkout; leave it for fulfillment.
+        if (order?.status === 'paid') continue;
+        item.status = 'cancelled';
+        item.paymentHoldExpiresAt = undefined;
+        item.updatedAt = now;
+        if (item.slotId) {
+          const slot: any = sessionDoc.getSlot(item.slotId);
+          if (slot && !slot.isAvailable && String(slot.bookedBy || '') === String(item.userId || '')) {
+            sessionDoc.cancelSlot(item.slotId);
+          }
+        }
+        changed = true;
+      }
+      if (!changed) continue;
+      sessionDoc.markModified('bookings');
+      sessionDoc.markModified('availableSlots');
+      await sessionDoc.save();
+      await this.invalidateSessionCaches(sessionDoc.creatorId.toString());
     }
   }
 
@@ -1267,11 +1498,38 @@ export class SessionService {
 
     console.log(`[getUserBookings] Found ${sessions.length} sessions with bookings for user`);
 
+    // A successful paid checkout provisions Meet immediately. This repair path
+    // also upgrades older confirmed bookings that were created before the
+    // automatic flow, so the member sees Join Meeting instead of waiting for a
+    // creator action or the five-minute worker.
+    for (const session of sessions) {
+      for (const booking of session.bookings || []) {
+        if (
+          String(booking.userId) !== String(userObjectId) ||
+          booking.status !== 'confirmed' ||
+          booking.meetingUrl ||
+          (booking as any).meetStatus === 'failed'
+        ) {
+          continue;
+        }
+
+        await this.provisionMeetForBooking({
+          sessionDoc: session,
+          bookingId: booking.id,
+          creatorId: session.creatorId.toString(),
+          participantId: userId,
+          source: 'worker',
+        });
+      }
+    }
+
     interface BookingWithSession {
       id: string;
       userId: Types.ObjectId;
       scheduledAt: Date;
-      status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+      status: 'awaiting_payment' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+      bookingOrigin?: 'manual' | 'paid';
+      orderId?: string;
       meetingUrl?: string;
       googleEventId?: string;
       meetStatus?: MeetStatus;
@@ -1328,6 +1586,8 @@ export class SessionService {
           creatorAvatar: creatorAvatar,
           creatorId: String(session.creatorId || ''),
           communityId: String(session.communityId || ''),
+          bookingOrigin: (booking as any).bookingOrigin || 'manual',
+          orderId: (booking as any).sourceOrderId,
         });
       }
     }
@@ -1345,7 +1605,9 @@ export class SessionService {
         sessionPrice: booking.sessionPrice,
         sessionCurrency: booking.sessionCurrency,
         sessionDuration: booking.sessionDuration,
-        amountPaid: booking.amountPaid ?? booking.sessionPrice, // Include amountPaid or fallback to session price
+        amountPaid: booking.amountPaid ?? booking.sessionPrice,
+        bookingOrigin: booking.bookingOrigin,
+        orderId: booking.orderId,
         creatorId: booking.creatorId,
         creatorName: booking.creatorName,
         creatorAvatar: booking.creatorAvatar,
@@ -1440,7 +1702,6 @@ export class SessionService {
             creatorId: session.creatorId.toString(),
             participantId: userId,
             source: 'worker',
-            force: true,
           });
           await this.invalidateSessionCaches(session.creatorId.toString());
           synced++;
@@ -1549,7 +1810,9 @@ export class SessionService {
       oderId?: string;
       userId: Types.ObjectId;
       scheduledAt: Date;
-      status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+      status: 'awaiting_payment' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+      bookingOrigin?: 'manual' | 'paid';
+      orderId?: string;
       meetingUrl?: string;
       googleEventId?: string;
       meetStatus?: MeetStatus;
@@ -1587,10 +1850,12 @@ export class SessionService {
         
         allBookings.push({
           id: booking.id,
-          oderId: (booking as any).oderId,
+          oderId: (booking as any).sourceOrderId || (booking as any).oderId,
+          orderId: (booking as any).sourceOrderId || (booking as any).orderId,
           userId: booking.userId,
           scheduledAt: booking.scheduledAt,
           status: booking.status,
+          bookingOrigin: (booking as any).bookingOrigin || 'manual',
           meetingUrl: booking.meetingUrl,
           googleEventId: (booking as any).googleEventId,
           meetStatus: (booking as any).meetStatus || (booking.meetingUrl ? 'created' : 'not_required'),
@@ -1667,6 +1932,7 @@ export class SessionService {
         return {
           id: booking.id,
           oderId: booking.oderId,
+          orderId: booking.orderId || booking.oderId,
           sessionId: booking.sessionId,
           sessionTitle: booking.sessionTitle,
           sessionDuration: booking.sessionDuration,
@@ -1678,6 +1944,7 @@ export class SessionService {
           scheduledAt: booking.scheduledAt?.toISOString() || new Date().toISOString(),
           isUpcoming: scheduledAt > now,
           status: booking.status,
+          bookingOrigin: booking.bookingOrigin || 'manual',
           meetingUrl: booking.meetingUrl,
           googleEventId: booking.googleEventId,
           meetStatus: booking.meetStatus,
@@ -1771,6 +2038,9 @@ export class SessionService {
    */
   async getAvailableSlots(sessionId: string, getAvailableSlotsDto?: GetAvailableSlotsDto): Promise<AvailableSlotsResponseDto> {
     const session = await this.resolveSessionDocument(sessionId);
+    if (!session.isActive) {
+      throw new NotFoundException('Session non trouvée');
+    }
 
     console.log(`[getAvailableSlots] Session ${sessionId}:`, {
       autoGenerateSlots: session.autoGenerateSlots,
@@ -1822,10 +2092,21 @@ export class SessionService {
     if (!session.isActive) {
       throw new BadRequestException('Cette session n\'est plus active');
     }
+    await this.ensureCreatorGoogleCalendarAccess(session.creatorId.toString());
 
     // Vérifier que l'utilisateur n'est pas le créateur
     if (session.creatorId.toString() === userId) {
       throw new BadRequestException('Vous ne pouvez pas réserver votre propre session');
+    }
+
+    if (Number(session.price || 0) > 0 && process.env.FREE_MODE !== 'true') {
+      throw this.buildPaymentRequiredException({
+        contentId: session._id.toString(),
+        amount: Number(session.price || 0),
+        currency: session.currency,
+        initEndpoint: '/payment/stripe-link/init/session',
+        message: 'Paiement requis pour réserver cette session',
+      });
     }
 
     // Trouver le créneau
@@ -1864,23 +2145,6 @@ export class SessionService {
     };
 
     session.addBooking(booking);
-
-    // Si la session est payante, créer une commande
-    if (session.price && session.price > 0) {
-      const breakdown = await this.feeService.calculateForAmount(session.price, session.creatorId.toString());
-      await this.orderModel.create({
-        buyerId: new Types.ObjectId(userId),
-        creatorId: session.creatorId,
-        contentType: TrackableContentType.SESSION,
-        contentId: session._id.toString(),
-        amountDT: breakdown.amountDT,
-        platformPercent: breakdown.platformPercent,
-        platformFixedDT: breakdown.platformFixedDT,
-        platformFeeDT: breakdown.platformFeeDT,
-        creatorNetDT: breakdown.creatorNetDT,
-        status: 'paid'
-      });
-    }
 
     await session.save();
     await this.invalidateSessionCaches(session.creatorId.toString());
@@ -1995,9 +2259,10 @@ export class SessionService {
     // Récupérer les informations du créateur - include all possible avatar fields
     const creator = await this.userModel.findById(session.creatorId).select('name email profile_picture photo_profil');
 
-    // Filter bookings based on currentUserId if provided
-    let bookingsToShow = session.bookings;
-    if (currentUserId) {
+    // Booking data, notes, and Meet links are private. Anonymous callers see
+    // the offer only; a member sees only their own booking.
+    let bookingsToShow: any[] = [];
+    if (currentUserId && Types.ObjectId.isValid(currentUserId)) {
       const userObjectId = new Types.ObjectId(currentUserId);
       // Only show bookings for the current user OR if user is the creator
       const isCreator = session.creatorId.equals(userObjectId);
@@ -2021,6 +2286,9 @@ export class SessionService {
         userAvatar: userAvatar,
         scheduledAt: booking.scheduledAt.toISOString(),
         status: booking.status,
+        bookingOrigin: (booking as any).bookingOrigin || 'manual',
+        orderId: (booking as any).sourceOrderId,
+        amountPaid: (booking as any).amountPaid,
         meetingUrl: booking.meetingUrl,
         googleEventId: (booking as any).googleEventId,
         meetStatus: (booking as any).meetStatus || (booking.meetingUrl ? 'created' : 'not_required'),
@@ -2109,8 +2377,6 @@ export class SessionService {
         startTime: slot.startTime.toISOString(),
         endTime: slot.endTime.toISOString(),
         isAvailable: slot.isAvailable,
-        bookedBy: slot.bookedBy?.toString(),
-        bookedAt: slot.bookedAt?.toISOString(),
         createdAt: slot.createdAt.toISOString()
       })),
       total: slots.length,

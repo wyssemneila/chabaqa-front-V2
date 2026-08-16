@@ -163,6 +163,7 @@ export class StripePaymentService {
     currency?: string;
     successUrl: string;
     cancelUrl: string;
+    expiresAt?: Date;
     metadata?: Record<string, any>;
     customerEmail?: string;
     lineItems?: Array<{
@@ -232,6 +233,7 @@ export class StripePaymentService {
         automatic_tax: { enabled: false },
         // Enable customer creation for better Link experience
         customer_creation: 'always',
+        ...(params.expiresAt ? { expires_at: Math.floor(params.expiresAt.getTime() / 1000) } : {}),
       });
 
       return {

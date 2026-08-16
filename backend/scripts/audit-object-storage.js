@@ -15,7 +15,8 @@ const s3Bucket = process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || 'chabaqa-
 const s3Region = process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1';
 const s3AccessKey = process.env.S3_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || process.env.MINIO_ROOT_USER || '';
 const s3SecretKey = process.env.S3_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY || process.env.MINIO_ROOT_PASSWORD || '';
-const s3Configured = Boolean(s3Endpoint && s3Bucket && s3AccessKey && s3SecretKey);
+// AWS S3 uses the SDK's default endpoint; only S3-compatible providers require S3_ENDPOINT.
+const s3Configured = Boolean(s3Bucket && s3AccessKey && s3SecretKey);
 const s3Client = s3Configured
   ? new S3Client({
       endpoint: s3Endpoint,

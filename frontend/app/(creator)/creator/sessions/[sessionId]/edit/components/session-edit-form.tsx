@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Save } from "lucide-react"
 import { ImageUpload } from "@/app/(dashboard)/components/image-upload"
+import GoogleCalendarIntegration from "@/app/(creator)/creator/sessions/components/google-calendar-integration"
 
 interface SessionEditFormProps {
   session: any
@@ -22,6 +23,7 @@ export function SessionEditForm({ session, sessionId }: SessionEditFormProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [googleCalendarReady, setGoogleCalendarReady] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   
   const [formData, setFormData] = useState({
@@ -115,6 +117,10 @@ export function SessionEditForm({ session, sessionId }: SessionEditFormProps) {
         <CardDescription>Update your session information</CardDescription>
       </CardHeader>
       <CardContent>
+        <GoogleCalendarIntegration
+          className="mb-6"
+          onStatusChange={(status) => setGoogleCalendarReady(status.hasValidAccess)}
+        />
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Title */}
           <div className="space-y-2">
@@ -250,7 +256,14 @@ export function SessionEditForm({ session, sessionId }: SessionEditFormProps) {
             </div>
             <Switch
               checked={formData.isActive}
-              onCheckedChange={(checked) => handleChange('isActive', checked)}
+              disabled={!formData.isActive && !googleCalendarReady}
+              onCheckedChange={(checked) => {
+                if (checked && !googleCalendarReady) {
+                  toast({ title: "Connect Google Calendar first", description: "Google Calendar is required before a session can accept bookings.", variant: "destructive" })
+                  return
+                }
+                handleChange('isActive', checked)
+              }}
             />
           </div>
 

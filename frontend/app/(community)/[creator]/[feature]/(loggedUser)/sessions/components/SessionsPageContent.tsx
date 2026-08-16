@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import HeaderSection from "@/app/(community)/[creator]/[feature]/(loggedUser)/sessions/components/HeaderSection"
 import SessionsTabs from "@/app/(community)/[creator]/[feature]/(loggedUser)/sessions/components/SessionsTabs"
 import { sessionsCommunityApi } from "@/lib/api/sessions-community.api"
@@ -18,6 +19,7 @@ export default function SessionsPageContent({
   sessions,
   userBookings: initialBookings,
 }: SessionsPageContentProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("available")
   const [userBookings, setUserBookings] = useState<any[]>([])
 
@@ -71,6 +73,20 @@ export default function SessionsPageContent({
   }, [initialBookings, filterBookingsToCurrentCommunity])
 
   useEffect(() => {
+    // Keep member-facing offers aligned with creator publication changes.
+    const refreshSessions = () => {
+      if (document.visibilityState === "visible") router.refresh()
+    }
+
+    const interval = window.setInterval(refreshSessions, 30000)
+    window.addEventListener("focus", refreshSessions)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener("focus", refreshSessions)
+    }
+  }, [router])
+
+  useEffect(() => {
     let isMounted = true
 
     const fetchUserBookings = async () => {
@@ -101,6 +117,24 @@ export default function SessionsPageContent({
     initialBookings,
     filterBookingsToCurrentCommunity,
   ])
+
+  useEffect(() => {
+    const hasMeetInProgress = userBookings.some(
+      (booking) => booking.status === "confirmed" && !booking.meetingUrl && booking.meetStatus === "pending",
+    )
+    if (!hasMeetInProgress) return
+
+    const interval = window.setInterval(async () => {
+      const bookings = await sessionsCommunityApi.getUserBookings({
+        communityId: currentCommunityId || undefined,
+        communitySlug: normalizedSlug || undefined,
+        sessionIds: Array.from(scopedSessionIds),
+      })
+      setUserBookings(filterBookingsToCurrentCommunity(bookings))
+    }, 2000)
+
+    return () => window.clearInterval(interval)
+  }, [currentCommunityId, filterBookingsToCurrentCommunity, normalizedSlug, scopedSessionIds, userBookings])
 
   return (
     <div className="min-h-screen bg-gray-50">

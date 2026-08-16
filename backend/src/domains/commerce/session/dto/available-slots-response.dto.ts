@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 /**
  * DTO de réponse pour un créneau disponible
@@ -15,12 +15,6 @@ export class AvailableSlotResponseDto {
 
   @ApiProperty({ description: 'Si le créneau est disponible', example: true })
   isAvailable: boolean;
-
-  @ApiPropertyOptional({ description: 'ID de l\'utilisateur qui a réservé', example: 'user_456' })
-  bookedBy?: string;
-
-  @ApiPropertyOptional({ description: 'Date de réservation', example: '2024-02-15T10:30:00.000Z' })
-  bookedAt?: string;
 
   @ApiProperty({ description: 'Date de création du créneau', example: '2024-02-15T10:30:00.000Z' })
   createdAt: string;

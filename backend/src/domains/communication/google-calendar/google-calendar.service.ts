@@ -261,7 +261,8 @@ export class GoogleCalendarService {
     startTime: Date,
     endTime: Date,
     sessionTitle: string,
-    sessionDescription?: string
+    sessionDescription?: string,
+    bookingId?: string,
   ): Promise<{ meetLink: string; eventId: string }> {
     try {
       // Check if creator has valid Google access
@@ -304,7 +305,9 @@ export class GoogleCalendarService {
         ],
         conferenceData: {
           createRequest: {
-            requestId: new Types.ObjectId().toString(),
+            // Reusing the booking ID lets Google treat retries for this booking
+            // as the same conference request.
+            requestId: bookingId || new Types.ObjectId().toString(),
             conferenceSolutionKey: {
               type: 'hangoutsMeet'
             }
@@ -318,7 +321,8 @@ export class GoogleCalendarService {
       const response = await calendar.events.insert({
         calendarId: 'primary',
         requestBody: event,
-        conferenceDataVersion: 1
+        conferenceDataVersion: 1,
+        sendUpdates: 'all',
       });
 
       const meetLink = response.data.conferenceData?.entryPoints?.[0]?.uri;

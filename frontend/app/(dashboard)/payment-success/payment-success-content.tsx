@@ -124,7 +124,6 @@ export default function PaymentSuccessContent() {
 
         const normalizedPayment = toPaymentViewModel(lastData);
         const status = normalizedPayment.status;
-        const action = normalizedPayment.actionRequired || normalizedPayment.action;
         const errorMessage = normalizedPayment.message || lastData?.message || lastData?.error;
         const isEventAlreadyRegistered =
           scope === 'event' && !normalizedPayment.success && isAlreadyRegisteredEventMessage(errorMessage);
@@ -149,23 +148,6 @@ export default function PaymentSuccessContent() {
               description: 'You already have access to this item. Opening it now.',
             });
           }
-          return;
-        }
-
-        if (normalizedPayment.success && status === 'requires_action' && action === 'choose_session_slot') {
-          const orderId = normalizedPayment.orderId;
-          const sessionContentId = normalizedPayment.sessionContentId || normalizedPayment.targetId || id;
-          const redirectUrl =
-            normalizedPayment.creatorSlug && normalizedPayment.communitySlug && orderId
-              ? `/${normalizedPayment.creatorSlug}/${normalizedPayment.communitySlug}/sessions?paymentAction=choose-slot&orderId=${encodeURIComponent(String(orderId))}&sessionId=${encodeURIComponent(String(sessionContentId || ''))}`
-              : `/dashboard?paymentAction=choose-slot&orderId=${encodeURIComponent(String(orderId || ''))}&sessionId=${encodeURIComponent(String(sessionContentId || ''))}`;
-
-          toast({
-            title: 'Payment received',
-            description: normalizedPayment.message || 'Please choose a date and time to finalize your booking.',
-          });
-
-          router.replace(redirectUrl);
           return;
         }
 
@@ -404,8 +386,12 @@ export default function PaymentSuccessContent() {
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                 {journeyStage === 'syncing' ? <Clock3 className="h-8 w-8" /> : <CheckCircle2 className="h-8 w-8" />}
               </div>
-              <p className="font-semibold text-gray-900">Access ready</p>
-              <p className="mt-2 text-sm text-gray-500">Your payment is confirmed. We are opening the right page now.</p>
+              <p className="font-semibold text-gray-900">{scope === 'session' ? 'Booking confirmed' : 'Access ready'}</p>
+              <p className="mt-2 text-sm text-gray-500">
+                {scope === 'session'
+                  ? 'Your session is confirmed. We are preparing the Google Meet link for both participants.'
+                  : 'Your payment is confirmed. We are opening the right page now.'}
+              </p>
             </div>
           ) : verified ? (
             <div className="text-center">
@@ -414,7 +400,9 @@ export default function PaymentSuccessContent() {
               </div>
               <h1 className="mb-2 text-2xl font-bold text-gray-900">Access Granted!</h1>
               <p className="mb-6 text-gray-600">
-                Your payment was successful and your access has been enabled.
+                {scope === 'session'
+                  ? 'Your session is confirmed. The Google Meet link is being created automatically and will appear in your bookings.'
+                  : 'Your payment was successful and your access has been enabled.'}
                 {contentTitle && <span className="mt-1 block font-semibold text-blue-900">{contentTitle}</span>}
               </p>
 

@@ -1033,6 +1033,9 @@ export class PaymentController {
       failure: { source, failedAt: new Date().toISOString(), ...details },
     };
     await order.save();
+    if (order.contentType === TrackableContentType.SESSION) {
+      await this.sessionService.releasePaidBookingIntent(order._id.toString());
+    }
     await this.auditPaymentEvent({
       orderId: String(order._id), eventType: 'payment_failed', provider: 'stripe',
       paymentMethod: order.paymentMethod, previousStatus: 'pending', nextStatus: 'failed', reason: source,
@@ -1681,8 +1684,12 @@ export class PaymentController {
     const clientContext = this.normalizeClientContext(clientContextRaw);
     const sessionDoc = await this.sessionModel.findOne({ id: sessionId }) || await this.sessionModel.findById(sessionId);
     if (!sessionDoc) throw new BadRequestException('Session not found');
+    if (!sessionDoc.isActive) throw new BadRequestException('This session is no longer active');
     if (sessionDoc.creatorId?.toString() === userId) {
       throw new BadRequestException('Vous ne pouvez pas réserver votre propre session');
+    }
+    if (!bookingDto || (!bookingDto.scheduledAt && !bookingDto.slotId)) {
+      throw new BadRequestException('Select a future session slot before starting payment');
     }
 
     const price = sessionDoc.price || 0;
@@ -1734,6 +1741,33 @@ export class PaymentController {
       })
     });
 
+    let bookingIntent: { bookingId: string; scheduledAt: string; slotId?: string; holdExpiresAt: string };
+    try {
+      bookingIntent = await this.sessionService.createPaidBookingIntent({
+        sessionId,
+        userId,
+        orderId: pendingOrder._id.toString(),
+        amountPaid: breakdown.amountDT,
+        bookingDto,
+      });
+    } catch (error) {
+      await pendingOrder.deleteOne();
+      throw error;
+    }
+
+    pendingOrder.metadata = {
+      ...(pendingOrder.metadata || {}),
+      bookingId: bookingIntent.bookingId,
+      slotId: bookingIntent.slotId,
+      bookingDto: {
+        scheduledAt: bookingIntent.scheduledAt,
+        notes: bookingDto?.notes,
+        slotId: bookingIntent.slotId,
+      },
+      checkoutHoldExpiresAt: bookingIntent.holdExpiresAt,
+    };
+    await pendingOrder.save();
+
     const defaultSuccessUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=session&id=${sessionId}&provider=stripe&sessionId={CHECKOUT_SESSION_ID}`;
     const defaultFailUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=session&id=${sessionId}&provider=stripe`;
     const successUrl = this.resolveCheckoutRedirectUrl(defaultSuccessUrl, successRedirectUrl);
@@ -1751,10 +1785,12 @@ export class PaymentController {
         contentType: 'session',
         contentId: sessionId,
         orderId: pendingOrder._id.toString(),
-        bookingDto: JSON.stringify(bookingDto), // Serialize object to string
+        bookingId: bookingIntent.bookingId,
+        slotId: bookingIntent.slotId || '',
         channel,
         ...(Object.keys(clientContext).length > 0 ? { clientContext: JSON.stringify(clientContext) } : {}),
       },
+      expiresAt: new Date(bookingIntent.holdExpiresAt),
       lineItems: [{
         name: sessionDoc.title || 'Session',
         description: sessionDoc.description,
@@ -1763,7 +1799,12 @@ export class PaymentController {
       }]
     });
 
-    if (!session.success) throw new BadRequestException(session.error);
+    if (!session.success) {
+      await this.sessionService.releasePaidBookingIntent(pendingOrder._id.toString());
+      pendingOrder.status = 'failed';
+      await pendingOrder.save();
+      throw new BadRequestException(session.error);
+    }
 
     await this.persistStripeCheckout(pendingOrder, session);
 
@@ -2306,28 +2347,7 @@ export class PaymentController {
           this.logger.warn(`Skipping self-booking for session order ${order._id}`);
           break;
         }
-        const bookingSessionId = order.metadata?.contentId || stripeSessionMetadata?.contentId || order.contentId;
-        const orderBookingDto = this.parseBookingDto(order.metadata?.bookingDto);
-        const stripeBookingDto = this.parseBookingDto(stripeSessionMetadata?.bookingDto);
-        const bookingDto: any = {
-          ...stripeBookingDto,
-          ...orderBookingDto,
-        };
-
-        const slotId =
-          bookingDto.slotId ||
-          order.metadata?.slotId ||
-          stripeSessionMetadata?.slotId;
-
-        if (!bookingDto.scheduledAt && slotId) {
-          const scheduledAtFromSlot = await this.resolveScheduledAtFromSlot(bookingSessionId, slotId, session);
-          if (scheduledAtFromSlot) {
-            bookingDto.scheduledAt = scheduledAtFromSlot;
-            bookingDto.slotId = slotId;
-          }
-        }
-
-        await this.sessionService.bookSession(bookingSessionId, bookingDto, order.buyerId.toString(), order.promoCode, session, 'confirmed');
+        await this.sessionService.confirmPaidBookingForOrder(order, session);
         break;
 
       case TrackableContentType.PRODUCT:
@@ -2483,6 +2503,10 @@ export class PaymentController {
         await this.affiliateCommissionService.onOrderPaid(order).catch((e) => this.logger.error(`Affiliate onOrderPaid failed: ${e?.message}`));
       }
 
+      if (order.contentType === TrackableContentType.SESSION && order.status === 'paid') {
+        await this.sessionService.provisionPaidBookingMeet(order._id.toString());
+      }
+
       const refreshedOrder = await this.orderModel.findById(order._id);
       if (refreshedOrder) {
         order = refreshedOrder;
@@ -2591,6 +2615,16 @@ export class PaymentController {
     }
     if (order.status !== 'paid') {
       throw new BadRequestException('Order must be paid before finalizing booking');
+    }
+    if (order.metadata?.bookingId) {
+      await this.sessionService.provisionPaidBookingMeet(order._id.toString());
+      return {
+        status: 'paid',
+        bookingFinalized: true,
+        automatic: true,
+        orderId: order._id,
+        sessionContentId: order.metadata?.contentId || order.contentId,
+      };
     }
     if (order.creatorId?.toString() === userId) {
       throw new BadRequestException('Vous ne pouvez pas réserver votre propre session');
@@ -2802,6 +2836,9 @@ export class PaymentController {
                     }).catch((e) => this.logger.warn(`Subscription integration event failed: ${e?.message || e}`));
                   }
                 }
+              }
+              if (order.contentType === TrackableContentType.SESSION && order.status === 'paid') {
+                await this.sessionService.provisionPaidBookingMeet(order._id.toString());
               }
             }
           }

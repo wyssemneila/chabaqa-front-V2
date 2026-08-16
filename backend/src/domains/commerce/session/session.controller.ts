@@ -79,7 +79,7 @@ export class SessionController {
     @Query('communitySlug') communitySlug?: string,
     @Query('communityId') communityId?: string,
     @Query('category') category?: string,
-    @Query('isActive') isActive?: boolean,
+    @Query('isActive') isActive?: string,
     @Query('creatorId') creatorId?: string
   ): Promise<SessionListResponseDto> {
     const pagination = parsePagination(page, limit);
@@ -89,7 +89,7 @@ export class SessionController {
       communitySlug,
       communityId,
       category,
-      isActive,
+      isActive === 'true' ? true : isActive === 'false' ? false : undefined,
       creatorId
     );
   }
@@ -252,8 +252,6 @@ export class SessionController {
 
   @Get('bookings/user')
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(HttpCacheInterceptor)
-  @CacheTTL(30)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Récupérer les réservations d\'un utilisateur' })
   @ApiResponse({ status: 200, description: 'Réservations de l\'utilisateur récupérées avec succès', type: UserBookingsResponseDto })
@@ -268,9 +266,6 @@ export class SessionController {
     console.log(`[getUserBookings Controller] User from JWT: ${JSON.stringify({ _id: req.user._id, userId: req.user.userId, sub: req.user.sub })}`);
     console.log(`[getUserBookings Controller] Resolved userId: ${userId}`);
     
-    // First sync any missing bookings from paid orders
-    await this.sessionService.syncBookingsFromPaidOrders(userId);
-    // Then return the bookings
     return this.sessionService.getUserBookings(userId, { communityId, communitySlug });
   }
 
@@ -306,8 +301,6 @@ export class SessionController {
 
   @Get('bookings/creator')
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(HttpCacheInterceptor)
-  @CacheTTL(30)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Récupérer les réservations d\'un créateur' })
   @ApiResponse({ status: 200, description: 'Réservations du créateur récupérées avec succès', type: CreatorBookingsResponseDto })
@@ -344,8 +337,6 @@ export class SessionController {
   // Get sessions for a specific user (for profile viewing)
   @Get('by-user/:userId')
   @UseGuards(OptionalJwtAuthGuard)
-  @UseInterceptors(HttpCacheInterceptor)
-  @CacheTTL(30)
   @ApiOperation({ 
     summary: 'Get sessions for a specific user',
     description: 'Retrieve sessions associated with a user (booked + created)'

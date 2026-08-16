@@ -127,6 +127,33 @@ describe('MediaService security regression', () => {
     await expect(deletedService.getStorageAccess('document/deleted.pdf')).resolves.toBe('blocked');
   });
 
+  it('deletes both S3 and disk copies when S3 is the active storage driver', async () => {
+    process.env.MEDIA_STORAGE_DRIVER = 's3';
+    const ownerId = new Types.ObjectId();
+    const asset = {
+      _id: new Types.ObjectId(),
+      visibility: MediaVisibility.PUBLIC,
+      status: MediaAssetStatus.UPLOADED,
+      uploadedBy: ownerId,
+      storageKey: 'image/remove-me.png',
+      save: jest.fn(),
+    };
+    const diskStorageAdapter = { deleteByStorageKey: jest.fn().mockResolvedValue(undefined) };
+    const s3StorageAdapter = { deleteByStorageKey: jest.fn().mockResolvedValue(undefined) };
+    const service = new MediaService(
+      { findById: jest.fn().mockResolvedValue(asset) } as any,
+      diskStorageAdapter as any,
+      s3StorageAdapter as any,
+      {} as any,
+    );
+
+    await service.deleteAsset(String(asset._id), { userId: String(ownerId) });
+
+    expect(s3StorageAdapter.deleteByStorageKey).toHaveBeenCalledWith(asset.storageKey);
+    expect(diskStorageAdapter.deleteByStorageKey).toHaveBeenCalledWith(asset.storageKey);
+    delete process.env.MEDIA_STORAGE_DRIVER;
+  });
+
   describe('direct S3 upload verification', () => {
     const ownerId = new Types.ObjectId().toString();
     const checksum = 'a'.repeat(64);

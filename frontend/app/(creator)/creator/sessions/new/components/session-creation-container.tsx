@@ -9,6 +9,7 @@ import { SessionDetailsStep } from "./session-details-step"
 import { AvailabilityStep } from "./availability-step"
 import { ReviewPublishStep } from "./review-publish-step"
 import { NavigationButtons } from "./navigation-buttons"
+import GoogleCalendarIntegration from "../../components/google-calendar-integration"
 import { sessionsApi, normalizeSessionResponse, type CreateSessionData } from "@/lib/api/sessions.api"
 import { useToast } from "@/hooks/use-toast"
 import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
@@ -33,6 +34,7 @@ export function SessionCreationContainer() {
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [googleCalendarReady, setGoogleCalendarReady] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   
   // Use the selected community from context
@@ -268,6 +270,14 @@ export function SessionCreationContainer() {
   const handleSubmit = async (options?: { publish?: boolean }) => {
     if (isSubmitting) return
     const publishRequested = Boolean(options?.publish ?? formData.isPublished)
+    if (publishRequested && !googleCalendarReady) {
+      toast({
+        title: "Connect Google Calendar first",
+        description: "Google Calendar is required before a session can be published and booked.",
+        variant: "destructive" as any,
+      })
+      return
+    }
     const modelValidation = publishRequested ? publishValidation : draftValidation
 
     if (!modelValidation.ok) {
@@ -376,7 +386,7 @@ export function SessionCreationContainer() {
       communityName={selectedCommunity?.name}
       communityMeta={selectedCommunity?.slug}
       autosaveStatus={draftStorage.status}
-      publishBlocked={!publishValidation.ok}
+      publishBlocked={!publishValidation.ok || !googleCalendarReady}
       previewAction={{ label: "Preview", onClick: () => setCurrentStep(4), disabled: isSubmitting }}
       mobileMode="limited"
       actions={[
@@ -405,12 +415,13 @@ export function SessionCreationContainer() {
             }
             void handleSubmit({ publish: true })
           },
-          disabled: isSubmitting,
+          disabled: isSubmitting || !googleCalendarReady,
           loading: isSubmitting,
         },
       ]}
       sidebar={
         <>
+          <GoogleCalendarIntegration onStatusChange={(status) => setGoogleCalendarReady(status.hasValidAccess)} />
           <CreatorValidationSummary result={currentStep === 4 ? publishValidation : draftValidation} />
           <CreatorPublishChecklist items={publishChecklist} />
         </>

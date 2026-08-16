@@ -13,9 +13,10 @@ import { sessionsApi } from "@/lib/api/sessions.api"
 interface GoogleCalendarIntegrationProps {
   className?: string
   onConnectionUpdated?: () => void
+  onStatusChange?: (status: { connected: boolean; hasValidAccess: boolean }) => void
 }
 
-export default function GoogleCalendarIntegration({ className, onConnectionUpdated }: GoogleCalendarIntegrationProps) {
+export default function GoogleCalendarIntegration({ className, onConnectionUpdated, onStatusChange }: GoogleCalendarIntegrationProps) {
   const { toast } = useToast()
   const [status, setStatus] = useState<{ connected: boolean; hasValidAccess: boolean } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -23,11 +24,16 @@ export default function GoogleCalendarIntegration({ className, onConnectionUpdat
   const [disconnecting, setDisconnecting] = useState(false)
   const cleanupRef = useRef<(() => void) | null>(null)
 
+  const applyStatus = useCallback((nextStatus: { connected: boolean; hasValidAccess: boolean }) => {
+    setStatus(nextStatus)
+    onStatusChange?.(nextStatus)
+  }, [onStatusChange])
+
   const checkConnectionStatus = useCallback(async () => {
     try {
       setLoading(true)
       const response = await googleCalendarApi.getConnectionStatus()
-      setStatus(response.data)
+      applyStatus(response.data)
     } catch {
       toast({
         title: "Connection check failed",
@@ -37,7 +43,7 @@ export default function GoogleCalendarIntegration({ className, onConnectionUpdat
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [applyStatus, toast])
 
   useEffect(() => {
     void checkConnectionStatus()

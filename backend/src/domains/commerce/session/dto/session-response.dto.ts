@@ -43,7 +43,13 @@ export class SessionBookingResponseDto {
   scheduledAt: string;
 
   @ApiProperty({ description: 'Statut de la réservation', example: 'confirmed' })
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'awaiting_payment' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+
+  @ApiPropertyOptional({ description: 'Origine de la réservation', enum: ['manual', 'paid'] })
+  bookingOrigin?: 'manual' | 'paid';
+
+  @ApiPropertyOptional({ description: 'ID de commande associé au paiement' })
+  orderId?: string;
 
   @ApiPropertyOptional({ description: 'URL de la réunion', example: 'https://meet.google.com/abc-def-ghi' })
   meetingUrl?: string;
@@ -243,7 +249,13 @@ export class CreatorBookingResponseDto {
   isUpcoming: boolean;
 
   @ApiProperty({ description: 'Statut de la réservation', example: 'confirmed' })
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'awaiting_payment' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+
+  @ApiPropertyOptional({ description: 'Origine de la réservation', enum: ['manual', 'paid'] })
+  bookingOrigin?: 'manual' | 'paid';
+
+  @ApiPropertyOptional({ description: 'ID de commande associé au paiement' })
+  orderId?: string;
 
   @ApiPropertyOptional({ description: 'URL de la réunion', example: 'https://meet.google.com/abc-def-ghi' })
   meetingUrl?: string;

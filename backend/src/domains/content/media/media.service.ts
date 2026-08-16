@@ -497,11 +497,16 @@ export class MediaService {
       throw new ForbiddenException('You are not allowed to delete this media');
     }
 
-    try {
-      await this.getStorageAdapter().deleteByStorageKey(asset.storageKey);
-    } catch {
-      // Keep tombstoning even if physical delete fails.
-    }
+    const adapters = this.getStorageDriver() === 's3'
+      ? [this.s3StorageAdapter, this.diskStorageAdapter]
+      : [this.diskStorageAdapter];
+    await Promise.all(adapters.map(async (adapter) => {
+      try {
+        await adapter.deleteByStorageKey(asset.storageKey);
+      } catch {
+        // A mirrored copy may already be absent; preserve tombstone semantics.
+      }
+    }));
 
     asset.status = MediaAssetStatus.DELETED;
     asset.deletedAt = new Date();

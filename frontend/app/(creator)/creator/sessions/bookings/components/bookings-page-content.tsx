@@ -55,6 +55,7 @@ interface BookingsPageContentProps {
 }
 
 const statusConfig = {
+  awaiting_payment: { label: "Awaiting payment", color: "bg-amber-100 text-amber-700 border-amber-200", icon: Clock },
   pending: { label: "Pending", color: "bg-orange-100 text-orange-700 border-orange-200", icon: AlertCircle },
   confirmed: { label: "Confirmed", color: "bg-blue-100 text-blue-700 border-blue-200", icon: CheckCircle },
   completed: { label: "Completed", color: "bg-green-100 text-green-700 border-green-200", icon: CheckCircle },
@@ -93,6 +94,15 @@ export default function BookingsPageContent({
   useEffect(() => {
     void checkGoogleStatus()
   }, [])
+
+  useEffect(() => {
+    const hasMeetInProgress = bookings.some(
+      (booking) => booking.status === 'confirmed' && !booking.meetingUrl && booking.meetStatus === 'pending',
+    )
+    if (!hasMeetInProgress) return
+    const interval = window.setInterval(onRefresh, 5000)
+    return () => window.clearInterval(interval)
+  }, [bookings, onRefresh])
 
   const handleConfirm = async (bookingId: string) => {
     setActionLoading(bookingId)
@@ -353,6 +363,7 @@ export default function BookingsPageContent({
                 const canComplete = booking.status === 'confirmed' && isPast
                 const meetStatus = booking.meetStatus || (booking.meetingUrl ? 'created' : 'not_required')
                 const showReconnectGoogle = meetStatus === 'failed' && (!googleStatus?.connected || !googleStatus?.hasValidAccess)
+                const isPaidBooking = booking.bookingOrigin === 'paid' || Boolean(booking.orderId)
                 
                 return (
                   <div
@@ -478,19 +489,26 @@ export default function BookingsPageContent({
                               </Button>
                             ) : (
                               <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleCreateMeet(booking.id)}
-                                  disabled={actionLoading === booking.id}
-                                >
-                                  {actionLoading === booking.id ? (
-                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
-                                  ) : (
-                                    <Plus className="h-4 w-4 mr-1" />
-                                  )}
-                                  {meetStatus === 'pending' ? 'Retry Meet' : 'Create Meet'}
-                                </Button>
+                                {isPaidBooking && meetStatus !== 'failed' ? (
+                                  <Badge variant="outline" className="text-xs text-blue-700 border-blue-300 bg-blue-50">
+                                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                    Creating Meet automatically
+                                  </Badge>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleCreateMeet(booking.id)}
+                                    disabled={actionLoading === booking.id}
+                                  >
+                                    {actionLoading === booking.id ? (
+                                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+                                    ) : (
+                                      <Plus className="h-4 w-4 mr-1" />
+                                    )}
+                                    {isPaidBooking ? 'Retry automatic Meet' : 'Create Meet'}
+                                  </Button>
+                                )}
                                 {showReconnectGoogle && (
                                   <Button
                                     size="sm"

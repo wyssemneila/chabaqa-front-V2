@@ -105,19 +105,25 @@ export default function UpcomingSessionsCard({ bookings, onBookingUpdated }: Upc
                     <Video className="h-3 w-3 mr-1" /> Join
                   </Button>
                 ) : (
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleCreateMeet(booking.id)}
-                    disabled={creatingMeet === booking.id}
-                  >
-                    {creatingMeet === booking.id ? (
-                      <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
-                    ) : (
-                      <Plus className="h-3 w-3 mr-1" />
-                    )}
-                    {booking.meetStatus === 'pending' ? 'Retry Meet' : 'Create Meet'}
-                  </Button>
+                  booking.bookingOrigin === 'paid' && booking.meetStatus !== 'failed' ? (
+                    <Badge variant="outline" className="text-xs text-blue-700 border-blue-300 justify-center">
+                      <RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Meet preparing
+                    </Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCreateMeet(booking.id)}
+                      disabled={creatingMeet === booking.id}
+                    >
+                      {creatingMeet === booking.id ? (
+                        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+                      ) : (
+                        <Plus className="h-3 w-3 mr-1" />
+                      )}
+                      {booking.bookingOrigin === 'paid' ? 'Retry automatic Meet' : 'Create Meet'}
+                    </Button>
+                  )
                 )}
                 {booking.meetingUrl ? (
                   <Badge variant="outline" className="text-xs text-green-700 border-green-300 justify-center">

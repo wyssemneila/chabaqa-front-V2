@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
@@ -14,6 +14,7 @@ import { useCreatorSessionsPage } from '@/hooks/creator-dashboard/use-creator-da
 import { sessionsApi } from '@/lib/api'
 import { toast } from 'sonner'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import GoogleCalendarIntegration from './components/google-calendar-integration'
 
 const TR = {
   en: {
@@ -89,7 +90,7 @@ function SkeletonCard() {
 }
 
 // ─── session card ─────────────────────────────────────────────────────────────
-function SessionCardUI({ session, t, onToggle, onDelete, pending }: { session: SessionCard; t: typeof TR['en']; onToggle: () => void; onDelete: () => void; pending: boolean }) {
+function SessionCardUI({ session, t, onToggle, onDelete, pending, canActivate }: { session: SessionCard; t: typeof TR['en']; onToggle: () => void; onDelete: () => void; pending: boolean; canActivate: boolean }) {
   const dur = session.duration >= 60 ? `${session.duration/60}h` : `${session.duration}min`
   return (
     <div className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200 group"
@@ -131,7 +132,7 @@ function SessionCardUI({ session, t, onToggle, onDelete, pending }: { session: S
             {session.priceType==='free' ? t.free : `${session.price ?? 0} TND`}
           </span>
           <div className="flex items-center gap-1.5">
-          <button type="button" disabled={pending} onClick={onToggle} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background:'var(--bg)', color:'var(--t2)' }}>
+          <button type="button" disabled={pending || (!session.isActive && !canActivate)} onClick={onToggle} title={!session.isActive && !canActivate ? 'Connect Google Calendar before publishing this session' : undefined} className="px-2 py-1.5 rounded-lg text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed" style={{ background:'var(--bg)', color:'var(--t2)' }}>
             {pending ? 'Saving...' : session.isActive ? 'Deactivate' : 'Activate'}
           </button>
           <button type="button" disabled={pending} onClick={onDelete} aria-label={`Delete ${session.title}`} className="p-1.5 rounded-lg" style={{ color:'#ef4444', background:'rgba(239,68,68,.08)' }}><Trash2 className="w-3.5 h-3.5" /></button>
@@ -154,10 +155,21 @@ export default function SessionsPage() {
   const [tab,      setTab]      = useState<'all'|'active'|'inactive'>('all')
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<SessionCard | null>(null)
+  const [googleCalendarStatus, setGoogleCalendarStatus] = useState<{ connected: boolean; hasValidAccess: boolean } | null>(null)
+  const [sessionStatusOverrides, setSessionStatusOverrides] = useState<Record<string, boolean>>({})
   const { sessions, bookings, loading, error, refetch: load } = useCreatorSessionsPage()
+  const canPublishSessions = googleCalendarStatus?.hasValidAccess === true
+  const displayedSessions = sessions.map((session) => {
+    const isActive = sessionStatusOverrides[session._id]
+    return isActive === undefined ? session : { ...session, isActive }
+  })
 
-  const totalSessions  = sessions.length
-  const activeSessions = sessions.filter(s => s.isActive).length
+  useEffect(() => {
+    setSessionStatusOverrides({})
+  }, [sessions])
+
+  const totalSessions  = displayedSessions.length
+  const activeSessions = displayedSessions.filter(s => s.isActive).length
   const totalBookings  = bookings.length
 
   const now = Date.now()
@@ -166,7 +178,7 @@ export default function SessionsPage() {
     .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0,5)
 
-  const filtered = sessions.filter(s => {
+  const filtered = displayedSessions.filter(s => {
     if (tab==='active')   return s.isActive
     if (tab==='inactive') return !s.isActive
     return true
@@ -236,6 +248,11 @@ export default function SessionsPage() {
               </div>
             )}
 
+            <GoogleCalendarIntegration
+              onStatusChange={setGoogleCalendarStatus}
+              onConnectionUpdated={load}
+            />
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {STATS.map(s => (
                 <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4"
@@ -281,7 +298,7 @@ export default function SessionsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                   {[1,2,3].map(i => <SkeletonCard key={i} />)}
                 </div>
-              ) : error && sessions.length === 0 ? null : filtered.length === 0 ? (
+                ) : error && displayedSessions.length === 0 ? null : filtered.length === 0 ? (
                 <div className="rounded-2xl flex flex-col items-center justify-center py-20 text-center"
                   style={{ background:'var(--white)', border:'1.5px dashed var(--bd)' }}>
                   <div className="w-16 h-16 rounded-3xl flex items-center justify-center mb-4" style={{ background:'var(--p2)' }}>
@@ -297,9 +314,15 @@ export default function SessionsPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                  {filtered.map(s => <SessionCardUI key={s._id} session={s} t={t} pending={pendingId === s._id} onDelete={() => setDeleteTarget(s)} onToggle={async () => {
+                  {filtered.map(s => <SessionCardUI key={s._id} session={s} t={t} pending={pendingId === s._id} canActivate={canPublishSessions} onDelete={() => setDeleteTarget(s)} onToggle={async () => {
                     setPendingId(s._id)
-                    try { await sessionsApi.update(s._id, { isActive: !s.isActive }); toast.success(s.isActive ? 'Session deactivated' : 'Session activated'); load() }
+                    try {
+                      const isActive = !s.isActive
+                      await sessionsApi.update(s._id, { isActive })
+                      setSessionStatusOverrides((current) => ({ ...current, [s._id]: isActive }))
+                      toast.success(isActive ? 'Session activated' : 'Session deactivated')
+                      load()
+                    }
                     catch (err: any) { toast.error(err?.message || 'Could not update the session.') }
                     finally { setPendingId(null) }
                   }} />)}

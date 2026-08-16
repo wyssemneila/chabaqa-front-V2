@@ -8,7 +8,7 @@ interface SessionBooking {
   userName: string
   userAvatar?: string
   scheduledAt: string
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
+  status: 'awaiting_payment' | 'pending' | 'confirmed' | 'completed' | 'cancelled'
   meetingUrl?: string
   notes?: string
   createdAt: string
@@ -21,7 +21,9 @@ interface SessionBookingsProps {
 
 export function SessionBookings({ bookings }: SessionBookingsProps) {
   const getStatusBadge = (status: string) => {
-    switch (status) {
+      switch (status) {
+      case 'awaiting_payment':
+        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Awaiting payment</Badge>
       case 'pending':
         return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>
       case 'confirmed':
@@ -36,7 +38,9 @@ export function SessionBookings({ bookings }: SessionBookingsProps) {
   }
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
+      switch (status) {
+      case 'awaiting_payment':
+        return <Clock className="h-4 w-4 text-amber-600" />
       case 'pending':
         return <AlertCircle className="h-4 w-4 text-yellow-600" />
       case 'confirmed':

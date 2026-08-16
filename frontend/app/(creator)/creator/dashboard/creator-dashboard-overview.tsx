@@ -48,7 +48,7 @@ export default function CreatorDashboardOverview() {
               </div>
             )}
 
-            <DashOnboarding initialSteps={data?.onboarding} />
+            <DashOnboarding />
             <DashKpiGrid cards={data?.kpis} loading={loading} />
 
             <div className="grid grid-cols-2 gap-4 mb-6" style={{ animation: 'dashFadeUp .4s .2s ease both' }}>

@@ -24,7 +24,6 @@ export class PaymentAccessRevocationService {
     const buyerId = new Types.ObjectId(String(order.buyerId));
     const contentId = String(order.contentId || order.metadata?.contentId || '');
     const options = session ? { session } : undefined;
-    const setOptions = options ? { ...options, arrayFilters: [{ 'booking.userId': buyerId }] } : { arrayFilters: [{ 'booking.userId': buyerId }] };
 
     switch (order.contentType) {
       case TrackableContentType.COURSE: {
@@ -69,18 +68,57 @@ export class PaymentAccessRevocationService {
         ).exec();
         break;
       case TrackableContentType.EVENT:
-        await this.eventModel.updateOne(
-          { _id: this.objectIdOrString(contentId) },
-          { $pull: { attendees: { userId: buyerId } } },
+        // Match the attendee in the mutation filter so duplicate refund webhooks
+        // cannot free inventory more than once.
+        const eventId = this.objectIdOrString(contentId);
+        const event: any = await this.eventModel.findOne(
+          { _id: eventId, 'attendees.userId': buyerId },
+          { attendees: { $elemMatch: { userId: buyerId } } },
           options,
+        ).lean();
+        const attendee = event?.attendees?.[0];
+        if (!attendee) break;
+        await this.eventModel.updateOne(
+          { _id: eventId, 'attendees.userId': buyerId },
+          {
+            $pull: { attendees: { userId: buyerId } },
+            $inc: { 'tickets.$[ticket].sold': -1 },
+          },
+          {
+            ...(options || {}),
+            arrayFilters: [{ 'ticket.type': attendee.ticketType, 'ticket.sold': { $gt: 0 } }],
+          },
         ).exec();
         break;
       case TrackableContentType.SESSION:
-        await this.sessionModel.updateOne(
-          { _id: this.objectIdOrString(contentId), 'bookings.userId': buyerId },
-          { $set: { 'bookings.$[booking].status': 'cancelled', 'bookings.$[booking].meetingUrl': undefined, 'bookings.$[booking].googleEventId': undefined, 'bookings.$[booking].meetStatus': 'revoked' } },
-          setOptions,
-        ).exec();
+        {
+          const sourceOrderId = String(order._id || '');
+          const sessionDoc = await this.sessionModel.findOne(
+            { _id: this.objectIdOrString(contentId), 'bookings.sourceOrderId': sourceOrderId },
+            undefined,
+            options,
+          );
+          if (!sessionDoc) break;
+          const booking = (sessionDoc.bookings || []).find((item: any) => String(item.sourceOrderId || '') === sourceOrderId);
+          if (!booking) break;
+          booking.status = 'cancelled';
+          booking.meetingUrl = undefined;
+          booking.googleEventId = undefined;
+          booking.meetStatus = 'not_required';
+          booking.meetFailureReason = undefined;
+          booking.updatedAt = new Date();
+          if (booking.slotId) {
+            const slot = (sessionDoc.availableSlots || []).find((item: any) => item.id === booking.slotId);
+            if (slot && String(slot.bookedBy || '') === String(booking.userId || '')) {
+              slot.isAvailable = true;
+              slot.bookedBy = undefined;
+              slot.bookedAt = undefined;
+            }
+          }
+          sessionDoc.markModified('bookings');
+          sessionDoc.markModified('availableSlots');
+          await sessionDoc.save(options);
+        }
         break;
       case TrackableContentType.SUBSCRIPTION:
         await this.subscriptionModel.updateMany(

@@ -49,6 +49,7 @@ import { RequireCommunityPermission, CommunityIdFrom } from '@/domains/community
 import { CommunityPermission } from '@/shared/permissions';
 import { PlanFeatureGuard, RequireFeature } from '@/shared/guards/plan-feature.guard';
 import { ChallengeAiCoachService } from '@/domains/learning/challenge/challenge-ai-coach.service';
+import { ContentAccessService } from '@/shared/services/content-access.service';
 import { parsePagination, parsePositiveInteger } from '@/shared/utils/pagination.util';
 
 const resolveRequestIpAddress = (req: any): string | undefined => {
@@ -84,6 +85,7 @@ export class ChallengeController {
   constructor(
     private readonly challengeService: ChallengeService,
     private readonly challengeCoach: ChallengeAiCoachService,
+    private readonly contentAccessService: ContentAccessService,
   ) { }
 
   private getRequestUserId(req: any): string {
@@ -94,6 +96,10 @@ export class ChallengeController {
       req?.user?.id ||
       ''
     ).toString();
+  }
+
+  private async assertChallengeAccess(id: string, req: any): Promise<void> {
+    await this.contentAccessService.assertChallengeAccess(this.getRequestUserId(req), id);
   }
 
   // ============================================================
@@ -321,6 +327,7 @@ export class ChallengeController {
     @Request() req: any
   ) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(createSubmissionDto.challengeId, req);
     console.log(`🚀 [CHALLENGE-CONTROLLER] Received submission for task ${createSubmissionDto.taskId} from user ${userId}`);
     return this.challengeService.submitProject(createSubmissionDto, userId);
   }
@@ -365,6 +372,7 @@ export class ChallengeController {
     @Request() req: any
   ): Promise<ChallengeResponseDto> {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(leaveChallengeDto.challengeId, req);
     return this.challengeService.leaveChallenge(leaveChallengeDto, userId);
   }
 
@@ -410,6 +418,7 @@ export class ChallengeController {
     @Request() req: any
   ): Promise<ChallengeResponseDto> {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(updateProgressDto.challengeId, req);
     return this.challengeService.updateProgress(updateProgressDto, userId);
   }
 
@@ -430,6 +439,7 @@ export class ChallengeController {
     @Request() req: any
   ): Promise<ChallengeResponseDto> {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(updateProgressDto.challengeId, req);
     return this.challengeService.updateProgressWithSequential(updateProgressDto, userId);
   }
 
@@ -491,6 +501,7 @@ export class ChallengeController {
     @Request() req: any
   ) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(challengeId, req);
     return this.challengeService.getSubmissions(challengeId, userId);
   }
 
@@ -513,6 +524,7 @@ export class ChallengeController {
   @ApiResponse({ status: 200, description: 'Progression récupérée avec succès' })
   async getProgress(@Param('id') id: string, @Request() req: any) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     return this.challengeService.getChallengeProgress(id, userId);
   }
 
@@ -612,6 +624,7 @@ export class ChallengeController {
     @Request() req: any
   ): Promise<TaskAccessResponseDto> {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     return this.challengeService.checkTaskAccessWithSequential(id, taskId, userId);
   }
 
@@ -631,6 +644,7 @@ export class ChallengeController {
     @Request() req: any
   ): Promise<UnlockedTasksResponseDto> {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     return this.challengeService.getUnlockedTasks(id, userId);
   }
 
@@ -823,6 +837,7 @@ export class ChallengeController {
   @ApiBody({ schema: { type: 'object', properties: { metadata: { type: 'object' } } } })
   async trackView(@Param('id') id: string, @Request() req: any, @Body('metadata') metadata?: any) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     const enriched = enrichTrackingMetadata(req, metadata);
     return this.challengeService.trackChallengeView(id, userId, enriched);
   }
@@ -836,6 +851,7 @@ export class ChallengeController {
   @ApiBody({ schema: { type: 'object', properties: { metadata: { type: 'object' } } } })
   async trackStart(@Param('id') id: string, @Request() req: any, @Body('metadata') metadata?: any) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     const enriched = enrichTrackingMetadata(req, metadata);
     return this.challengeService.trackChallengeStart(id, userId, enriched);
   }
@@ -849,6 +865,7 @@ export class ChallengeController {
   @ApiBody({ schema: { type: 'object', properties: { metadata: { type: 'object' } } } })
   async trackComplete(@Param('id') id: string, @Request() req: any, @Body('metadata') metadata?: any) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     const enriched = enrichTrackingMetadata(req, metadata);
     return this.challengeService.trackChallengeComplete(id, userId, enriched);
   }
@@ -867,6 +884,7 @@ export class ChallengeController {
     @Body('metadata') metadata?: any
   ) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     const enriched = enrichTrackingMetadata(req, metadata);
     return this.challengeService.trackTaskComplete(id, taskId, userId, enriched);
   }
@@ -880,6 +898,7 @@ export class ChallengeController {
   @ApiBody({ schema: { type: 'object', properties: { metadata: { type: 'object' } } } })
   async trackLike(@Param('id') id: string, @Request() req: any, @Body('metadata') metadata?: any) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     const enriched = enrichTrackingMetadata(req, metadata);
     return this.challengeService.trackChallengeLike(id, userId, enriched);
   }
@@ -893,6 +912,7 @@ export class ChallengeController {
   @ApiBody({ schema: { type: 'object', properties: { metadata: { type: 'object' } } } })
   async trackShare(@Param('id') id: string, @Request() req: any, @Body('metadata') metadata?: any) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     const enriched = enrichTrackingMetadata(req, metadata);
     return this.challengeService.trackChallengeShare(id, userId, enriched);
   }
@@ -905,6 +925,7 @@ export class ChallengeController {
   @ApiResponse({ status: 200, description: 'Bookmark ajouté avec succès' })
   async addBookmark(@Param('id') id: string, @Body('bookmarkId') bookmarkId: string, @Request() req: any) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     return this.challengeService.addChallengeBookmark(id, userId, bookmarkId);
   }
 
@@ -916,6 +937,7 @@ export class ChallengeController {
   @ApiResponse({ status: 200, description: 'Bookmark retiré avec succès' })
   async removeBookmark(@Param('id') id: string, @Param('bookmarkId') bookmarkId: string, @Request() req: any) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     return this.challengeService.removeChallengeBookmark(id, userId, bookmarkId);
   }
 
@@ -927,6 +949,7 @@ export class ChallengeController {
   @ApiResponse({ status: 200, description: 'Note ajoutée avec succès' })
   async addRating(@Param('id') id: string, @Body('rating') rating: number, @Request() req: any, @Body('review') review?: string) {
     const userId = req.user._id || req.user.userId;
+    await this.assertChallengeAccess(id, req);
     return this.challengeService.addChallengeRating(id, userId, rating, review);
   }
 
@@ -992,7 +1015,9 @@ export class ChallengeController {
   async getAiHint(
     @Param('id') id: string,
     @Param('taskId') taskId: string,
+    @Request() req: any,
   ): Promise<{ hint: string }> {
+    await this.assertChallengeAccess(id, req);
     return this.challengeCoach.getHint(id, taskId);
   }
 

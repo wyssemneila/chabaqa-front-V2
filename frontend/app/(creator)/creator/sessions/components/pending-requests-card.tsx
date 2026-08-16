@@ -150,20 +150,26 @@ export default function PendingRequestsCard({ bookings, onBookingUpdated }: Prop
                     </>
                   ) : (
                     <>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="h-6 text-xs"
-                        onClick={() => handleCreateMeet(booking.id)}
-                        disabled={creatingMeet === booking.id}
-                      >
-                        {creatingMeet === booking.id ? (
-                          <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
-                        ) : (
-                          <Plus className="h-3 w-3 mr-1" />
-                        )}
-                        {booking.meetStatus === 'pending' ? 'Retry Meet' : 'Create Meet'}
-                      </Button>
+                      {booking.bookingOrigin === 'paid' && booking.meetStatus !== 'failed' ? (
+                        <Badge variant="outline" className="text-xs text-blue-700 border-blue-300 justify-center">
+                          <RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Meet preparing
+                        </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-xs"
+                          onClick={() => handleCreateMeet(booking.id)}
+                          disabled={creatingMeet === booking.id}
+                        >
+                          {creatingMeet === booking.id ? (
+                            <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+                          ) : (
+                            <Plus className="h-3 w-3 mr-1" />
+                          )}
+                          {booking.bookingOrigin === 'paid' ? 'Retry automatic Meet' : 'Create Meet'}
+                        </Button>
+                      )}
                       {booking.meetStatus === 'pending' && (
                         <Badge variant="outline" className="text-xs text-blue-700 border-blue-300 justify-center">
                           <RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Meet Pending

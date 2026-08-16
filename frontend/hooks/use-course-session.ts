@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { coursesApi } from "@/lib/api/courses.api"
-import { tokenStorage } from "@/lib/token-storage"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -98,6 +97,7 @@ export interface CourseSession extends CourseSessionState {
 export function useCourseSession(
   courseId: string,
   options?: {
+    enabled?: boolean
     /** Initial enrollment data (from page-level fetch). Used until first session fetch completes. */
     initialEnrollment?: any
     /** Callback to refresh enrollment on the page level (backward compat). */
@@ -133,6 +133,7 @@ export function useCourseSession(
 
   const fetchSession = useCallback(
     async (currentChapterId?: string): Promise<CourseSessionState | null> => {
+      if (options?.enabled === false || !courseIdRef.current) return null
       try {
         const raw = await coursesApi.getCourseSession(courseIdRef.current, currentChapterId)
         const data = raw?.data ?? raw
@@ -229,7 +230,7 @@ export function useCourseSession(
       setIsLoading(false)
     })
     return () => { active = false }
-  }, [courseId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [courseId, options?.enabled]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived state ─────────────────────────────────────────────────────────
 
@@ -409,8 +410,7 @@ export function useCourseSession(
       // Mark completion locally for the current chapter only. Access decisions for
       // the next chapter stay backend-authoritative after the refresh below.
       setState((prev) => {
-        const completedIdx = prev.chapters.findIndex((c) => c.chapterId === chapterId)
-        const chapters = prev.chapters.map((c, idx) => {
+        const chapters = prev.chapters.map((c) => {
           if (c.chapterId === chapterId) {
             return { ...c, isCompleted: true }
           }

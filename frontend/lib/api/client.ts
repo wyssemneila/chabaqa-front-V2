@@ -203,10 +203,8 @@ class ApiClient {
       method: 'GET',
       headers: this.getHeaders(),
       credentials: 'include',
-      // Server requests default to no-store for correctness unless the caller opts in.
-      ...(typeof window === 'undefined'
-        ? { cache: (options?.cache || 'no-store') as RequestCache }
-        : {}),
+      // Publication state changes must not be served from a browser cache.
+      cache: (options?.cache || (typeof window === 'undefined' ? 'no-store' : undefined)) as RequestCache | undefined,
     });
     let response = await doRequest();
     if (response.status === 401) {

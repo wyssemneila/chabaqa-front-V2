@@ -13,6 +13,14 @@ export interface UpdateProfilePayload {
   lien_instagram?: string
 }
 
+export type CreatorDiscoverySource = 'instagram_tiktok' | 'search' | 'friend_creator' | 'youtube_podcast' | 'event' | 'other' | 'prefer_not_to_say'
+
+export interface CreatorDashboardOnboardingPayload {
+  discoverySource?: CreatorDiscoverySource
+  dashboardTourStep?: number
+  dashboardTourCompleted?: boolean
+}
+
 export interface ChangePasswordPayload {
   currentPassword?: string
   newPassword: string
@@ -57,6 +65,17 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<any>
   }
   const json = await res.json().catch(() => null)
   return json?.user || json?.data || json
+}
+
+export async function updateCreatorDashboardOnboarding(payload: CreatorDashboardOnboardingPayload): Promise<any> {
+  const res = await authenticatedFetch(`${apiBase}/user/creator-dashboard-onboarding`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(await readApiError(res, `Failed to save onboarding progress (${res.status})`))
+  const json = await res.json().catch(() => null)
+  return json?.data?.creatorOnboarding || json?.creatorOnboarding || {}
 }
 
 export async function changePassword(payload: ChangePasswordPayload): Promise<{ message: string }> {

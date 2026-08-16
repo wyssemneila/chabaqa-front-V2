@@ -31,13 +31,17 @@ export function transformCourse(backendCourse: any): any {
   const courseData = backendCourse.data || backendCourse.cours || backendCourse;
 
   // Transform sections and chapters
-  const sections = (courseData.sections || []).map((section: any) => ({
+  const sections = [...(courseData.sections || [])]
+    .sort((left: any, right: any) => Number(left.ordre ?? left.order ?? 0) - Number(right.ordre ?? right.order ?? 0))
+    .map((section: any) => ({
     id: section.id || '',
     title: section.titre || section.title || '',
     description: section.description || '',
     order: section.ordre || section.order || 0,
     courseId: String(courseData._id || courseData.id || ''),
-    chapters: (section.chapitres || []).map((chapter: any) => {
+    chapters: [...(section.chapitres || [])]
+      .sort((left: any, right: any) => Number(left.ordre ?? left.order ?? 0) - Number(right.ordre ?? right.order ?? 0))
+      .map((chapter: any) => {
       // Schema: free preview = isPreview true or !isPaidChapter; backend sends isPreview and isPaid
       const isPaid = Boolean(chapter.isPaidChapter ?? chapter.isPaid);
       const isPreview = Boolean(chapter.isPreview ?? !isPaid);
@@ -83,7 +87,7 @@ export function transformCourse(backendCourse: any): any {
       };
     }),
     createdAt: section.createdAt || new Date().toISOString(),
-  }));
+    }));
 
   const enrollmentCount = courseData.inscriptions?.length || courseData.enrollmentCount || 0;
 
