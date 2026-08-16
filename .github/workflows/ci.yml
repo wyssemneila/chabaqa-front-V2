@@ -194,7 +194,7 @@ jobs:
           SERVER_URL: http://localhost:3000/api
         run: |
           npm run start:dev &
-          npx wait-on http://127.0.0.1:3000/api/health/ping -t 60000
+          npx wait-on http://127.0.0.1:3000/api/health/ping -t 180000
 
       - name: Run Playwright tests
         working-directory: frontend
@@ -227,6 +227,15 @@ jobs:
         run: |
           touch frontend/.env
           touch backend/.env
+          # Root .env is both an env_file for the compose stack and the source
+          # Compose interpolates ${VAR:?...} from, so the required vars live here.
+          cat > .env <<'EOF'
+          MINIO_ROOT_USER=ci-placeholder
+          MINIO_ROOT_PASSWORD=ci-placeholder
+          REDIS_PASSWORD=ci-placeholder
+          MEILI_MASTER_KEY=ci-placeholder
+          GRAFANA_ADMIN_PASSWORD=ci-placeholder
+          EOF
 
       - name: Validate compose file
         run: docker compose config --quiet

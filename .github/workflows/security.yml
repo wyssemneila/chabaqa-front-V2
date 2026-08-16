@@ -58,7 +58,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Gitleaks
-        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest detect --source=/repo --no-git --redact
+        # -v prints each finding (secret values stay masked by --redact), so a
+        # failure names the offending file and rule instead of just a count.
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest detect --source=/repo --no-git --redact -v --config=/repo/.gitleaks.toml
 
   sast:
     name: SAST

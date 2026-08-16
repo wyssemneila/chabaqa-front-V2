@@ -14,6 +14,7 @@ const makeService = (overrides?: {
   courseModel?: any;
   challengeModel?: any;
   resourceModel?: any;
+  learnerProfileService?: any;
 }) => {
   const recommendationModel = overrides?.recommendationModel ?? makeModel();
   const courseEnrollmentModel = overrides?.courseEnrollmentModel ?? makeModel();
@@ -32,6 +33,13 @@ const makeService = (overrides?: {
     ...(overrides?.aiService ?? {}),
   } as any;
 
+  const learnerProfileService =
+    overrides?.learnerProfileService ??
+    ({
+      get: jest.fn().mockResolvedValue(null),
+      buildProfileSummary: jest.fn().mockReturnValue(''),
+    } as any);
+
   const service = new LearningPathService(
     aiService,
     recommendationModel as any,
@@ -39,6 +47,7 @@ const makeService = (overrides?: {
     courseModel as any,
     challengeModel as any,
     resourceModel as any,
+    learnerProfileService as any,
   );
 
   return {
@@ -49,6 +58,7 @@ const makeService = (overrides?: {
     courseModel,
     challengeModel,
     resourceModel,
+    learnerProfileService,
   };
 };
 

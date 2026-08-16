@@ -1,0 +1,15 @@
+title = "chabaqa gitleaks config"
+
+# Start from gitleaks' full default ruleset — this file only narrows what is
+# scanned, it never disables a rule.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Env templates hold placeholder values, not credentials"
+# *.env.example files exist to document the shape of each variable, so they are
+# full of strings like `replace-with-64-hex-chars` that trip the generic-api-key
+# entropy rule. Real env files (.env, .env.*) are gitignored and stay in scope.
+paths = [
+    '''(^|/)\.env\.example$''',
+]
