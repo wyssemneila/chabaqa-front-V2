@@ -16,26 +16,31 @@
       "Privacy",
       "Cookies"
     ],
-    "columns": {
-      "Product": [
+    "columns": [
+      [
         "Features",
         "Pricing",
         "Community",
         "Courses",
         "Challenges"
       ],
-      "Company": [
+      [
         "About",
         "Blog",
         "Careers",
         "Contact"
       ],
-      "Legal": [
+      [
         "Terms of Service",
         "Privacy Policy",
         "Cookies"
       ]
-    }
+    ],
+    "columnHeadings": [
+      "Product",
+      "Company",
+      "Legal"
+    ]
   },
   "common": {
     "brand": "Chabaqa",

@@ -11,48 +11,43 @@ export function Footer() {
   const t = useTranslations("footer")
   const pathname = usePathname()
   const withLocale = (href: string) => localizeHref(pathname, href)
-  const isArabic = pathname === "/ar" || pathname.startsWith("/ar/")
 
   const openCookiePreferences = () => {
     if (typeof window === "undefined") return
     window.dispatchEvent(new CustomEvent(COOKIE_OPEN_PREFERENCES_EVENT))
   }
 
-  const columns = t.raw("columns") as Record<string, string[]>
+  const columnHeadings = t.raw("columnHeadings") as string[]
+  const columns = t.raw("columns") as string[][]
   const bottomLinks = t.raw("bottomLinks") as string[]
 
   const FOOTER_HREFS: string[][] = [
+    // Third entry points at /explore, kept from the previous footer rather than
+    // the "/#features" placeholder it was replaced with upstream.
     ["/#features", "/#pricing", "/explore", "/#features", "/#features"],
     ["/#about", "/blogs", "#", "#"],
     ["/terms-of-service", "/privacy-policy", "#"],
   ]
 
   return (
-    <footer className="bg-white border-t border-gray-200">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-        {/* Main Footer Content */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 lg:gap-12 mb-12">
-          {/* Brand Column */}
-          <div className="col-span-2 lg:col-span-2">
-            <Link 
-              href={withLocale("/")} 
-              aria-label="Chabaqa — go to homepage" 
-              className="inline-block mb-4"
-            >
+    <footer
+      className="pt-16 pb-8 px-6 md:px-10"
+      style={{ background: "var(--footer-bg,#1a1730)" }}
+    >
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
+          {/* Brand */}
+          <div className="col-span-2 md:col-span-1">
+            <Link href={withLocale("/")} aria-label="Chabaqa — go to homepage" className="flex items-center mb-4">
               <Image
-                src={isArabic ? "/Logos/PNG/arabic.png" : "/Logos/PNG/frensh1.png"}
+                src="/Logos/PNG/frensh1.png"
                 alt="Chabaqa"
-                width={140}
-                height={36}
-                sizes="140px"
-                className="h-9 w-auto"
+                width={160}
+                height={48}
+                className="h-12 w-auto brightness-0 invert"
               />
             </Link>
-            <p className="text-gray-600 text-sm leading-relaxed mb-6 max-w-sm">
-              {t("tagline")}
-            </p>
-            
-            {/* Social Links */}
+            <p className="text-white/70 text-sm leading-relaxed mb-6">{t("tagline")}</p>
             <div className="flex gap-3">
               {[
                 {
@@ -91,7 +86,7 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Chabaqa on ${label}`}
-                  className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
+                  className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:border-white/30 transition-colors"
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -100,8 +95,8 @@ export function Footer() {
                     strokeWidth="1.8"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    width="18"
-                    height="18"
+                    width="16"
+                    height="16"
                     aria-hidden="true"
                   >
                     {icon}
@@ -111,16 +106,16 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Link Columns */}
-          {Object.entries(columns).map(([heading, links], colIdx) => (
-            <div key={heading} className="col-span-1">
-              <h4 className="text-gray-900 font-semibold text-sm mb-4">{heading}</h4>
+          {/* Columns */}
+          {columnHeadings.map((heading, colIdx) => (
+            <div key={colIdx}>
+              <h4 className="text-white font-bold text-sm mb-4">{heading}</h4>
               <ul className="flex flex-col gap-3">
-                {links.map((link, linkIdx) => (
-                  <li key={link}>
+                {columns[colIdx]?.map((link, linkIdx) => (
+                  <li key={linkIdx}>
                     <Link
                       href={withLocale(FOOTER_HREFS[colIdx]?.[linkIdx] ?? "#")}
-                      className="text-gray-600 hover:text-purple-600 text-sm transition-colors duration-200"
+                      className="text-white/70 hover:text-white text-sm transition-colors"
                     >
                       {link}
                     </Link>
@@ -131,11 +126,9 @@ export function Footer() {
           ))}
         </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span className="text-gray-500 text-sm">{t("copyright")}</span>
-          
-          <div className="flex items-center gap-6">
+        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <span className="text-white/50 text-sm">{t("copyright")}</span>
+          <div className="flex items-center gap-4">
             {bottomLinks.map((label, idx) => {
               const hrefs = ["/terms-of-service", "/privacy-policy", "#"]
               return (
@@ -143,18 +136,17 @@ export function Footer() {
                   key={label}
                   href={idx === 2 ? "#" : withLocale(hrefs[idx])}
                   onClick={idx === 2 ? openCookiePreferences : undefined}
-                  className="text-gray-500 hover:text-purple-600 text-sm transition-colors duration-200"
+                  className="text-white/50 hover:text-white text-sm transition-colors"
                 >
                   {label}
                 </Link>
               )
             })}
           </div>
-          
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             aria-label={t("backTop")}
-            className="flex items-center gap-2 text-gray-500 hover:text-purple-600 text-sm transition-colors duration-200 group"
+            className="flex items-center gap-2 text-white/50 hover:text-white text-sm transition-colors"
           >
             <svg
               viewBox="0 0 24 24"
@@ -163,10 +155,9 @@ export function Footer() {
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              width="16"
-              height="16"
+              width="14"
+              height="14"
               aria-hidden="true"
-              className="group-hover:-translate-y-0.5 transition-transform duration-200"
             >
               <polyline points="18 15 12 9 6 15" />
             </svg>
