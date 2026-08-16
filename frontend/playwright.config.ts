@@ -13,11 +13,15 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
-  
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Retry on CI only. One retry is enough to absorb a flake; at two, a
+     genuinely broken test costs three full runs of its slowest path. */
+  retries: process.env.CI ? 1 : 0,
+
+  /* All specs share one backend and one Mongo, so this is deliberately low
+     rather than unbounded — 2 halves wall-clock without letting many tests
+     mutate the same records at once. Drop back to 1 if cross-test interference
+     shows up. */
+  workers: process.env.CI ? 2 : undefined,
   
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
