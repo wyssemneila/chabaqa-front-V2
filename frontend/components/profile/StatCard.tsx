@@ -72,14 +72,14 @@ export function StatCard({
             {delta && !loading && (
               <div
                 className={cn(
-                  "ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                  "ms-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
                   delta.direction === 'up' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                 )}
               >
                 {delta.direction === 'up' ? (
-                  <TrendingUp className="w-3.5 h-3.5 mr-1" />
+                  <TrendingUp className="w-3.5 h-3.5 me-1" />
                 ) : (
-                  <TrendingDown className="w-3.5 h-3.5 mr-1" />
+                  <TrendingDown className="w-3.5 h-3.5 me-1" />
                 )}
                 {delta.value}
               </div>
