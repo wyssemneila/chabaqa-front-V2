@@ -1,8 +1,12 @@
-# VPS production deploy — Chabaqa (PRIVATE — DO NOT COMMIT / DO NOT PUSH)
+# VPS production deploy — Chabaqa
 
-> **WARNING:** This file contains real secrets (JWT, Stripe, SMTP, API keys, etc.).  
-> Keep it **only on your machine** or copy sections into the VPS via SSH.  
-> It is **not** tracked for push — add to `.gitignore` if needed: `docs/VPS_PRODUCTION_DEPLOY.md`
+> **Secrets are redacted from this runbook.** Every credential below reads
+> `<REDACTED — see secret manager / VPS backend/.env>`. Pull real values from the
+> secret manager or from `backend/.env` on the VPS — never paste them back here.
+>
+> **History note:** real credentials were committed to this file previously. They
+> remain in git history until it is rewritten, so treat every value that was in
+> here as compromised and rotate it.
 
 **Target:** https://chabaqa.io  
 **Repo path on VPS:** `/home/ubuntu/chabaqa`  
@@ -35,8 +39,8 @@ sudo BRANCH=main ./deploy.sh
 
 # 5) Meilisearch index (first deploy with search)
 MEILI_HOST=http://127.0.0.1:7700 \
-MEILI_API_KEY=96ef479553141e82b864732bad5c22f718854e8f45ec999227147791149cfa4d \
-MONGO_URI="mongodb://127.0.0.1:27017/chabaqa_local?replicaSet=rs0" \
+MEILI_API_KEY=<REDACTED — see secret manager / VPS backend/.env>
+MONGO_URI=<REDACTED — see secret manager / VPS backend/.env>
 node scripts/sync-meilisearch-index.js
 
 # 6) Verify
@@ -91,28 +95,28 @@ Run each block on the VPS from `/home/ubuntu/chabaqa`.
 ```bash
 cd /home/ubuntu/chabaqa
 cat > .env << 'ENVEOF'
-REDIS_PASSWORD=c25ec1b1cba859697df4d726baa3a30c7d0f21e0b1e5971f81fd99ebeb0a2fb9
+REDIS_PASSWORD=<REDACTED — see secret manager / VPS backend/.env>
 
-MINIO_ROOT_USER=1bee6848690bbec61d7cac85
-MINIO_ROOT_PASSWORD=IbYANXJoExbEiDBXjCzFcT8rQhpdnry1
+MINIO_ROOT_USER=<REDACTED — see secret manager / VPS backend/.env>
+MINIO_ROOT_PASSWORD=<REDACTED — see secret manager / VPS backend/.env>
 MINIO_BROWSER_REDIRECT_URL=https://chabaqa.io/monitoring/storage/
 S3_BUCKET=chabaqa-media
 S3_REGION=us-east-1
 S3_FORCE_PATH_STYLE=true
 
 GRAFANA_ADMIN_USER=admin
-GRAFANA_ADMIN_PASSWORD=ChabaqaGrafana2026!
+GRAFANA_ADMIN_PASSWORD=<REDACTED — see secret manager / VPS backend/.env>
 GRAFANA_ROOT_URL=https://chabaqa.io/monitoring/grafana/
 
-SENTRY_DSN=https://39af9991bd6b2d836924197558269524@o4511666698190848.ingest.de.sentry.io/4511666700025936
-NEXT_PUBLIC_SENTRY_DSN=https://39af9991bd6b2d836924197558269524@o4511666698190848.ingest.de.sentry.io/4511666700025936
+SENTRY_DSN=<REDACTED — see secret manager / VPS backend/.env>
+NEXT_PUBLIC_SENTRY_DSN=<REDACTED — see secret manager / VPS backend/.env>
 SENTRY_ENVIRONMENT=production
 
-PAGERDUTY_ROUTING_KEY=R03EMRXTTSLWMMJ0UHM01HN7AGTKIR5L
+PAGERDUTY_ROUTING_KEY=<REDACTED — see secret manager / VPS backend/.env>
 PAGERDUTY_EVENTS_URL=https://events.eu.pagerduty.com/v2/enqueue
 ALERTMANAGER_EXTERNAL_URL=https://chabaqa.io/monitoring/alertmanager/
 
-MEILI_MASTER_KEY=96ef479553141e82b864732bad5c22f718854e8f45ec999227147791149cfa4d
+MEILI_MASTER_KEY=<REDACTED — see secret manager / VPS backend/.env>
 MEILI_GLOBAL_INDEX=chabaqa_content
 
 WHATSAPP_ENABLED=false
@@ -140,33 +144,33 @@ NEXT_PUBLIC_APP_URL=https://chabaqa.io
 FREE_MODE=false
 PLAN_ENFORCEMENT_MODE=true
 
-MONGO_URI=mongodb://mongo:27017/chabaqa_local?replicaSet=rs0
-MONGODB_URI=mongodb://mongo:27017/chabaqa_local?replicaSet=rs0
+MONGO_URI=<REDACTED — see secret manager / VPS backend/.env>
+MONGODB_URI=<REDACTED — see secret manager / VPS backend/.env>
 DB_NAME=chabaqa_local
 
-JWT_SECRET=ce327b40c606de304e298a02ae5107e11537392414f9ed1a0df0dce912141b5d
+JWT_SECRET=<REDACTED — see secret manager / VPS backend/.env>
 JWT_EXPIRES_IN=7d
-JWT_REFRESH_SECRET=9664ebfacdbb5dd516fb8bb9fd72bc92f6475051d36543d39082b04502d6bce3
+JWT_REFRESH_SECRET=<REDACTED — see secret manager / VPS backend/.env>
 JWT_REFRESH_EXPIRES_IN=30d
-EVENT_QR_JWT_SECRET=557d0a7787161334a9ee15e92ddacc79d04055aa137ed6f08f9dd8a273ba8ba3
+EVENT_QR_JWT_SECRET=<REDACTED — see secret manager / VPS backend/.env>
 EVENT_QR_JWT_TTL=30d
 
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=louay.rjili@issatm.ucar.tn
-EMAIL_PASSWORD=nukeujipgserqjdx
+EMAIL_PASSWORD=<REDACTED — see secret manager / VPS backend/.env>
 EMAIL_FROM=noreply@chabaqa.io
 EMAIL_FROM_NAME=Chabaqa
 EMAIL_REPLY_TO=noreply@chabaqa.io
 EMAIL_LOGO_URL=https://i.ibb.co/bjbBK9yS/logo-chabaqa.png
 
-GOOGLE_CLIENT_ID=946155038247-a12gnhogliomav60pegffq1qj23nkag6.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
+GOOGLE_CLIENT_ID=<REDACTED — see secret manager / VPS backend/.env>
+GOOGLE_CLIENT_SECRET=<REDACTED — see secret manager / VPS backend/.env>
 GOOGLE_CALLBACK_URL=https://chabaqa.io/api/auth/google/callback
 GOOGLE_CALENDAR_REDIRECT_URI=https://chabaqa.io/api/google-calendar/callback
 
-STRIPE_SECRET_KEY=sk_test_51SxleUE8mHtUwjlZbo7tL2ItMllT0ilgWpTFMhlabikB6IxxJ9Pp9rxDjVpo7c4I7FgtIpRwAt4VzurTwDqAt0mZ00AtJhtW7U
-STRIPE_WEBHOOK_SECRET=whsec_7078f44b2594653b818810ce7315726e516533ecf65e005c17a9b8c1690b652c
+STRIPE_SECRET_KEY=<REDACTED — see secret manager / VPS backend/.env>
+STRIPE_WEBHOOK_SECRET=<REDACTED — see secret manager / VPS backend/.env>
 FLOUCI_APP_TOKEN=your-flouci-token
 FLOUCI_APP_SECRET=your-flouci-secret
 FLOUCI_ENABLED=false
@@ -185,8 +189,8 @@ PAYMENTS_STRIPE_SESSION_ENABLED=true
 PAYMENTS_REDIRECT_ALLOWLIST=chabaqa://,exp://,https://chabaqa.io,https://www.chabaqa.io
 
 WEB_PUSH_SUBJECT=mailto:notifications@chabaqa.io
-WEB_PUSH_PUBLIC_KEY=BI8jtDo3S8UZH87PTB3Mj_aYmprDy-6Wtz5cYmaPMQ5Szp3WiTimHxbCKR2aJSfSiw6dijAq_AlK3iCkKSopb_I
-WEB_PUSH_PRIVATE_KEY=hqhuZpbd5E61pt-HB-J55A4QFkSrnIWlG6v5VB0opXA
+WEB_PUSH_PUBLIC_KEY=<REDACTED — see secret manager / VPS backend/.env>
+WEB_PUSH_PRIVATE_KEY=<REDACTED — see secret manager / VPS backend/.env>
 
 MAX_FILE_SIZE=104857600
 UPLOAD_PATH=./uploads
@@ -199,20 +203,20 @@ RATE_LIMIT_MAX=100
 REDIS_ENABLED=true
 REDIS_HOST=redis
 REDIS_PORT=6379
-REDIS_PASSWORD=c25ec1b1cba859697df4d726baa3a30c7d0f21e0b1e5971f81fd99ebeb0a2fb9
+REDIS_PASSWORD=<REDACTED — see secret manager / VPS backend/.env>
 REDIS_DB=0
 REDIS_TTL=300
-REDIS_URL=redis://:c25ec1b1cba859697df4d726baa3a30c7d0f21e0b1e5971f81fd99ebeb0a2fb9@redis:6379/0
-SOCKET_IO_REDIS_URL=redis://:c25ec1b1cba859697df4d726baa3a30c7d0f21e0b1e5971f81fd99ebeb0a2fb9@redis:6379/0
+REDIS_URL=<REDACTED — see secret manager / VPS backend/.env>
+SOCKET_IO_REDIS_URL=<REDACTED — see secret manager / VPS backend/.env>
 
 UV_THREADPOOL_SIZE=128
 
-OPENROUTER_API_KEY=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
+OPENROUTER_API_KEY=<REDACTED — see secret manager / VPS backend/.env>
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 OPENROUTER_APP_NAME=Chabaqa AI Tutor
 OPENROUTER_SITE_URL=https://chabaqa.io
 AI_PROVIDER=OLLAMA_CLOUD
-OLLAMA_API_KEY=b86c5254aff7440a9ba27238e3e91f55.B3gB1y2R0S-4ldZCiGt-Hdh-
+OLLAMA_API_KEY=<REDACTED — see secret manager / VPS backend/.env>
 OLLAMA_BASE_URL=https://ollama.com/v1
 OLLAMA_APP_NAME=Chabaqa AI Tutor
 AI_MODEL=gpt-oss:20b-cloud
@@ -222,11 +226,11 @@ AI_MAX_OUTPUT_TOKENS=700
 AI_TEMPERATURE=0.3
 AI_CONTEXT_CHAR_LIMIT=16000
 
-GA4_MEASUREMENT_ID=G-1TNRS938CK
-GA4_API_SECRET=qV6Skl4NQqGAJY-RS41Hrg
+GA4_MEASUREMENT_ID=<REDACTED — see secret manager / VPS backend/.env>
+GA4_API_SECRET=<REDACTED — see secret manager / VPS backend/.env>
 GA4_PROPERTY_ID=479983313
 GA4_SERVICE_ACCOUNT_EMAIL=firebase-adminsdk-fbsvc@event-toolbox.iam.gserviceaccount.com
-GA4_SERVICE_ACCOUNT_KEY=415d2cd278ffb50f81ba9726a90d2b8ffb0f4c8e
+GA4_SERVICE_ACCOUNT_KEY=<REDACTED — see secret manager / VPS backend/.env>
 USE_GA4_COURSE_TREND=true
 
 MEDIA_PUBLIC_BASE_URL=https://chabaqa.io
@@ -234,13 +238,13 @@ TRUST_PROXY=1
 JSON_BODY_LIMIT=2mb
 URLENCODED_BODY_LIMIT=2mb
 ENABLE_SWAGGER=false
-ADMIN_BOOTSTRAP_KEY=1bdc28efc3a9587818d19584cc1a62a88d972a2515ab55c7a64b5e5b828efebb
+ADMIN_BOOTSTRAP_KEY=<REDACTED — see secret manager / VPS backend/.env>
 ADMIN_ALLOW_PASSWORD_ONLY_LOGIN=false
 ALLOW_ADMIN_DB_CLEANUP=false
 ALLOW_REMOTE_WIPE=false
 
 AFFILIATE_COOKIE_NAME=chabaqa_aff_click
-AFFILIATE_IP_HASH_SALT=9e193d2712ff986ced06b7eec9fbfaef
+AFFILIATE_IP_HASH_SALT=<REDACTED — see secret manager / VPS backend/.env>
 AFFILIATE_DEFAULT_COOKIE_DAYS=30
 AFFILIATE_DEFAULT_HOLD_DAYS=14
 AFFILIATE_MIN_PAYOUT_DT=50
@@ -249,20 +253,20 @@ MEDIA_STORAGE_DRIVER=s3
 S3_ENDPOINT=http://minio:9000
 S3_REGION=us-east-1
 S3_BUCKET=chabaqa-media
-S3_ACCESS_KEY=1bee6848690bbec61d7cac85
-S3_SECRET_KEY=IbYANXJoExbEiDBXjCzFcT8rQhpdnry1
+S3_ACCESS_KEY=<REDACTED — see secret manager / VPS backend/.env>
+S3_SECRET_KEY=<REDACTED — see secret manager / VPS backend/.env>
 S3_FORCE_PATH_STYLE=true
 
 CLAMAV_HOST=clamav
 CLAMAV_PORT=3310
 UPLOAD_MALWARE_SCANNING=required
 
-SENTRY_DSN=https://39af9991bd6b2d836924197558269524@o4511666698190848.ingest.de.sentry.io/4511666700025936
+SENTRY_DSN=<REDACTED — see secret manager / VPS backend/.env>
 SENTRY_ENVIRONMENT=production
 SENTRY_TRACES_SAMPLE_RATE=0.1
 
 MEILI_HOST=http://meilisearch:7700
-MEILI_API_KEY=96ef479553141e82b864732bad5c22f718854e8f45ec999227147791149cfa4d
+MEILI_API_KEY=<REDACTED — see secret manager / VPS backend/.env>
 MEILI_GLOBAL_INDEX=chabaqa_content
 
 MONGO_SLOW_QUERY_MS=100
@@ -281,8 +285,8 @@ NEXT_PUBLIC_APP_URL=https://chabaqa.io
 API_INTERNAL_URL=http://chabaqa-backend:3000/api
 NEXT_TELEMETRY_DISABLED=1
 
-NEXT_PUBLIC_SENTRY_DSN=https://39af9991bd6b2d836924197558269524@o4511666698190848.ingest.de.sentry.io/4511666700025936
-SENTRY_DSN=https://39af9991bd6b2d836924197558269524@o4511666698190848.ingest.de.sentry.io/4511666700025936
+NEXT_PUBLIC_SENTRY_DSN=<REDACTED — see secret manager / VPS backend/.env>
+SENTRY_DSN=<REDACTED — see secret manager / VPS backend/.env>
 SENTRY_ENVIRONMENT=production
 NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.1
 ENVEOF
@@ -302,36 +306,36 @@ docker compose config >/dev/null && echo "✓ compose config OK"
 
 | Value | Where it must be identical |
 |-------|---------------------------|
-| `REDIS_PASSWORD` | root `.env` ↔ `backend/.env` ↔ Redis URLs |
+| `REDIS_PASSWORD` | `<REDACTED — see secret manager / VPS backend/.env>` |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | root `.env` ↔ `backend/.env` `S3_ACCESS_KEY` / `S3_SECRET_KEY` |
-| `MEILI_MASTER_KEY` | root `.env` ↔ `backend/.env` `MEILI_API_KEY` |
-| `SENTRY_DSN` | root `.env`, `backend/.env`, `frontend/.env` |
-| `NEXT_PUBLIC_SENTRY_DSN` | root `.env`, `frontend/.env` (+ Docker build arg) |
-| `PAGERDUTY_ROUTING_KEY` | root `.env` only (Alertmanager template) |
+| `MEILI_MASTER_KEY` | `<REDACTED — see secret manager / VPS backend/.env>` |
+| `SENTRY_DSN` | `<REDACTED — see secret manager / VPS backend/.env>` |
+| `NEXT_PUBLIC_SENTRY_DSN` | `<REDACTED — see secret manager / VPS backend/.env>` |
+| `PAGERDUTY_ROUTING_KEY` | `<REDACTED — see secret manager / VPS backend/.env>` |
 | `JWT_*` secrets | `backend/.env` only — **do not change on live DB** |
-| `STRIPE_WEBHOOK_SECRET` | `backend/.env` ↔ Stripe Dashboard webhook endpoint |
+| `STRIPE_WEBHOOK_SECRET` | `<REDACTED — see secret manager / VPS backend/.env>` |
 
 ### Generated for this deploy (new)
 
 | Key | Value |
 |-----|-------|
-| `MEILI_MASTER_KEY` | `96ef479553141e82b864732bad5c22f718854e8f45ec999227147791149cfa4d` |
-| `GRAFANA_ADMIN_PASSWORD` | `ChabaqaGrafana2026!` (set in root `.env` above) |
+| `MEILI_MASTER_KEY` | `<REDACTED — see secret manager / VPS backend/.env>` |
+| `GRAFANA_ADMIN_PASSWORD` | `<REDACTED — see secret manager / VPS backend/.env>` |
 
 ### Observability
 
 | Service | Value |
 |---------|-------|
-| **Sentry DSN (EU)** | `https://39af9991bd6b2d836924197558269524@o4511666698190848.ingest.de.sentry.io/4511666700025936` |
-| **PagerDuty routing key (EU)** | `R03EMRXTTSLWMMJ0UHM01HN7AGTKIR5L` |
+| **Sentry DSN (EU)** | `<REDACTED — see secret manager / VPS backend/.env>` |
+| **PagerDuty routing key (EU)** | `<REDACTED — see secret manager / VPS backend/.env>` |
 | **PagerDuty events URL** | `https://events.eu.pagerduty.com/v2/enqueue` |
 
 ### Stripe (currently TEST mode)
 
 | Key | Value |
 |-----|-------|
-| `STRIPE_SECRET_KEY` | `sk_test_51SxleUE8mHtUwjlZbo7tL2ItMllT0ilgWpTFMhlabikB6IxxJ9Pp9rxDjVpo7c4I7FgtIpRwAt4VzurTwDqAt0mZ00AtJhtW7U` |
-| `STRIPE_WEBHOOK_SECRET` | `whsec_7078f44b2594653b818810ce7315726e516533ecf65e005c17a9b8c1690b652c` |
+| `STRIPE_SECRET_KEY` | `<REDACTED — see secret manager / VPS backend/.env>` |
+| `STRIPE_WEBHOOK_SECRET` | `<REDACTED — see secret manager / VPS backend/.env>` |
 | Webhook URL | `https://chabaqa.io/api/payment/webhook/stripe` |
 
 > Before real money: replace with `sk_live_...` and live `whsec_...` in `backend/.env`, then redeploy backend.
@@ -341,7 +345,7 @@ docker compose config >/dev/null && echo "✓ compose config OK"
 | Key | Value |
 |-----|-------|
 | Client ID | `946155038247-a12gnhogliomav60pegffq1qj23nkag6.apps.googleusercontent.com` |
-| Client secret | `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` |
+| Client secret | `<REDACTED — see secret manager / VPS backend/.env>` |
 | Callback (prod) | `https://chabaqa.io/api/auth/google/callback` |
 
 Ensure in [Google Cloud Console](https://console.cloud.google.com/) authorized redirect URIs include the callback above.
@@ -353,21 +357,21 @@ Ensure in [Google Cloud Console](https://console.cloud.google.com/) authorized r
 | `EMAIL_HOST` | `smtp.gmail.com` |
 | `EMAIL_PORT` | `587` |
 | `EMAIL_USER` | `louay.rjili@issatm.ucar.tn` |
-| `EMAIL_PASSWORD` | `nukeujipgserqjdx` |
+| `EMAIL_PASSWORD` | `<REDACTED — see secret manager / VPS backend/.env>` |
 | `EMAIL_FROM` | `noreply@chabaqa.io` |
 
 ### Web Push (VAPID)
 
 | Key | Value |
 |-----|-------|
-| `WEB_PUSH_PUBLIC_KEY` | `BI8jtDo3S8UZH87PTB3Mj_aYmprDy-6Wtz5cYmaPMQ5Szp3WiTimHxbCKR2aJSfSiw6dijAq_AlK3iCkKSopb_I` |
-| `WEB_PUSH_PRIVATE_KEY` | `hqhuZpbd5E61pt-HB-J55A4QFkSrnIWlG6v5VB0opXA` |
+| `WEB_PUSH_PUBLIC_KEY` | `<REDACTED — see secret manager / VPS backend/.env>` |
+| `WEB_PUSH_PRIVATE_KEY` | `<REDACTED — see secret manager / VPS backend/.env>` |
 
 ### Admin bootstrap
 
 | Key | Value |
 |-----|-------|
-| `ADMIN_BOOTSTRAP_KEY` | `1bdc28efc3a9587818d19584cc1a62a88d972a2515ab55c7a64b5e5b828efebb` |
+| `ADMIN_BOOTSTRAP_KEY` | `<REDACTED — see secret manager / VPS backend/.env>` |
 
 ---
 
@@ -398,8 +402,8 @@ What `deploy.sh` does:
 ```bash
 cd /home/ubuntu/chabaqa
 MEILI_HOST=http://127.0.0.1:7700 \
-MEILI_API_KEY=96ef479553141e82b864732bad5c22f718854e8f45ec999227147791149cfa4d \
-MONGO_URI="mongodb://127.0.0.1:27017/chabaqa_local?replicaSet=rs0" \
+MEILI_API_KEY=<REDACTED — see secret manager / VPS backend/.env>
+MONGO_URI=<REDACTED — see secret manager / VPS backend/.env>
 node scripts/sync-meilisearch-index.js
 ```
 
@@ -530,7 +534,7 @@ docker exec -i chabaqa-mongo mongorestore --archive --gzip --drop \
 | `FREE_MODE` | `true` | `false` |
 | `PLAN_ENFORCEMENT_MODE` | `false` | `true` |
 | `SERVER_URL` / `FRONTEND_URL` | localhost | `https://chabaqa.io` |
-| `MONGO_URI` | no replicaSet | `?replicaSet=rs0` |
+| `MONGO_URI` | `<REDACTED — see secret manager / VPS backend/.env>` | `?replicaSet=rs0` |
 | `REDIS_HOST` | `127.0.0.1` | `redis` (Docker service) |
 | `ENABLE_SWAGGER` | `true` | `false` |
 | `ADMIN_ALLOW_PASSWORD_ONLY_LOGIN` | `true` | `false` |
