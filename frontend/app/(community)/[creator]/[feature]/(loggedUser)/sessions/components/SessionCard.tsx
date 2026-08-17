@@ -348,8 +348,12 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg leading-tight">{session.title}</CardTitle>
-            <CardDescription className="mt-2 text-sm">{session.description}</CardDescription>
+            <CardTitle className="line-clamp-2 min-h-10 text-lg leading-tight">
+              {session.title}
+            </CardTitle>
+            <CardDescription className="mt-2 line-clamp-2 min-h-10 text-sm">
+              {session.description}
+            </CardDescription>
           </div>
           <Badge variant="secondary" className="bg-sessions-100 text-sessions-700 shrink-0 text-xs">
             {session.category}
