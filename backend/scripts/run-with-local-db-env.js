@@ -17,7 +17,25 @@ if (fs.existsSync(localEnvPath)) {
   dotenv.config({ path: localEnvPath, override: true, quiet: true });
 }
 
+const replaceHost = (value, serviceName) =>
+  typeof value === 'string'
+    ? value
+        .replace(`://${serviceName}:`, '://127.0.0.1:')
+        .replace(`@${serviceName}:`, '@127.0.0.1:')
+    : value;
+
+process.env.MONGO_URI = replaceHost(process.env.MONGO_URI, 'mongo');
+process.env.MONGODB_URI = replaceHost(process.env.MONGODB_URI, 'mongo');
+process.env.REDIS_URL = replaceHost(process.env.REDIS_URL, 'redis');
+process.env.SOCKET_IO_REDIS_URL = replaceHost(process.env.SOCKET_IO_REDIS_URL, 'redis');
+process.env.S3_ENDPOINT = replaceHost(process.env.S3_ENDPOINT, 'minio');
+
+if (process.env.REDIS_HOST === 'redis') process.env.REDIS_HOST = '127.0.0.1';
+if (process.env.CLAMAV_HOST === 'clamav') process.env.CLAMAV_HOST = '127.0.0.1';
+
 const [command, ...args] = process.argv.slice(2);
+const pathKey = Object.keys(process.env).find(key => key.toLowerCase() === 'path') || 'PATH';
+const localBinDir = path.join(rootDir, 'node_modules', '.bin');
 
 if (!command) {
   console.error(
@@ -28,7 +46,10 @@ if (!command) {
 
 const child = spawn(command, args, {
   stdio: 'inherit',
-  env: process.env,
+  env: {
+    ...process.env,
+    [pathKey]: `${localBinDir}${path.delimiter}${process.env[pathKey] || ''}`,
+  },
 });
 
 child.on('exit', (code, signal) => {

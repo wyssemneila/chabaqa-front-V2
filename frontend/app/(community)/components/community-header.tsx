@@ -311,7 +311,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
   )
   if (loading) {
     return (
-      <header className="community-mobile-header sticky top-0 z-50 w-full bg-[var(--nav-bg)] backdrop-blur-md border-b shadow-sm">
+      <header className="community-mobile-header sticky top-0 z-50 w-full border-b border-border/80 bg-[linear-gradient(90deg,var(--nav-bg),color-mix(in_srgb,var(--nav-bg)_88%,#8e78fb))] shadow-sm backdrop-blur-md">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -327,7 +327,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
     )
   }
   return (
-    <header className="community-mobile-header sticky top-0 z-50 w-full bg-[var(--nav-bg)] backdrop-blur-md border-b shadow-sm">
+    <header className="community-mobile-header sticky top-0 z-50 w-full border-b border-border/80 bg-[linear-gradient(90deg,var(--nav-bg),color-mix(in_srgb,var(--nav-bg)_88%,#8e78fb))] shadow-sm backdrop-blur-md">
       <div className="container mx-auto px-4">
         {/* Top Bar */}
         <div className="flex h-16 items-center justify-between">
@@ -362,7 +362,7 @@ export function CommunityHeader({ currentCommunity, creatorSlug }: CommunityHead
             <div className="hidden sm:block">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2 px-3 h-10">
+                  <Button variant="ghost" className="flex h-10 items-center space-x-2 rounded-xl px-3 hover:bg-background/70">
                     {community && (
                       <>
                         <CommunityLogo community={community} size="sm" />

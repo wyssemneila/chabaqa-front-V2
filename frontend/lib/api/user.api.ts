@@ -51,7 +51,7 @@ export async function getByHandle(handle: string): Promise<any | null> {
   const res = await authenticatedFetch(`${apiBase}/user/by-username/${encodeURIComponent(handle)}`, { method: "GET" })
   if (!res.ok) return null
   const json = await res.json().catch(() => null)
-  return json?.user || json?.data || null
+  return json?.success ? json.user || null : null
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<any> {

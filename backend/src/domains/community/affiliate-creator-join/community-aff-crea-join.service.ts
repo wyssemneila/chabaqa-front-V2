@@ -1034,10 +1034,10 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
   async getAllCommunities(): Promise<any[]> {
     try {
       const communities = await this.communityModel
-        .find({ isActive: true })
-        .populate('createur', 'name email profile_picture photo_profil avatar photo')
-        .populate('members', 'name email profile_picture photo_profil avatar photo')
-        .populate('admins', 'name email profile_picture photo_profil avatar photo')
+        .find({ isActive: true, isPrivate: { $ne: true } })
+        .populate('createur', 'name username profile_picture photo_profil avatar photo')
+        .populate('members', 'name username profile_picture photo_profil avatar photo')
+        .populate('admins', 'name username profile_picture photo_profil avatar photo')
         .sort({ createdAt: -1 })
         .exec();
 

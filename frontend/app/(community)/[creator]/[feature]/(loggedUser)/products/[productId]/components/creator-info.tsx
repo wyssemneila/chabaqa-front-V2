@@ -76,7 +76,7 @@ export default function CreatorInfo({ product }: CreatorInfoProps) {
 
   // Display values with fallbacks
   const displayName = creatorProfile?.name || product?.creator?.name || "Unknown Creator"
-  const displayAvatar = creatorProfile?.profile_picture || creatorProfile?.photo_profil || creatorProfile?.avatar || product?.creator?.avatar
+  const displayAvatar = creatorProfile?.avatar || product?.creator?.avatar
   const displayBio = creatorProfile?.bio || product?.creator?.bio
   const displayJoinDate = creatorProfile?.createdAt || product?.creator?.joinDate || product?.creator?.createdAt
   const creatorProfileHref = getUserProfileHref({

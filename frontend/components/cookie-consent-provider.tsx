@@ -90,7 +90,7 @@ export function CookieConsentProvider() {
 
   return (
     <CookieConsentContext.Provider value={contextValue}>
-      {isBannerVisible ? (
+      {isBannerVisible && !isPreferencesOpen ? (
         <CookieConsentBanner
           onAcceptAll={acceptAll}
           onRejectNonEssential={rejectNonEssential}

@@ -524,20 +524,9 @@ async function ExploreContent() {
       ),
     ])
 
-    // Helper to extract array from various response formats
-    const extractArray = (response: any): any[] => {
-      if (response?.data && Array.isArray(response.data)) return response.data
-      if (response?.data?.courses && Array.isArray(response.data.courses)) return response.data.courses
-      if (response?.data?.challenges && Array.isArray(response.data.challenges)) return response.data.challenges
-      if (response?.data?.products && Array.isArray(response.data.products)) return response.data.products
-      if (response?.data?.sessions && Array.isArray(response.data.sessions)) return response.data.sessions
-      if (response?.data?.events && Array.isArray(response.data.events)) return response.data.events
-      if (response?.data?.communities && Array.isArray(response.data.communities)) return response.data.communities
-      if (Array.isArray(response)) return response
-      if (response?.data?.data && Array.isArray(response.data.data)) return response.data.data
-      if (response?.data?.data?.courses && Array.isArray(response.data.data.courses)) return response.data.data.courses
-      if (response?.data?.data?.communities && Array.isArray(response.data.data.communities)) return response.data.data.communities
-      return []
+    const extractList = (response: any, key?: string): any[] => {
+      const source = key ? response?.[key] ?? response?.data?.[key] : response?.data
+      return Array.isArray(source) ? source : []
     }
 
     // Build a set of verified community slugs (admin-granted verification)
@@ -545,7 +534,7 @@ async function ExploreContent() {
 
     // Transform communities
     if (communitiesRes.status === 'fulfilled') {
-      const data = extractArray(communitiesRes.value)
+      const data = extractList(communitiesRes.value)
       for (const c of data) {
         const isV = Boolean((c as any).verified ?? (c as any).isVerified)
         if (isV) {
@@ -562,7 +551,7 @@ async function ExploreContent() {
 
     // Transform courses
     if (coursesRes.status === 'fulfilled') {
-      const data = extractArray(coursesRes.value)
+      const data = extractList(coursesRes.value, "courses")
       const courses = (await Promise.all(data.map(transformCourseToExplore))).map(c => ({
         ...c,
         verified: verifiedCommunitySlugs.has((c.communitySlug || '').toLowerCase()) || verifiedCommunitySlugs.has(c.communityId || ''),
@@ -573,7 +562,7 @@ async function ExploreContent() {
 
     // Transform challenges
     if (challengesRes.status === 'fulfilled') {
-      const data = extractArray(challengesRes.value)
+      const data = extractList(challengesRes.value, "challenges")
       const challenges = (await Promise.all(data.map(transformChallengeToExplore))).map(c => ({
         ...c,
         verified: verifiedCommunitySlugs.has((c.communitySlug || '').toLowerCase()) || verifiedCommunitySlugs.has(c.communityId || ''),
@@ -584,7 +573,7 @@ async function ExploreContent() {
 
     // Transform products
     if (productsRes.status === 'fulfilled') {
-      const data = extractArray(productsRes.value)
+      const data = extractList(productsRes.value, "products")
       const products = (await Promise.all(data.map(transformProductToExplore))).map(c => ({
         ...c,
         verified: verifiedCommunitySlugs.has((c.communitySlug || '').toLowerCase()) || verifiedCommunitySlugs.has(c.communityId || ''),
@@ -595,7 +584,7 @@ async function ExploreContent() {
 
     // Transform sessions
     if (sessionsRes.status === 'fulfilled') {
-      const data = extractArray(sessionsRes.value)
+      const data = extractList(sessionsRes.value, "sessions")
       const sessions = (await Promise.all(data.map(transformSessionToExplore))).map(c => ({
         ...c,
         verified: verifiedCommunitySlugs.has((c.communitySlug || '').toLowerCase()) || verifiedCommunitySlugs.has(c.communityId || ''),
@@ -606,7 +595,7 @@ async function ExploreContent() {
 
     // Transform events
     if (eventsRes.status === 'fulfilled') {
-      const data = extractArray(eventsRes.value)
+      const data = extractList(eventsRes.value, "events")
       const now = new Date()
       const events = (await Promise.all(
         data

@@ -76,7 +76,6 @@ export class UserController {
             _id: '64a1b2c3d4e5f6789abcdef0',
             name: 'John Doe',
             username: 'john-doe',
-            email: 'john@example.com',
             role: 'user',
             createdAt: '2023-07-01T10:00:00.000Z'
           }
@@ -329,7 +328,6 @@ export class UserController {
             _id: '64a1b2c3d4e5f6789abcdef0',
             name: 'John Doe',
             username: 'john-doe',
-            email: 'john@example.com',
             role: 'user',
             avatar: 'https://example.com/avatar.jpg',
             ville: 'Tunis',

@@ -1052,12 +1052,8 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
   // Get dynamic data based on user role
   // Get dynamic data based on current user
   const stats = getStatsForUser(currentUser, isCreator)
-  const displayAchievements = fetchedAchievements.length > 0
-    ? fetchedAchievements
-    : buildDerivedAchievements(currentUser, isCreator, { communities, courses, challenges, sessions, products })
-  const displayActivity = fetchedActivity.length > 0
-    ? fetchedActivity
-    : buildDerivedActivity(currentUser, { communities, courses, challenges, sessions, products })
+  const displayAchievements = fetchedAchievements
+  const displayActivity = fetchedActivity
   const totalLearningItems = courses.length + challenges.length
   const totalOffers = sessions.length + products.length
   const profileChecklist = [
@@ -1150,17 +1146,18 @@ function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePagePr
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[linear-gradient(180deg,rgba(142,120,251,0.10)_0,rgba(255,255,255,0)_24rem)] bg-background">
       <Header />
       <main className="w-full px-4 sm:px-8 md:px-12 lg:px-20 xl:px-40 pt-12 md:pt-16 lg:pt-20 pb-24">
         <div className="w-full max-w-7xl mx-auto flex flex-col gap-8">
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="flex-1 flex flex-col gap-6">
               {/* Header Card */}
-              <div className="border border-border-color rounded-xl p-6 bg-white shadow-subtle">
-                <div className="flex flex-col gap-6 @[520px]:flex-row @[520px]:justify-between @[520px]:items-center">
+              <div className="relative overflow-hidden rounded-2xl border border-border-color bg-white/90 p-6 shadow-subtle backdrop-blur-sm">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-[#8e78fb]/20 via-[#47c7ea]/10 to-transparent" />
+                <div className="relative flex flex-col gap-6 @[520px]:flex-row @[520px]:justify-between @[520px]:items-center">
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-24 w-24 sm:h-32 sm:w-32 flex-shrink-0"
+                    <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-24 w-24 sm:h-32 sm:w-32 flex-shrink-0 ring-4 ring-white shadow-lg"
                       style={{ backgroundImage: `url(${currentUser?.avatar || '/placeholder.svg'})` }} />
                     <div className="flex flex-col justify-center gap-1">
                       <p className="text-2xl sm:text-3xl font-bold leading-tight tracking-tight">{currentUser?.name}</p>
