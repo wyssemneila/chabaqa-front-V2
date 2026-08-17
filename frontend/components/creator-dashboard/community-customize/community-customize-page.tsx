@@ -1,34 +1,82 @@
-'use client'
+"use client";
 
-import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import DashSidebar from '@/components/creator-dashboard/DashSidebar'
-import DashTopbar from '@/components/creator-dashboard/DashTopbar'
-import { useDashPrefs } from '@/hooks/use-dash-prefs'
-import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
-import { communitiesApi } from '@/lib/api'
-import { communityPageContentApi } from '@/lib/api/community-page-content'
-import { mediaApi } from '@/lib/api/media.api'
-import { useToast } from '@/components/ui/use-toast'
-import { CommunityLandingExperience } from '@/components/community-landing-experience'
-import type { CommunityLandingState } from '@/lib/community-landing-state'
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import DashSidebar from "@/components/creator-dashboard/DashSidebar";
+import DashTopbar from "@/components/creator-dashboard/DashTopbar";
+import { useDashPrefs } from "@/hooks/use-dash-prefs";
+import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context";
+import { communitiesApi } from "@/lib/api";
+import { communityPageContentApi } from "@/lib/api/community-page-content";
+import { mediaApi } from "@/lib/api/media.api";
+import { useToast } from "@/components/ui/use-toast";
+import { CommunityLandingExperience } from "@/components/community-landing-experience";
+import type { CommunityLandingState } from "@/lib/community-landing-state";
 import {
-  GripVertical, Eye, EyeOff, ArrowUp, ArrowDown, ArrowLeft, Blocks, Type, Palette,
-  Monitor, Pencil, Tablet, Smartphone, Save, Rocket, Trash2, Sparkles,
-  Plus, ExternalLink, Video, ImageIcon, Upload,
-  Link2, Loader2, AlertTriangle, Info, GraduationCap, CircleUserRound,
-  MessageSquareQuote, BadgeDollarSign, CircleHelp, MousePointerClick, PanelBottom,
+  GripVertical,
+  Eye,
+  EyeOff,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  Blocks,
+  Type,
+  Palette,
+  Monitor,
+  Pencil,
+  Tablet,
+  Smartphone,
+  Save,
+  Rocket,
+  Trash2,
+  Sparkles,
+  Plus,
+  ExternalLink,
+  Video,
+  ImageIcon,
+  Upload,
+  Link2,
+  Loader2,
+  AlertTriangle,
+  Info,
+  GraduationCap,
+  CircleUserRound,
+  MessageSquareQuote,
+  BadgeDollarSign,
+  CircleHelp,
+  MousePointerClick,
+  PanelBottom,
   FileCode2,
-} from 'lucide-react'
+} from "lucide-react";
 import {
-  GF_URL, FONTS, stack, LANDING_DRAFT_KEY,
-  DEFAULT_BLOCKS, DEFAULT_MEDIA, DEFAULT_REVIEWS, DEFAULT_CONTENT,
-  DEFAULT_DESIGN, mediaThumb, type BlockDef, type BlockType,
-  type MediaItem, type Review, type LandingContent as Content,
-  type LandingDesign as Design, type Device,
-} from '@/components/creator-dashboard/landing-renderer'
+  GF_URL,
+  FONTS,
+  stack,
+  LANDING_DRAFT_KEY,
+  DEFAULT_BLOCKS,
+  DEFAULT_MEDIA,
+  DEFAULT_REVIEWS,
+  DEFAULT_CONTENT,
+  DEFAULT_DESIGN,
+  mediaThumb,
+  type BlockDef,
+  type BlockType,
+  type MediaItem,
+  type Review,
+  type LandingContent as Content,
+  type LandingDesign as Design,
+  type Device,
+} from "@/components/creator-dashboard/landing-renderer";
 
-const E = { bg: '#fff', card: '#f6f5fb', card2: '#efedf8', bd: '#eceaf4', t1: '#1a1730', t2: '#46426a', t3: '#9590b8' }
+const E = {
+  bg: "#fff",
+  card: "#f6f5fb",
+  card2: "#efedf8",
+  bd: "#eceaf4",
+  t1: "#1a1730",
+  t2: "#46426a",
+  t3: "#9590b8",
+};
 // Keep each page-builder section visually distinct. These are intentionally
 // separate from the icons rendered inside the public landing-page sections.
 const BLOCK_ICONS: Record<BlockType, React.ElementType> = {
@@ -43,100 +91,2101 @@ const BLOCK_ICONS: Record<BlockType, React.ElementType> = {
   cta: MousePointerClick,
   footer: PanelBottom,
   custom: FileCode2,
-}
+};
 
-type Props = { slug: string }
-type DraftCache = { blocks: BlockDef[]; reviews: Review[]; media: MediaItem[]; content: Content; design: Design }
+type Props = { slug: string };
+type DraftCache = {
+  blocks: BlockDef[];
+  reviews: Review[];
+  media: MediaItem[];
+  content: Content;
+  design: Design;
+};
 
 export function CommunityCustomizePage({ slug }: Props) {
-  const { lang } = useDashPrefs(); const isAr = lang === 'ar'; const t = (en: string, ar: string) => isAr ? ar : en
-  const { toast } = useToast(); const { setSelectedCommunityId, refreshCommunities } = useCreatorCommunity()
-  const [communityId, setCommunityId] = useState(''); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState('')
-  const [blocks, setBlocks] = useState<BlockDef[]>(DEFAULT_BLOCKS); const [reviews, setReviews] = useState(DEFAULT_REVIEWS); const [media, setMedia] = useState(DEFAULT_MEDIA)
-  const [tab, setTab] = useState<'blocks'|'content'|'design'>('blocks'); const [content, setContent] = useState<Content>({ ...DEFAULT_CONTENT, slug }); const [design, setDesign] = useState(DEFAULT_DESIGN)
-  const [device, setDevice] = useState<Device>('desktop'); const [selected, setSelected] = useState<string|null>('hero'); const [editing, setEditing] = useState<string|null>('hero')
-  const [activeMedia, setActiveMedia] = useState(''); const [dirty, setDirty] = useState(false); const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
-  const dragFrom = useRef<number|null>(null); const [dragOver, setDragOver] = useState<number|null>(null)
-  const accent = design.accent; const set = <K extends keyof Content>(k: K, v: Content[K]) => { setContent(c => ({ ...c, [k]: v })); setDirty(true) }; const setD = <K extends keyof Design>(k: K, v: Design[K]) => { setDesign(d => ({ ...d, [k]: v })); setDirty(true) }
+  const { lang } = useDashPrefs();
+  const isAr = lang === "ar";
+  const t = (en: string, ar: string) => (isAr ? ar : en);
+  const { toast } = useToast();
+  const { setSelectedCommunityId, refreshCommunities } = useCreatorCommunity();
+  const [communityId, setCommunityId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [blocks, setBlocks] = useState<BlockDef[]>(DEFAULT_BLOCKS);
+  const [reviews, setReviews] = useState(DEFAULT_REVIEWS);
+  const [media, setMedia] = useState(DEFAULT_MEDIA);
+  const [tab, setTab] = useState<"blocks" | "content" | "design">("blocks");
+  const [content, setContent] = useState<Content>({ ...DEFAULT_CONTENT, slug });
+  const [design, setDesign] = useState(DEFAULT_DESIGN);
+  const [device, setDevice] = useState<Device>("desktop");
+  const [selected, setSelected] = useState<string | null>("hero");
+  const [editing, setEditing] = useState<string | null>("hero");
+  const [activeMedia, setActiveMedia] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const dragFrom = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+  const accent = design.accent;
+  const set = <K extends keyof Content>(k: K, v: Content[K]) => {
+    setContent((c) => ({ ...c, [k]: v }));
+    setDirty(true);
+  };
+  const setD = <K extends keyof Design>(k: K, v: Design[K]) => {
+    setDesign((d) => ({ ...d, [k]: v }));
+    setDirty(true);
+  };
 
-  useEffect(() => { let live = true; void (async () => { try {
-    setLoading(true); const response = await communitiesApi.getBySlug(slug); const community: any = response.data || response; const id = String(community?._id || community?.id || ''); if (!live) return
-    setCommunityId(id); setSelectedCommunityId(id)
-    let pageContent: any = null; if (id) try { pageContent = await communityPageContentApi.getForEditing(id) } catch {}; if (pageContent?.updatedAt) setLastSavedAt(new Date(pageContent.updatedAt))
-    const settings: any = community.settings || {}; const hero = pageContent?.hero || {}; const overview = pageContent?.overview || {}; const testimonials = pageContent?.testimonials || {}; const cta = pageContent?.cta || {}
-    const savedBuilder: any = pageContent?.landingPage
-    const hasCanonicalLandingPage = Boolean(savedBuilder && Array.isArray(savedBuilder.blocks) && savedBuilder.content && savedBuilder.design)
-    if (hasCanonicalLandingPage) {
-      setBlocks(savedBuilder.blocks)
-      setReviews(Array.isArray(savedBuilder.reviews) ? savedBuilder.reviews : [])
-      setMedia(Array.isArray(savedBuilder.media) ? savedBuilder.media : [])
-      // A saved builder document is the source of truth. Do not overwrite its
-      // creator-entered values with profile/settings fallbacks on reload.
-      setContent(c => ({ ...c, ...savedBuilder.content }))
-      setDesign(d => ({ ...d, ...savedBuilder.design }))
-    } else {
-      setContent(c => ({ ...c, name: community.name || c.name, tagline: community.description || c.tagline, slug: community.slug || slug, logo: community.logo || community.logoUrl || settings.logo || '', heroTitle: hero.customTitle || community.name || c.heroTitle, heroDescription: hero.customSubtitle || community.longDescription || community.description || c.heroDescription, ctaPrimary: hero.ctaButtonText || c.ctaPrimary, price: String(community.price ?? community.fees_of_join ?? 0), currency: community.currency || 'TND', creatorName: community.createur?.name || community.creator?.name || c.creatorName, creatorBio: community.createur?.bio || community.creator?.bio || c.creatorBio, creatorImage: community.createur?.avatar || community.createur?.photo || community.creator?.avatar || community.creator?.photo || '', creatorInstagram: settings.socialLinks?.instagram || '', creatorLinkedin: settings.socialLinks?.linkedin || '', creatorTwitter: settings.socialLinks?.twitter || settings.socialLinks?.x || '', creatorWebsite: settings.socialLinks?.website || '', highlightsTitle: overview.title || c.highlightsTitle, highlightsDescription: overview.subtitle || c.highlightsDescription, testimonialsTitle: testimonials.title || c.testimonialsTitle, ctaTitle: cta.title || c.ctaTitle, ctaDescription: cta.subtitle || c.ctaDescription }))
-      setDesign(d => ({ ...d, accent: settings.primaryColor || d.accent, accent2: settings.secondaryColor || d.accent2, headingFont: settings.headingFont || settings.fontFamily || d.headingFont, bodyFont: settings.bodyFont || settings.fontFamily || d.bodyFont, radius: Number(settings.borderRadius ?? d.radius), pill: Number(settings.borderRadius ?? d.radius) > 20, showProducts: settings.showProducts !== false, altSections: settings.backgroundStyle !== 'solid' }))
-      const loadedMedia: MediaItem[] = []; if (hero.customBanner || community.coverImage) loadedMedia.push({ id: 'hero-image', type: 'image', label: 'Hero image', src: hero.customBanner || community.coverImage }); if (settings.videoUrl) loadedMedia.push({ id: 'hero-video', type: 'video', label: 'Intro video', url: settings.videoUrl }); if (Array.isArray(settings.gallery)) settings.gallery.forEach((src: string, i: number) => loadedMedia.push({ id: `gallery-${i}`, type: 'image', label: `Gallery ${i + 1}`, src })); if (loadedMedia.length) setMedia(loadedMedia)
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        setLoading(true);
+        const response = await communitiesApi.getBySlug(slug);
+        const community: any = response.data || response;
+        const id = String(community?._id || community?.id || "");
+        if (!live) return;
+        setCommunityId(id);
+        setSelectedCommunityId(id);
+        let pageContent: any = null;
+        if (id)
+          try {
+            pageContent = await communityPageContentApi.getForEditing(id);
+          } catch {}
+        if (pageContent?.updatedAt)
+          setLastSavedAt(new Date(pageContent.updatedAt));
+        const settings: any = community.settings || {};
+        const hero = pageContent?.hero || {};
+        const overview = pageContent?.overview || {};
+        const testimonials = pageContent?.testimonials || {};
+        const cta = pageContent?.cta || {};
+        const savedBuilder: any = pageContent?.landingPage;
+        const hasCanonicalLandingPage = Boolean(
+          savedBuilder &&
+          Array.isArray(savedBuilder.blocks) &&
+          savedBuilder.content &&
+          savedBuilder.design,
+        );
+        if (hasCanonicalLandingPage) {
+          setBlocks(savedBuilder.blocks);
+          setReviews(
+            Array.isArray(savedBuilder.reviews) ? savedBuilder.reviews : [],
+          );
+          setMedia(Array.isArray(savedBuilder.media) ? savedBuilder.media : []);
+          // A saved builder document is the source of truth. Do not overwrite its
+          // creator-entered values with profile/settings fallbacks on reload.
+          setContent((c) => ({ ...c, ...savedBuilder.content }));
+          setDesign((d) => ({ ...d, ...savedBuilder.design }));
+        } else {
+          setContent((c) => ({
+            ...c,
+            name: community.name || c.name,
+            tagline: community.description || c.tagline,
+            slug: community.slug || slug,
+            logo: community.logo || community.logoUrl || settings.logo || "",
+            heroTitle: hero.customTitle || community.name || c.heroTitle,
+            heroDescription:
+              hero.customSubtitle ||
+              community.longDescription ||
+              community.description ||
+              c.heroDescription,
+            ctaPrimary: hero.ctaButtonText || c.ctaPrimary,
+            price: String(community.price ?? community.fees_of_join ?? 0),
+            currency: community.currency || "TND",
+            creatorName:
+              community.createur?.name ||
+              community.creator?.name ||
+              c.creatorName,
+            creatorBio:
+              community.createur?.bio || community.creator?.bio || c.creatorBio,
+            creatorImage:
+              community.createur?.avatar ||
+              community.createur?.photo ||
+              community.creator?.avatar ||
+              community.creator?.photo ||
+              "",
+            creatorInstagram: settings.socialLinks?.instagram || "",
+            creatorLinkedin: settings.socialLinks?.linkedin || "",
+            creatorTwitter:
+              settings.socialLinks?.twitter || settings.socialLinks?.x || "",
+            creatorWebsite: settings.socialLinks?.website || "",
+            highlightsTitle: overview.title || c.highlightsTitle,
+            highlightsDescription: overview.subtitle || c.highlightsDescription,
+            testimonialsTitle: testimonials.title || c.testimonialsTitle,
+            ctaTitle: cta.title || c.ctaTitle,
+            ctaDescription: cta.subtitle || c.ctaDescription,
+          }));
+          setDesign((d) => ({
+            ...d,
+            accent: settings.primaryColor || d.accent,
+            accent2: settings.secondaryColor || d.accent2,
+            headingFont:
+              settings.headingFont || settings.fontFamily || d.headingFont,
+            bodyFont: settings.bodyFont || settings.fontFamily || d.bodyFont,
+            radius: Number(settings.borderRadius ?? d.radius),
+            pill: Number(settings.borderRadius ?? d.radius) > 20,
+            showProducts: settings.showProducts !== false,
+            altSections: settings.backgroundStyle !== "solid",
+          }));
+          const loadedMedia: MediaItem[] = [];
+          if (hero.customBanner || community.coverImage)
+            loadedMedia.push({
+              id: "hero-image",
+              type: "image",
+              label: "Hero image",
+              src: hero.customBanner || community.coverImage,
+            });
+          if (settings.videoUrl)
+            loadedMedia.push({
+              id: "hero-video",
+              type: "video",
+              label: "Intro video",
+              url: settings.videoUrl,
+            });
+          if (Array.isArray(settings.gallery))
+            settings.gallery.forEach((src: string, i: number) =>
+              loadedMedia.push({
+                id: `gallery-${i}`,
+                type: "image",
+                label: `Gallery ${i + 1}`,
+                src,
+              }),
+            );
+          if (loadedMedia.length) setMedia(loadedMedia);
+        }
+        setDirty(false);
+      } catch (e: any) {
+        if (live) setError(e?.message || "Failed to load customization");
+      } finally {
+        if (live) setLoading(false);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [slug, setSelectedCommunityId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        `${LANDING_DRAFT_KEY}:${slug}`,
+        JSON.stringify({
+          blocks,
+          reviews,
+          media,
+          content,
+          design,
+        } satisfies DraftCache),
+      );
+    } catch {}
+  }, [blocks, reviews, media, content, design, slug]);
+  const patchBlock = (id: string, p: Partial<BlockDef>) => {
+    setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, ...p } : b)));
+    setDirty(true);
+  };
+  const toggleBlock = (id: string) =>
+    patchBlock(id, { visible: !blocks.find((b) => b.id === id)?.visible });
+  const removeBlock = (id: string) => {
+    setBlocks((bs) => bs.filter((b) => b.id !== id));
+    if (selected === id) setSelected(null);
+    if (editing === id) setEditing(null);
+    setDirty(true);
+  };
+  const moveBlock = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= blocks.length) return;
+    setBlocks((bs) => {
+      const n = [...bs];
+      [n[i], n[j]] = [n[j], n[i]];
+      return n;
+    });
+    setDirty(true);
+  };
+  const addCustom = () => {
+    const id = `custom-${Date.now()}`;
+    setBlocks((bs) => [
+      ...bs,
+      {
+        id,
+        type: "custom",
+        label: { en: "Custom Block", ar: "قسم مخصص" },
+        desc: { en: "Your own HTML", ar: "HTML خاص بك" },
+        tint: "#14b8a6",
+        visible: true,
+        code: '<div style="padding:40px;text-align:center"><h2>Your custom block</h2><p>Add your content here.</p></div>',
+      },
+    ]);
+    setSelected(id);
+    setEditing(id);
+    setTab("content");
+    setDirty(true);
+  };
+  const drop = (e: React.DragEvent, i: number) => {
+    e.preventDefault();
+    const from =
+      dragFrom.current ?? Number(e.dataTransfer.getData("text/plain"));
+    setDragOver(null);
+    dragFrom.current = null;
+    if (!Number.isFinite(from) || from === i) return;
+    setBlocks((bs) => {
+      const n = [...bs];
+      const [m] = n.splice(from, 1);
+      n.splice(i, 0, m);
+      return n;
+    });
+    setDirty(true);
+  };
+
+  const save = async () => {
+    if (!communityId) return;
+    setSaving(true);
+    setError("");
+    try {
+      const heroMedia =
+        media.find((item) => item.id === activeMedia) || media[0];
+      const banner =
+        heroMedia?.type === "image"
+          ? heroMedia.src || ""
+          : media.find((m) => m.type === "image")?.src || "";
+      await communitiesApi.update(
+        communityId,
+        {
+          name: content.name.trim(),
+          description: content.tagline.trim(),
+          longDescription: content.heroDescription.trim(),
+          logo: content.logo,
+          price: Number(content.price) || 0,
+          priceType: Number(content.price) > 0 ? "monthly" : "free",
+        },
+        slug,
+      );
+      await communitiesApi.updateSettings(communityId, {
+        primaryColor: design.accent,
+        secondaryColor: design.accent2,
+        accentColor: design.accent2,
+        logo: content.logo,
+        socialLinks: {
+          instagram: content.creatorInstagram,
+          linkedin: content.creatorLinkedin,
+          twitter: content.creatorTwitter,
+          website: content.creatorWebsite,
+        },
+        fontFamily: design.bodyFont,
+        headingFont: design.headingFont,
+        bodyFont: design.bodyFont,
+        borderRadius: design.radius,
+        backgroundStyle:
+          design.bg === "white"
+            ? "solid"
+            : design.bg === "tint"
+              ? "soft"
+              : "gradient",
+        heroBackground: banner,
+        videoUrl: media.find((m) => m.type === "video")?.url || "",
+        gallery: media
+          .filter((m) => m.type === "image" && m.src)
+          .map((m) => m.src!),
+        showHero: blocks.find((b) => b.type === "hero")?.visible !== false,
+        showFeatures:
+          blocks.find((b) => b.type === "highlights")?.visible !== false,
+        showBenefits:
+          blocks.find((b) => b.type === "about" || b.type === "curriculum")
+            ?.visible !== false,
+        showTestimonials:
+          blocks.find((b) => b.type === "testimonials")?.visible !== false,
+        showFAQ: blocks.find((b) => b.type === "faq")?.visible !== false,
+      } as any);
+      await communityPageContentApi.saveAndPublish(communityId, {
+        hero: {
+          customTitle: content.heroTitle,
+          customSubtitle: content.heroDescription,
+          customBanner: banner,
+          ctaButtonText: content.ctaPrimary,
+          showMemberCount: true,
+          showRating: true,
+          showCreator: true,
+        },
+        overview: {
+          title: content.highlightsTitle,
+          subtitle: content.highlightsDescription,
+          visible:
+            blocks.find((b) => b.type === "highlights")?.visible !== false,
+          cards: content.highlights.map((title, i) => ({
+            id: `highlight-${i}`,
+            title,
+            description: `Learn how ${title.toLowerCase()} helps members make meaningful progress.`,
+            icon: "Sparkles",
+            iconColor: design.accent,
+            order: i,
+            visible: true,
+          })),
+        },
+        benefits: {
+          titlePrefix: "Why join",
+          titleSuffix: content.name,
+          subtitle: content.aboutDescription,
+          visible: blocks.find((b) => b.type === "about")?.visible !== false,
+          ctaTitle: content.ctaTitle,
+          ctaSubtitle: content.ctaDescription,
+          benefits: content.curriculum.map((title, i) => ({
+            id: `benefit-${i}`,
+            title,
+            description: `A practical step for ${title.toLowerCase()}.`,
+            icon: "CheckCircle",
+            iconColor: design.accent2,
+            order: i,
+            visible: true,
+          })),
+        },
+        testimonials: {
+          title: content.testimonialsTitle,
+          subtitle: "",
+          visible:
+            blocks.find((b) => b.type === "testimonials")?.visible !== false,
+          showRatings: true,
+          testimonials: reviews.map((r, i) => ({
+            id: r.id,
+            name: r.name,
+            role: "Member",
+            content: r.text,
+            rating: r.rating,
+            avatar:
+              r.image ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(r.name)}&background=${encodeURIComponent(design.accent.slice(1))}&color=ffffff`,
+            order: i,
+            visible: true,
+          })),
+        },
+        cta: {
+          title: content.ctaTitle,
+          subtitle: content.ctaDescription,
+          buttonText: content.ctaPrimary,
+          visible: blocks.find((b) => b.type === "cta")?.visible !== false,
+          customBackground: undefined,
+        },
+        landingPage: {
+          schemaVersion: 1,
+          blocks,
+          reviews,
+          media,
+          content,
+          design,
+        },
+      } as any);
+      await refreshCommunities().catch(() => undefined);
+      setLastSavedAt(new Date());
+      setDirty(false);
+      toast({
+        title: "Changes are live",
+        description: "Your community landing page is up to date.",
+      });
+    } catch (e: any) {
+      setError(e?.message || "Unable to save");
+      toast({
+        title: "Save failed",
+        description: e?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
-    setDirty(false)
-  } catch (e: any) { if (live) setError(e?.message || 'Failed to load customization') } finally { if (live) setLoading(false) } })(); return () => { live = false } }, [slug, setSelectedCommunityId])
+  };
 
-  useEffect(() => { try { localStorage.setItem(`${LANDING_DRAFT_KEY}:${slug}`, JSON.stringify({ blocks, reviews, media, content, design } satisfies DraftCache)) } catch {} }, [blocks, reviews, media, content, design, slug])
-  const patchBlock = (id: string, p: Partial<BlockDef>) => { setBlocks(bs => bs.map(b => b.id === id ? { ...b, ...p } : b)); setDirty(true) }
-  const toggleBlock = (id: string) => patchBlock(id, { visible: !blocks.find(b => b.id === id)?.visible })
-  const removeBlock = (id: string) => { setBlocks(bs => bs.filter(b => b.id !== id)); if (selected === id) setSelected(null); if (editing === id) setEditing(null); setDirty(true) }
-  const moveBlock = (i: number, dir: -1|1) => { const j = i + dir; if (j < 0 || j >= blocks.length) return; setBlocks(bs => { const n = [...bs]; [n[i], n[j]] = [n[j], n[i]]; return n }); setDirty(true) }
-  const addCustom = () => { const id = `custom-${Date.now()}`; setBlocks(bs => [...bs, { id, type:'custom', label:{en:'Custom Block',ar:'قسم مخصص'}, desc:{en:'Your own HTML',ar:'HTML خاص بك'}, tint:'#14b8a6', visible:true, code:'<div style="padding:40px;text-align:center"><h2>Your custom block</h2><p>Add your content here.</p></div>' }]); setSelected(id); setEditing(id); setTab('content'); setDirty(true) }
-  const drop = (e: React.DragEvent, i: number) => { e.preventDefault(); const from = dragFrom.current ?? Number(e.dataTransfer.getData('text/plain')); setDragOver(null); dragFrom.current = null; if (!Number.isFinite(from) || from === i) return; setBlocks(bs => { const n=[...bs]; const [m]=n.splice(from,1); n.splice(i,0,m); return n }); setDirty(true) }
+  const uploadMedia = async (file: File, mediaId: string) => {
+    if (!communityId) return;
+    try {
+      const asset = await mediaApi.uploadSmart(file, {
+        purpose:
+          mediaId === "__logo"
+            ? "community_logo"
+            : mediaId === "__creator"
+              ? "generic"
+              : "community_cover",
+        entityType: "community",
+        entityId: communityId,
+        visibility: "public",
+      });
+      if (mediaId === "__logo")
+        setContent((current) => ({ ...current, logo: asset.url }));
+      else if (mediaId === "__creator")
+        setContent((current) => ({ ...current, creatorImage: asset.url }));
+      else
+        setMedia((ms) =>
+          ms.map((m) =>
+            m.id === mediaId ? { ...m, src: asset.url, type: "image" } : m,
+          ),
+        );
+      setDirty(true);
+    } catch (e: any) {
+      toast({
+        title: "Upload failed",
+        description: e?.message || "Try another file",
+        variant: "destructive",
+      });
+    }
+  };
+  const frameWidth =
+    device === "mobile" ? 400 : device === "tablet" ? 760 : 1040;
+  const editBlock = blocks.find((b) => b.id === editing) || null;
 
-  const save = async () => { if (!communityId) return; setSaving(true); setError(''); try {
-    const heroMedia = media.find((item) => item.id === activeMedia) || media[0]; const banner = heroMedia?.type === 'image' ? heroMedia.src || '' : media.find(m => m.type === 'image')?.src || ''
-    await communitiesApi.update(communityId, { name: content.name.trim(), description: content.tagline.trim(), longDescription: content.heroDescription.trim(), logo: content.logo, price: Number(content.price) || 0, priceType: Number(content.price) > 0 ? 'monthly' : 'free' }, slug)
-    await communitiesApi.updateSettings(communityId, { primaryColor: design.accent, secondaryColor: design.accent2, accentColor: design.accent2, logo: content.logo, socialLinks: { instagram: content.creatorInstagram, linkedin: content.creatorLinkedin, twitter: content.creatorTwitter, website: content.creatorWebsite }, fontFamily: design.bodyFont, headingFont: design.headingFont, bodyFont: design.bodyFont, borderRadius: design.radius, backgroundStyle: design.bg === 'white' ? 'solid' : design.bg === 'tint' ? 'soft' : 'gradient', heroBackground: banner, videoUrl: media.find(m => m.type === 'video')?.url || '', gallery: media.filter(m => m.type === 'image' && m.src).map(m => m.src!), showHero: blocks.find(b => b.type === 'hero')?.visible !== false, showFeatures: blocks.find(b => b.type === 'highlights')?.visible !== false, showBenefits: blocks.find(b => b.type === 'about' || b.type === 'curriculum')?.visible !== false, showTestimonials: blocks.find(b => b.type === 'testimonials')?.visible !== false, showFAQ: blocks.find(b => b.type === 'faq')?.visible !== false } as any)
-    await communityPageContentApi.saveAndPublish(communityId, { hero:{ customTitle:content.heroTitle, customSubtitle:content.heroDescription, customBanner:banner, ctaButtonText:content.ctaPrimary, showMemberCount:true, showRating:true, showCreator:true }, overview:{ title:content.highlightsTitle, subtitle:content.highlightsDescription, visible:blocks.find(b=>b.type==='highlights')?.visible!==false, cards:content.highlights.map((title,i)=>({id:`highlight-${i}`,title,description:`Learn how ${title.toLowerCase()} helps members make meaningful progress.`,icon:'Sparkles',iconColor:design.accent,order:i,visible:true})) }, benefits:{ titlePrefix:'Why join',titleSuffix:content.name,subtitle:content.aboutDescription,visible:blocks.find(b=>b.type==='about')?.visible!==false,ctaTitle:content.ctaTitle,ctaSubtitle:content.ctaDescription,benefits:content.curriculum.map((title,i)=>({id:`benefit-${i}`,title,description:`A practical step for ${title.toLowerCase()}.`,icon:'CheckCircle',iconColor:design.accent2,order:i,visible:true})) }, testimonials:{ title:content.testimonialsTitle,subtitle:'',visible:blocks.find(b=>b.type==='testimonials')?.visible!==false,showRatings:true,testimonials:reviews.map((r,i)=>({id:r.id,name:r.name,role:'Member',content:r.text,rating:r.rating,avatar:r.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.name)}&background=${encodeURIComponent(design.accent.slice(1))}&color=ffffff`,order:i,visible:true})) }, cta:{ title:content.ctaTitle,subtitle:content.ctaDescription,buttonText:content.ctaPrimary,visible:blocks.find(b=>b.type==='cta')?.visible!==false,customBackground: undefined }, landingPage:{ schemaVersion:1, blocks, reviews, media, content, design } } as any)
-    await refreshCommunities().catch(()=>undefined); setLastSavedAt(new Date()); setDirty(false); toast({ title: 'Changes are live', description: 'Your community landing page is up to date.' })
-  } catch (e:any) { setError(e?.message || 'Unable to save'); toast({ title:'Save failed', description:e?.message || 'Please try again.', variant:'destructive' }) } finally { setSaving(false) } }
-
-  const uploadMedia = async (file: File, mediaId: string) => { if (!communityId) return; try { const asset = await mediaApi.uploadSmart(file,{ purpose:mediaId === '__logo' ? 'community_logo' : mediaId === '__creator' ? 'generic' : 'community_cover',entityType:'community',entityId:communityId,visibility:'public' }); if (mediaId === '__logo') setContent(current => ({ ...current, logo: asset.url })); else if (mediaId === '__creator') setContent(current => ({ ...current, creatorImage: asset.url })); else setMedia(ms=>ms.map(m=>m.id===mediaId?{...m,src:asset.url,type:'image'}:m)); setDirty(true) } catch(e:any){ toast({title:'Upload failed',description:e?.message||'Try another file',variant:'destructive'}) } }
-  const frameWidth = device === 'mobile' ? 400 : device === 'tablet' ? 760 : 1040; const editBlock = blocks.find(b=>b.id===editing)||null
-
-  if (loading) return <div className="min-h-screen bg-slate-50"><DashSidebar/><div className="md:pl-[220px]"><DashTopbar title="Branding" subtitle="Loading your page builder…"/><div className="grid place-items-center h-[70vh]"><Loader2 className="h-8 w-8 animate-spin text-violet-600"/></div></div></div>
-  return <><link rel="stylesheet" href={GF_URL}/><style>{`.bld-scroll::-webkit-scrollbar,.prev-scroll::-webkit-scrollbar{width:6px}.bld-scroll::-webkit-scrollbar-thumb{background:#dcd8ec;border-radius:10px}.prev-scroll::-webkit-scrollbar-thumb{background:#cdd2dc;border-radius:10px}`}</style>
-    <div className="flex h-screen overflow-hidden bg-slate-50"><DashSidebar/><div className="md:ml-[220px] flex h-screen flex-1 flex-col overflow-hidden"><DashTopbar title={t('Branding','الهوية')} subtitle={t('Design your community landing page','صمّم صفحة هبوط مجتمعك')}/>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        <aside className="flex h-[48vh] w-full shrink-0 flex-col overflow-hidden border-r lg:h-full lg:w-[310px]" style={{background:E.bg,borderColor:E.bd}} dir={isAr?'rtl':'ltr'}>
-          <div className="flex items-center gap-2.5 border-b px-4 py-3" style={{borderColor:E.bd}}><div className="grid h-8 w-8 place-items-center rounded-xl text-white" style={{background:`linear-gradient(135deg,${design.accent},${design.accent2})`}}><Palette className="h-4 w-4"/></div><div className="min-w-0 flex-1"><p className="text-[13px] font-bold" style={{color:E.t1}}>Page Builder</p><p className="truncate text-[10px]" style={{color:E.t3}}>chabaqa.io/community/{content.slug}</p></div>{dirty&&<span className="h-2 w-2 rounded-full bg-amber-400" title="Unsaved changes"/>}</div>
-          <div className="px-3 pb-3 pt-4"><Link href={`/community/${encodeURIComponent(content.slug)}`} target="_blank" className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12px] font-bold" style={{background:`${accent}12`,color:accent,border:`1.5px solid ${accent}55`}}><ExternalLink className="h-3.5 w-3.5"/>Preview live page</Link></div>
-
-          <div className="mx-3 mb-2 flex gap-1 rounded-xl border border-slate-100 bg-slate-50 p-1.5" style={{borderColor:E.bd}}>{([{id:'blocks',Icon:Blocks},{id:'content',Icon:Type},{id:'design',Icon:Palette}] as const).map(x=><button key={x.id} onClick={()=>setTab(x.id)} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-semibold" style={{color:tab===x.id?'#fff':E.t2,background:tab===x.id?accent:'transparent'}}><x.Icon className="h-3.5 w-3.5"/>{x.id[0].toUpperCase()+x.id.slice(1)}</button>)}</div>
-          <div className="bld-scroll min-h-0 flex-1 overflow-y-auto">
-            {error&&<div className="m-3 flex gap-2 rounded-xl bg-red-50 p-3 text-xs text-red-700"><AlertTriangle className="h-4 w-4 shrink-0"/>{error}</div>}
-            {tab==='blocks'&&<BlockList blocks={blocks} selected={selected} dragOver={dragOver} accent={accent} lang={lang} setSelected={setSelected} setEditing={setEditing} setTab={setTab} toggle={toggleBlock} move={moveBlock} remove={removeBlock} add={addCustom} dragFrom={dragFrom} setDragOver={setDragOver} drop={drop}/>} 
-            {tab==='content'&&(editBlock?<BlockEditor block={editBlock} onBack={()=>setEditing(null)} patch={patchBlock} remove={removeBlock} content={content} set={set} media={media} setMedia={setMedia} reviews={reviews} setReviews={setReviews} uploadMedia={uploadMedia} accent={accent}/>:<GeneralContent content={content} set={set} accent={accent} uploadMedia={uploadMedia}/>)}
-            {tab==='design'&&<DesignEditor design={design} setD={setD} setDesign={setDesign} device={device} setDevice={setDevice} accent={accent}/>}
+  if (loading)
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <DashSidebar />
+        <div className="md:pl-[220px]">
+          <DashTopbar title="Branding" subtitle="Loading your page builder…" />
+          <div className="grid place-items-center h-[70vh]">
+            <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
           </div>
-          <div className="border-t p-3" style={{borderColor:E.bd}}><div className="mb-2 flex items-center justify-between gap-2 px-1 text-[10px] font-medium"><span className="flex items-center gap-1.5" style={{color:dirty?'#b45309':'#15803d'}}><i className="h-2 w-2 rounded-full" style={{background:dirty?'#f59e0b':'#22c55e'}}/>{dirty?'Unsaved changes':'Saved · live for visitors'}</span><span style={{color:E.t3}}>{lastSavedAt?`Last saved ${lastSavedAt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`:'Not saved yet'}</span></div><button disabled={saving||!dirty} onClick={()=>void save()} className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" style={{background:`linear-gradient(135deg,${design.accent},${design.accent2})`}}>{saving?<Loader2 className="h-3.5 w-3.5 animate-spin"/>:<Save className="h-3.5 w-3.5"/>}{saving?'Saving changes…':dirty?'Save changes':'All changes saved'}</button></div>
-        </aside>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#edeef2]"><div className="flex h-11 items-center justify-between border-b bg-[#e3e2ea] px-4"><div className="flex items-center gap-2"><div className="flex gap-2"><i className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]"/><i className="h-2.5 w-2.5 rounded-full bg-[#febc2e]"/><i className="h-2.5 w-2.5 rounded-full bg-[#28c840]"/></div><span className="ml-2 text-[10px] font-medium" style={{color:dirty?'#b45309':'#15803d'}}>{dirty?'Save to update live preview':'Live visitor view'}</span></div><div className="max-w-[340px] truncate rounded-md border bg-white px-3 py-1 font-mono text-[11px] text-[#8a86a0]">chabaqa.io/community/{content.slug}</div><div className="flex gap-1">{([{id:'desktop',Icon:Monitor},{id:'tablet',Icon:Tablet},{id:'mobile',Icon:Smartphone}] as const).map(d=><button key={d.id} onClick={()=>setDevice(d.id)} aria-label={`${d.id} preview`} className="grid h-6 w-7 place-items-center rounded-md" style={{background:device===d.id?'#fff':'transparent',color:device===d.id?accent:'#9a97ad'}}><d.Icon className="h-3.5 w-3.5"/></button>)}</div></div>
-          <div className="prev-scroll flex min-h-0 flex-1 justify-center overflow-y-auto p-3 sm:p-6"><div className="h-fit w-full overflow-hidden border bg-white transition-all duration-300" style={{maxWidth:frameWidth,borderRadius:16,boxShadow:'0 10px 44px rgba(26,23,48,.12)',borderColor:'#e4e2ef'}}><CommunityLandingExperience state={{schemaVersion:1,blocks,content,design,media,reviews} satisfies CommunityLandingState} device={device} builderMode selectedBlock={selected} language={lang}/></div></div>
         </div>
-      </div></div></div></>
+      </div>
+    );
+  return (
+    <>
+      <link rel="stylesheet" href={GF_URL} />
+      <style>{`.bld-scroll::-webkit-scrollbar,.prev-scroll::-webkit-scrollbar{width:6px}.bld-scroll::-webkit-scrollbar-thumb{background:#dcd8ec;border-radius:10px}.prev-scroll::-webkit-scrollbar-thumb{background:#cdd2dc;border-radius:10px}`}</style>
+      <div className="flex h-screen overflow-hidden bg-slate-50">
+        <DashSidebar />
+        <div className="md:ml-[220px] flex h-screen flex-1 flex-col overflow-hidden">
+          <DashTopbar
+            title={t("Branding", "الهوية")}
+            subtitle={t(
+              "Design your community landing page",
+              "صمّم صفحة هبوط مجتمعك",
+            )}
+          />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+            <aside
+              className="flex h-[48vh] w-full shrink-0 flex-col overflow-hidden border-r lg:h-full lg:w-[310px]"
+              style={{ background: E.bg, borderColor: E.bd }}
+              dir={isAr ? "rtl" : "ltr"}
+            >
+              <div
+                className="flex items-center gap-2.5 border-b px-4 py-3"
+                style={{ borderColor: E.bd }}
+              >
+                <div
+                  className="grid h-8 w-8 place-items-center rounded-xl text-white"
+                  style={{
+                    background: `linear-gradient(135deg,${design.accent},${design.accent2})`,
+                  }}
+                >
+                  <Palette className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-bold" style={{ color: E.t1 }}>
+                    Page Builder
+                  </p>
+                  <p className="truncate text-[10px]" style={{ color: E.t3 }}>
+                    chabaqa.io/community/{content.slug}
+                  </p>
+                </div>
+                {dirty && (
+                  <span
+                    className="h-2 w-2 rounded-full bg-amber-400"
+                    title="Unsaved changes"
+                  />
+                )}
+              </div>
+              <div className="px-3 pb-3 pt-4">
+                <Link
+                  href={`/community/${encodeURIComponent(content.slug)}`}
+                  target="_blank"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12px] font-bold"
+                  style={{
+                    background: `${accent}12`,
+                    color: accent,
+                    border: `1.5px solid ${accent}55`,
+                  }}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Preview live page
+                </Link>
+              </div>
+
+              <div
+                className="mx-3 mb-2 flex gap-1 rounded-xl border border-slate-100 bg-slate-50 p-1.5"
+                style={{ borderColor: E.bd }}
+              >
+                {(
+                  [
+                    { id: "blocks", Icon: Blocks },
+                    { id: "content", Icon: Type },
+                    { id: "design", Icon: Palette },
+                  ] as const
+                ).map((x) => (
+                  <button
+                    key={x.id}
+                    onClick={() => setTab(x.id)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-semibold"
+                    style={{
+                      color: tab === x.id ? "#fff" : E.t2,
+                      background: tab === x.id ? accent : "transparent",
+                    }}
+                  >
+                    <x.Icon className="h-3.5 w-3.5" />
+                    {x.id[0].toUpperCase() + x.id.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <div className="bld-scroll min-h-0 flex-1 overflow-y-auto">
+                {error && (
+                  <div className="m-3 flex gap-2 rounded-xl bg-red-50 p-3 text-xs text-red-700">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    {error}
+                  </div>
+                )}
+                {tab === "blocks" && (
+                  <BlockList
+                    blocks={blocks}
+                    selected={selected}
+                    dragOver={dragOver}
+                    accent={accent}
+                    lang={lang}
+                    setSelected={setSelected}
+                    setEditing={setEditing}
+                    setTab={setTab}
+                    toggle={toggleBlock}
+                    move={moveBlock}
+                    remove={removeBlock}
+                    add={addCustom}
+                    dragFrom={dragFrom}
+                    setDragOver={setDragOver}
+                    drop={drop}
+                  />
+                )}
+                {tab === "content" &&
+                  (editBlock ? (
+                    <BlockEditor
+                      block={editBlock}
+                      onBack={() => setEditing(null)}
+                      patch={patchBlock}
+                      remove={removeBlock}
+                      content={content}
+                      set={set}
+                      media={media}
+                      setMedia={setMedia}
+                      reviews={reviews}
+                      setReviews={setReviews}
+                      uploadMedia={uploadMedia}
+                      accent={accent}
+                    />
+                  ) : (
+                    <GeneralContent
+                      content={content}
+                      set={set}
+                      accent={accent}
+                      uploadMedia={uploadMedia}
+                    />
+                  ))}
+                {tab === "design" && (
+                  <DesignEditor
+                    design={design}
+                    setD={setD}
+                    setDesign={setDesign}
+                    device={device}
+                    setDevice={setDevice}
+                    accent={accent}
+                  />
+                )}
+              </div>
+              <div className="border-t p-3" style={{ borderColor: E.bd }}>
+                <div className="mb-2 flex items-center justify-between gap-2 px-1 text-[10px] font-medium">
+                  <span
+                    className="flex items-center gap-1.5"
+                    style={{ color: dirty ? "#b45309" : "#15803d" }}
+                  >
+                    <i
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: dirty ? "#f59e0b" : "#22c55e" }}
+                    />
+                    {dirty ? "Unsaved changes" : "Saved · live for visitors"}
+                  </span>
+                  <span style={{ color: E.t3 }}>
+                    {lastSavedAt
+                      ? `Last saved ${lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                      : "Not saved yet"}
+                  </span>
+                </div>
+                <button
+                  disabled={saving || !dirty}
+                  onClick={() => void save()}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{
+                    background: `linear-gradient(135deg,${design.accent},${design.accent2})`,
+                  }}
+                >
+                  {saving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Save className="h-3.5 w-3.5" />
+                  )}
+                  {saving
+                    ? "Saving changes…"
+                    : dirty
+                      ? "Save changes"
+                      : "All changes saved"}
+                </button>
+              </div>
+            </aside>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#edeef2]">
+              <div className="flex h-11 items-center justify-between border-b bg-[#e3e2ea] px-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-2">
+                    <i className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
+                    <i className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
+                    <i className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+                  </div>
+                  <span
+                    className="ml-2 text-[10px] font-medium"
+                    style={{ color: dirty ? "#b45309" : "#15803d" }}
+                  >
+                    {dirty
+                      ? "Save to update live preview"
+                      : "Live visitor view"}
+                  </span>
+                </div>
+                <div className="max-w-[340px] truncate rounded-md border bg-white px-3 py-1 font-mono text-[11px] text-[#8a86a0]">
+                  chabaqa.io/community/{content.slug}
+                </div>
+                <div className="flex gap-1">
+                  {(
+                    [
+                      { id: "desktop", Icon: Monitor },
+                      { id: "tablet", Icon: Tablet },
+                      { id: "mobile", Icon: Smartphone },
+                    ] as const
+                  ).map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => setDevice(d.id)}
+                      aria-label={`${d.id} preview`}
+                      className="grid h-6 w-7 place-items-center rounded-md"
+                      style={{
+                        background: device === d.id ? "#fff" : "transparent",
+                        color: device === d.id ? accent : "#9a97ad",
+                      }}
+                    >
+                      <d.Icon className="h-3.5 w-3.5" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="prev-scroll flex min-h-0 flex-1 justify-center overflow-y-auto p-3 sm:p-6">
+                <div
+                  className="h-fit w-full overflow-hidden border bg-white transition-all duration-300"
+                  style={{
+                    maxWidth: frameWidth,
+                    borderRadius: 16,
+                    boxShadow: "0 10px 44px rgba(26,23,48,.12)",
+                    borderColor: "#e4e2ef",
+                  }}
+                >
+                  <CommunityLandingExperience
+                    state={
+                      {
+                        schemaVersion: 1,
+                        blocks,
+                        content,
+                        design,
+                        media,
+                        reviews,
+                      } satisfies CommunityLandingState
+                    }
+                    device={device}
+                    builderMode
+                    selectedBlock={selected}
+                    language={lang}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
-function BlockList(p: { blocks: BlockDef[]; selected: string | null; dragOver: number | null; accent: string; lang: 'en' | 'ar'; setSelected: (id: string | null) => void; setEditing: (id: string) => void; setTab: (tab: 'blocks' | 'content' | 'design') => void; toggle: (id: string) => void; move: (index: number, direction: -1 | 1) => void; remove: (id: string) => void; add: () => void; dragFrom: React.MutableRefObject<number | null>; setDragOver: (index: number | null) => void; drop: (event: React.DragEvent, index: number) => void }){return <div className="p-3"><p className="mb-2.5 px-1 text-[10px] font-semibold uppercase tracking-wider" style={{color:E.t3}}>Click to highlight · pencil to edit · drag to reorder</p>{p.blocks.map((b:BlockDef,i:number)=>{const Icon=BLOCK_ICONS[b.type];const sel=p.selected===b.id;const iconColor=b.tint==='transparent'?p.accent:b.tint;const iconBackground=b.tint==='transparent'?`${p.accent}14`:`${b.tint}1f`;return <div key={b.id} draggable onDragStart={(e)=>{p.dragFrom.current=i;e.dataTransfer.setData('text/plain',String(i))}} onDragOver={(e)=>{e.preventDefault();p.setDragOver(i)}} onDrop={(e)=>p.drop(e,i)} onClick={()=>{p.setSelected(b.id);p.setEditing(b.id);p.setTab('content')}} className="mb-1.5 flex cursor-pointer items-center gap-2 rounded-xl p-2" style={{background:sel?`${p.accent}12`:E.card,border:`1.5px solid ${sel||p.dragOver===i?p.accent:E.bd}`,opacity:b.visible?1:.5}}><GripVertical className="h-3.5 w-3.5 text-slate-300"/><div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg" style={{background:iconBackground}}><Icon aria-hidden="true" strokeWidth={2.2} className="h-3.5 w-3.5" style={{color:iconColor}}/></div><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-semibold" style={{color:sel?p.accent:E.t1}}>{b.label[p.lang]}</p><p className="truncate text-[10px]" style={{color:E.t3}}>{b.desc[p.lang]}</p></div><Mini on={()=>{p.setSelected(b.id);p.setEditing(b.id);p.setTab('content')}}><Pencil/></Mini><Mini on={()=>p.toggle(b.id)}>{b.visible?<Eye/>:<EyeOff/>}</Mini><Mini on={()=>p.move(i,-1)}><ArrowUp/></Mini><Mini on={()=>p.move(i,1)}><ArrowDown/></Mini></div>})}<button onClick={p.add} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed py-2.5 text-[12px] font-semibold" style={{color:p.accent,borderColor:`${p.accent}66`}}><Plus className="h-3.5 w-3.5"/>Add custom block</button></div>}
-function Mini({on,children}:{on:()=>void;children:React.ReactNode}){return <button type="button" onClick={e=>{e.stopPropagation();on()}} className="grid h-6 w-6 place-items-center rounded-md bg-white text-slate-500 [&_svg]:h-3 [&_svg]:w-3">{children}</button>}
+function BlockList(p: {
+  blocks: BlockDef[];
+  selected: string | null;
+  dragOver: number | null;
+  accent: string;
+  lang: "en" | "ar";
+  setSelected: (id: string | null) => void;
+  setEditing: (id: string) => void;
+  setTab: (tab: "blocks" | "content" | "design") => void;
+  toggle: (id: string) => void;
+  move: (index: number, direction: -1 | 1) => void;
+  remove: (id: string) => void;
+  add: () => void;
+  dragFrom: React.MutableRefObject<number | null>;
+  setDragOver: (index: number | null) => void;
+  drop: (event: React.DragEvent, index: number) => void;
+}) {
+  return (
+    <div className="p-3">
+      <p
+        className="mb-2.5 px-1 text-[10px] font-semibold uppercase tracking-wider"
+        style={{ color: E.t3 }}
+      >
+        Click to highlight · pencil to edit · drag to reorder
+      </p>
+      {p.blocks.map((b: BlockDef, i: number) => {
+        const Icon = BLOCK_ICONS[b.type];
+        const sel = p.selected === b.id;
+        const iconColor = b.tint === "transparent" ? p.accent : b.tint;
+        const iconBackground =
+          b.tint === "transparent" ? `${p.accent}14` : `${b.tint}1f`;
+        return (
+          <div
+            key={b.id}
+            draggable
+            onDragStart={(e) => {
+              p.dragFrom.current = i;
+              e.dataTransfer.setData("text/plain", String(i));
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              p.setDragOver(i);
+            }}
+            onDrop={(e) => p.drop(e, i)}
+            onClick={() => {
+              p.setSelected(b.id);
+              p.setEditing(b.id);
+              p.setTab("content");
+            }}
+            className="mb-1.5 flex cursor-pointer items-center gap-2 rounded-xl p-2"
+            style={{
+              background: sel ? `${p.accent}12` : E.card,
+              border: `1.5px solid ${sel || p.dragOver === i ? p.accent : E.bd}`,
+              opacity: b.visible ? 1 : 0.5,
+            }}
+          >
+            <GripVertical className="h-3.5 w-3.5 text-slate-300" />
+            <div
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-lg"
+              style={{ background: iconBackground }}
+            >
+              <Icon
+                aria-hidden="true"
+                strokeWidth={2.2}
+                className="h-3.5 w-3.5"
+                style={{ color: iconColor }}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p
+                className="truncate text-[12px] font-semibold"
+                style={{ color: sel ? p.accent : E.t1 }}
+              >
+                {b.label[p.lang]}
+              </p>
+              <p className="truncate text-[10px]" style={{ color: E.t3 }}>
+                {b.desc[p.lang]}
+              </p>
+            </div>
+            <Mini
+              on={() => {
+                p.setSelected(b.id);
+                p.setEditing(b.id);
+                p.setTab("content");
+              }}
+            >
+              <Pencil />
+            </Mini>
+            <Mini on={() => p.toggle(b.id)}>
+              {b.visible ? <Eye /> : <EyeOff />}
+            </Mini>
+            <Mini on={() => p.move(i, -1)}>
+              <ArrowUp />
+            </Mini>
+            <Mini on={() => p.move(i, 1)}>
+              <ArrowDown />
+            </Mini>
+          </div>
+        );
+      })}
+      <button
+        onClick={p.add}
+        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed py-2.5 text-[12px] font-semibold"
+        style={{ color: p.accent, borderColor: `${p.accent}66` }}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add custom block
+      </button>
+    </div>
+  );
+}
+function Mini({ on, children }: { on: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        on();
+      }}
+      className="grid h-6 w-6 place-items-center rounded-md bg-white text-slate-500 [&_svg]:h-3 [&_svg]:w-3"
+    >
+      {children}
+    </button>
+  );
+}
 
-function GeneralContent({content,set,accent,uploadMedia}:any){return <div><EditGroup title="Community identity"><div className="flex items-center gap-3 rounded-xl border bg-violet-50/40 p-3" style={{borderColor:E.bd}}><div className="grid h-11 w-11 place-items-center overflow-hidden rounded-xl text-sm font-bold text-white" style={{background:`linear-gradient(135deg,${accent},#a855f7)`}}>{content.logo?<img src={content.logo} alt="Creator logo" className="h-full w-full object-cover"/>:content.name.slice(0,1).toUpperCase()}</div><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-slate-800">Creator logo</p><p className="text-[10px] text-slate-500">Shown with the Chabaqa logo in the header and footer.</p></div><label className="cursor-pointer rounded-lg border bg-white px-2 py-1.5 text-[11px] font-semibold" style={{color:accent,borderColor:`${accent}55`}}>Upload<input hidden type="file" accept="image/*" onChange={e=>e.target.files?.[0]&&uploadMedia(e.target.files[0],'__logo')}/></label></div><Field label="Name" value={content.name} onChange={(v)=>set('name',v)}/><Field label="Tagline" value={content.tagline} onChange={(v)=>set('tagline',v)} textarea/><Field label="URL slug" value={content.slug} onChange={(v)=>set('slug',v)} prefix="chabaqa.io/community/"/></EditGroup><EditGroup title="Hero"><Field label="Headline" value={content.heroTitle} onChange={(v)=>set('heroTitle',v)}/><Field label="Description" value={content.heroDescription} onChange={(v)=>set('heroDescription',v)} textarea/><Field label="Join button" value={content.ctaPrimary} onChange={(v)=>set('ctaPrimary',v)}/></EditGroup><EditGroup title="Price"><div className="grid grid-cols-2 gap-2"><Field label="Price" value={content.price} onChange={(v)=>set('price',v)}/><Field label="Currency" value={content.currency} onChange={(v)=>set('currency',v)}/></div></EditGroup></div>}
-function BlockEditor(p:any){const b:BlockDef=p.block;return <div><div className="flex items-center gap-2 border-b p-3"><button onClick={p.onBack} className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100"><ArrowLeft className="h-3.5 w-3.5"/></button><strong className="flex-1 text-xs">{b.label.en}</strong>{b.type==='custom'&&<Mini on={()=>p.remove(b.id)}><Trash2/></Mini>}</div><EditGroup title="Section appearance"><Toggle label="Show this section to visitors" on={b.visible} onChange={v=>p.patch(b.id,{visible:v})} accent={p.accent}/><BackgroundPicker value={b.tint} onChange={v=>p.patch(b.id,{tint:v})} accent={p.accent}/><p className="text-[10px] leading-4 text-slate-500">This setting is saved with the block, so its background, placement, and visibility are identical in the live page.</p></EditGroup><EditGroup title="Block font"><FontPicker value={b.font||''} onChange={v=>p.patch(b.id,{font:v||undefined})} accent={p.accent}/></EditGroup>{b.type==='custom'&&<EditGroup title="Custom HTML"><Field label="HTML" value={b.code||''} onChange={v=>p.patch(b.id,{code:v})} textarea rows={12}/></EditGroup>}{b.type==='hero'&&<><EditGroup title="Headline"><Field label="Community name" value={p.content.name} onChange={(v)=>p.set('name',v)}/><Field label="Eyebrow label" value={p.content.heroEyebrow} onChange={(v)=>p.set('heroEyebrow',v)}/><Field label="Headline" value={p.content.heroTitle} onChange={(v)=>p.set('heroTitle',v)}/><Field label="Description" value={p.content.heroDescription} onChange={(v)=>p.set('heroDescription',v)} textarea rows={5}/><Field label="Primary checkout button" value={p.content.ctaPrimary} onChange={(v)=>p.set('ctaPrimary',v)}/></EditGroup><div className="grid grid-cols-2 gap-2"><Field label="Members" value={p.content.members} onChange={(v)=>p.set('members',v)}/><Field label="Members label" value={p.content.heroMembersLabel} onChange={(v)=>p.set('heroMembersLabel',v)}/><Field label="Rating" value={p.content.rating} onChange={(v)=>p.set('rating',v)}/><Field label="Rating label" value={p.content.heroRatingLabel} onChange={(v)=>p.set('heroRatingLabel',v)}/><Field label="Lessons" value={p.content.lessons} onChange={(v)=>p.set('lessons',v)}/><Field label="Lessons label" value={p.content.heroLessonsLabel} onChange={(v)=>p.set('heroLessonsLabel',v)}/></div><MediaEditor {...p}/></>}{b.type==='testimonials'&&<><EditGroup title="Testimonials heading"><Field label="Section title" value={p.content.testimonialsTitle} onChange={(v)=>p.set('testimonialsTitle',v)}/><p className="text-[10px] text-slate-500">Add proof that matches your community. Ratings, initials, names, quotes, and optional portraits are all editable.</p></EditGroup><ReviewsEditor {...p}/></>} {b.type==='creator'&&<EditGroup title="Creator profile"><div className="flex items-center gap-3 rounded-xl border bg-slate-50 p-3" style={{borderColor:E.bd}}><div className="grid h-14 w-14 place-items-center overflow-hidden rounded-xl text-lg font-bold text-white" style={{background:`linear-gradient(135deg,${p.accent},#a855f7)`}}>{p.content.creatorImage?<img src={p.content.creatorImage} alt="Creator" className="h-full w-full object-cover"/>:p.content.creatorName.slice(0,1).toUpperCase()}</div><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-slate-800">Creator image</p><p className="text-[10px] text-slate-500">Shown in the creator section.</p></div><label className="cursor-pointer rounded-lg border bg-white px-2 py-1.5 text-[11px] font-semibold" style={{color:p.accent,borderColor:`${p.accent}55`}}>Upload<input hidden type="file" accept="image/*" onChange={e=>e.target.files?.[0]&&p.uploadMedia(e.target.files[0],'__creator')}/></label></div><Field label="Name" value={p.content.creatorName} onChange={(v)=>p.set('creatorName',v)}/><Field label="Role" value={p.content.creatorRole} onChange={(v)=>p.set('creatorRole',v)}/><Field label="Bio" value={p.content.creatorBio} onChange={(v)=>p.set('creatorBio',v)} textarea/><div className="rounded-xl border p-3" style={{borderColor:E.bd}}><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Social links</p><Field label="Instagram URL" value={p.content.creatorInstagram} onChange={(v)=>p.set('creatorInstagram',v)}/><Field label="LinkedIn URL" value={p.content.creatorLinkedin} onChange={(v)=>p.set('creatorLinkedin',v)}/><Field label="X / Twitter URL" value={p.content.creatorTwitter} onChange={(v)=>p.set('creatorTwitter',v)}/><Field label="Website URL" value={p.content.creatorWebsite} onChange={(v)=>p.set('creatorWebsite',v)}/></div></EditGroup>}{b.type==='pricing'&&<EditGroup title="Price"><Field label="Section title" value={p.content.pricingTitle} onChange={(v)=>p.set('pricingTitle',v)}/><Field label="Description" value={p.content.pricingDescription} onChange={(v)=>p.set('pricingDescription',v)} textarea/><Field label="Price" value={p.content.price} onChange={(v)=>p.set('price',v)}/><Field label="Access promise" value={p.content.access} onChange={(v)=>p.set('access',v)}/><Field label="Previous price" value={p.content.origPrice} onChange={(v)=>p.set('origPrice',v)}/><Field label="Currency" value={p.content.currency} onChange={(v)=>p.set('currency',v)}/><Field label="Billing period" value={p.content.period} onChange={(v)=>p.set('period',v)}/><Field label="Badge text" value={p.content.pricingBadge} onChange={(v)=>p.set('pricingBadge',v)}/><Field label="Security note" value={p.content.pricingSecurityNote} onChange={(v)=>p.set('pricingSecurityNote',v)}/><Field label="Checkout button" value={p.content.ctaPrimary} onChange={(v)=>p.set('ctaPrimary',v)}/><ListEditor items={p.content.pricingFeatures} onChange={(items)=>p.set('pricingFeatures',items)} label="Pricing feature"/></EditGroup>}{b.type==='highlights'&&<EditGroup title="Highlights"><Field label="Section title" value={p.content.highlightsTitle} onChange={(v)=>p.set('highlightsTitle',v)}/><Field label="Description" value={p.content.highlightsDescription} onChange={(v)=>p.set('highlightsDescription',v)} textarea/><ListEditor items={p.content.highlights} onChange={(items)=>p.set('highlights',items)} label="Highlight"/></EditGroup>}{b.type==='about'&&<EditGroup title="About"><Field label="Eyebrow" value={p.content.aboutEyebrow} onChange={(v)=>p.set('aboutEyebrow',v)}/><Field label="Section title" value={p.content.aboutTitle} onChange={(v)=>p.set('aboutTitle',v)}/><Field label="Description" value={p.content.aboutDescription} onChange={(v)=>p.set('aboutDescription',v)} textarea rows={6}/><Field label="Feature card title" value={p.content.aboutCardTitle} onChange={(v)=>p.set('aboutCardTitle',v)}/><Field label="Feature card description" value={p.content.aboutCardDescription} onChange={(v)=>p.set('aboutCardDescription',v)} textarea/><div className="grid grid-cols-3 gap-2"><Field label="Members value" value={p.content.members} onChange={(v)=>p.set('members',v)}/><Field label="Online value" value={p.content.online} onChange={(v)=>p.set('online',v)}/><Field label="Hosts value" value={p.content.admins} onChange={(v)=>p.set('admins',v)}/><Field label="Members label" value={p.content.aboutMembersLabel} onChange={(v)=>p.set('aboutMembersLabel',v)}/><Field label="Online label" value={p.content.aboutOnlineLabel} onChange={(v)=>p.set('aboutOnlineLabel',v)}/><Field label="Hosts label" value={p.content.aboutHostsLabel} onChange={(v)=>p.set('aboutHostsLabel',v)}/></div></EditGroup>}{b.type==='curriculum'&&<EditGroup title="What's inside"><Field label="Section title" value={p.content.curriculumTitle} onChange={(v)=>p.set('curriculumTitle',v)}/><Field label="Description" value={p.content.curriculumDescription} onChange={(v)=>p.set('curriculumDescription',v)} textarea/><Field label="Expanded item description" value={p.content.curriculumItemDescription} onChange={(v)=>p.set('curriculumItemDescription',v)} textarea/><ListEditor items={p.content.curriculum} onChange={(items)=>p.set('curriculum',items)} label="Module"/></EditGroup>}{b.type==='faq'&&<EditGroup title="FAQ"><Field label="Section title" value={p.content.faqTitle} onChange={(v)=>p.set('faqTitle',v)}/><FaqEditor items={p.content.faqs} onChange={(items)=>p.set('faqs',items)}/></EditGroup>}{b.type==='cta'&&<EditGroup title="Join CTA"><Field label="Title" value={p.content.ctaTitle} onChange={(v)=>p.set('ctaTitle',v)}/><Field label="Description" value={p.content.ctaDescription} onChange={(v)=>p.set('ctaDescription',v)} textarea rows={5}/><Field label="Primary button label" value={p.content.ctaPrimary} onChange={(v)=>p.set('ctaPrimary',v)}/><Field label="Secondary CTA label" value={p.content.ctaSecondary} onChange={(v)=>p.set('ctaSecondary',v)}/><p className="text-[10px] text-slate-500">The primary action always takes visitors to secure community checkout.</p></EditGroup>}{b.type==='footer'&&<EditGroup title="Footer"><Field label="Footer description" value={p.content.footerDescription} onChange={(v)=>p.set('footerDescription',v)} textarea rows={5}/><Field label="Legal links text" value={p.content.footerLegalText} onChange={(v)=>p.set('footerLegalText',v)}/><p className="text-[10px] text-slate-500">Footer social icons use the links entered in the Creator block.</p></EditGroup>}</div>}
-function ListEditor({items,onChange,label}:{items:string[];onChange:(items:string[])=>void;label:string}){return <div className="space-y-2">{items.map((item,index)=><div key={index} className="flex gap-1.5"><input value={item} onChange={e=>onChange(items.map((value,i)=>i===index?e.target.value:value))} className="min-w-0 flex-1 rounded-lg border px-2.5 py-2 text-xs outline-none" style={{borderColor:E.bd}} aria-label={`${label} ${index+1}`}/><Mini on={()=>onChange(items.filter((_,i)=>i!==index))}><Trash2/></Mini></div>)}<button type="button" onClick={()=>onChange([...items,`New ${label.toLowerCase()}`])} className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed py-2 text-xs text-violet-600"><Plus className="h-3 w-3"/>Add {label.toLowerCase()}</button></div>}
-function FaqEditor({items,onChange}:{items:Array<{question:string;answer:string}>;onChange:(items:Array<{question:string;answer:string}>)=>void}){return <div className="space-y-2">{items.map((item,index)=><div key={index} className="space-y-1.5 rounded-xl border p-2" style={{borderColor:E.bd}}><div className="flex gap-1.5"><input value={item.question} onChange={e=>onChange(items.map((value,i)=>i===index?{...value,question:e.target.value}:value))} className="min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold outline-none" placeholder="Question"/><Mini on={()=>onChange(items.filter((_,i)=>i!==index))}><Trash2/></Mini></div><textarea value={item.answer} onChange={e=>onChange(items.map((value,i)=>i===index?{...value,answer:e.target.value}:value))} className="w-full resize-none rounded-lg border p-2 text-xs outline-none" rows={3} placeholder="Answer"/></div>)}<button type="button" onClick={()=>onChange([...items,{question:'New question',answer:'Add your answer.'}])} className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed py-2 text-xs text-violet-600"><Plus className="h-3 w-3"/>Add question</button></div>}
-function MediaEditor(p:any){return <EditGroup title="Media gallery">{p.media.map((m:MediaItem)=><div key={m.id} className="space-y-2 rounded-xl border p-2" style={{background:E.card,borderColor:E.bd}}><div className="flex items-center gap-2"><div className="h-9 w-14 rounded bg-cover bg-center" style={{backgroundImage:mediaThumb(m)?`url(${mediaThumb(m)})`:undefined}}/><input value={m.label} onChange={e=>p.setMedia((ms:MediaItem[])=>ms.map(x=>x.id===m.id?{...x,label:e.target.value}:x))} className="min-w-0 flex-1 bg-transparent text-xs outline-none"/><Mini on={()=>p.setMedia((ms:MediaItem[])=>ms.filter(x=>x.id!==m.id))}><Trash2/></Mini></div>{m.type==='image'?<><label className="flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-dashed bg-white py-2 text-[11px] font-semibold" style={{color:p.accent}}><Upload className="h-3 w-3"/>Upload image<input hidden type="file" accept="image/*" onChange={e=>e.target.files?.[0]&&p.uploadMedia(e.target.files[0],m.id)}/></label><div className="flex items-center rounded-lg border bg-white px-2"><Link2 className="h-3 w-3"/><input value={m.src||''} onChange={e=>p.setMedia((ms:MediaItem[])=>ms.map(x=>x.id===m.id?{...x,src:e.target.value}:x))} className="w-full p-2 text-xs outline-none" placeholder="Or paste an image URL"/></div></>:<div className="flex items-center rounded-lg border bg-white px-2"><Link2 className="h-3 w-3"/><input value={m.url||''} onChange={e=>p.setMedia((ms:MediaItem[])=>ms.map(x=>x.id===m.id?{...x,url:e.target.value}:x))} className="w-full p-2 text-xs outline-none" placeholder="YouTube URL"/></div>}</div>)}<div className="grid grid-cols-2 gap-2"><button onClick={()=>p.setMedia((m:MediaItem[])=>[...m,{id:`m${Date.now()}`,type:'video',label:'Video'}])} className="rounded-lg border border-dashed py-2 text-xs">+ Video</button><button onClick={()=>p.setMedia((m:MediaItem[])=>[...m,{id:`m${Date.now()}`,type:'image',label:'Image'}])} className="rounded-lg border border-dashed py-2 text-xs">+ Image</button></div></EditGroup>}
-function ReviewsEditor(p:any){const update=(id:string,changes:Partial<Review>)=>p.setReviews((rs:Review[])=>rs.map(x=>x.id===id?{...x,...changes}:x));return <EditGroup title="Reviews"><p className="text-[10px] leading-4 text-slate-500">Use specific outcomes and real member names. You can set a 1–5 star rating, initials, and a portrait URL for every testimonial.</p>{p.reviews.map((r:Review,index:number)=><div key={r.id} className="space-y-2 rounded-xl border p-2.5" style={{borderColor:E.bd}}><div className="flex items-center justify-between"><strong className="text-[11px]">Review {index+1}</strong><button type="button" onClick={()=>p.setReviews((rs:Review[])=>rs.filter(x=>x.id!==r.id))} className="text-[10px] font-semibold text-red-600">Delete</button></div><Field label="Member name" value={r.name} onChange={v=>update(r.id,{name:v,initials:v.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase()})}/><div className="grid grid-cols-2 gap-2"><Field label="Initials" value={r.initials} onChange={v=>update(r.id,{initials:v.slice(0,3).toUpperCase()})}/><label className="block text-[11px] font-medium" style={{color:E.t2}}>Rating<select value={r.rating} onChange={e=>update(r.id,{rating:Number(e.target.value)})} className="mt-1 w-full rounded-lg border bg-white px-2 py-2 text-xs outline-none" style={{borderColor:E.bd}}>{[5,4,3,2,1].map(n=><option key={n} value={n}>{n} stars</option>)}</select></label></div><Field label="Portrait image URL (optional)" value={r.image||''} onChange={v=>update(r.id,{image:v,hasImage:Boolean(v)})}/><label className="flex items-center justify-between text-[11px] font-medium" style={{color:E.t2}}>Show portrait instead of initials<Toggle label="" on={Boolean(r.hasImage)} onChange={v=>update(r.id,{hasImage:v})} accent={p.accent}/></label><Field label="Review quote" value={r.text} onChange={v=>update(r.id,{text:v})} textarea rows={4}/></div>)}<button type="button" onClick={()=>p.setReviews((rs:Review[])=>[...rs,{id:`r${Date.now()}`,name:'New member',initials:'NM',rating:5,hasImage:false,text:'Share the outcome this member achieved.'}])} className="w-full rounded-lg border border-dashed py-2 text-xs" style={{color:p.accent,borderColor:`${p.accent}55`}}><Plus className="mr-1 inline h-3 w-3"/>Add review</button></EditGroup>}
-function DesignEditor({design,setD,setDesign,device,setDevice,accent}:any){return <div><EditGroup title="Page background"><div className="grid grid-cols-3 gap-1.5">{([['white','Clean white'],['tint','Soft tint'],['gradient','Brand gradient']] as const).map(([value,label])=><button type="button" key={value} onClick={()=>setD('bg',value)} className="rounded-lg border px-1 py-2 text-[10px] font-semibold" style={{background:value==='white'?'#fff':value==='tint'?'#f8f4ff':`linear-gradient(135deg,${design.accent}25,${design.accent2}35)`,color:design.bg===value?accent:E.t2,borderColor:design.bg===value?accent:E.bd}}>{label}</button>)}</div><Toggle label="Pill-shaped buttons" on={design.pill} onChange={v=>setD('pill',v)} accent={accent}/><p className="text-[10px] text-slate-500">These controls set the global canvas and button shape for every shared landing-page section.</p></EditGroup><EditGroup title="Colors"><ColorControl label="Primary" value={design.accent} onChange={v=>setD('accent',v)}/><ColorControl label="Gradient end" value={design.accent2} onChange={v=>setD('accent2',v)}/><div className="flex flex-wrap gap-2">{[['#8e78fb','#6c52f0'],['#f65887','#c81e5b'],['#0ea5e9','#6366f1'],['#52c41a','#2f9e0e']].map(([a,b])=><button key={a} onClick={()=>setDesign((d:Design)=>({...d,accent:a,accent2:b}))} className="h-8 w-8 rounded-lg" style={{background:`linear-gradient(135deg,${a},${b})`}}/>)}</div></EditGroup><EditGroup title="Heading font"><FontPicker value={design.headingFont} onChange={v=>setD('headingFont',v)} accent={accent}/></EditGroup><EditGroup title="Body font"><FontPicker value={design.bodyFont} onChange={v=>setD('bodyFont',v)} accent={accent}/></EditGroup><EditGroup title={`Corner radius · ${design.radius}px`}><input type="range" min="0" max="26" value={design.radius} onChange={e=>setD('radius',Number(e.target.value))} className="w-full accent-violet-600"/></EditGroup><EditGroup title="Sections"><Toggle label="Alternate section shades" on={design.altSections} onChange={v=>setD('altSections',v)} accent={accent}/></EditGroup><EditGroup title="Preview device"><div className="grid grid-cols-3 gap-2">{([{id:'desktop',Icon:Monitor},{id:'tablet',Icon:Tablet},{id:'mobile',Icon:Smartphone}] as const).map(d=><button key={d.id} onClick={()=>setDevice(d.id)} className="grid place-items-center gap-1 rounded-lg border py-2 text-[10px]" style={{color:device===d.id?accent:E.t2,borderColor:device===d.id?accent:E.bd}}><d.Icon className="h-4 w-4"/>{d.id}</button>)}</div></EditGroup></div>}
-function EditGroup({title,children}:{title:string;children:React.ReactNode}){return <div className="border-b px-4 py-3.5" style={{borderColor:E.bd}}><h4 className="mb-2.5 text-[10px] font-bold uppercase tracking-wider" style={{color:E.t3}}>{title}</h4><div className="flex flex-col gap-2.5">{children}</div></div>}
-function Field({label,value,onChange,textarea,prefix,rows}:{label:string;value:string;onChange:(v:string)=>void;textarea?:boolean;prefix?:string;rows?:number}){return <label className="block text-[11px] font-medium" style={{color:E.t2}}>{label}{textarea?<textarea value={value} onChange={e=>onChange(e.target.value)} rows={rows||3} className="mt-1 w-full resize-none rounded-lg border bg-white px-2.5 py-2 text-[12px] outline-none" style={{borderColor:E.bd,color:E.t1}}/>:<div className="mt-1 flex overflow-hidden rounded-lg border bg-white" style={{borderColor:E.bd}}>{prefix&&<span className="py-2 pl-2 text-[11px] text-slate-400">{prefix}</span>}<input value={value} onChange={e=>onChange(e.target.value)} className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-[12px] outline-none"/></div>}</label>}
-function ColorControl({label,value,onChange}:{label:string;value:string;onChange:(v:string)=>void}){return <label className="flex items-center gap-2"><input type="color" value={value} onChange={e=>onChange(e.target.value)} className="h-8 w-8 rounded-lg"/><span className="flex-1 text-[11px] text-slate-500">{label}<input value={value} onChange={e=>onChange(e.target.value)} className="block w-full bg-transparent font-mono text-xs text-slate-900 outline-none"/></span></label>}
-function BackgroundPicker({value,onChange,accent}:{value:string;onChange:(v:string)=>void;accent:string}){const swatches=[['Transparent','transparent'],['White','#ffffff'],['Lavender','#f7f3ff'],['Soft violet','#faf8ff'],['Warm','#fff8f1'],['Cool','#f0f9ff']];const safeColor=/^#[0-9a-f]{6}$/i.test(value)?value:'#ffffff';return <div><p className="mb-2 text-[11px] font-medium" style={{color:E.t2}}>Section background</p><div className="grid grid-cols-3 gap-1.5">{swatches.map(([label,color])=><button type="button" key={color} onClick={()=>onChange(color)} className="rounded-lg border px-1 py-2 text-[9px] font-semibold" style={{borderColor:value===color?accent:E.bd,outline:value===color?`1px solid ${accent}`:undefined,background:color==='transparent'?'linear-gradient(135deg,#fff 45%,#f0ecf8 45%,#f0ecf8 55%,#fff 55%)':color}}>{label}</button>)}</div><div className="mt-2 flex items-center gap-2"><input type="color" value={safeColor} onChange={e=>onChange(e.target.value)} className="h-7 w-8 rounded"/><input value={value} onChange={e=>onChange(e.target.value)} placeholder="#ffffff or transparent" className="min-w-0 flex-1 rounded-lg border px-2 py-1.5 font-mono text-[10px] outline-none" style={{borderColor:E.bd}}/></div></div>}
-function FontPicker({value,onChange,accent}:{value:string;onChange:(v:string)=>void;accent:string}){return <div className="grid grid-cols-2 gap-1.5">{FONTS.map(f=><button key={f} onClick={()=>onChange(f)} className="truncate rounded-lg border px-2 py-2 text-[11px] font-semibold" style={{fontFamily:stack(f),background:value===f?`${accent}15`:'#fff',color:value===f?accent:E.t1,borderColor:value===f?accent:E.bd}}>{f}</button>)}</div>}
-function Toggle({label,on,onChange,accent}:{label:string;on:boolean;onChange:(v:boolean)=>void;accent:string}){return <button onClick={()=>onChange(!on)} className="flex items-center justify-between text-left text-xs" style={{color:E.t2}}>{label}<span className="relative h-5 w-9 rounded-full" style={{background:on?accent:'#dcd8ec'}}><i className="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all" style={{left:on?18:2}}/></span></button>}
+function GeneralContent({ content, set, accent, uploadMedia }: any) {
+  return (
+    <div>
+      <EditGroup title="Community identity">
+        <div
+          className="flex items-center gap-3 rounded-xl border bg-violet-50/40 p-3"
+          style={{ borderColor: E.bd }}
+        >
+          <div
+            className="grid h-11 w-11 place-items-center overflow-hidden rounded-xl text-sm font-bold text-white"
+            style={{ background: `linear-gradient(135deg,${accent},#a855f7)` }}
+          >
+            {content.logo ? (
+              <img
+                src={content.logo}
+                alt="Creator logo"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              content.name.slice(0, 1).toUpperCase()
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-slate-800">Creator logo</p>
+            <p className="text-[10px] text-slate-500">
+              Shown with the Chabaqa logo in the header and footer.
+            </p>
+          </div>
+          <label
+            className="cursor-pointer rounded-lg border bg-white px-2 py-1.5 text-[11px] font-semibold"
+            style={{ color: accent, borderColor: `${accent}55` }}
+          >
+            Upload
+            <input
+              hidden
+              type="file"
+              accept="image/*"
+              onChange={(e) =>
+                e.target.files?.[0] && uploadMedia(e.target.files[0], "__logo")
+              }
+            />
+          </label>
+        </div>
+        <Field
+          label="Name"
+          value={content.name}
+          onChange={(v) => set("name", v)}
+        />
+        <Field
+          label="Tagline"
+          value={content.tagline}
+          onChange={(v) => set("tagline", v)}
+          textarea
+        />
+        <Field
+          label="URL slug"
+          value={content.slug}
+          onChange={(v) => set("slug", v)}
+          prefix="chabaqa.io/community/"
+        />
+      </EditGroup>
+      <EditGroup title="Hero">
+        <Field
+          label="Headline"
+          value={content.heroTitle}
+          onChange={(v) => set("heroTitle", v)}
+        />
+        <Field
+          label="Description"
+          value={content.heroDescription}
+          onChange={(v) => set("heroDescription", v)}
+          textarea
+        />
+        <Field
+          label="Join button"
+          value={content.ctaPrimary}
+          onChange={(v) => set("ctaPrimary", v)}
+        />
+      </EditGroup>
+      <EditGroup title="Price">
+        <div className="grid grid-cols-2 gap-2">
+          <Field
+            label="Price"
+            value={content.price}
+            onChange={(v) => set("price", v)}
+          />
+          <Field
+            label="Currency"
+            value={content.currency}
+            onChange={(v) => set("currency", v)}
+          />
+        </div>
+      </EditGroup>
+    </div>
+  );
+}
+function BlockEditor(p: any) {
+  const b: BlockDef = p.block;
+  return (
+    <div>
+      <div className="flex items-center gap-2 border-b p-3">
+        <button
+          onClick={p.onBack}
+          className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+        </button>
+        <strong className="flex-1 text-xs">{b.label.en}</strong>
+        {b.type === "custom" && (
+          <Mini on={() => p.remove(b.id)}>
+            <Trash2 />
+          </Mini>
+        )}
+      </div>
+      <EditGroup title="Section appearance">
+        <Toggle
+          label="Show this section to visitors"
+          on={b.visible}
+          onChange={(v) => p.patch(b.id, { visible: v })}
+          accent={p.accent}
+        />
+        <BackgroundPicker
+          value={b.tint}
+          onChange={(v) => p.patch(b.id, { tint: v })}
+          accent={p.accent}
+        />
+        <ColorControl
+          label="Section accent"
+          value={b.accent || p.accent}
+          onChange={(v) => p.patch(b.id, { accent: v })}
+        />
+        <p className="text-[10px] leading-4 text-slate-500">
+          Background, accent, placement, and visibility are saved with this
+          block and preserved on the live page.
+        </p>
+      </EditGroup>
+      <EditGroup title="Block font">
+        <FontPicker
+          value={b.font || ""}
+          onChange={(v) => p.patch(b.id, { font: v || undefined })}
+          accent={p.accent}
+        />
+      </EditGroup>
+      {b.type === "custom" && (
+        <EditGroup title="Custom HTML">
+          <Field
+            label="HTML"
+            value={b.code || ""}
+            onChange={(v) => p.patch(b.id, { code: v })}
+            textarea
+            rows={12}
+          />
+        </EditGroup>
+      )}
+      {b.type === "hero" && (
+        <>
+          <EditGroup title="Headline">
+            <Field
+              label="Community name"
+              value={p.content.name}
+              onChange={(v) => p.set("name", v)}
+            />
+            <Field
+              label="Eyebrow label"
+              value={p.content.heroEyebrow}
+              onChange={(v) => p.set("heroEyebrow", v)}
+            />
+            <Field
+              label="Headline"
+              value={p.content.heroTitle}
+              onChange={(v) => p.set("heroTitle", v)}
+            />
+            <Field
+              label="Description"
+              value={p.content.heroDescription}
+              onChange={(v) => p.set("heroDescription", v)}
+              textarea
+              rows={5}
+            />
+            <Field
+              label="Primary checkout button"
+              value={p.content.ctaPrimary}
+              onChange={(v) => p.set("ctaPrimary", v)}
+            />
+          </EditGroup>
+          <div className="grid grid-cols-2 gap-2">
+            <Field
+              label="Members"
+              value={p.content.members}
+              onChange={(v) => p.set("members", v)}
+            />
+            <Field
+              label="Members label"
+              value={p.content.heroMembersLabel}
+              onChange={(v) => p.set("heroMembersLabel", v)}
+            />
+            <Field
+              label="Rating"
+              value={p.content.rating}
+              onChange={(v) => p.set("rating", v)}
+            />
+            <Field
+              label="Rating label"
+              value={p.content.heroRatingLabel}
+              onChange={(v) => p.set("heroRatingLabel", v)}
+            />
+            <Field
+              label="Lessons"
+              value={p.content.lessons}
+              onChange={(v) => p.set("lessons", v)}
+            />
+            <Field
+              label="Lessons label"
+              value={p.content.heroLessonsLabel}
+              onChange={(v) => p.set("heroLessonsLabel", v)}
+            />
+          </div>
+          <MediaEditor {...p} />
+        </>
+      )}
+      {b.type === "testimonials" && (
+        <>
+          <EditGroup title="Testimonials heading">
+            <Field
+              label="Section title"
+              value={p.content.testimonialsTitle}
+              onChange={(v) => p.set("testimonialsTitle", v)}
+            />
+            <p className="text-[10px] text-slate-500">
+              Add proof that matches your community. Ratings, initials, names,
+              quotes, and optional portraits are all editable.
+            </p>
+          </EditGroup>
+          <ReviewsEditor {...p} />
+        </>
+      )}{" "}
+      {b.type === "creator" && (
+        <EditGroup title="Creator profile">
+          <div
+            className="flex items-center gap-3 rounded-xl border bg-slate-50 p-3"
+            style={{ borderColor: E.bd }}
+          >
+            <div
+              className="grid h-14 w-14 place-items-center overflow-hidden rounded-xl text-lg font-bold text-white"
+              style={{
+                background: `linear-gradient(135deg,${p.accent},#a855f7)`,
+              }}
+            >
+              {p.content.creatorImage ? (
+                <img
+                  src={p.content.creatorImage}
+                  alt="Creator"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                p.content.creatorName.slice(0, 1).toUpperCase()
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-slate-800">
+                Creator image
+              </p>
+              <p className="text-[10px] text-slate-500">
+                Shown in the creator section.
+              </p>
+            </div>
+            <label
+              className="cursor-pointer rounded-lg border bg-white px-2 py-1.5 text-[11px] font-semibold"
+              style={{ color: p.accent, borderColor: `${p.accent}55` }}
+            >
+              Upload
+              <input
+                hidden
+                type="file"
+                accept="image/*"
+                onChange={(e) =>
+                  e.target.files?.[0] &&
+                  p.uploadMedia(e.target.files[0], "__creator")
+                }
+              />
+            </label>
+          </div>
+          <Field
+            label="Name"
+            value={p.content.creatorName}
+            onChange={(v) => p.set("creatorName", v)}
+          />
+          <Field
+            label="Role"
+            value={p.content.creatorRole}
+            onChange={(v) => p.set("creatorRole", v)}
+          />
+          <Field
+            label="Bio"
+            value={p.content.creatorBio}
+            onChange={(v) => p.set("creatorBio", v)}
+            textarea
+          />
+          <div className="rounded-xl border p-3" style={{ borderColor: E.bd }}>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Social links
+            </p>
+            <Field
+              label="Instagram URL"
+              value={p.content.creatorInstagram}
+              onChange={(v) => p.set("creatorInstagram", v)}
+            />
+            <Field
+              label="LinkedIn URL"
+              value={p.content.creatorLinkedin}
+              onChange={(v) => p.set("creatorLinkedin", v)}
+            />
+            <Field
+              label="X / Twitter URL"
+              value={p.content.creatorTwitter}
+              onChange={(v) => p.set("creatorTwitter", v)}
+            />
+            <Field
+              label="Website URL"
+              value={p.content.creatorWebsite}
+              onChange={(v) => p.set("creatorWebsite", v)}
+            />
+          </div>
+        </EditGroup>
+      )}
+      {b.type === "pricing" && (
+        <EditGroup title="Price">
+          <Field
+            label="Section title"
+            value={p.content.pricingTitle}
+            onChange={(v) => p.set("pricingTitle", v)}
+          />
+          <Field
+            label="Description"
+            value={p.content.pricingDescription}
+            onChange={(v) => p.set("pricingDescription", v)}
+            textarea
+          />
+          <Field
+            label="Price"
+            value={p.content.price}
+            onChange={(v) => p.set("price", v)}
+          />
+          <Field
+            label="Access promise"
+            value={p.content.access}
+            onChange={(v) => p.set("access", v)}
+          />
+          <Field
+            label="Previous price"
+            value={p.content.origPrice}
+            onChange={(v) => p.set("origPrice", v)}
+          />
+          <Field
+            label="Currency"
+            value={p.content.currency}
+            onChange={(v) => p.set("currency", v)}
+          />
+          <Field
+            label="Billing period"
+            value={p.content.period}
+            onChange={(v) => p.set("period", v)}
+          />
+          <Field
+            label="Badge text"
+            value={p.content.pricingBadge}
+            onChange={(v) => p.set("pricingBadge", v)}
+          />
+          <Field
+            label="Security note"
+            value={p.content.pricingSecurityNote}
+            onChange={(v) => p.set("pricingSecurityNote", v)}
+          />
+          <Field
+            label="Checkout button"
+            value={p.content.ctaPrimary}
+            onChange={(v) => p.set("ctaPrimary", v)}
+          />
+          <ListEditor
+            items={p.content.pricingFeatures}
+            onChange={(items) => p.set("pricingFeatures", items)}
+            label="Pricing feature"
+          />
+        </EditGroup>
+      )}
+      {b.type === "highlights" && (
+        <EditGroup title="Highlights">
+          <Field
+            label="Section title"
+            value={p.content.highlightsTitle}
+            onChange={(v) => p.set("highlightsTitle", v)}
+          />
+          <Field
+            label="Description"
+            value={p.content.highlightsDescription}
+            onChange={(v) => p.set("highlightsDescription", v)}
+            textarea
+          />
+          <ListEditor
+            items={p.content.highlights}
+            onChange={(items) => p.set("highlights", items)}
+            label="Highlight"
+          />
+        </EditGroup>
+      )}
+      {b.type === "about" && (
+        <EditGroup title="About">
+          <Field
+            label="Eyebrow"
+            value={p.content.aboutEyebrow}
+            onChange={(v) => p.set("aboutEyebrow", v)}
+          />
+          <Field
+            label="Section title"
+            value={p.content.aboutTitle}
+            onChange={(v) => p.set("aboutTitle", v)}
+          />
+          <Field
+            label="Description"
+            value={p.content.aboutDescription}
+            onChange={(v) => p.set("aboutDescription", v)}
+            textarea
+            rows={6}
+          />
+          <Field
+            label="Feature card title"
+            value={p.content.aboutCardTitle}
+            onChange={(v) => p.set("aboutCardTitle", v)}
+          />
+          <Field
+            label="Feature card description"
+            value={p.content.aboutCardDescription}
+            onChange={(v) => p.set("aboutCardDescription", v)}
+            textarea
+          />
+          <div className="grid grid-cols-3 gap-2">
+            <Field
+              label="Members value"
+              value={p.content.members}
+              onChange={(v) => p.set("members", v)}
+            />
+            <Field
+              label="Online value"
+              value={p.content.online}
+              onChange={(v) => p.set("online", v)}
+            />
+            <Field
+              label="Hosts value"
+              value={p.content.admins}
+              onChange={(v) => p.set("admins", v)}
+            />
+            <Field
+              label="Members label"
+              value={p.content.aboutMembersLabel}
+              onChange={(v) => p.set("aboutMembersLabel", v)}
+            />
+            <Field
+              label="Online label"
+              value={p.content.aboutOnlineLabel}
+              onChange={(v) => p.set("aboutOnlineLabel", v)}
+            />
+            <Field
+              label="Hosts label"
+              value={p.content.aboutHostsLabel}
+              onChange={(v) => p.set("aboutHostsLabel", v)}
+            />
+          </div>
+        </EditGroup>
+      )}
+      {b.type === "curriculum" && (
+        <EditGroup title="What's inside">
+          <Field
+            label="Section title"
+            value={p.content.curriculumTitle}
+            onChange={(v) => p.set("curriculumTitle", v)}
+          />
+          <Field
+            label="Description"
+            value={p.content.curriculumDescription}
+            onChange={(v) => p.set("curriculumDescription", v)}
+            textarea
+          />
+          <Field
+            label="Expanded item description"
+            value={p.content.curriculumItemDescription}
+            onChange={(v) => p.set("curriculumItemDescription", v)}
+            textarea
+          />
+          <ListEditor
+            items={p.content.curriculum}
+            onChange={(items) => p.set("curriculum", items)}
+            label="Module"
+          />
+        </EditGroup>
+      )}
+      {b.type === "faq" && (
+        <EditGroup title="FAQ">
+          <Field
+            label="Section title"
+            value={p.content.faqTitle}
+            onChange={(v) => p.set("faqTitle", v)}
+          />
+          <FaqEditor
+            items={p.content.faqs}
+            onChange={(items) => p.set("faqs", items)}
+          />
+        </EditGroup>
+      )}
+      {b.type === "cta" && (
+        <EditGroup title="Join CTA">
+          <Field
+            label="Title"
+            value={p.content.ctaTitle}
+            onChange={(v) => p.set("ctaTitle", v)}
+          />
+          <Field
+            label="Description"
+            value={p.content.ctaDescription}
+            onChange={(v) => p.set("ctaDescription", v)}
+            textarea
+            rows={5}
+          />
+          <Field
+            label="Primary button label"
+            value={p.content.ctaPrimary}
+            onChange={(v) => p.set("ctaPrimary", v)}
+          />
+          <Field
+            label="Secondary CTA label"
+            value={p.content.ctaSecondary}
+            onChange={(v) => p.set("ctaSecondary", v)}
+          />
+          <p className="text-[10px] text-slate-500">
+            The primary action always takes visitors to secure community
+            checkout.
+          </p>
+        </EditGroup>
+      )}
+      {b.type === "footer" && (
+        <EditGroup title="Footer">
+          <Field
+            label="Footer description"
+            value={p.content.footerDescription}
+            onChange={(v) => p.set("footerDescription", v)}
+            textarea
+            rows={5}
+          />
+          <Field
+            label="Legal links text"
+            value={p.content.footerLegalText}
+            onChange={(v) => p.set("footerLegalText", v)}
+          />
+          <p className="text-[10px] text-slate-500">
+            Footer social icons use the links entered in the Creator block.
+          </p>
+        </EditGroup>
+      )}
+    </div>
+  );
+}
+function ListEditor({
+  items,
+  onChange,
+  label,
+}: {
+  items: string[];
+  onChange: (items: string[]) => void;
+  label: string;
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((item, index) => (
+        <div key={index} className="flex gap-1.5">
+          <input
+            value={item}
+            onChange={(e) =>
+              onChange(
+                items.map((value, i) => (i === index ? e.target.value : value)),
+              )
+            }
+            className="min-w-0 flex-1 rounded-lg border px-2.5 py-2 text-xs outline-none"
+            style={{ borderColor: E.bd }}
+            aria-label={`${label} ${index + 1}`}
+          />
+          <Mini on={() => onChange(items.filter((_, i) => i !== index))}>
+            <Trash2 />
+          </Mini>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...items, `New ${label.toLowerCase()}`])}
+        className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed py-2 text-xs text-violet-600"
+      >
+        <Plus className="h-3 w-3" />
+        Add {label.toLowerCase()}
+      </button>
+    </div>
+  );
+}
+function FaqEditor({
+  items,
+  onChange,
+}: {
+  items: Array<{ question: string; answer: string }>;
+  onChange: (items: Array<{ question: string; answer: string }>) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((item, index) => (
+        <div
+          key={index}
+          className="space-y-1.5 rounded-xl border p-2"
+          style={{ borderColor: E.bd }}
+        >
+          <div className="flex gap-1.5">
+            <input
+              value={item.question}
+              onChange={(e) =>
+                onChange(
+                  items.map((value, i) =>
+                    i === index
+                      ? { ...value, question: e.target.value }
+                      : value,
+                  ),
+                )
+              }
+              className="min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold outline-none"
+              placeholder="Question"
+            />
+            <Mini on={() => onChange(items.filter((_, i) => i !== index))}>
+              <Trash2 />
+            </Mini>
+          </div>
+          <textarea
+            value={item.answer}
+            onChange={(e) =>
+              onChange(
+                items.map((value, i) =>
+                  i === index ? { ...value, answer: e.target.value } : value,
+                ),
+              )
+            }
+            className="w-full resize-none rounded-lg border p-2 text-xs outline-none"
+            rows={3}
+            placeholder="Answer"
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() =>
+          onChange([
+            ...items,
+            { question: "New question", answer: "Add your answer." },
+          ])
+        }
+        className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed py-2 text-xs text-violet-600"
+      >
+        <Plus className="h-3 w-3" />
+        Add question
+      </button>
+    </div>
+  );
+}
+function MediaEditor(p: any) {
+  return (
+    <EditGroup title="Media gallery">
+      {p.media.map((m: MediaItem) => (
+        <div
+          key={m.id}
+          className="space-y-2 rounded-xl border p-2"
+          style={{ background: E.card, borderColor: E.bd }}
+        >
+          <div className="flex items-center gap-2">
+            <div
+              className="h-9 w-14 rounded bg-cover bg-center"
+              style={{
+                backgroundImage: mediaThumb(m)
+                  ? `url(${mediaThumb(m)})`
+                  : undefined,
+              }}
+            />
+            <input
+              value={m.label}
+              onChange={(e) =>
+                p.setMedia((ms: MediaItem[]) =>
+                  ms.map((x) =>
+                    x.id === m.id ? { ...x, label: e.target.value } : x,
+                  ),
+                )
+              }
+              className="min-w-0 flex-1 bg-transparent text-xs outline-none"
+            />
+            <Mini
+              on={() =>
+                p.setMedia((ms: MediaItem[]) => ms.filter((x) => x.id !== m.id))
+              }
+            >
+              <Trash2 />
+            </Mini>
+          </div>
+          {m.type === "image" ? (
+            <>
+              <label
+                className="flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-dashed bg-white py-2 text-[11px] font-semibold"
+                style={{ color: p.accent }}
+              >
+                <Upload className="h-3 w-3" />
+                Upload image
+                <input
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    e.target.files?.[0] &&
+                    p.uploadMedia(e.target.files[0], m.id)
+                  }
+                />
+              </label>
+              <div className="flex items-center rounded-lg border bg-white px-2">
+                <Link2 className="h-3 w-3" />
+                <input
+                  value={m.src || ""}
+                  onChange={(e) =>
+                    p.setMedia((ms: MediaItem[]) =>
+                      ms.map((x) =>
+                        x.id === m.id ? { ...x, src: e.target.value } : x,
+                      ),
+                    )
+                  }
+                  className="w-full p-2 text-xs outline-none"
+                  placeholder="Or paste an image URL"
+                />
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center rounded-lg border bg-white px-2">
+              <Link2 className="h-3 w-3" />
+              <input
+                value={m.url || ""}
+                onChange={(e) =>
+                  p.setMedia((ms: MediaItem[]) =>
+                    ms.map((x) =>
+                      x.id === m.id ? { ...x, url: e.target.value } : x,
+                    ),
+                  )
+                }
+                className="w-full p-2 text-xs outline-none"
+                placeholder="YouTube URL"
+              />
+            </div>
+          )}
+        </div>
+      ))}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() =>
+            p.setMedia((m: MediaItem[]) => [
+              ...m,
+              { id: `m${Date.now()}`, type: "video", label: "Video" },
+            ])
+          }
+          className="rounded-lg border border-dashed py-2 text-xs"
+        >
+          + Video
+        </button>
+        <button
+          onClick={() =>
+            p.setMedia((m: MediaItem[]) => [
+              ...m,
+              { id: `m${Date.now()}`, type: "image", label: "Image" },
+            ])
+          }
+          className="rounded-lg border border-dashed py-2 text-xs"
+        >
+          + Image
+        </button>
+      </div>
+    </EditGroup>
+  );
+}
+function ReviewsEditor(p: any) {
+  const update = (id: string, changes: Partial<Review>) =>
+    p.setReviews((rs: Review[]) =>
+      rs.map((x) => (x.id === id ? { ...x, ...changes } : x)),
+    );
+  return (
+    <EditGroup title="Reviews">
+      <p className="text-[10px] leading-4 text-slate-500">
+        Use specific outcomes and real member names. You can set a 1–5 star
+        rating, initials, and a portrait URL for every testimonial.
+      </p>
+      {p.reviews.map((r: Review, index: number) => (
+        <div
+          key={r.id}
+          className="space-y-2 rounded-xl border p-2.5"
+          style={{ borderColor: E.bd }}
+        >
+          <div className="flex items-center justify-between">
+            <strong className="text-[11px]">Review {index + 1}</strong>
+            <button
+              type="button"
+              onClick={() =>
+                p.setReviews((rs: Review[]) => rs.filter((x) => x.id !== r.id))
+              }
+              className="text-[10px] font-semibold text-red-600"
+            >
+              Delete
+            </button>
+          </div>
+          <Field
+            label="Member name"
+            value={r.name}
+            onChange={(v) =>
+              update(r.id, {
+                name: v,
+                initials: v
+                  .split(/\s+/)
+                  .map((x) => x[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase(),
+              })
+            }
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Field
+              label="Initials"
+              value={r.initials}
+              onChange={(v) =>
+                update(r.id, { initials: v.slice(0, 3).toUpperCase() })
+              }
+            />
+            <label
+              className="block text-[11px] font-medium"
+              style={{ color: E.t2 }}
+            >
+              Rating
+              <select
+                value={r.rating}
+                onChange={(e) =>
+                  update(r.id, { rating: Number(e.target.value) })
+                }
+                className="mt-1 w-full rounded-lg border bg-white px-2 py-2 text-xs outline-none"
+                style={{ borderColor: E.bd }}
+              >
+                {[5, 4, 3, 2, 1].map((n) => (
+                  <option key={n} value={n}>
+                    {n} stars
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <Field
+            label="Portrait image URL (optional)"
+            value={r.image || ""}
+            onChange={(v) => update(r.id, { image: v, hasImage: Boolean(v) })}
+          />
+          <label
+            className="flex items-center justify-between text-[11px] font-medium"
+            style={{ color: E.t2 }}
+          >
+            Show portrait instead of initials
+            <Toggle
+              label=""
+              on={Boolean(r.hasImage)}
+              onChange={(v) => update(r.id, { hasImage: v })}
+              accent={p.accent}
+            />
+          </label>
+          <Field
+            label="Review quote"
+            value={r.text}
+            onChange={(v) => update(r.id, { text: v })}
+            textarea
+            rows={4}
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() =>
+          p.setReviews((rs: Review[]) => [
+            ...rs,
+            {
+              id: `r${Date.now()}`,
+              name: "New member",
+              initials: "NM",
+              rating: 5,
+              hasImage: false,
+              text: "Share the outcome this member achieved.",
+            },
+          ])
+        }
+        className="w-full rounded-lg border border-dashed py-2 text-xs"
+        style={{ color: p.accent, borderColor: `${p.accent}55` }}
+      >
+        <Plus className="mr-1 inline h-3 w-3" />
+        Add review
+      </button>
+    </EditGroup>
+  );
+}
+function DesignEditor({
+  design,
+  setD,
+  setDesign,
+  device,
+  setDevice,
+  accent,
+}: any) {
+  return (
+    <div>
+      <EditGroup title="Page background">
+        <div className="grid grid-cols-3 gap-1.5">
+          {(
+            [
+              ["white", "Clean white"],
+              ["tint", "Soft tint"],
+              ["gradient", "Brand gradient"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              type="button"
+              key={value}
+              onClick={() => setD("bg", value)}
+              className="rounded-lg border px-1 py-2 text-[10px] font-semibold"
+              style={{
+                background:
+                  value === "white"
+                    ? "#fff"
+                    : value === "tint"
+                      ? "#f8f4ff"
+                      : `linear-gradient(135deg,${design.accent}25,${design.accent2}35)`,
+                color: design.bg === value ? accent : E.t2,
+                borderColor: design.bg === value ? accent : E.bd,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <Toggle
+          label="Pill-shaped buttons"
+          on={design.pill}
+          onChange={(v) => setD("pill", v)}
+          accent={accent}
+        />
+        <p className="text-[10px] text-slate-500">
+          These controls set the global canvas and button shape for every shared
+          landing-page section.
+        </p>
+      </EditGroup>
+      <EditGroup title="Colors">
+        <ColorControl
+          label="Primary"
+          value={design.accent}
+          onChange={(v) => setD("accent", v)}
+        />
+        <ColorControl
+          label="Gradient end"
+          value={design.accent2}
+          onChange={(v) => setD("accent2", v)}
+        />
+        <div className="flex flex-wrap gap-2">
+          {[
+            ["#8e78fb", "#6c52f0"],
+            ["#f65887", "#c81e5b"],
+            ["#0ea5e9", "#6366f1"],
+            ["#52c41a", "#2f9e0e"],
+          ].map(([a, b]) => (
+            <button
+              key={a}
+              onClick={() =>
+                setDesign((d: Design) => ({ ...d, accent: a, accent2: b }))
+              }
+              className="h-8 w-8 rounded-lg"
+              style={{ background: `linear-gradient(135deg,${a},${b})` }}
+            />
+          ))}
+        </div>
+      </EditGroup>
+      <EditGroup title="Heading font">
+        <FontPicker
+          value={design.headingFont}
+          onChange={(v) => setD("headingFont", v)}
+          accent={accent}
+        />
+      </EditGroup>
+      <EditGroup title="Body font">
+        <FontPicker
+          value={design.bodyFont}
+          onChange={(v) => setD("bodyFont", v)}
+          accent={accent}
+        />
+      </EditGroup>
+      <EditGroup title={`Corner radius · ${design.radius}px`}>
+        <input
+          type="range"
+          min="0"
+          max="26"
+          value={design.radius}
+          onChange={(e) => setD("radius", Number(e.target.value))}
+          className="w-full accent-violet-600"
+        />
+      </EditGroup>
+      <EditGroup title="Sections">
+        <Toggle
+          label="Alternate section shades"
+          on={design.altSections}
+          onChange={(v) => setD("altSections", v)}
+          accent={accent}
+        />
+      </EditGroup>
+      <EditGroup title="Preview device">
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              { id: "desktop", Icon: Monitor },
+              { id: "tablet", Icon: Tablet },
+              { id: "mobile", Icon: Smartphone },
+            ] as const
+          ).map((d) => (
+            <button
+              key={d.id}
+              onClick={() => setDevice(d.id)}
+              className="grid place-items-center gap-1 rounded-lg border py-2 text-[10px]"
+              style={{
+                color: device === d.id ? accent : E.t2,
+                borderColor: device === d.id ? accent : E.bd,
+              }}
+            >
+              <d.Icon className="h-4 w-4" />
+              {d.id}
+            </button>
+          ))}
+        </div>
+      </EditGroup>
+    </div>
+  );
+}
+function EditGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-b px-4 py-3.5" style={{ borderColor: E.bd }}>
+      <h4
+        className="mb-2.5 text-[10px] font-bold uppercase tracking-wider"
+        style={{ color: E.t3 }}
+      >
+        {title}
+      </h4>
+      <div className="flex flex-col gap-2.5">{children}</div>
+    </div>
+  );
+}
+function Field({
+  label,
+  value,
+  onChange,
+  textarea,
+  prefix,
+  rows,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  textarea?: boolean;
+  prefix?: string;
+  rows?: number;
+}) {
+  return (
+    <label className="block text-[11px] font-medium" style={{ color: E.t2 }}>
+      {label}
+      {textarea ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={rows || 3}
+          className="mt-1 w-full resize-none rounded-lg border bg-white px-2.5 py-2 text-[12px] outline-none"
+          style={{ borderColor: E.bd, color: E.t1 }}
+        />
+      ) : (
+        <div
+          className="mt-1 flex overflow-hidden rounded-lg border bg-white"
+          style={{ borderColor: E.bd }}
+        >
+          {prefix && (
+            <span className="py-2 pl-2 text-[11px] text-slate-400">
+              {prefix}
+            </span>
+          )}
+          <input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-[12px] outline-none"
+          />
+        </div>
+      )}
+    </label>
+  );
+}
+function ColorControl({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2">
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-8 w-8 rounded-lg"
+      />
+      <span className="flex-1 text-[11px] text-slate-500">
+        {label}
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="block w-full bg-transparent font-mono text-xs text-slate-900 outline-none"
+        />
+      </span>
+    </label>
+  );
+}
+function BackgroundPicker({
+  value,
+  onChange,
+  accent,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  accent: string;
+}) {
+  const swatches = [
+    ["Transparent", "transparent"],
+    ["White", "#ffffff"],
+    ["Lavender", "#f7f3ff"],
+    ["Soft violet", "#faf8ff"],
+    ["Warm", "#fff8f1"],
+    ["Cool", "#f0f9ff"],
+  ];
+  const safeColor = /^#[0-9a-f]{6}$/i.test(value) ? value : "#ffffff";
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-medium" style={{ color: E.t2 }}>
+        Section background
+      </p>
+      <div className="grid grid-cols-3 gap-1.5">
+        {swatches.map(([label, color]) => (
+          <button
+            type="button"
+            key={color}
+            onClick={() => onChange(color)}
+            className="rounded-lg border px-1 py-2 text-[9px] font-semibold"
+            style={{
+              borderColor: value === color ? accent : E.bd,
+              outline: value === color ? `1px solid ${accent}` : undefined,
+              background:
+                color === "transparent"
+                  ? "linear-gradient(135deg,#fff 45%,#f0ecf8 45%,#f0ecf8 55%,#fff 55%)"
+                  : color,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          type="color"
+          value={safeColor}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-7 w-8 rounded"
+        />
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="#ffffff or transparent"
+          className="min-w-0 flex-1 rounded-lg border px-2 py-1.5 font-mono text-[10px] outline-none"
+          style={{ borderColor: E.bd }}
+        />
+      </div>
+    </div>
+  );
+}
+function FontPicker({
+  value,
+  onChange,
+  accent,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  accent: string;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {FONTS.map((f) => (
+        <button
+          key={f}
+          onClick={() => onChange(f)}
+          className="truncate rounded-lg border px-2 py-2 text-[11px] font-semibold"
+          style={{
+            fontFamily: stack(f),
+            background: value === f ? `${accent}15` : "#fff",
+            color: value === f ? accent : E.t1,
+            borderColor: value === f ? accent : E.bd,
+          }}
+        >
+          {f}
+        </button>
+      ))}
+    </div>
+  );
+}
+function Toggle({
+  label,
+  on,
+  onChange,
+  accent,
+}: {
+  label: string;
+  on: boolean;
+  onChange: (v: boolean) => void;
+  accent: string;
+}) {
+  return (
+    <button
+      onClick={() => onChange(!on)}
+      className="flex items-center justify-between text-left text-xs"
+      style={{ color: E.t2 }}
+    >
+      {label}
+      <span
+        className="relative h-5 w-9 rounded-full"
+        style={{ background: on ? accent : "#dcd8ec" }}
+      >
+        <i
+          className="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all"
+          style={{ left: on ? 18 : 2 }}
+        />
+      </span>
+    </button>
+  );
+}
