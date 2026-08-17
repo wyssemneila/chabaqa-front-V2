@@ -10,6 +10,7 @@ import { getUserProfileHandle } from "@/lib/profile-handle"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
 import { ThemeMenu } from "@/components/theme-menu"
+import { LangToggle } from "@/components/lang-toggle"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -133,6 +134,7 @@ export function Header() {
 
         {/* Right CTA */}
         <div className="flex items-center gap-2">
+          <LangToggle />
           <ThemeMenu className="h-10 w-10 rounded-xl border-[var(--bd)] bg-[var(--white)] text-[var(--t2)] hover:border-[var(--p3)] hover:bg-[var(--p2)] hover:text-[var(--p)]" />
           {loading ? null : !isAuthenticated ? (
             <>
