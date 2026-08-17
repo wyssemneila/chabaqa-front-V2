@@ -41,7 +41,7 @@ export default function DashYourCommunities({ items = [], loading = false }: { i
           {lang === 'ar' ? 'لا توجد مجتمعات بعد' : 'No communities yet'}
         </div>
       ) : items.map(c => (
-        <div key={c.name} className="flex items-center gap-3.5 px-4 py-3.5 mx-4 my-3 rounded-[10px] transition-all hover:shadow-[0_8px_24px_rgba(142,120,251,.14)]"
+        <div key={c.slug || c.name} className="flex items-center gap-3.5 px-4 py-3.5 mx-4 my-3 rounded-[10px] transition-all hover:shadow-[0_8px_24px_rgba(142,120,251,.14)]"
           style={{ background: 'var(--p2)', border: '1px solid var(--bd)' }}>
 
           {/* community icon — outline Users icon instead of emoji */}
@@ -66,16 +66,27 @@ export default function DashYourCommunities({ items = [], loading = false }: { i
           </div>
 
           <div className="flex gap-1.5 shrink-0">
-            <button className="text-[11px] font-medium px-2.5 py-1 rounded-[8px] transition-all cursor-pointer"
-              style={{ border: '1px solid var(--bd)', color: 'var(--t2)', background: 'var(--white)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(142,120,251,.12)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}>
-              {t.view}
-            </button>
-            <button className="text-[11px] font-medium px-2.5 py-1 rounded-[8px] text-white transition-opacity hover:opacity-90 cursor-pointer"
-              style={{ background: 'var(--p)', border: 'none' }}>
-              {t.customize}
-            </button>
+            {c.slug ? <>
+              <Link href={`/community/${encodeURIComponent(c.slug)}`} className="text-[11px] font-medium px-2.5 py-1 rounded-[8px] transition-all cursor-pointer"
+                style={{ border: '1px solid var(--bd)', color: 'var(--t2)', background: 'var(--white)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(142,120,251,.12)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}>
+                {t.view}
+              </Link>
+              <Link href={`/creator/community/${encodeURIComponent(c.slug)}/customize`} className="text-[11px] font-medium px-2.5 py-1 rounded-[8px] text-white transition-opacity hover:opacity-90 cursor-pointer"
+                style={{ background: 'var(--p)', border: 'none' }}>
+                {t.customize}
+              </Link>
+            </> : <>
+              <button disabled className="text-[11px] font-medium px-2.5 py-1 rounded-[8px] cursor-not-allowed opacity-50"
+                style={{ border: '1px solid var(--bd)', color: 'var(--t2)', background: 'var(--white)' }}>
+                {t.view}
+              </button>
+              <button disabled className="text-[11px] font-medium px-2.5 py-1 rounded-[8px] text-white cursor-not-allowed opacity-50"
+                style={{ background: 'var(--p)', border: 'none' }}>
+                {t.customize}
+              </button>
+            </>}
           </div>
         </div>
       ))}

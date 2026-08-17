@@ -165,7 +165,7 @@ describe('creator dashboard fetch adapters', () => {
   it('builds overview KPI/content/community view models from fetched lists', () => {
     const overview = makeDashboardOverview({
       overview: { totalMembers: 12, engagementRate: 64 },
-      communities: [{ name: 'Motion Masters', membersCount: 12, verified: true }],
+      communities: [{ name: 'Motion Masters', slug: 'motion-masters', membersCount: 12, verified: true }],
       courses: [{ id: 'c1', title: 'Course One' }],
       challenges: [{ id: 'ch1', title: 'Challenge One' }],
       sessions: [{ id: 's1', title: 'Session One' }],
@@ -174,7 +174,12 @@ describe('creator dashboard fetch adapters', () => {
     })
 
     expect(overview.kpis.map((kpi) => kpi.value)).toEqual(['12', '1', '1', '1', '150.00', '64%'])
-    expect(overview.communities[0]).toMatchObject({ name: 'Motion Masters', members: 12, verified: true })
+    expect(overview.communities[0]).toMatchObject({
+      name: 'Motion Masters',
+      slug: 'motion-masters',
+      members: 12,
+      verified: true,
+    })
     expect(overview.content.map((item) => item.type)).toEqual(['Course', 'Challenge', 'Session'])
     expect(overview.onboarding).toEqual([
       { id: 'community', label: 'Create a community', done: true },

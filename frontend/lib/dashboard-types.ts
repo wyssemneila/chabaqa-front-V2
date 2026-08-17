@@ -25,6 +25,7 @@ export interface ContentItem {
 }
 
 export interface Community {
+  slug?: string
   emoji: string
   name: string
   verified: boolean
