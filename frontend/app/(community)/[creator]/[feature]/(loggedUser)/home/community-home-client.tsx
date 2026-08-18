@@ -782,10 +782,10 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary-500 mb-4" />
-          <p className="text-gray-600">Loading community...</p>
+          <p className="text-muted-foreground">Loading community...</p>
         </div>
       </div>
     )
@@ -793,11 +793,11 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to load community</h2>
-          <p className="text-gray-600 mb-4">{error || "Community not found"}</p>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Failed to load community</h2>
+          <p className="text-muted-foreground mb-4">{error || "Community not found"}</p>
           <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
@@ -840,19 +840,19 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 pb-28 sm:pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
             {/* Main Feed */}
             <div className="lg:col-span-3 space-y-6">
               {memberHome.continueItem && (
-                <Card className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+                <Card className="overflow-hidden border-border bg-card shadow-sm">
                   <CardContent className="p-4 sm:p-5">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-wide text-primary-600">Continue where you left off</p>
-                        <h2 className="mt-1 truncate text-lg font-semibold text-slate-900">{memberHome.continueItem.title}</h2>
-                        <p className="mt-1 line-clamp-2 text-sm text-slate-600">{memberHome.continueItem.description}</p>
+                        <h2 className="mt-1 truncate text-lg font-semibold text-foreground">{memberHome.continueItem.title}</h2>
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{memberHome.continueItem.description}</p>
                       </div>
                       <Button asChild className="shrink-0">
                         <Link href={memberHome.continueItem.href}>
@@ -866,7 +866,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
               )}
 
               {memberHome.recommendations.length > 0 && (
-                <Card className="border border-slate-200 bg-white shadow-sm">
+                <Card className="border-border bg-card shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base sm:text-lg">What should I do next?</CardTitle>
                   </CardHeader>
@@ -877,14 +877,14 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                         <Link
                           key={item.id}
                           href={item.href}
-                          className="group flex min-w-0 items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 transition hover:border-primary-200 hover:bg-primary-50/40"
+                          className="group flex min-w-0 items-start gap-3 rounded-lg border border-border bg-muted/60 p-3 transition hover:border-primary-300 hover:bg-primary-50/40"
                         >
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-primary-600 shadow-sm">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-primary-600 shadow-sm">
                             <Icon className="h-4 w-4" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-primary-700">{item.title}</p>
-                            <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{item.description}</p>
+                            <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary-600">{item.title}</p>
+                            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
                           </div>
                         </Link>
                       )
@@ -894,7 +894,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
               )}
 
               {/* Create / Edit Post */}
-              <Card className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/50 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] bg-white">
+              <Card className="overflow-hidden rounded-2xl sm:rounded-3xl border-border shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] bg-card">
                 <CardContent className="p-0">
                   {/* ── Collapsed bar ──────────────────────────────────────── */}
                   {!isComposerOpen && (
@@ -907,33 +907,33 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                             {(currentUser?.username || currentUser?.firstName || "U").charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-white" />
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-card" />
                       </div>
 
                       {/* Pill trigger */}
                       <button
                         type="button"
                         onClick={openComposer}
-                        className="group flex-1 h-11 min-w-0 rounded-full border border-slate-200 bg-slate-50/80 px-5 text-left text-sm transition-all duration-200 hover:border-primary-300 hover:bg-primary-50/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-1"
+                        className="group flex-1 h-11 min-w-0 rounded-full border border-border bg-muted/80 px-5 text-left text-sm text-foreground transition-all duration-200 hover:border-primary-300 hover:bg-primary-50/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-1"
                       >
-                        <span className="text-slate-400 group-hover:text-primary-500 transition-colors">Write something to the community…</span>
+                        <span className="text-muted-foreground group-hover:text-primary-500 transition-colors">Write something to the community…</span>
                       </button>
 
                       {/* Quick action buttons */}
-                      <div className="hidden sm:flex items-center gap-0.5 bg-slate-50 border border-slate-200 rounded-full px-1 py-1 flex-shrink-0">
+                      <div className="hidden sm:flex items-center gap-0.5 bg-muted border border-border rounded-full px-1 py-1 flex-shrink-0">
                         <Button
                           type="button" variant="ghost" size="icon"
-                          className="h-8 w-8 rounded-full text-slate-500 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary-600 hover:bg-primary-50 transition-colors"
                           title="Add Photo"
                           onClick={() => { setIsComposerExpanded(true); window.setTimeout(() => imageInputRef.current?.click(), 40) }}
                           disabled={isUploadingMedia}
                         >
                           <ImageIcon className="h-4 w-4" />
                         </Button>
-                        <div className="w-px h-4 bg-slate-200" />
+                        <div className="w-px h-4 bg-border" />
                         <Button
                           type="button" variant="ghost" size="icon"
-                          className="h-8 w-8 rounded-full text-slate-500 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary-600 hover:bg-primary-50 transition-colors"
                           title="Add Video"
                           onClick={() => { setIsComposerExpanded(true); window.setTimeout(() => videoInputRef.current?.click(), 40) }}
                           disabled={isUploadingMedia}
@@ -982,13 +982,13 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                                 {(currentUser?.username || currentUser?.firstName || "U").charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-400 border-2 border-card" />
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-slate-800 leading-tight">
+                            <p className="text-sm font-semibold text-foreground leading-tight">
                               {currentUser?.username || currentUser?.firstName || "You"}
                             </p>
-                            <p className="text-xs text-slate-400 leading-tight mt-0.5">
+                            <p className="text-xs text-muted-foreground leading-tight mt-0.5">
                               posting in <span className="font-medium text-primary-500">{community.name}</span>
                             </p>
                           </div>
@@ -1039,12 +1039,12 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                               }
                             }}
                             ref={postTextareaRef}
-                            className="min-h-[120px] sm:min-h-[140px] resize-none border border-slate-200 bg-slate-50/50 rounded-xl px-4 py-3 focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-primary-300 text-sm sm:text-[15px] leading-6 text-slate-700 placeholder:text-slate-400 transition-colors"
+                            className="min-h-[120px] sm:min-h-[140px] resize-none border border-border bg-muted/50 rounded-xl px-4 py-3 focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-primary-300 text-sm sm:text-[15px] leading-6 text-foreground placeholder:text-muted-foreground transition-colors"
                           />
                           {composerMentionQuery && (composerMentionSuggestions.length > 0 || isComposerMentionLoading) && (
-                            <div className="absolute left-2 right-2 bottom-12 z-20 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                            <div className="absolute left-2 right-2 bottom-12 z-20 overflow-hidden rounded-xl border border-border bg-popover shadow-lg">
                               {isComposerMentionLoading ? (
-                                <div className="px-3 py-2 text-xs text-slate-500">Searching members...</div>
+                                <div className="px-3 py-2 text-xs text-muted-foreground">Searching members...</div>
                               ) : (
                                 <ul className="max-h-52 overflow-y-auto py-1">
                                   {composerMentionSuggestions.map((member) => (
@@ -1052,7 +1052,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                                       <button
                                         type="button"
                                         onClick={() => handleComposerMentionSelect(member)}
-                                        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted"
                                       >
                                         <Avatar className="h-7 w-7">
                                           <AvatarImage src={member.avatar || "/placeholder.svg?height=28&width=28"} className="object-cover" />
@@ -1061,8 +1061,8 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                                           </AvatarFallback>
                                         </Avatar>
                                         <div className="min-w-0">
-                                          <p className="truncate text-sm font-medium text-slate-800">@{member.username}</p>
-                                          <p className="truncate text-xs text-slate-500">{[member.firstName, member.lastName].filter(Boolean).join(" ")}</p>
+                                          <p className="truncate text-sm font-medium text-foreground">@{member.username}</p>
+                                          <p className="truncate text-xs text-muted-foreground">{[member.firstName, member.lastName].filter(Boolean).join(" ")}</p>
                                         </div>
                                       </button>
                                     </li>
@@ -1072,7 +1072,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                             </div>
                           )}
                           {newPost.length > 0 && (
-                            <div className="absolute bottom-2.5 right-3 text-[10px] font-medium text-slate-400 select-none">
+                            <div className="absolute bottom-2.5 right-3 text-[10px] font-medium text-muted-foreground select-none">
                               {newPost.length}
                             </div>
                           )}
@@ -1114,7 +1114,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                             className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
                               showMetadata
                                 ? "bg-primary-50 text-primary-700 border-primary-200"
-                                : "text-slate-500 bg-white border-slate-200 hover:border-slate-300 hover:text-slate-700"
+                                : "text-muted-foreground bg-card border-border hover:border-primary-300 hover:text-foreground"
                             }`}
                           >
                             <Settings2 className="h-3.5 w-3.5" />
@@ -1122,12 +1122,12 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                             {showMetadata ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                           </button>
                           {showMetadata && (
-                            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
+                            <div className="rounded-xl border border-border bg-muted/70 p-3.5 space-y-3">
                               <Input
                                 placeholder="Post title (optional)"
                                 value={postTitle}
                                 onChange={(e) => setPostTitle(e.target.value)}
-                                className="bg-white"
+                                className="bg-card"
                               />
                               <div className="space-y-2">
                                 <div className="flex flex-col sm:flex-row gap-2">
@@ -1136,7 +1136,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                                     value={tagInput}
                                     onChange={(e) => setTagInput(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddTag() } }}
-                                    className="bg-white"
+                                    className="bg-card"
                                   />
                                   <Button type="button" variant="secondary" onClick={handleAddTag} disabled={!tagInput.trim()} className="shrink-0">
                                     <Hash className="h-4 w-4 mr-1" /> Add
@@ -1147,7 +1147,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                                     {postTags.map((tag) => (
                                       <Badge key={tag} variant="secondary" className="flex items-center gap-1 pr-1 text-xs">
                                         #{tag}
-                                        <button type="button" onClick={() => handleRemoveTag(tag)} className="rounded-full p-0.5 hover:bg-gray-300">
+                                        <button type="button" onClick={() => handleRemoveTag(tag)} className="rounded-full p-0.5 hover:bg-muted">
                                           <X className="h-3 w-3" />
                                         </button>
                                       </Badge>
@@ -1167,7 +1167,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                             className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
                               showLinks
                                 ? "bg-primary-50 text-primary-700 border-primary-200"
-                                : "text-slate-500 bg-white border-slate-200 hover:border-slate-300 hover:text-slate-700"
+                                : "text-muted-foreground bg-card border-border hover:border-primary-300 hover:text-foreground"
                             }`}
                           >
                             <LinkIcon className="h-3.5 w-3.5" />
@@ -1178,16 +1178,16 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                             {showLinks ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                           </button>
                           {showLinks && (
-                            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
+                            <div className="rounded-xl border border-border bg-muted/70 p-3.5 space-y-3">
                               <div className="flex flex-col sm:flex-row gap-2">
-                                <Input placeholder="https://example.com" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} className="bg-white" />
-                                <Input placeholder="Title (optional)" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} className="bg-white" />
+                                <Input placeholder="https://example.com" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} className="bg-card" />
+                                <Input placeholder="Title (optional)" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} className="bg-card" />
                                 <Button type="button" variant="secondary" onClick={handleAddLink} disabled={!linkUrl.trim()} className="shrink-0">Add</Button>
                               </div>
                               {links.length > 0 && (
                                 <div className="space-y-2">
                                   {links.map((link, idx) => (
-                                    <div key={`${link.url}-${idx}`} className="flex items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2.5">
+                                    <div key={`${link.url}-${idx}`} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2.5">
                                       <div className="min-w-0">
                                         <div className="text-sm font-medium truncate">{link.title || link.url}</div>
                                         <div className="text-xs text-muted-foreground truncate">{link.url}</div>
@@ -1205,13 +1205,13 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
 
                         {/* Emoji picker */}
                         {showEmojiPicker && (
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <div className="rounded-xl border border-border bg-muted p-3">
                             <div className="grid grid-cols-10 gap-1">
                               {COMMON_EMOJIS.map((emoji) => (
                                 <button
                                   key={emoji} type="button"
                                   onClick={() => insertEmojiIntoPost(emoji)}
-                                  className="text-xl hover:bg-white p-1.5 rounded-lg transition hover:scale-110"
+                                  className="text-xl hover:bg-card p-1.5 rounded-lg transition hover:scale-110"
                                 >
                                   {emoji}
                                 </button>
@@ -1227,11 +1227,11 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                       <input ref={videoInputRef} type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
 
                       {/* ── Toolbar footer ─────────────────────────────────── */}
-                      <div className="flex items-center justify-between gap-2 px-5 py-3 bg-slate-50/80 border-t border-slate-100">
+                      <div className="flex items-center justify-between gap-2 px-5 py-3 bg-muted/80 border-t border-border">
                         <div className="flex items-center gap-0.5">
                           <Button
                             type="button" variant="ghost" size="sm"
-                            className="h-9 rounded-full px-2.5 sm:px-3 text-slate-500 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                            className="h-9 rounded-full px-2.5 sm:px-3 text-muted-foreground hover:text-primary-600 hover:bg-primary-50 transition-colors"
                             title="Add Photo" onClick={() => imageInputRef.current?.click()} disabled={isUploadingMedia}
                           >
                             <ImageIcon className="h-4 w-4" />
@@ -1239,7 +1239,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                           </Button>
                           <Button
                             type="button" variant="ghost" size="sm"
-                            className="h-9 rounded-full px-2.5 sm:px-3 text-slate-500 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                            className="h-9 rounded-full px-2.5 sm:px-3 text-muted-foreground hover:text-primary-600 hover:bg-primary-50 transition-colors"
                             title="Add Video" onClick={() => videoInputRef.current?.click()} disabled={isUploadingMedia}
                           >
                             <Video className="h-4 w-4" />
@@ -1247,7 +1247,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                           </Button>
                           <Button
                             type="button" variant="ghost" size="sm"
-                            className="h-9 rounded-full px-2.5 sm:px-3 text-slate-500 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                            className="h-9 rounded-full px-2.5 sm:px-3 text-muted-foreground hover:text-primary-600 hover:bg-primary-50 transition-colors"
                             title="Add Link" onClick={() => setShowLinks(true)}
                           >
                             <LinkIcon className="h-4 w-4" />
@@ -1255,7 +1255,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                           </Button>
                           <Button
                             type="button" variant="ghost" size="sm"
-                            className={`h-9 rounded-full px-2.5 sm:px-3 transition-colors ${showEmojiPicker ? "text-primary-600 bg-primary-50" : "text-slate-500 hover:text-primary-600 hover:bg-primary-50"}`}
+                            className={`h-9 rounded-full px-2.5 sm:px-3 transition-colors ${showEmojiPicker ? "text-primary-600 bg-primary-50" : "text-muted-foreground hover:text-primary-600 hover:bg-primary-50"}`}
                             title="Emoji" onClick={() => setShowEmojiPicker((v) => !v)}
                           >
                             <Smile className="h-4 w-4" />
@@ -1266,7 +1266,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                           {!isEditMode && (
                             <Button
                               type="button" variant="ghost" size="sm"
-                              className="h-9 rounded-full px-4 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                              className="h-9 rounded-full px-4 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
                               onClick={resetComposer} disabled={isCreatingPost}
                             >
                               Cancel
@@ -1298,10 +1298,10 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                 </CardContent>
               </Card>
 
-              <Card className="border-0 shadow-sm bg-white/95 backdrop-blur-sm sticky top-[65px] z-40 rounded-2xl">
+              <Card className="border-0 shadow-sm bg-card/95 backdrop-blur-sm sticky top-[65px] z-40 rounded-2xl">
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="inline-flex rounded-2xl bg-gray-100/80 p-1 shadow-inner">
+                    <div className="inline-flex rounded-2xl bg-muted p-1 shadow-inner">
                       <Button
                         type="button"
                         variant={activeFeedTab === "all" ? "default" : "ghost"}
@@ -1335,29 +1335,29 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
               {/* Posts Feed */}
               <div className="space-y-6">
                 {activeFeedTab === "saved" && isLoadingSaved && feedPosts.length === 0 ? (
-                  <Card className="border-0 shadow-sm bg-white/95 backdrop-blur-sm sticky top-[65px] z-40 rounded-2xl">
+                  <Card className="border-0 shadow-sm bg-card/95 backdrop-blur-sm sticky top-[65px] z-40 rounded-2xl">
                     <CardContent className="p-8 text-center">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary-500 mb-3" />
-                      <p className="text-gray-600">Loading saved posts...</p>
+                      <p className="text-muted-foreground">Loading saved posts...</p>
                     </CardContent>
                   </Card>
                 ) : activeFeedTab === "saved" && savedError && feedPosts.length === 0 ? (
-                  <Card className="border-0 shadow-sm bg-white/95 backdrop-blur-sm sticky top-[65px] z-40 rounded-2xl">
+                  <Card className="border-0 shadow-sm bg-card/95 backdrop-blur-sm sticky top-[65px] z-40 rounded-2xl">
                     <CardContent className="p-8 text-center">
                       <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-3" />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to load saved posts</h3>
-                      <p className="text-sm text-gray-600 mb-4">{savedError}</p>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">Failed to load saved posts</h3>
+                      <p className="text-sm text-muted-foreground mb-4">{savedError}</p>
                       <Button onClick={() => void loadSavedPosts(1, false)}>Try again</Button>
                     </CardContent>
                   </Card>
                 ) : feedPosts.length === 0 ? (
-                  <Card className="border-0 shadow-sm bg-white/95 backdrop-blur-sm sticky top-[65px] z-40 rounded-2xl">
+                  <Card className="border-0 shadow-sm bg-card/95 backdrop-blur-sm sticky top-[65px] z-40 rounded-2xl">
                     <CardContent className="p-8 text-center">
-                      <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
                         {isSavedFeedEmpty ? "No saved posts yet" : "No posts yet"}
                       </h3>
-                      <p className="text-gray-600 mb-4">
+                      <p className="text-muted-foreground mb-4">
                         {isSavedFeedEmpty
                           ? "Saved posts will appear here when you bookmark them."
                           : "Be the first to share something with the community!"}
@@ -1413,7 +1413,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
             <div className="hidden lg:block lg:col-span-1 space-y-6 lg:sticky lg:top-24 lg:self-start">
               {/* Active Challenge */}
               {activeChallenges.length > 0 && (
-                <Card className="border-0 shadow-sm bg-gradient-to-br from-challenges-50 to-orange-50">
+                <Card className="border-0 shadow-sm bg-gradient-to-br from-challenges-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20">
                   <CardHeader className="pb-2 sm:pb-3">
                     <CardTitle className="flex items-center text-base sm:text-lg">
                       <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 text-challenges-500" />
@@ -1468,7 +1468,7 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
 
                   {/* Description */}
                   <div>
-                    <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">{community.description}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{community.description}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1484,10 +1484,10 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                       <Link
                         key={course.id}
                         href={`${basePath}/courses/${course.id}`}
-                        className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-courses-50 rounded-lg hover:bg-courses-100 transition-colors cursor-pointer"
+                        className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-courses-50 rounded-lg hover:bg-courses-100 transition-colors cursor-pointer dark:bg-cyan-950/30 dark:hover:bg-cyan-950/50"
                       >
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-courses-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-courses-600" />
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-courses-200 rounded-lg flex items-center justify-center flex-shrink-0 dark:bg-cyan-900/40">
+                          <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-courses-600 dark:text-cyan-300" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-xs sm:text-sm truncate">{course.title}</h4>
@@ -1549,9 +1549,9 @@ export default function CommunityHomeClient({ params }: { params: { creator?: st
                   </CardHeader>
                   <CardContent className="space-y-2 p-4 sm:p-6">
                     {memberHome.recentActivity.slice(0, 4).map((activity) => (
-                      <Link key={activity.id} href={activity.href} className="block rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
-                        <p className="truncate text-sm font-medium text-slate-900">{activity.title}</p>
-                        <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{activity.description}</p>
+                      <Link key={activity.id} href={activity.href} className="block rounded-lg border border-border p-3 hover:bg-muted">
+                        <p className="truncate text-sm font-medium text-foreground">{activity.title}</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{activity.description}</p>
                       </Link>
                     ))}
                   </CardContent>

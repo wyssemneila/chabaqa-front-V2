@@ -197,7 +197,7 @@ function MentionInput({
         disabled={disabled}
         placeholder={placeholder}
         style={{ minHeight }}
-        className={`resize-none bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-primary-300 text-slate-700 placeholder:text-slate-400 ${className}`}
+        className={`resize-none bg-muted/80 border border-border rounded-xl px-3.5 py-2.5 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-primary-300 placeholder:text-muted-foreground ${className}`}
         onChange={(e) => {
           onChange(e.target.value)
           detectMention(e.target.value, e.target.selectionStart ?? e.target.value.length)
@@ -217,9 +217,9 @@ function MentionInput({
         }}
       />
       {mentionQuery && hasSuggestions && (
-        <div className="absolute left-0 right-0 bottom-full mb-1.5 z-30 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="absolute left-0 right-0 bottom-full mb-1.5 z-30 overflow-hidden rounded-xl border border-border bg-popover shadow-xl">
           {isLoading ? (
-            <div className="flex items-center gap-2 px-3 py-2.5 text-xs text-slate-500">
+            <div className="flex items-center gap-2 px-3 py-2.5 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
               Searching members…
             </div>
@@ -230,7 +230,7 @@ function MentionInput({
                   <button
                     type="button"
                     onClick={() => selectMember(m)}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 hover:bg-primary-50 transition-colors text-left"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 hover:bg-accent transition-colors text-left"
                   >
                     <Avatar className="h-7 w-7 shrink-0">
                       <AvatarImage src={m.avatar || "/placeholder.svg?height=28&width=28"} className="object-cover" />
@@ -239,8 +239,8 @@ function MentionInput({
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-800">@{m.username}</p>
-                      <p className="truncate text-xs text-slate-500">
+                      <p className="truncate text-sm font-semibold text-foreground">@{m.username}</p>
+                      <p className="truncate text-xs text-muted-foreground">
                         {[m.firstName, m.lastName].filter(Boolean).join(" ")}
                       </p>
                     </div>
@@ -592,15 +592,15 @@ export const PostCard = memo(function PostCard({
   return (
     <Card
       id={`post-${post.id}`}
-      className={`overflow-hidden transition-all duration-300 bg-white dark:bg-slate-900/50 rounded-xl ${
-        post.isPinned ? "border border-amber-200 shadow-amber-50" : "border border-slate-100/80 dark:border-slate-800/40 shadow-sm hover:shadow-md"
+      className={`overflow-hidden transition-all duration-300 bg-card rounded-xl ${
+        post.isPinned ? "border border-amber-200 dark:border-amber-900/50 shadow-amber-50 dark:shadow-none" : "border border-border shadow-sm hover:shadow-md"
       } active:scale-[0.995] ${isHighlighted ? "ring-2 ring-primary-400 shadow-md" : ""}`}
     >
       {/* ── Pinned banner ───────────────────────────────────────────────────── */}
       {post.isPinned && (
-        <div className="flex items-center gap-1.5 px-4 py-1.5 bg-amber-50 border-b border-amber-100">
+        <div className="flex items-center gap-1.5 px-4 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/50">
           <Pin className="h-3 w-3 fill-amber-500 text-amber-500" />
-          <span className="text-xs font-medium text-amber-700">Pinned post</span>
+          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Pinned post</span>
         </div>
       )}
 
@@ -610,7 +610,7 @@ export const PostCard = memo(function PostCard({
         <div className="flex items-start justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-2.5 min-w-0">
             <Link href={postAuthorProfileHref} className="shrink-0 hover:opacity-90 transition-opacity">
-              <Avatar className="h-10 w-10 sm:h-11 sm:w-11 ring-2 ring-white shadow-md">
+              <Avatar className="h-10 w-10 sm:h-11 sm:w-11 ring-2 ring-card shadow-md">
                 <AvatarImage
                   src={post.author?.avatar || "/placeholder.svg?height=44&width=44"}
                   className="object-cover"
@@ -633,7 +633,7 @@ export const PostCard = memo(function PostCard({
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-slate-400 leading-tight mt-0.5">
+              <p className="text-xs text-muted-foreground leading-tight mt-0.5">
                 {formatTimeAgo(post.createdAt)}
               </p>
             </div>
@@ -644,7 +644,7 @@ export const PostCard = memo(function PostCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 sm:h-8 sm:w-8 rounded-full shrink-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                className="h-7 w-7 sm:h-8 sm:w-8 rounded-full shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -696,11 +696,11 @@ export const PostCard = memo(function PostCard({
         {/* ── Content ─────────────────────────────────────────────────────────── */}
         <div className="mb-3 sm:mb-4">
           {post.title && (
-            <h3 className="font-bold text-base sm:text-lg text-slate-900 mb-2 leading-snug">
+            <h3 className="font-bold text-base sm:text-lg text-foreground mb-2 leading-snug">
               {post.title}
             </h3>
           )}
-          <p className="text-slate-700 leading-relaxed text-sm sm:text-[15px] whitespace-pre-wrap">
+          <p className="text-muted-foreground leading-relaxed text-sm sm:text-[15px] whitespace-pre-wrap">
             {renderMentions(post.content || "")}
           </p>
           {post.tags && post.tags.length > 0 && (
@@ -729,7 +729,7 @@ export const PostCard = memo(function PostCard({
               }`}
             >
               {post.images.map((image, index) => (
-                <div key={index} className="relative rounded-xl overflow-hidden bg-slate-100">
+                <div key={index} className="relative rounded-xl overflow-hidden bg-muted">
                   <img
                     src={image || "/placeholder.svg"}
                     alt={`Image ${index + 1}`}
@@ -766,7 +766,7 @@ export const PostCard = memo(function PostCard({
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{link.title || link.url}</p>
                     {link.description && (
-                      <p className="text-xs text-slate-500 truncate">{link.description}</p>
+                      <p className="text-xs text-muted-foreground truncate">{link.description}</p>
                     )}
                     <p className={`text-xs truncate ${meta.isValid ? "text-primary-600" : "text-amber-600"}`}>
                       {meta.hostname}
@@ -780,12 +780,12 @@ export const PostCard = memo(function PostCard({
                   href={meta.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                  className="block p-3 border border-border rounded-xl hover:bg-muted transition-colors"
                 >
                   {inner}
                 </a>
               ) : (
-                <div key={index} className="block p-3 border border-amber-200 rounded-xl bg-amber-50/60">
+                <div key={index} className="block p-3 border border-amber-200 dark:border-amber-900/50 rounded-xl bg-amber-50/60 dark:bg-amber-950/30">
                   {inner}
                 </div>
               )
@@ -794,7 +794,7 @@ export const PostCard = memo(function PostCard({
         )}
 
         {/* ── Action bar ────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-slate-100/80">
+        <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-border">
           <div className="flex items-center gap-0.5">
 
             {/* Like */}
@@ -807,7 +807,7 @@ export const PostCard = memo(function PostCard({
                 poppedReaction === `${post.id}-like` ? "scale-125 text-pink-500 animate-bounce-gentle" :
                 post.isLikedByUser
                   ? "text-red-500 bg-red-50 hover:bg-red-100"
-                  : "text-slate-500 hover:text-red-500 hover:bg-red-50"
+                  : "text-muted-foreground hover:text-red-500 hover:bg-red-50"
               }`}
             >
               {isLiking ? (
@@ -831,21 +831,21 @@ export const PostCard = memo(function PostCard({
                     ? "text-amber-600 bg-amber-50 hover:bg-amber-100"
                     : myReaction
                       ? "text-amber-700 bg-amber-50 hover:bg-amber-100"
-                      : "text-slate-500 hover:text-amber-600 hover:bg-amber-50"
+                      : "text-muted-foreground hover:text-amber-600 hover:bg-amber-50"
                 }`}
               >
                 <span className="text-sm leading-none">{reactionTriggerEmoji}</span>
                 {reactionTotalCount > 0 && <span>{reactionTotalCount}</span>}
               </Button>
               {showReactionPicker && (
-                <div className="absolute left-0 bottom-full mb-2 z-20 bg-white border border-slate-200 rounded-2xl shadow-xl px-3 py-2">
+                <div className="absolute left-0 bottom-full mb-2 z-20 bg-popover border border-border rounded-2xl shadow-xl px-3 py-2">
                   <div className="flex items-center gap-0.5">
                     {QUICK_REACTIONS.map((emoji) => (
                       <button
                         key={emoji}
                         type="button"
                         onClick={() => handleReact(emoji)}
-                        className="text-xl p-1.5 rounded-xl hover:bg-slate-100 transition-all hover:scale-125 active:scale-100"
+                        className="text-xl p-1.5 rounded-xl hover:bg-muted transition-all hover:scale-125 active:scale-100"
                       >
                         {emoji}
                       </button>
@@ -864,7 +864,7 @@ export const PostCard = memo(function PostCard({
               className={`h-8 px-2.5 rounded-full text-xs gap-1.5 transition-all ${
                 showComments
                   ? "text-primary-600 bg-primary-50 hover:bg-primary-100"
-                  : "text-slate-500 hover:text-primary-600 hover:bg-primary-50"
+                  : "text-muted-foreground hover:text-primary-600 hover:bg-primary-50"
               }`}
             >
               {isLoadingComments ? (
@@ -883,7 +883,7 @@ export const PostCard = memo(function PostCard({
               className={`h-8 px-2.5 rounded-full text-xs gap-1.5 transition-all ${
                 post.isSharedByUser
                   ? "text-green-600 bg-green-50 hover:bg-green-100"
-                  : "text-slate-500 hover:text-green-600 hover:bg-green-50"
+                  : "text-muted-foreground hover:text-green-600 hover:bg-green-50"
               }`}
             >
               <Share className="h-3.5 w-3.5" />
@@ -900,7 +900,7 @@ export const PostCard = memo(function PostCard({
             className={`h-8 w-8 p-0 rounded-full transition-all ${
               isBookmarked
                 ? "text-amber-500 bg-amber-50 hover:bg-amber-100"
-                : "text-slate-400 hover:text-amber-500 hover:bg-amber-50"
+                : "text-muted-foreground hover:text-amber-500 hover:bg-amber-50"
             }`}
           >
             {isBookmarkPending ? (
@@ -920,7 +920,7 @@ export const PostCard = memo(function PostCard({
 
         {/* ── Comments section ─────────────────────────────────────────────── */}
         {showComments && (
-          <div className="mt-4 pt-4 border-t border-slate-100 space-y-4">
+          <div className="mt-4 pt-4 border-t border-border space-y-4">
 
             {/* New comment input */}
             {currentUserId && (
@@ -950,7 +950,7 @@ export const PostCard = memo(function PostCard({
                     }}
                   />
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-slate-400">Ctrl+Enter to post</span>
+                    <span className="text-[11px] text-muted-foreground">Ctrl+Enter to post</span>
                     <Button
                       size="sm"
                       onClick={handleAddComment}
@@ -968,10 +968,10 @@ export const PostCard = memo(function PostCard({
             <div className="space-y-4">
               {isLoadingComments ? (
                 <div className="flex justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : topLevel.length === 0 ? (
-                <p className="text-sm text-slate-400 py-1">
+                <p className="text-sm text-muted-foreground py-1">
                   No comments yet. Be the first to comment!
                 </p>
               ) : (
@@ -996,22 +996,22 @@ export const PostCard = memo(function PostCard({
                               src={c.userAvatar || "/placeholder.svg?height=32&width=32"}
                               className="object-cover"
                             />
-                            <AvatarFallback className="text-xs bg-slate-100 text-slate-600 font-semibold">
+                            <AvatarFallback className="text-xs bg-muted text-muted-foreground font-semibold">
                               {(c.userName || "U").charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                         </Link>
 
                         <div className="flex-1 min-w-0">
-                          <div className="rounded-2xl bg-slate-50 px-3.5 py-2.5">
+                          <div className="rounded-2xl bg-muted px-3.5 py-2.5">
                             <div className="flex items-baseline justify-between gap-2 mb-1">
                               <Link
                                 href={commentAuthorHref}
-                                className="text-sm font-semibold text-slate-800 hover:underline truncate"
+                                className="text-sm font-semibold text-foreground hover:underline truncate"
                               >
                                 {c.userName}
                               </Link>
-                              <span className="text-[11px] text-slate-400 shrink-0">
+                              <span className="text-[11px] text-muted-foreground shrink-0">
                                 {formatTimeAgo(c.createdAt)}
                               </span>
                             </div>
@@ -1050,7 +1050,7 @@ export const PostCard = memo(function PostCard({
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                                 {renderMentions(c.content)}
                               </p>
                             )}
@@ -1066,7 +1066,7 @@ export const PostCard = memo(function PostCard({
                                     setReplyingToId(isReplying ? null : c.id)
                                     setReplyDrafts((prev) => ({ ...prev, [c.id]: prev[c.id] || "" }))
                                   }}
-                                  className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-primary-600 transition-colors px-1.5 py-0.5 rounded"
+                                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary-600 transition-colors px-1.5 py-0.5 rounded"
                                 >
                                   <CornerDownRight className="h-3 w-3" />
                                   Reply
@@ -1077,14 +1077,14 @@ export const PostCard = memo(function PostCard({
                                   <button
                                     type="button"
                                     onClick={() => setEditingComment({ id: c.id, content: c.content })}
-                                    className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-700 transition-colors px-1.5 py-0.5 rounded"
+                                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded"
                                   >
                                     <Pencil className="h-3 w-3" />
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => setCommentToDeleteId(c.id)}
-                                    className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-red-600 transition-colors px-1.5 py-0.5 rounded"
+                                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-600 transition-colors px-1.5 py-0.5 rounded"
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </button>
@@ -1151,7 +1151,7 @@ export const PostCard = memo(function PostCard({
 
                       {/* Threaded replies */}
                       {commentReplies.length > 0 && (
-                        <div className="ml-10 space-y-2 border-l-2 border-slate-100 pl-3">
+                        <div className="ml-10 space-y-2 border-l-2 border-border pl-3">
                           {commentReplies.map((reply) => {
                             const isEditingReply = editingComment?.id === reply.id
                             const canManageReply = reply.userId === currentUserId
@@ -1167,21 +1167,21 @@ export const PostCard = memo(function PostCard({
                                       src={reply.userAvatar || "/placeholder.svg?height=28&width=28"}
                                       className="object-cover"
                                     />
-                                    <AvatarFallback className="text-[10px] bg-slate-100 text-slate-600 font-semibold">
+                                    <AvatarFallback className="text-[10px] bg-muted text-muted-foreground font-semibold">
                                       {(reply.userName || "U").charAt(0).toUpperCase()}
                                     </AvatarFallback>
                                   </Avatar>
                                 </Link>
                                 <div className="flex-1 min-w-0">
-                                  <div className="rounded-2xl bg-white border border-slate-100 px-3 py-2">
+                                  <div className="rounded-2xl bg-card border border-border px-3 py-2">
                                     <div className="flex items-baseline justify-between gap-2 mb-0.5">
                                       <Link
                                         href={replyAuthorHref}
-                                        className="text-xs font-semibold text-slate-800 hover:underline truncate"
+                                        className="text-xs font-semibold text-foreground hover:underline truncate"
                                       >
                                         {reply.userName}
                                       </Link>
-                                      <span className="text-[11px] text-slate-400 shrink-0">
+                                      <span className="text-[11px] text-muted-foreground shrink-0">
                                         {formatTimeAgo(reply.createdAt)}
                                       </span>
                                     </div>
@@ -1219,7 +1219,7 @@ export const PostCard = memo(function PostCard({
                                         </div>
                                       </div>
                                     ) : (
-                                      <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                      <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
                                         {renderMentions(reply.content)}
                                       </p>
                                     )}
@@ -1229,14 +1229,14 @@ export const PostCard = memo(function PostCard({
                                       <button
                                         type="button"
                                         onClick={() => setEditingComment({ id: reply.id, content: reply.content })}
-                                        className="text-[11px] text-slate-400 hover:text-slate-700 transition-colors p-1 rounded"
+                                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
                                       >
                                         <Pencil className="h-2.5 w-2.5" />
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => setCommentToDeleteId(reply.id)}
-                                        className="text-[11px] text-slate-400 hover:text-red-600 transition-colors p-1 rounded"
+                                        className="text-[11px] text-muted-foreground hover:text-red-600 transition-colors p-1 rounded"
                                       >
                                         <Trash2 className="h-2.5 w-2.5" />
                                       </button>
