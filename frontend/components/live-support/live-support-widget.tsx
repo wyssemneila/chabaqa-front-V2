@@ -41,6 +41,7 @@ export function LiveSupportWidget() {
   const [text, setText] = useState("")
   const [ticket, setTicket] = useState<LiveSupportTicket | null>(null)
   const [messages, setMessages] = useState<LiveSupportMessage[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const [socketConnected, setSocketConnected] = useState(false)
   const [requestingAdmin, setRequestingAdmin] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -99,6 +100,7 @@ export function LiveSupportWidget() {
 
   useEffect(() => {
     if (!open) return
+    setUnreadCount(0)
     loadData()
   }, [open, isAuthenticated])
 
@@ -158,7 +160,11 @@ export function LiveSupportWidget() {
     socket.on("support:message:new", ({ conversationId, message }: any) => {
       if (!message) return
       if (!ticket?.id || ticket.id !== conversationId) return
-      appendMessageIfNew(normalizeIncomingMessage(message))
+      const incoming = normalizeIncomingMessage(message)
+      appendMessageIfNew(incoming)
+      if (!open && incoming.senderType !== "user") {
+        setUnreadCount((count) => count + 1)
+      }
     })
 
     return () => {
@@ -265,6 +271,14 @@ export function LiveSupportWidget() {
             sizes="48px"
             className="relative h-12 w-12 object-contain"
           />
+        )}
+        {!open && unreadCount > 0 && (
+          <span
+            aria-label={`${unreadCount} unread support message${unreadCount === 1 ? "" : "s"}`}
+            className="absolute right-0 top-0 grid min-h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-rose-500 px-1 text-[10px] font-bold leading-none text-white"
+          >
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
         )}
       </Button>
 
