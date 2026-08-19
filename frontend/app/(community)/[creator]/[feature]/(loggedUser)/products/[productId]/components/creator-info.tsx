@@ -83,7 +83,7 @@ export default function CreatorInfo({ product }: CreatorInfoProps) {
     username: (creatorProfile as any)?.username || (product?.creator as any)?.username,
     name: displayName,
   })
-  
+
   // Stats - use fetched stats, fallback to product.creator stats
   const totalProducts = Number(creatorStats?.totalProducts ?? product?.creator?.totalProducts ?? 0)
   const totalSales = Number(
@@ -122,8 +122,8 @@ export default function CreatorInfo({ product }: CreatorInfoProps) {
         {/* Creator Profile */}
         <Link href={creatorProfileHref} className="flex items-start gap-3 sm:gap-4 hover:opacity-90 transition-opacity">
           <Avatar className="h-12 w-12 sm:h-16 sm:w-16 shrink-0">
-            <AvatarImage 
-              src={displayAvatar || "/placeholder.svg"} 
+            <AvatarImage
+              src={displayAvatar || "/placeholder.svg"}
               className="object-cover"
             />
             <AvatarFallback className="text-sm sm:text-base font-medium">

@@ -887,15 +887,15 @@ html {
   .community-primary-color {
     color: var(--p);
   }
-  
+
   .community-primary-bg {
     background-color: var(--p);
   }
-  
+
   .community-gradient-btn {
     background: linear-gradient(135deg, var(--p) 0%, var(--p3) 100%);
   }
-  
+
   .community-gradient-facebook {
     background: linear-gradient(135deg, var(--cyan) 0%, var(--p) 100%);
   }
