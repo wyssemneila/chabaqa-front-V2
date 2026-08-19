@@ -10,7 +10,8 @@ import {
   Max, 
   IsNotEmpty,
   IsHexColor,
-  IsUrl
+  IsUrl,
+  IsObject
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -342,6 +343,11 @@ export class UpdateCommunityPageContentDto {
   @Type(() => CTASectionDto)
   @IsOptional()
   cta?: any;
+
+  @ApiPropertyOptional({ description: 'Persisted creator page-builder layout and design state' })
+  @IsOptional()
+  @IsObject()
+  landingPage?: Record<string, unknown>;
 }
 
 /**

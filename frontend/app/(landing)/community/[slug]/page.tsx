@@ -17,6 +17,9 @@ import { normalizeCommunitySettings } from "@/lib/community-settings"
 import { buildCommunityTheme, getContentWidthClass } from "@/lib/community-theme"
 import { cn } from "@/lib/utils"
 import { absoluteUrl, generateAlternateLanguages, generateKeywords, generateTwitterMetadata } from "@/lib/seo-config"
+import { CommunityLandingExperience } from "@/components/community-landing-experience"
+import { normalizeCommunityLandingState } from "@/lib/community-landing-state"
+import { GF_URL } from "@/components/creator-dashboard/landing-renderer"
 
 const PUBLIC_COMMUNITY_DATA_REVALIDATE_SECONDS = 60
 const OPTIONAL_COMMUNITY_FETCH_TIMEOUT_MS = 4500
@@ -598,6 +601,19 @@ export default async function CommunityDetailsPage({ params }: CommunityDetailsP
   const formatMembers = (count: number) => (count >= 1000 ? `${(count / 1000).toFixed(1)}k` : String(count))
 
   const pageContent = normalizePageContent(rawPageContent, apiBaseForImages)
+  const landingState = normalizeCommunityLandingState(pageContent?.landingPage)
+
+  // A customized community uses the same renderer in the builder and on its
+  // public page. The legacy composition remains the fallback for existing
+  // communities that have not yet saved a builder configuration.
+  if (landingState) {
+    return (
+      <>
+        <link rel="stylesheet" href={GF_URL} />
+        <CommunityLandingExperience state={landingState} language="en" />
+      </>
+    )
+  }
 
   const overviewContent =
     pageContent?.overview && pageContent.overview.visible !== false ? pageContent.overview : null

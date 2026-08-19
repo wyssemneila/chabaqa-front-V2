@@ -156,10 +156,29 @@ export class CommunityPageContentService {
     if (updateDto.cta) {
       content.cta = this.applyCtaUpdate(content.cta, updateDto.cta);
     }
+    if (updateDto.landingPage) {
+      content.landingPage = updateDto.landingPage;
+    }
 
     content.lastEditedBy = editorObjectId;
     await content.save();
 
+    return this.formatResponse(content, community);
+  }
+
+  async saveAndPublishContent(
+    communityId: string,
+    userId: string,
+    updateDto: UpdateCommunityPageContentDto,
+  ) {
+    await this.updateContent(communityId, userId, updateDto);
+    const community = await this.communityModel.findById(communityId);
+    if (!community) throw new NotFoundException('Community not found');
+    const content = await this.findContentDocument(community._id);
+    if (!content) throw new NotFoundException('Community page content not found');
+    content.isPublished = true;
+    content.lastEditedBy = new Types.ObjectId(userId);
+    await content.save();
     return this.formatResponse(content, community);
   }
 
@@ -586,6 +605,7 @@ export class CommunityPageContentService {
       benefits: content.benefits,
       testimonials: content.testimonials,
       cta: content.cta,
+      landingPage: content.landingPage || content.builderState,
       source: 'published',
       isPublished: content.isPublished,
       version: content.version,
