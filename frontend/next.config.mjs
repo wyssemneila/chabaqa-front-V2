@@ -107,6 +107,11 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react'],
   },
   images: {
+    // placehold.co serves SVG fallback art. Keep SVG responses downloadable and
+    // script-free while allowing Next's optimizer to render those fallbacks.
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
         protocol: 'https',
