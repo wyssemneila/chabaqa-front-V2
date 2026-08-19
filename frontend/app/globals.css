@@ -80,7 +80,14 @@
     --bd: #e8e4ff;
     --bd2: #d4ccff;
     --nav-bg: rgba(247, 247, 254, 0.94);
-    --footer-bg: #1a1730;
+    /* Footer has its own semantic palette so its content remains readable when
+       the global theme is switched. */
+    --footer-bg: #ffffff;
+    --footer-heading: #1a1730;
+    --footer-muted: #5f5a7e;
+    --footer-faint: #797495;
+    --footer-border: #e8e4ff;
+    --footer-border-strong: #c4b8fd;
     --section-alt: #f0eefe;
     /* Shared surface aliases.  Keep these separate from the brand tokens so
        old components can be gradually moved to semantic surfaces without
@@ -115,7 +122,13 @@
     --pink:        #ff7a9c;
     --pk2:         #3a1a24;
     --nav-bg:      rgba(18,17,26,0.94);
-    --footer-bg:   #0d0c17;
+    /* Chabaqa navy, shared with the dark product surfaces rather than black. */
+    --footer-bg:   #101b35;
+    --footer-heading: #f4f7ff;
+    --footer-muted: #c1cbe4;
+    --footer-faint: #98a8c9;
+    --footer-border: #2a3b5d;
+    --footer-border-strong: #526b99;
     --section-alt: #161424;
     --surface:     #1c1a2e;
     --surface-raised: #24213a;

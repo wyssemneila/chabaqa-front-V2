@@ -31,8 +31,7 @@ export function Footer() {
 
   return (
     <footer
-      className="pt-16 pb-8 px-6 md:px-10"
-      style={{ background: "var(--footer-bg,#1a1730)" }}
+      className="bg-[var(--footer-bg)] pt-16 pb-8 px-6 md:px-10 transition-colors"
     >
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
@@ -44,10 +43,10 @@ export function Footer() {
                 alt="Chabaqa"
                 width={160}
                 height={48}
-                className="h-12 w-auto brightness-0 invert"
+                className="h-12 w-auto"
               />
             </Link>
-            <p className="text-white/70 text-sm leading-relaxed mb-6">{t("tagline")}</p>
+            <p className="text-[var(--footer-muted)] text-sm leading-relaxed mb-6">{t("tagline")}</p>
             <div className="flex gap-3">
               {[
                 {
@@ -86,7 +85,7 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Chabaqa on ${label}`}
-                  className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:border-white/30 transition-colors"
+                  className="w-9 h-9 rounded-xl border border-[var(--footer-border)] flex items-center justify-center text-[var(--footer-muted)] hover:text-[var(--footer-heading)] hover:border-[var(--footer-border-strong)] transition-colors"
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -109,13 +108,13 @@ export function Footer() {
           {/* Columns */}
           {columnHeadings.map((heading, colIdx) => (
             <div key={colIdx}>
-              <h4 className="text-white font-bold text-sm mb-4">{heading}</h4>
+              <h4 className="text-[var(--footer-heading)] font-bold text-sm mb-4">{heading}</h4>
               <ul className="flex flex-col gap-3">
                 {columns[colIdx]?.map((link, linkIdx) => (
                   <li key={linkIdx}>
                     <Link
                       href={withLocale(FOOTER_HREFS[colIdx]?.[linkIdx] ?? "#")}
-                      className="text-white/70 hover:text-white text-sm transition-colors"
+                      className="text-[var(--footer-muted)] hover:text-[var(--footer-heading)] text-sm transition-colors"
                     >
                       {link}
                     </Link>
@@ -126,8 +125,8 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span className="text-white/50 text-sm">{t("copyright")}</span>
+        <div className="border-t border-[var(--footer-border)] pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <span className="text-[var(--footer-faint)] text-sm">{t("copyright")}</span>
           <div className="flex items-center gap-4">
             {bottomLinks.map((label, idx) => {
               const hrefs = ["/terms-of-service", "/privacy-policy", "#"]
@@ -136,7 +135,7 @@ export function Footer() {
                   key={label}
                   href={idx === 2 ? "#" : withLocale(hrefs[idx])}
                   onClick={idx === 2 ? openCookiePreferences : undefined}
-                  className="text-white/50 hover:text-white text-sm transition-colors"
+                  className="text-[var(--footer-faint)] hover:text-[var(--footer-heading)] text-sm transition-colors"
                 >
                   {label}
                 </Link>
@@ -146,7 +145,7 @@ export function Footer() {
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             aria-label={t("backTop")}
-            className="flex items-center gap-2 text-white/50 hover:text-white text-sm transition-colors"
+            className="flex items-center gap-2 text-[var(--footer-faint)] hover:text-[var(--footer-heading)] text-sm transition-colors"
           >
             <svg
               viewBox="0 0 24 24"
