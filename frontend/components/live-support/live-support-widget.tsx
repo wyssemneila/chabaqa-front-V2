@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { motion, useDragControls } from "framer-motion"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { X, Send, Loader2, Sparkles, LifeBuoy } from "lucide-react"
+import { X, Send, Loader2, Sparkles, LifeBuoy, Volume2, VolumeX } from "lucide-react"
 import { io, Socket } from "socket.io-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,7 @@ const QUICK_QUESTIONS = [
 ]
 
 const SUPPORT_MASCOT_SRC = "/Logos/PNG/support_mascot_v2.png"
+const SUPPORT_SOUND_STORAGE_KEY = "chabaqa-live-support-sound-enabled"
 
 function normalizeIncomingMessage(message: any): LiveSupportMessage {
   return {
@@ -47,10 +48,14 @@ export function LiveSupportWidget() {
   const [error, setError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const socketRef = useRef<Socket | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const openRef = useRef(false)
+  const soundEnabledRef = useRef(false)
 
   const [mounted, setMounted] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
   const [viewport, setViewport] = useState({ width: 0, height: 0 })
+  const [soundEnabled, setSoundEnabled] = useState(false)
   const dragControls = useDragControls()
 
   useEffect(() => {
@@ -63,6 +68,63 @@ export function LiveSupportWidget() {
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
   }, [])
+
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled
+  }, [soundEnabled])
+
+  useEffect(() => {
+    openRef.current = open
+  }, [open])
+
+  useEffect(() => {
+    const storedPreference = window.localStorage.getItem(SUPPORT_SOUND_STORAGE_KEY)
+    setSoundEnabled(storedPreference === "true")
+  }, [])
+
+  const playNotificationSound = () => {
+    if (!soundEnabledRef.current) return
+
+    try {
+      const AudioContextConstructor = window.AudioContext
+      const context = audioContextRef.current || new AudioContextConstructor()
+      audioContextRef.current = context
+      if (context.state !== "running") return
+
+      const oscillator = context.createOscillator()
+      const gain = context.createGain()
+      oscillator.type = "sine"
+      oscillator.frequency.setValueAtTime(740, context.currentTime)
+      oscillator.frequency.exponentialRampToValueAtTime(880, context.currentTime + 0.1)
+      gain.gain.setValueAtTime(0.0001, context.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.07, context.currentTime + 0.012)
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18)
+      oscillator.connect(gain)
+      gain.connect(context.destination)
+      oscillator.start()
+      oscillator.stop(context.currentTime + 0.2)
+    } catch {
+      // Audio is optional and must never interfere with support messaging.
+    }
+  }
+
+  const toggleNotificationSound = () => {
+    const nextValue = !soundEnabled
+    setSoundEnabled(nextValue)
+    window.localStorage.setItem(SUPPORT_SOUND_STORAGE_KEY, String(nextValue))
+
+    if (nextValue) {
+      try {
+        const AudioContextConstructor = window.AudioContext
+        const context = audioContextRef.current || new AudioContextConstructor()
+        audioContextRef.current = context
+        void context.resume()
+      } catch {
+        setSoundEnabled(false)
+        window.localStorage.setItem(SUPPORT_SOUND_STORAGE_KEY, "false")
+      }
+    }
+  }
 
   const status = (ticket?.supportStatus || "BOT_ACTIVE") as LiveSupportStatus
 
@@ -105,7 +167,15 @@ export function LiveSupportWidget() {
   }, [open, isAuthenticated])
 
   useEffect(() => {
-    if (!open || !isAuthenticated || !token) return
+    if (!isAuthenticated || ticket) return
+
+    api.liveSupport.getMyTicket()
+      .then((result) => setTicket(result.ticket))
+      .catch(() => undefined)
+  }, [isAuthenticated, ticket])
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return
 
     const socketUrl = resolveSocketBaseUrl(process.env.NEXT_PUBLIC_API_URL)
     const socket = io(`${socketUrl}/live-support`, {
@@ -162,8 +232,9 @@ export function LiveSupportWidget() {
       if (!ticket?.id || ticket.id !== conversationId) return
       const incoming = normalizeIncomingMessage(message)
       appendMessageIfNew(incoming)
-      if (!open && incoming.senderType !== "user") {
+      if (!openRef.current && incoming.senderType !== "user") {
         setUnreadCount((count) => count + 1)
+        playNotificationSound()
       }
     })
 
@@ -172,7 +243,7 @@ export function LiveSupportWidget() {
       socketRef.current = null
       setSocketConnected(false)
     }
-  }, [open, isAuthenticated, token, ticket?.id])
+  }, [isAuthenticated, token, ticket?.id])
 
   useEffect(() => {
     if (!socketConnected || !socketRef.current || !ticket?.id) return
@@ -309,8 +380,19 @@ export function LiveSupportWidget() {
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={toggleNotificationSound}
+                className="h-8 w-8 rounded-full text-white hover:bg-white/20 hover:text-white"
+                aria-label={soundEnabled ? "Disable support notification sound" : "Enable support notification sound"}
+                title={soundEnabled ? "Disable notification sound" : "Enable notification sound"}
+              >
+                {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setOpen(false)}
                 className="h-8 w-8 rounded-full text-white hover:bg-white/20 hover:text-white"
+                aria-label="Close live support"
               >
                 <X className="h-4 w-4" />
               </Button>

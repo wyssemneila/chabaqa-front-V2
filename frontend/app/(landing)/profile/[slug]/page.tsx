@@ -6,14 +6,14 @@ import { useQuery } from "@tanstack/react-query"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import ProfilePage from "../page"
 const ProfilePageContent = (ProfilePage as any).__profileContent as React.ComponentType<{ overrideUser?: any; isOwnProfile?: boolean }>
-import { getUserProfileHandle, slugifyToHandle } from "@/lib/profile-handle"
+import { getUserProfileHandle } from "@/lib/profile-handle"
 import type { UserSocialLinks } from "@/lib/social-links"
 
-interface SlugUser {
+interface PublicProfileUser {
   _id: string
+  id?: string
   name: string
   username?: string
-  email?: string
   role: string
   avatar?: string
   ville?: string
@@ -24,48 +24,43 @@ interface SlugUser {
   createdAt: string
 }
 
-async function fetchUserByHandle(handle: string): Promise<SlugUser> {
+function toPublicProfileUser(user: unknown): PublicProfileUser | null {
+  if (!user || typeof user !== "object") return null
+
+  const source = user as Record<string, unknown>
+  const id = String(source._id || source.id || "").trim()
+  const name = typeof source.name === "string" ? source.name.trim() : ""
+  if (!id || !name) return null
+
+  return {
+    _id: id,
+    id,
+    name,
+    username: typeof source.username === "string" ? source.username : undefined,
+    role: typeof source.role === "string" ? source.role : "user",
+    avatar: typeof source.avatar === "string" ? source.avatar : undefined,
+    ville: typeof source.ville === "string" ? source.ville : undefined,
+    pays: typeof source.pays === "string" ? source.pays : undefined,
+    bio: typeof source.bio === "string" ? source.bio : undefined,
+    socialLinks: typeof source.socialLinks === "object" && source.socialLinks ? source.socialLinks as UserSocialLinks : undefined,
+    lien_instagram: typeof source.lien_instagram === "string" ? source.lien_instagram : undefined,
+    createdAt: typeof source.createdAt === "string" ? source.createdAt : "",
+  }
+}
+
+async function fetchUserByHandle(handle: string): Promise<PublicProfileUser> {
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
-  const candidates = getHandleCandidates(handle)
-  let resolvedUser: SlugUser | null = null
-
-  for (const candidate of candidates) {
-    const response = await fetch(`${apiBase}/user/by-username/${encodeURIComponent(candidate)}`)
-    if (!response.ok) continue
-
-    const data = await response.json()
-    if (data?.success && data?.user) {
-      resolvedUser = data.user
-      break
-    }
-    if (data?.user) {
-      resolvedUser = data.user
-      break
-    }
-  }
-
-  if (!resolvedUser) {
-    for (const candidate of candidates) {
-      const byIdResponse = await fetch(`${apiBase}/user/user/${encodeURIComponent(candidate)}`)
-      if (!byIdResponse.ok) continue
-
-      const byIdData = await byIdResponse.json()
-      if (byIdData?.user) {
-        resolvedUser = byIdData.user
-        break
-      }
-      if (byIdData?.data?.user) {
-        resolvedUser = byIdData.data.user
-        break
-      }
-    }
-  }
-
-  if (!resolvedUser) {
+  const canonicalHandle = safeDecodeHandle(handle).trim().toLowerCase()
+  const response = await fetch(`${apiBase}/user/by-username/${encodeURIComponent(canonicalHandle)}`)
+  if (!response.ok) {
     throw new Error(`User @${safeDecodeHandle(handle)} not found`)
   }
 
-  return resolvedUser
+  const data = await response.json()
+  const user = data?.success ? toPublicProfileUser(data.user) : null
+  if (!user) throw new Error(`User @${safeDecodeHandle(handle)} not found`)
+
+  return user
 }
 
 export default function ProfileSlugPage() {
@@ -84,7 +79,7 @@ export default function ProfileSlugPage() {
     data: slugUser,
     isLoading,
     error,
-  } = useQuery<SlugUser>({
+  } = useQuery<PublicProfileUser>({
     queryKey: ["profile", handle.toLowerCase()],
     queryFn: () => fetchUserByHandle(handle),
     enabled: !!handle && !isOwnHandle,
@@ -94,13 +89,12 @@ export default function ProfileSlugPage() {
   })
 
   // Build resolved user: prefer auth context for own profile
-  const resolvedUser = React.useMemo<SlugUser | null>(() => {
+  const resolvedUser = React.useMemo<PublicProfileUser | null>(() => {
     if (isOwnHandle && currentUser) {
       return {
         _id: (currentUser as any)._id || (currentUser as any).id || '',
         name: (currentUser as any).name || '',
         username: (currentUser as any).username,
-        email: currentUser.email || '',
         role: (currentUser as any).role || 'user',
         avatar: (currentUser as any).avatar,
         ville: (currentUser as any).ville,
@@ -184,26 +178,4 @@ function safeDecodeHandle(value: string): string {
   } catch {
     return value
   }
-}
-
-function getHandleCandidates(rawHandle: string): string[] {
-  const base = String(rawHandle || "").trim()
-  const decoded = safeDecodeHandle(base).trim()
-  const lowerBase = base.toLowerCase()
-  const lowerDecoded = decoded.toLowerCase()
-  const slugged = slugifyToHandle(decoded || base)
-  const compact = slugged.replace(/[-_.]/g, "")
-  const underscore = slugged.replace(/-/g, "_")
-  const dotted = slugged.replace(/-/g, ".")
-  const rawCompact = lowerDecoded.replace(/[^a-z0-9]/g, "")
-  const embeddedObjectId = (lowerDecoded.match(/[a-f0-9]{24}/i) || [])[0] || ""
-  const embeddedNameSlug = (lowerDecoded.match(/(?:^|-)name-([a-z0-9-]{2,}?)(?:-email-|$)/i) || [])[1] || ""
-
-  return Array.from(
-    new Set(
-      [lowerBase, lowerDecoded, slugged, compact, underscore, dotted, rawCompact, embeddedObjectId, embeddedNameSlug].filter(
-        (value) => value.length > 0,
-      ),
-    ),
-  )
 }

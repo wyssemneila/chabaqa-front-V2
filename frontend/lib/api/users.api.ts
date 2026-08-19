@@ -18,16 +18,16 @@ export interface CreatorStats {
 
 export interface CreatorProfile {
   _id: string;
+  id?: string;
   name: string;
-  email: string;
+  username?: string;
   bio?: string;
   avatar?: string;
-  photo_profil?: string;
-  profile_picture?: string;
   ville?: string;
   pays?: string;
   role: string;
-  createdAt: string;
+  createdAt?: string;
+  socialLinks?: Record<string, string>;
 }
 
 function normalizeEntityId(value: any): string {
@@ -81,7 +81,7 @@ export const usersApi = {
     return apiClient.get<ApiSuccessResponse<User>>(`/users/${id}`);
   },
 
-  // Get user profile by ID (returns user object directly)
+  // Get the redacted public profile by ID.
   getProfile: async (id: string): Promise<CreatorProfile | null> => {
     const normalizedId = normalizeEntityId(id);
     if (!normalizedId) {
@@ -89,7 +89,7 @@ export const usersApi = {
     }
     try {
       const response = await apiClient.get<any>(`/user/user/${normalizedId}`);
-      return response?.user || response?.data?.user || null;
+      return response?.user || null;
     } catch {
       return null;
     }
