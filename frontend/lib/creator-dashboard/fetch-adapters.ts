@@ -277,6 +277,7 @@ const firstImage = (item: any) => {
 }
 
 export const mapCommunity = (item: any): Community => ({
+  slug: text(item?.slug),
   emoji: text(item?.emoji) || '◎',
   name: text(item?.name, item?.title) || 'Untitled community',
   verified: bool(item?.verified, item?.isVerified),
