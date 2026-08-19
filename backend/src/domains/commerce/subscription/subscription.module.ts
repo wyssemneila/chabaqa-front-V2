@@ -13,6 +13,7 @@ import {
   CommunityMemberSubscriptionSchema,
 } from '@/infrastructure/database/schemas/commerce/community-member-subscription.schema';
 import { Community, CommunitySchema } from '@/infrastructure/database/schemas/community/community.schema';
+import { User, UserSchema } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Cours, CoursSchema } from '@/infrastructure/database/schemas/learning/course.schema';
 import { CommunityStaff, CommunityStaffSchema } from '@/infrastructure/database/schemas/community/community-staff.schema';
 import { StorageUsage, StorageUsageSchema } from '@/infrastructure/database/schemas/shared/storage-usage.schema';
@@ -23,10 +24,12 @@ import { SubscriptionScheduler } from '@/domains/commerce/subscription/subscript
 import { AdminGuard } from '@/domains/auth/guards/admin.guard';
 import { InternalServiceTokenGuard } from '@/shared/guards/internal-service-token.guard';
 import { StripePaymentService } from '@/shared/services/stripe-payment.service';
+import { CreatorIntegrationsModule } from '@/domains/communication/integrations/creator-integrations.module';
 
 @Module({
   imports: [
     ConfigModule,
+    CreatorIntegrationsModule,
     MongooseModule.forFeature([
       { name: Subscription.name, schema: SubscriptionSchema },
       { name: Plan.name, schema: PlanSchema },
@@ -36,6 +39,7 @@ import { StripePaymentService } from '@/shared/services/stripe-payment.service';
       { name: SubscriptionAddon.name, schema: SubscriptionAddonSchema },
       { name: CommunityMemberSubscription.name, schema: CommunityMemberSubscriptionSchema },
       { name: Community.name, schema: CommunitySchema },
+      { name: User.name, schema: UserSchema },
       { name: Cours.name, schema: CoursSchema },
       { name: CommunityStaff.name, schema: CommunityStaffSchema },
       { name: StorageUsage.name, schema: StorageUsageSchema },
@@ -48,4 +52,3 @@ import { StripePaymentService } from '@/shared/services/stripe-payment.service';
   exports: [SubscriptionService],
 })
 export class SubscriptionModule {}
-

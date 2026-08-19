@@ -62,6 +62,14 @@ export interface UserDocument extends Document {
     bankName?: string;
     ownerName?: string;
   };
+
+  creatorOnboarding?: {
+    discoverySource?: string;
+    discoverySourceRecordedAt?: Date;
+    dashboardTourStep?: number;
+    dashboardTourCompleted?: boolean;
+    dashboardTourCompletedAt?: Date;
+  };
   twoFactorEnabled: boolean;
   walletBalance: number;
   totalPointsEarned: number;
@@ -368,6 +376,25 @@ export class User {
     rib: string;
     bankName?: string;
     ownerName?: string;
+  };
+
+  /** Non-sensitive creator activation state, shown only to the account owner. */
+  @Prop({
+    type: {
+      discoverySource: { type: String, enum: ['instagram_tiktok', 'search', 'friend_creator', 'youtube_podcast', 'event', 'other', 'prefer_not_to_say'] },
+      discoverySourceRecordedAt: { type: Date },
+      dashboardTourStep: { type: Number, default: 0, min: 0, max: 3 },
+      dashboardTourCompleted: { type: Boolean, default: false },
+      dashboardTourCompletedAt: { type: Date },
+    },
+    required: false,
+  })
+  creatorOnboarding?: {
+    discoverySource?: string;
+    discoverySourceRecordedAt?: Date;
+    dashboardTourStep?: number;
+    dashboardTourCompleted?: boolean;
+    dashboardTourCompletedAt?: Date;
   };
 
   /**

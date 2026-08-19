@@ -288,11 +288,13 @@ export default function BookedSessions({ setActiveTab, userBookings }: BookedSes
                         {sessionFeedbackState.stats.ratingCount === 1 ? "review" : "reviews"})
                       </p>
                     )}
-                    {booking.status === "confirmed" && !booking.meetingUrl && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Meeting link is being prepared. It will appear here automatically.
-                      </p>
-                    )}
+                      {booking.status === "confirmed" && !booking.meetingUrl && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {booking.meetStatus === "failed"
+                            ? "Google Meet could not be created yet. The creator needs to reconnect Google Calendar."
+                            : "Creating your Google Meet link now. This page refreshes automatically when it is ready."}
+                        </p>
+                      )}
                     {booking.status !== "confirmed" && (
                       <p className="text-xs text-muted-foreground mt-2">
                         Mentor chat becomes available once the booking is confirmed.

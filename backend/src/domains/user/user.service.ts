@@ -5,6 +5,7 @@ import { Connection, Model, Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { CreateUserDto } from '@/domains/auth/dto/create-user.dto';
 import { UpdateUserDto } from '@/domains/auth/dto/update-user.dto';
+import { CreatorDashboardOnboardingDto } from '@/domains/user/dto/creator-dashboard-onboarding.dto';
 import { ForgotPasswordDto } from '@/domains/auth/dto/forgot-password.dto';
 import { ResetPasswordDto } from '@/domains/auth/dto/reset-password.dto';
 import { ChangePasswordDto } from '@/domains/auth/dto/change-password.dto';
@@ -794,6 +795,34 @@ export class UserService {
       (u as any).socialLinks = { ...((u as any).socialLinks || {}), instagram: this.normalizeSocialUrl((u as any).lien_instagram) };
     }
     return u as IUser;
+  }
+
+  async updateCreatorDashboardOnboarding(id: string, dto: CreatorDashboardOnboardingDto): Promise<IUser> {
+    const now = new Date();
+
+    // The discovery source is recorded once so activation attribution is stable.
+    if (dto.discoverySource) {
+      await this.userModel.updateOne(
+        { _id: id, 'creatorOnboarding.discoverySource': { $exists: false } },
+        { $set: { 'creatorOnboarding.discoverySource': dto.discoverySource, 'creatorOnboarding.discoverySourceRecordedAt': now } },
+      ).exec();
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (dto.dashboardTourStep !== undefined) updates['creatorOnboarding.dashboardTourStep'] = dto.dashboardTourStep;
+    if (dto.dashboardTourCompleted === true) {
+      updates['creatorOnboarding.dashboardTourCompleted'] = true;
+      updates['creatorOnboarding.dashboardTourCompletedAt'] = now;
+      updates['creatorOnboarding.dashboardTourStep'] = 3;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await this.userModel.updateOne({ _id: id }, { $set: updates }).exec();
+    }
+
+    const updatedUser = await this.userModel.findById(id);
+    if (!updatedUser) throw new NotFoundException(`User #${id} not found`);
+    return updatedUser as IUser;
   }
 
   // update user password

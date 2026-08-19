@@ -34,7 +34,7 @@ export function CreatorNotificationListener() {
       return
     }
 
-    const socketUrl = resolveSocketBaseUrl(process.env.NEXT_PUBLIC_API_URL)
+    const socketUrl = resolveSocketBaseUrl()
     const socket = io(socketUrl, {
       transports: ["websocket", "polling"],
       withCredentials: true,

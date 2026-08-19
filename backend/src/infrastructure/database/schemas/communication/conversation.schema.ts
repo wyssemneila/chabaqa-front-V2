@@ -12,6 +12,7 @@ export type ConversationType =
 
 export type LiveSupportStatus = 'BOT_ACTIVE' | 'WAITING_ADMIN' | 'ASSIGNED' | 'CLOSED';
 export type ConversationWorkflowStatus = 'open' | 'waiting_on_member' | 'resolved' | 'archived';
+export type ConversationParticipantModel = 'User' | 'Admin';
 
 @Schema({ timestamps: true })
 export class Conversation {
@@ -28,7 +29,12 @@ export class Conversation {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   participantA: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false, index: true })
+  // Community, peer, and session DMs use a User counterpart. HELP_DM uses an
+  // Admin counterpart, so this reference must remain polymorphic.
+  @Prop({ type: String, enum: ['User', 'Admin'], default: 'User' })
+  participantBModel?: ConversationParticipantModel;
+
+  @Prop({ type: Types.ObjectId, refPath: 'participantBModel', required: false, index: true })
   participantB?: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Community', required: false, index: true })

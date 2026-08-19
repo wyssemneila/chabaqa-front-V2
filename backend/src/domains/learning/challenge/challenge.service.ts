@@ -44,6 +44,7 @@ import { TrackableContentType, TrackingActionType } from '@/infrastructure/datab
 import { AnalyticsDaily, AnalyticsDailyDocument } from '@/infrastructure/database/schemas/analytics/analytics-daily.schema';
 import { Ga4Service } from '@/domains/analytics/ga4/ga4.service';
 import { CacheService } from '@/infrastructure/cache/cache.service';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 @Injectable()
 export class ChallengeService implements OnModuleInit {
@@ -61,6 +62,7 @@ export class ChallengeService implements OnModuleInit {
     private readonly uploadService: UploadService,
     private readonly ga4Service: Ga4Service,
     private readonly cacheService: CacheService,
+    private readonly creatorIntegrationsService?: CreatorIntegrationsService,
   ) { }
 
   async onModuleInit(): Promise<void> {
@@ -552,6 +554,23 @@ export class ChallengeService implements OnModuleInit {
     });
 
     await submission.save();
+
+    // This is a challenge task submission, not a generic form payload. Keep
+    // rich submission content, files, links, and identity data inside Chabaqa.
+    void this.creatorIntegrationsService?.emit(
+      String(challenge.creatorId),
+      'challenge.submitted',
+      {
+        submissionId: String(submission._id),
+        challengeId: challenge.id || String(challenge._id),
+        taskId: canonicalTaskId,
+        attempt,
+        status: 'pending',
+        learnerId: String(userId),
+        submittedAt: new Date().toISOString(),
+      },
+      String(challenge.communityId),
+    ).catch(() => undefined);
 
     // Unified Progression Tracking: Update the global content tracking system
     try {
@@ -1630,6 +1649,19 @@ export class ChallengeService implements OnModuleInit {
     challenge.addParticipant(new Types.ObjectId(userId));
     await challenge.save({ session });
 
+    void this.creatorIntegrationsService?.emit(
+      String(challenge.creatorId),
+      'challenge.joined',
+      {
+        challengeId: challenge.id || String(challenge._id),
+        challengeTitle: challenge.title,
+        learnerId: userId,
+        joinedAt: new Date().toISOString(),
+        fulfillment: price > 0 ? 'paid' : 'free',
+      },
+      String(challenge.communityId),
+    ).catch((error) => console.error('⚠️ [ChallengeService] Failed to emit challenge.joined integration event:', error?.message || error));
+
     // Fire tracking events for analytics rollups
     try {
       const trackingContentId = challenge.id || challenge._id.toString();
@@ -1766,7 +1798,9 @@ export class ChallengeService implements OnModuleInit {
         (p) => String(p.userId) === String(userId) || (p.userId as any)._id?.toString() === String(userId),
       );
 
+      let previousProgress = 0;
       if (participant) {
+        previousProgress = Number(participant.progress || 0);
         if (!participant.completedTasks.includes(updateProgressDto.taskId)) {
           participant.completedTasks.push(updateProgressDto.taskId);
           participant.totalPoints = (participant.totalPoints || 0) + (task.points || 0);
@@ -1803,6 +1837,23 @@ export class ChallengeService implements OnModuleInit {
       } catch (saveError) {
         console.error('❌ [DEBUG-BACKEND] Error saving challenge:', saveError);
         throw new BadRequestException('Erreur lors de la sauvegarde du progrès: ' + saveError.message);
+      }
+
+      if (participant && previousProgress < 100 && participant.progress >= 100) {
+        const totalTasksCount = challenge.tasks?.length || 1;
+        void this.creatorIntegrationsService?.emit(
+          String(challenge.creatorId),
+          'challenge.completed',
+          {
+            challengeId: challenge.id || String(challenge._id),
+            participantId: String(userId),
+            communityId: String(challenge.communityId),
+            completedTasks: participant.completedTasks.length,
+            totalTasks: totalTasksCount,
+            completedAt: new Date().toISOString(),
+          },
+          String(challenge.communityId),
+        ).catch(() => undefined);
       }
 
       // Fire tracking events for analytics

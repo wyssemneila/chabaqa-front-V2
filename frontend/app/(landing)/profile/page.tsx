@@ -1,856 +1,1823 @@
-'use client'
+"use client"
 
-import { useEffect, useRef, useState } from 'react'
-import { Header } from '@/components/header'
-import { Footer } from '@/components/footer'
+
+import { Button } from "@/components/ui/button"
 import {
-  Pencil, MapPin, Mail, Search, Camera,
-  BookOpen, Calendar, Trophy, Zap, Package, Users,
-  Check, X, Eye, EyeOff, Trash2, AlertTriangle,
-} from 'lucide-react'
+  Calendar,
+  Trophy,
+  Users,
+  BookOpen,
+  Target,
+  Star,
+  TrendingUp,
+  Award,
+  Zap,
+  Flame,
+  GraduationCap,
+  MessageSquare,
+  ShieldCheck,
+  Sparkles,
+  Pencil,
+  ShoppingBag,
+  Mail,
+  MapPin,
+  Lock,
+  Check,
+  Flag,
+} from "lucide-react"
+import { useEffect, useState } from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { cn } from "@/lib/utils"
+import { getProfile } from "@/lib/auth"
+import { tokenManager } from "@/lib/token-manager"
+import { Header } from "@/components/header"
+import { Footer } from "@/components/footer"
+import { LoginForm } from "@/components/login-form"
+import { ProfileHeader } from "@/components/profile/ProfileHeader"
+import { StatCard } from "@/components/profile/StatCard"
+import { ProfileDetails } from "@/components/profile/ProfileDetails"
+import { getUserProfileHandle } from "@/lib/profile-handle"
+import { SOCIAL_PLATFORMS, cleanSocialLinks, type SocialPlatform, type UserSocialLinks } from "@/lib/social-links"
+import { SocialMediaSidebar } from "@/components/profile/SocialMediaSidebar"
+import { LearnerProfileCard } from "@/components/ai/learner-profile-card"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface SocialLinks {
-  twitter: string; linkedin: string; instagram: string; youtube: string
-  tiktok: string; github: string; facebook: string; website: string
+const resolveCommunityId = (community: any): string => {
+  return String(
+    community?._id ||
+      community?.id ||
+      community?.communityId ||
+      community?.community?._id ||
+      community?.community?.id ||
+      "",
+  )
 }
 
-interface Country { code: string; name: string }
-
-interface ProfileData {
-  name: string; email: string; bio: string; handle: string
-  location: Country | null; avatar: string | null
-  socials: SocialLinks
+const resolveCommunitySlug = (community: any): string => {
+  return String(
+    community?.slug ||
+      community?.communitySlug ||
+      community?.featureSlug ||
+      community?.community?.slug ||
+      "",
+  )
 }
 
-// ─── Brand SVG icons ──────────────────────────────────────────────────────────
+const getCommunityKeys = (community: any): string[] => {
+  const keys = [resolveCommunityId(community), resolveCommunitySlug(community)]
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean)
+  return Array.from(new Set(keys))
+}
 
-function SocialSvg({ platform, size = 16 }: { platform: string; size?: number }) {
-  const s = { width: size, height: size, display: 'block' as const, flexShrink: 0 }
-  if (platform === 'twitter')   return <svg style={s} viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-  if (platform === 'linkedin')  return <svg style={s} viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-  if (platform === 'instagram') return <svg style={s} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-  if (platform === 'youtube')   return <svg style={s} viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-  if (platform === 'tiktok')    return <svg style={s} viewBox="0 0 24 24" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
-  if (platform === 'github')    return <svg style={s} viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
-  if (platform === 'facebook')  return <svg style={s} viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-  if (platform === 'website')   return <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+const resolveCommunityBasePath = (community: any): string | null => {
+  const link = typeof community?.link === "string" ? community.link : ""
+  if (link) {
+    const clean = link.split("?")[0].split("#")[0]
+    const parts = clean.split("/").filter(Boolean)
+    if (parts.length >= 2 && parts[0] !== "community") {
+      return `/${parts[0]}/${parts[1]}`
+    }
+  }
+
+  const creatorSlug = String(
+    community?.creatorSlug ||
+      community?.creator?.slug ||
+      community?.creator?.username ||
+      community?.creator?.handle ||
+      community?.creator?.name ||
+      community?.creator ||
+      "",
+  ).trim()
+  const featureSlug = resolveCommunitySlug(community).trim()
+  if (creatorSlug && featureSlug) {
+    return `/${creatorSlug}/${featureSlug}`
+  }
+
   return null
 }
 
-// ─── Social platforms ─────────────────────────────────────────────────────────
+// Types for user data
+interface UserAchievement {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  dateEarned: string;
+}
 
-const SOCIALS = [
-  { id: 'twitter',   label: 'X / Twitter', color: '#000000', placeholder: 'https://x.com/yourhandle'             },
-  { id: 'linkedin',  label: 'LinkedIn',    color: '#0077B5', placeholder: 'https://linkedin.com/in/yourname'     },
-  { id: 'instagram', label: 'Instagram',   color: '#E1306C', placeholder: 'https://instagram.com/yourhandle'     },
-  { id: 'youtube',   label: 'YouTube',     color: '#FF0000', placeholder: 'https://youtube.com/@yourchannel'     },
-  { id: 'tiktok',    label: 'TikTok',      color: '#111111', placeholder: 'https://tiktok.com/@yourhandle'       },
-  { id: 'github',    label: 'GitHub',      color: '#24292E', placeholder: 'https://github.com/yourusername'      },
-  { id: 'facebook',  label: 'Facebook',    color: '#1877F2', placeholder: 'https://facebook.com/yourpage'        },
-  { id: 'website',   label: 'Website',     color: '#7c3aed', placeholder: 'https://yoursite.com'                 },
-]
+interface UserStats {
+  totalPosts?: number;
+  totalMembers?: number;
+  coursesCreated?: number;
+  successRate?: number;
+  totalRevenue?: number;
+  courseRating?: number;
+  coursesCompleted?: number;
+  activeStreak?: number;
+  achievements?: number;
+  communitiesJoined?: number;
+  engagementRate?: number;
+  trustScore?: number;
+}
 
-// ─── Countries ────────────────────────────────────────────────────────────────
+interface UserAnalytics {
+  courseCompletionRate: number;
+  studentSatisfaction: number;
+  communityEngagement: number;
+}
 
-const COUNTRIES: Country[] = [
-  { code: 'AF', name: 'Afghanistan' }, { code: 'DZ', name: 'Algeria' },    { code: 'AR', name: 'Argentina' },
-  { code: 'AU', name: 'Australia' },   { code: 'AT', name: 'Austria' },    { code: 'BH', name: 'Bahrain' },
-  { code: 'BD', name: 'Bangladesh' },  { code: 'BE', name: 'Belgium' },    { code: 'BR', name: 'Brazil' },
-  { code: 'CA', name: 'Canada' },      { code: 'CM', name: 'Cameroon' },   { code: 'CI', name: "Cote d'Ivoire" },
-  { code: 'CL', name: 'Chile' },       { code: 'CN', name: 'China' },      { code: 'CO', name: 'Colombia' },
-  { code: 'CZ', name: 'Czech Republic' }, { code: 'DK', name: 'Denmark' }, { code: 'EG', name: 'Egypt' },
-  { code: 'ET', name: 'Ethiopia' },    { code: 'FI', name: 'Finland' },    { code: 'FR', name: 'France' },
-  { code: 'DE', name: 'Germany' },     { code: 'GH', name: 'Ghana' },      { code: 'GR', name: 'Greece' },
-  { code: 'ID', name: 'Indonesia' },   { code: 'IN', name: 'India' },      { code: 'IR', name: 'Iran' },
-  { code: 'IQ', name: 'Iraq' },        { code: 'IL', name: 'Israel' },     { code: 'IT', name: 'Italy' },
-  { code: 'JP', name: 'Japan' },       { code: 'JO', name: 'Jordan' },     { code: 'KE', name: 'Kenya' },
-  { code: 'KR', name: 'South Korea' }, { code: 'KW', name: 'Kuwait' },     { code: 'LB', name: 'Lebanon' },
-  { code: 'LY', name: 'Libya' },       { code: 'MA', name: 'Morocco' },    { code: 'MR', name: 'Mauritania' },
-  { code: 'MX', name: 'Mexico' },      { code: 'MY', name: 'Malaysia' },   { code: 'NL', name: 'Netherlands' },
-  { code: 'NG', name: 'Nigeria' },     { code: 'NO', name: 'Norway' },     { code: 'NZ', name: 'New Zealand' },
-  { code: 'OM', name: 'Oman' },        { code: 'PK', name: 'Pakistan' },   { code: 'PH', name: 'Philippines' },
-  { code: 'PL', name: 'Poland' },      { code: 'PT', name: 'Portugal' },   { code: 'PS', name: 'Palestine' },
-  { code: 'QA', name: 'Qatar' },       { code: 'RU', name: 'Russia' },     { code: 'SA', name: 'Saudi Arabia' },
-  { code: 'SN', name: 'Senegal' },     { code: 'SG', name: 'Singapore' },  { code: 'ZA', name: 'South Africa' },
-  { code: 'ES', name: 'Spain' },       { code: 'SD', name: 'Sudan' },      { code: 'SE', name: 'Sweden' },
-  { code: 'CH', name: 'Switzerland' }, { code: 'SY', name: 'Syria' },      { code: 'TH', name: 'Thailand' },
-  { code: 'TN', name: 'Tunisia' },     { code: 'TR', name: 'Turkey' },     { code: 'UA', name: 'Ukraine' },
-  { code: 'AE', name: 'UAE' },         { code: 'GB', name: 'United Kingdom' }, { code: 'US', name: 'United States' },
-  { code: 'VN', name: 'Vietnam' },     { code: 'YE', name: 'Yemen' },
-].sort((a, b) => a.name.localeCompare(b.name))
+interface Community {
+  id: string;
+  name: string;
+  banner?: string;
+  memberCount: number;
+  courseCount: number;
+}
 
-// ─── Default data ─────────────────────────────────────────────────────────────
+interface ActivityData {
+  date: string;
+  posts: number;
+  engagement: number;
+  impact: number;
+}
 
-const DEFAULT_PROFILE: ProfileData = {
-  name: 'Motion Masters Creator',
-  email: 'creator@chabaqa.com',
-  bio: 'Creator & community builder. Helping motion designers level up their skills and build meaningful careers.',
-  handle: '@motionmaster',
-  location: { code: 'TN', name: 'Tunisia' },
-  avatar: null,
-  socials: {
-    twitter: 'https://x.com/motionmaster',
-    linkedin: 'https://linkedin.com/in/motionmaster',
-    instagram: '',
-    youtube: '',
-    tiktok: '',
-    github: '',
-    facebook: '',
-    website: 'https://chabaqa.com',
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  avatar?: string;
+  stats?: UserStats;
+  achievements?: UserAchievement[];
+  communities?: Community[];
+  analytics?: UserAnalytics;
+  activityData?: ActivityData[];
+  socialLinks?: UserSocialLinks;
+  lien_instagram?: string;
+}
+
+const SOCIAL_LABELS: Record<SocialPlatform, string> = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  linkedin: "LinkedIn",
+  twitter: "X",
+  youtube: "YouTube",
+  tiktok: "TikTok",
+  github: "GitHub",
+  website: "Website",
+}
+
+interface DisplayAchievement {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  iconComponent?: any;
+  earnedAt?: string;
+}
+
+interface DisplayActivity {
+  id: string;
+  actionType: string;
+  contentTitle?: string;
+  title?: string;
+  timestamp: string;
+  icon?: any;
+  color?: string;
+}
+
+// Utility function to deduplicate array by id or _id
+const deduplicateById = <T extends { id?: string; _id?: string }>(items: T[]): T[] => {
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    const id = item.id || item._id
+    if (!id || seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
+}
+
+// Utility functions for formatting
+const formatNumber = (num: number): string => {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
+  return num.toString()
+}
+
+const formatCurrency = (num: number): string => {
+  return new Intl.NumberFormat('fr-TN', {
+    style: 'currency',
+    currency: 'TND',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(num)
+}
+
+const activityActionMap: Record<string, { label: string; icon: any; color: string }> = {
+  view: { label: 'Viewed', icon: Users, color: '#47c7ea' },
+  start: { label: 'Started', icon: Flag, color: '#ff9b28' },
+  complete: { label: 'Completed', icon: Check, color: '#10b981' },
+  like: { label: 'Liked', icon: Star, color: '#f65887' },
+  share: { label: 'Shared', icon: MessageSquare, color: '#8e78fb' },
+  download: { label: 'Downloaded', icon: Trophy, color: '#6366f1' },
+  bookmark: { label: 'Bookmarked', icon: Lock, color: '#f59e0b' },
+  comment: { label: 'Commented on', icon: MessageSquare, color: '#ec4899' },
+  rate: { label: 'Rated', icon: Star, color: '#eab308' },
+  join: { label: 'Joined', icon: Users, color: '#b07df8' },
+  create: { label: 'Created', icon: Sparkles, color: '#8e78fb' },
+  enroll: { label: 'Enrolled in', icon: GraduationCap, color: '#47c7ea' },
+  publish: { label: 'Published', icon: Award, color: '#10b981' },
+  manage: { label: 'Managing', icon: ShieldCheck, color: '#6366f1' },
+  book: { label: 'Booked', icon: Calendar, color: '#f65887' },
+}
+
+const extractArrayPayload = (payload: any): any[] => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.items)) return payload.items
+  if (Array.isArray(payload?.actions)) return payload.actions
+  if (Array.isArray(payload?.data?.items)) return payload.data.items
+  if (Array.isArray(payload?.data?.actions)) return payload.data.actions
+  return []
+}
+
+const safeToDate = (value?: any): Date | null => {
+  if (!value) return null
+  const parsedDate = new Date(value)
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
+}
+
+const formatTimeAgo = (dateValue?: string) => {
+  const date = safeToDate(dateValue)
+  if (!date) return "Recently"
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  const clampedSeconds = Math.max(seconds, 1)
+  let interval = clampedSeconds / 31536000
+  if (interval >= 1) return `${Math.floor(interval)} year${Math.floor(interval) === 1 ? "" : "s"} ago`
+  interval = clampedSeconds / 2592000
+  if (interval >= 1) return `${Math.floor(interval)} month${Math.floor(interval) === 1 ? "" : "s"} ago`
+  interval = clampedSeconds / 86400
+  if (interval >= 1) return `${Math.floor(interval)} day${Math.floor(interval) === 1 ? "" : "s"} ago`
+  interval = clampedSeconds / 3600
+  if (interval >= 1) return `${Math.floor(interval)} hour${Math.floor(interval) === 1 ? "" : "s"} ago`
+  interval = clampedSeconds / 60
+  if (interval >= 1) return `${Math.floor(interval)} minute${Math.floor(interval) === 1 ? "" : "s"} ago`
+  return `${Math.floor(clampedSeconds)} second${Math.floor(clampedSeconds) === 1 ? "" : "s"} ago`
+}
+
+// Dynamic stats based on user role (null-safe)
+const getStatsForUser = (user: any, isCreator: boolean) => {
+  if (isCreator) {
+    return [
+      {
+        label: "Total Posts",
+        value: user?.stats?.totalPosts?.toString() || "0",
+        icon: MessageSquare,
+        description: "Content pieces shared with your community"
+      },
+      {
+        label: "Community Size",
+        value: formatNumber(user?.stats?.totalMembers || 0),
+        icon: Users,
+        description: "Active members across all communities"
+      },
+      {
+        label: "Courses Created",
+        value: user?.stats?.coursesCreated?.toString() || "0",
+        icon: GraduationCap,
+        description: "Educational courses published"
+      },
+      {
+        label: "Success Rate",
+        value: `${user?.stats?.successRate || 0}%`,
+        icon: Trophy,
+        description: "Average course completion rate"
+      },
+      {
+        label: "Total Revenue",
+        value: formatCurrency(user?.stats?.totalRevenue || 0),
+        icon: Sparkles,
+        description: "Earnings from courses and products"
+      },
+      {
+        label: "Course Rating",
+        value: (user?.stats?.courseRating || 0).toFixed(1),
+        icon: Star,
+        description: "Average rating from students"
+      },
+    ]
+  }
+
+  return [
+    {
+      label: "Courses Completed",
+      value: user?.stats?.coursesCompleted?.toString() || "0",
+      icon: GraduationCap,
+      description: "Finished learning journeys"
+    },
+    {
+      label: "Active Streak",
+      value: user?.stats?.activeStreak?.toString() || "0",
+      icon: Flame,
+      description: "Days of continuous learning"
+    },
+    {
+      label: "Achievements",
+      value: user?.stats?.achievements?.toString() || "0",
+      icon: Trophy,
+      description: "Badges and certifications earned"
+    },
+    {
+      label: "Communities",
+      value: user?.stats?.communitiesJoined?.toString() || "0",
+      icon: Users,
+      description: "Active community memberships"
+    },
+    {
+      label: "Engagement",
+      value: `${user?.stats?.engagementRate || 0}%`,
+      icon: Target,
+      description: "Participation and interaction rate"
+    },
+    {
+      label: "Trust Score",
+      value: user?.stats?.trustScore?.toString() || "0",
+      icon: ShieldCheck,
+      description: "Community reputation score"
+    },
+  ]
+}
+
+// Dynamic activity data (null-safe)
+const getActivityData = (user: any) => {
+  const activityData = user?.activityData || []
+
+  // If no activity data, return empty data for the last 6 months
+  if (activityData.length === 0) {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+    return months.map(month => ({
+      month,
+      posts: 0,
+      engagement: 0,
+      impact: 0,
+    }))
+  }
+
+  // Return the last 6 months of activity data
+  return activityData.slice(-6).map((data: any) => ({
+    month: new Date(data.date).toLocaleString('default', { month: 'short' }),
+    posts: data.posts || 0,
+    engagement: data.engagement || 0,
+    impact: data.impact || 0,
+  }))
+}
+
+const chartConfig = {
+  posts: {
+    label: "Content Interaction",
+    theme: {
+      light: "#2563eb",
+      dark: "#60a5fa",
+    },
+  },
+  engagement: {
+    label: "Community Activity",
+    theme: {
+      light: "#16a34a",
+      dark: "#4ade80",
+    },
+  },
+  impact: {
+    label: "Learning Progress",
+    theme: {
+      light: "#dc2626",
+      dark: "#f87171",
+    },
   },
 }
 
-// ─── Mock communities & content ───────────────────────────────────────────────
+// Dynamic achievements based on user activity (null-safe)
+const getAchievements = (user: any) => {
+  // Get user achievements or return empty array
+  const userAchievements = user?.achievements || []
 
-const COMMUNITIES = [
-  { id: 1, name: 'Motion Masters',    members: 1298, role: 'Creator', color: 'var(--p)'      },
-  { id: 2, name: 'Design System Lab', members: 420,  role: 'Member',  color: 'var(--cyan)'   },
-  { id: 3, name: 'Creative Tunisia',  members: 870,  role: 'Admin',   color: 'var(--orange)' },
-  { id: 4, name: 'UX Collective',     members: 3400, role: 'Member',  color: 'var(--pink)'   },
-]
+  // Map achievement types to icons
+  const achievementIcons: { [key: string]: any } = {
+    'early_adopter': Star,
+    'top_educator': GraduationCap,
+    'community_leader': Users,
+    'content_master': Trophy,
+    'quick_learner': Zap,
+    'active_participant': MessageSquare,
+    'team_player': Users,
+    'expert_creator': Award,
+    'mentor': GraduationCap,
+    'innovator': Sparkles,
+    'community_builder': Users,
+    'top_contributor': Star,
+    // Add more achievement types and icons as needed
+  }
 
-const CONTENT = [
-  { id: 1, title: 'Motion Design Fundamentals', type: 'course',    progress: 100, color: 'var(--p)'      },
-  { id: 2, title: 'Annual Community Summit',     type: 'event',     progress: 100, color: 'var(--pink)'   },
-  { id: 3, title: '30-Day Body Challenge',       type: 'challenge', progress: 72,  color: 'var(--orange)' },
-  { id: 4, title: '1-on-1 Strategy Session',     type: 'session',   progress: 100, color: 'var(--cyan)'   },
-  { id: 5, title: 'Motion Pro — Advanced',       type: 'course',    progress: 45,  color: 'var(--p)'      },
-  { id: 6, title: 'Branding Assets Pack',        type: 'product',   progress: 100, color: '#16a34a'       },
-  { id: 7, title: '14-Day Portfolio Challenge',  type: 'challenge', progress: 100, color: 'var(--orange)' },
-  { id: 8, title: 'Composition Masterclass',     type: 'course',    progress: 20,  color: 'var(--p)'      },
-]
-
-const TYPE_ICON: Record<string, React.ReactNode> = {
-  course:    <BookOpen  className="w-3.5 h-3.5" strokeWidth={1.7} />,
-  challenge: <Trophy    className="w-3.5 h-3.5" strokeWidth={1.7} />,
-  session:   <Calendar  className="w-3.5 h-3.5" strokeWidth={1.7} />,
-  event:     <Zap       className="w-3.5 h-3.5" strokeWidth={1.7} />,
-  product:   <Package   className="w-3.5 h-3.5" strokeWidth={1.7} />,
+  return userAchievements.map((achievement: any) => ({
+    title: achievement.title,
+    description: achievement.description,
+    icon: achievementIcons[achievement.type] || Star,
+    date: new Date(achievement.dateEarned).toLocaleDateString('default', {
+      month: 'short',
+      year: 'numeric'
+    })
+  }))
 }
 
-const ROLE_META: Record<string, { bg: string; color: string }> = {
-  Creator: { bg: 'var(--p2)',             color: 'var(--p)'      },
-  Admin:   { bg: 'rgba(251,146,60,.12)',  color: 'var(--orange)' },
-  Member:  { bg: 'var(--bg)',             color: 'var(--t3)'     },
+const normalizeFetchedAchievements = (items: any[]): DisplayAchievement[] => {
+  return items
+    .map((achievement: any, index: number) => {
+      const source = achievement?.achievement || achievement
+      const id = String(source?.id || source?._id || achievement?.id || achievement?._id || `achievement-${index}`)
+      const name = source?.name || source?.title || achievement?.name || achievement?.title
+      if (!name) return null
+
+      return {
+        id,
+        name,
+        description: source?.description || achievement?.description,
+        icon: source?.icon || achievement?.icon,
+        earnedAt: achievement?.earnedAt || achievement?.dateEarned || achievement?.createdAt,
+      }
+    })
+    .filter(Boolean) as DisplayAchievement[]
 }
 
-// ─── Activity generator ───────────────────────────────────────────────────────
+const normalizeFetchedActivity = (items: any[]): DisplayActivity[] => {
+  return items
+    .map((activity: any, index: number) => {
+      const timestampRaw = activity?.timestamp || activity?.createdAt || activity?.updatedAt
+      const fallbackTime = new Date().toISOString()
+      const timestamp = safeToDate(timestampRaw)?.toISOString() || fallbackTime
 
-function genActivity(): number[] {
-  let s = 0xdeadbeef
-  const rng = () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff }
-  return Array.from({ length: 365 }, (_, i) => {
-    const v = rng()
-    if (i > 340) return v < 0.65 ? Math.ceil(v * 4) : 0
-    if (v < 0.35) return 0
-    return Math.ceil(v * 4)
+      const actionType = String(
+        activity?.actionType ||
+        activity?.action ||
+        activity?.type ||
+        "view",
+      ).toLowerCase()
+
+      const contentTitle =
+        activity?.contentDetails?.title ||
+        activity?.content?.title ||
+        activity?.title ||
+        activity?.name ||
+        "an item"
+
+      return {
+        id: String(activity?.id || activity?._id || `activity-${index}`),
+        actionType,
+        contentTitle,
+        timestamp,
+      }
+    })
+    .filter(Boolean) as DisplayActivity[]
+}
+
+const buildDerivedAchievements = (
+  user: any,
+  isCreator: boolean,
+  collections: {
+    communities: any[];
+    courses: any[];
+    challenges: any[];
+    sessions: any[];
+    products: any[];
+  },
+): DisplayAchievement[] => {
+  const userId = String(user?._id || user?.id || "")
+  const results: DisplayAchievement[] = []
+  const added = new Set<string>()
+
+  const addAchievement = (
+    id: string,
+    name: string,
+    description: string,
+    iconComponent: any,
+    earnedAt?: string,
+  ) => {
+    if (added.has(id)) return
+    added.add(id)
+    results.push({ id, name, description, iconComponent, earnedAt })
+  }
+
+  if (user?.createdAt) {
+    addAchievement("member-since", "Member Since", "Joined Chabaqa platform", Sparkles, user.createdAt)
+  }
+  if (user?.avatar || user?.bio || user?.ville || user?.pays) {
+    addAchievement("profile-complete", "Profile Complete", "Completed your profile basics", Pencil, user?.updatedAt || user?.createdAt)
+  }
+
+  if (collections.communities.length > 0) {
+    addAchievement("community-explorer", "Community Explorer", "Joined at least one community", Users, collections.communities[0]?.joinedAt || user?.createdAt)
+  }
+  if (
+    collections.communities.some((community) =>
+      ["owner", "admin", "moderator"].includes(String(community?.role || "").toLowerCase()),
+    )
+  ) {
+    addAchievement("community-leader", "Community Leader", "Managing a community role", ShieldCheck, user?.updatedAt || user?.createdAt)
+  }
+
+  if (collections.courses.length > 0) {
+    addAchievement("lifelong-learner", "Lifelong Learner", "Active in courses", GraduationCap, collections.courses[0]?.updatedAt || collections.courses[0]?.createdAt)
+  }
+  if (
+    collections.courses.some((course) =>
+      String(course?.type || "").toLowerCase() === "created" ||
+      String(course?.creatorId || "") === userId,
+    )
+  ) {
+    addAchievement("course-creator", "Course Creator", "Published educational content", Award, user?.updatedAt || user?.createdAt)
+  }
+
+  if (collections.challenges.length > 0) {
+    addAchievement("challenge-taker", "Challenge Taker", "Participated in challenges", Target, collections.challenges[0]?.updatedAt || collections.challenges[0]?.createdAt)
+  }
+  if (collections.sessions.length > 0) {
+    addAchievement("session-active", "Session Active", "Booked or hosted sessions", Calendar, collections.sessions[0]?.startTime || collections.sessions[0]?.createdAt)
+  }
+  if (collections.products.length > 0) {
+    addAchievement("marketplace-active", "Marketplace Active", "Created or purchased products", ShoppingBag, collections.products[0]?.updatedAt || collections.products[0]?.createdAt)
+  }
+  if (isCreator) {
+    addAchievement("creator-badge", "Creator", "Building and sharing with your audience", Trophy, user?.updatedAt || user?.createdAt)
+  }
+
+  return results.slice(0, 8)
+}
+
+const buildDerivedActivity = (
+  user: any,
+  collections: {
+    communities: any[];
+    courses: any[];
+    challenges: any[];
+    sessions: any[];
+    products: any[];
+  },
+): DisplayActivity[] => {
+  const items: DisplayActivity[] = []
+  const userCreatedAt = safeToDate(user?.createdAt)?.toISOString() || new Date().toISOString()
+
+  const pushActivity = (
+    id: string,
+    actionType: string,
+    contentTitle: string,
+    timestamp?: string,
+    title?: string,
+  ) => {
+    items.push({
+      id,
+      actionType,
+      contentTitle,
+      timestamp: safeToDate(timestamp)?.toISOString() || userCreatedAt,
+      title,
+    })
+  }
+
+  collections.communities.slice(0, 3).forEach((community: any, idx: number) => {
+    const name = community?.name || "community"
+    const role = String(community?.role || "").toLowerCase()
+    const isManager = ["owner", "admin", "moderator"].includes(role)
+    pushActivity(
+      `community-${community?.id || community?._id || idx}`,
+      isManager ? "manage" : "join",
+      name,
+      community?.joinedAt || community?.updatedAt || community?.createdAt,
+    )
   })
-}
-const ACTIVITY = genActivity()
 
-// Purple 5-level scale (0 = empty → 4 = max)
-const PURPLE_SCALE = ['#eaeaf4', '#c4b5fd', '#a78bfa', '#7c3aed', '#5b21b6']
-
-// ─── Activity Grid ────────────────────────────────────────────────────────────
-
-function ActivityGrid() {
-  const CELL = 11, GAP = 3, STEP = CELL + GAP
-  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null)
-
-  const today = new Date()
-  const origin = new Date(today)
-  origin.setDate(today.getDate() - 363)
-
-  const days = Array.from({ length: 364 }, (_, i) => {
-    const d = new Date(origin)
-    d.setDate(origin.getDate() + i)
-    return { date: d, level: ACTIVITY[i] ?? 0 }
+  collections.courses.slice(0, 2).forEach((course: any, idx: number) => {
+    const title = course?.titre || course?.title || "course"
+    const isCreated = String(course?.type || "").toLowerCase() === "created"
+    pushActivity(
+      `course-${course?.id || course?._id || idx}`,
+      isCreated ? "publish" : "enroll",
+      title,
+      course?.updatedAt || course?.createdAt || course?.enrolledAt,
+    )
   })
 
-  const weeks = Array.from({ length: 52 }, (_, w) => days.slice(w * 7, w * 7 + 7))
-
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-  const monthLabels: { col: number; name: string }[] = []
-  let lastM = -1
-  weeks.forEach((wk, wi) => {
-    const m = wk[0]?.date.getMonth() ?? -1
-    if (m !== lastM) { monthLabels.push({ col: wi, name: MONTHS[m] }); lastM = m }
+  collections.challenges.slice(0, 2).forEach((challenge: any, idx: number) => {
+    const title = challenge?.title || challenge?.name || "challenge"
+    const status = String(challenge?.status || "").toLowerCase()
+    const actionType = status.includes("complete") ? "complete" : "start"
+    pushActivity(
+      `challenge-${challenge?.id || challenge?._id || idx}`,
+      actionType,
+      title,
+      challenge?.updatedAt || challenge?.createdAt,
+    )
   })
 
-  const activeDays = days.filter(d => d.level > 0).length
-  const totalContribs = days.reduce((s, d) => s + d.level, 0)
+  collections.sessions.slice(0, 2).forEach((session: any, idx: number) => {
+    const title = session?.title || session?.name || "session"
+    const isCreated = String(session?.type || "").toLowerCase() === "created"
+    pushActivity(
+      `session-${session?.id || session?._id || idx}`,
+      isCreated ? "create" : "book",
+      title,
+      session?.startTime || session?.updatedAt || session?.createdAt,
+    )
+  })
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>Activity</h2>
-        <span className="text-[12px]" style={{ color: 'var(--t3)' }}>
-          {totalContribs} contributions · {activeDays} active days
-        </span>
-      </div>
-      <div style={{ overflowX: 'auto' }}>
-        <div style={{ minWidth: 32 + 52 * STEP }}>
-          {/* Month labels */}
-          <div className="relative" style={{ height: 18, marginLeft: 32 }}>
-            {monthLabels.map(ml => (
-              <span key={ml.col} className="absolute text-[10px] font-medium"
-                style={{ left: ml.col * STEP, color: 'var(--t3)', top: 0, lineHeight: '18px', whiteSpace: 'nowrap' }}>
-                {ml.name}
-              </span>
-            ))}
-          </div>
-          {/* Grid */}
-          <div style={{ display: 'flex', gap: GAP }}>
-            {/* Day labels */}
-            <div style={{ width: 28, flexShrink: 0 }}>
-              {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((label, i) => (
-                <div key={i} style={{
-                  height: STEP, display: 'flex', alignItems: 'center',
-                  justifyContent: 'flex-end', paddingRight: 5,
-                  fontSize: 9, color: 'var(--t3)',
-                }}>
-                  {label}
-                </div>
-              ))}
-            </div>
-            {/* Week columns */}
-            {weeks.map((week, wi) => (
-              <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
-                {week.map((cell, di) => {
-                  const ds = cell.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                  return (
-                    <div key={di}
-                      style={{
-                        width: CELL, height: CELL, borderRadius: 2, flexShrink: 0,
-                        background: PURPLE_SCALE[cell.level],
-                        cursor: 'default',
-                      }}
-                      onMouseEnter={e => {
-                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                        setTip({ x: r.left + r.width / 2, y: r.top - 6,
-                          text: cell.level === 0
-                            ? `No contributions on ${ds}`
-                            : `${cell.level} contribution${cell.level !== 1 ? 's' : ''} on ${ds}` })
-                      }}
-                      onMouseLeave={() => setTip(null)}
-                    />
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-          {/* Legend */}
-          <div className="flex items-center gap-1.5 mt-3 justify-end" style={{ fontSize: 10, color: 'var(--t3)' }}>
-            <span>Less</span>
-            {PURPLE_SCALE.map((c, i) => (
-              <div key={i} style={{ width: CELL, height: CELL, borderRadius: 2, background: c }} />
-            ))}
-            <span>More</span>
-          </div>
-        </div>
-      </div>
-      {/* Tooltip */}
-      {tip && (
-        <div className="fixed z-[9999] pointer-events-none px-2.5 py-1.5 rounded-lg text-white text-[11px] font-medium shadow-xl"
-          style={{ left: tip.x, top: tip.y, transform: 'translate(-50%,-100%)', background: '#1e1b4b', whiteSpace: 'nowrap' }}>
-          {tip.text}
-          <div style={{ position: 'absolute', left: '50%', bottom: -4, transform: 'translateX(-50%)',
-            borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #1e1b4b' }} />
-        </div>
-      )}
-    </div>
-  )
+  collections.products.slice(0, 2).forEach((product: any, idx: number) => {
+    const title = product?.title || product?.name || "product"
+    const actionType = String(product?.type || "").toLowerCase() === "created" ? "create" : "view"
+    pushActivity(
+      `product-${product?.id || product?._id || idx}`,
+      actionType,
+      title,
+      product?.updatedAt || product?.createdAt,
+    )
+  })
+
+  pushActivity("joined-platform", "join", "Chabaqa", user?.createdAt, "Joined Chabaqa")
+
+  return items
+    .sort((a, b) => (safeToDate(b.timestamp)?.getTime() || 0) - (safeToDate(a.timestamp)?.getTime() || 0))
+    .slice(0, 5)
 }
 
-// ─── Country Picker ───────────────────────────────────────────────────────────
 
-function CountryPicker({ value, onChange }: { value: Country | null; onChange: (c: Country) => void }) {
-  const [open, setOpen]   = useState(false)
-  const [query, setQuery] = useState('')
-  const ref = useRef<HTMLDivElement>(null)
+interface ProfilePageProps {
+  overrideUser?: any
+  isOwnProfile?: boolean
+}
 
+function ProfilePageContent({ overrideUser, isOwnProfile = true }: ProfilePageProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [showSignIn, setShowSignIn] = useState(false)
+  const [productsLoading, setProductsLoading] = useState(false)
+  const [products, setProducts] = useState<any[]>([])
+  const [productsPage, setProductsPage] = useState(1)
+  const [productsTotalPages, setProductsTotalPages] = useState(1)
+  const [activeTab, setActiveTab] = useState<'courses' | 'challenges' | 'sessions' | 'products' | 'communities'>('communities')
+  const [courses, setCourses] = useState<any[]>([])
+  const [coursesLoading, setCoursesLoading] = useState(false)
+  const [coursesPage, setCoursesPage] = useState(1)
+  const [coursesTotalPages, setCoursesTotalPages] = useState(1)
+  const [challenges, setChallenges] = useState<any[]>([])
+  const [challengesLoading, setChallengesLoading] = useState(false)
+  const [challengesPage, setChallengesPage] = useState(1)
+  const [challengesTotalPages, setChallengesTotalPages] = useState(1)
+  const [sessions, setSessions] = useState<any[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [sessionsPage, setSessionsPage] = useState(1)
+  const [sessionsTotalPages, setSessionsTotalPages] = useState(1)
+  const [communities, setCommunities] = useState<any[]>([])
+  const [communitiesLoading, setCommunitiesLoading] = useState(false)
+  const [communitiesPage, setCommunitiesPage] = useState(1)
+  const [communitiesTotalPages, setCommunitiesTotalPages] = useState(1)
+
+  const [fetchedAchievements, setFetchedAchievements] = useState<DisplayAchievement[]>([])
+  const [achievementsLoading, setAchievementsLoading] = useState(false)
+  const [fetchedActivity, setFetchedActivity] = useState<DisplayActivity[]>([])
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [viewer, setViewer] = useState<any>(null)
+  const [viewerCommunities, setViewerCommunities] = useState<any[]>([])
+  const [viewerCommunitiesLoading, setViewerCommunitiesLoading] = useState(false)
+
+  // Fetch user data
   useEffect(() => {
-    const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [])
-
-  const results = COUNTRIES.filter(c =>
-    c.name.toLowerCase().includes(query.toLowerCase()) || c.code.toLowerCase().includes(query.toLowerCase())
-  )
-
-  return (
-    <div ref={ref} className="relative">
-      <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full h-10 px-3 rounded-xl text-[13px] flex items-center gap-2.5 cursor-pointer"
-        style={{ border: `1.5px solid ${open ? 'var(--p)' : 'var(--bd)'}`, background: 'var(--bg)', color: 'var(--t1)', transition: 'border-color .15s' }}>
-        {value
-          ? <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`https://flagcdn.com/w20/${value.code.toLowerCase()}.png`}
-                width={20} height={15} alt={value.name} loading="lazy"
-                style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />
-              <span className="flex-1 text-left">{value.name}</span>
-            </>
-          : <span className="flex-1 text-left" style={{ color: 'var(--t3)' }}>Select country…</span>
+    const fetchUser = async () => {
+      try {
+        // If overrideUser is provided (from slug page), use it directly
+        if (overrideUser) {
+          setUser(overrideUser)
+          setLoading(false)
+          return
         }
-        <span style={{ color: 'var(--t3)', fontSize: 10 }}>▾</span>
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 rounded-2xl overflow-hidden z-50"
-          style={{ background: 'var(--white)', border: '1.5px solid var(--p)', boxShadow: '0 16px 48px rgba(0,0,0,.18)' }}>
-          <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--bd)' }}>
-            <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.8} />
-            <input autoFocus value={query} onChange={e => setQuery(e.target.value)}
-              placeholder="Search country…" className="flex-1 bg-transparent text-[13px] outline-none"
-              style={{ color: 'var(--t1)' }} />
-            {query && (
-              <button type="button" onClick={() => setQuery('')} style={{ color: 'var(--t3)' }}>
-                <X className="w-3.5 h-3.5" strokeWidth={1.8} />
-              </button>
-            )}
-          </div>
-          <div className="max-h-[220px] overflow-y-auto">
-            {results.length === 0
-              ? <p className="text-[13px] text-center py-4" style={{ color: 'var(--t3)' }}>No country found</p>
-              : results.map(c => (
-                  <button key={c.code} type="button"
-                    className="w-full flex items-center gap-3 px-3 py-2 text-[13px] text-left cursor-pointer"
-                    style={{ color: value?.code === c.code ? 'var(--p)' : 'var(--t1)', background: 'transparent', transition: 'background .1s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-                    onClick={() => { onChange(c); setOpen(false); setQuery('') }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`}
-                      width={20} height={15} alt={c.name} loading="lazy"
-                      style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />
-                    {c.name}
-                    {value?.code === c.code && <Check className="w-3.5 h-3.5 ml-auto" strokeWidth={2} />}
-                  </button>
-                ))
-            }
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
-// ─── Password field with toggle ───────────────────────────────────────────────
+        // Otherwise fetch current user profile
+        const profile = await getProfile()
+        if (profile) {
+          setUser(profile)
+        } else {
+          // If no authenticated user found, show mock data and sign in option
+          setShowSignIn(true)
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error)
+        setShowSignIn(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchUser()
+  }, [overrideUser])
 
-function PwField({ label, value, onChange, placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string
-}) {
-  const [show, setShow] = useState(false)
-  return (
-    <div>
-      <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>{label}</label>
-      <div className="relative">
-        <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full h-10 px-3 pr-10 rounded-xl text-[13px] outline-none"
-          style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)', transition: 'border-color .15s' }}
-          onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--p)' }}
-          onBlur={e =>  { (e.target as HTMLInputElement).style.borderColor = 'var(--bd)' }} />
-        <button type="button" onClick={() => setShow(v => !v)}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
-          style={{ color: 'var(--t3)' }}>
-          {show ? <EyeOff className="w-4 h-4" strokeWidth={1.7} /> : <Eye className="w-4 h-4" strokeWidth={1.7} />}
-        </button>
-      </div>
-    </div>
-  )
-}
+  // Redirect to slug /profile/<username> once user is known (only for own profile)
+  useEffect(() => {
+    if (!user || loading || overrideUser) return // Skip redirect for override users
+    // If current path already includes a slug segment, do nothing
+    const isSlugPath = /\/profile\/.+/.test(pathname || "")
+    const handle = getUserProfileHandle(user)
+    if (!isSlugPath) {
+      router.replace(`/profile/${handle}`)
+    }
+  }, [user, loading, pathname, router, overrideUser])
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+  // Fetch user products with pagination
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        if (!user?._id && !user?.id) return
+        setProductsLoading(true)
+        const apiBase = "/api"
 
-export default function ProfilePage() {
-  const [profile, setProfile] = useState<ProfileData>(() => {
-    if (typeof window === 'undefined') return DEFAULT_PROFILE
-    try {
-      const raw = localStorage.getItem('chabaqa_profile')
-      if (raw) return { ...DEFAULT_PROFILE, ...JSON.parse(raw) }
-    } catch { /* ignore */ }
-    return DEFAULT_PROFILE
+        // Fetch products with pagination
+        const listUrl = `${apiBase}/products/by-user/${encodeURIComponent(user._id || user.id)}?page=${productsPage}&limit=12&type=all`
+        const listRes = await fetch(listUrl, {
+          method: 'GET',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        if (listRes.ok) {
+          const data = await listRes.json()
+          if (data.success && data.data) {
+            setProducts(deduplicateById(data.data.products || []))
+            setProductsTotalPages(data.data.pagination?.totalPages || 1)
+          }
+        } else {
+          console.warn('Failed to fetch user products:', listRes.status)
+          setProducts([])
+        }
+      } catch (error) {
+        console.error('Error fetching user products:', error)
+        setProducts([])
+      } finally {
+        setProductsLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [user, productsPage])
+
+  // Fetch user courses
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (!user?._id && !user?.id) return
+
+      try {
+        setCoursesLoading(true)
+        const apiBase = "/api"
+        const coursesUrl = `${apiBase}/cours/by-user/${encodeURIComponent(user._id || user.id)}?page=${coursesPage}&limit=12&type=all`
+        const response = await fetch(coursesUrl)
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            // Map courses to include community name
+            // NOTE: Backend issue - community field not populated in response
+            // Fix needed: Backend should populate community data in /api/cours/by-user/:userId
+            const coursesWithCommunity = (data.data.courses || []).map((course: any) => ({
+              ...course,
+              communityName: course.communityName || 
+                             course.community?.name || 
+                             (typeof course.community === 'string' ? course.community : null)
+            }))
+            setCourses(deduplicateById(coursesWithCommunity))
+            setCoursesTotalPages(data.data.pagination?.totalPages || 1)
+          }
+        } else {
+          console.warn('Failed to fetch user courses:', response.status)
+          setCourses([])
+        }
+      } catch (error) {
+        console.error('Error fetching user courses:', error)
+        setCourses([])
+      } finally {
+        setCoursesLoading(false)
+      }
+    }
+
+    fetchCourses()
+  }, [user, coursesPage])
+
+  // Fetch user challenges
+  useEffect(() => {
+    const fetchChallenges = async () => {
+      if (!user?._id && !user?.id) return
+
+      try {
+        setChallengesLoading(true)
+        const apiBase = "/api"
+        const challengesUrl = `${apiBase}/challenges/by-user/${encodeURIComponent(user._id || user.id)}?page=${challengesPage}&limit=12&type=all`
+        const response = await fetch(challengesUrl)
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            setChallenges(deduplicateById(data.data.challenges || []))
+            setChallengesTotalPages(data.data.pagination?.totalPages || 1)
+          }
+        } else {
+          console.warn('Failed to fetch user challenges:', response.status)
+          setChallenges([])
+        }
+      } catch (error) {
+        console.error('Error fetching user challenges:', error)
+        setChallenges([])
+      } finally {
+        setChallengesLoading(false)
+      }
+    }
+
+    fetchChallenges()
+  }, [user, challengesPage])
+
+  // Fetch user sessions
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!user?._id && !user?.id) return
+
+      try {
+        setSessionsLoading(true)
+        const apiBase = "/api"
+        const sessionsUrl = `${apiBase}/sessions/by-user/${encodeURIComponent(user._id || user.id)}?page=${sessionsPage}&limit=12&type=all`
+        const response = await fetch(sessionsUrl)
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            // Map sessions to include community name
+            const sessionsWithCommunity = (data.data.sessions || []).map((session: any) => ({
+              ...session,
+              communityName: session.communityName || 
+                             session.community?.name || 
+                             (typeof session.community === 'string' ? session.community : null)
+            }))
+            setSessions(deduplicateById(sessionsWithCommunity))
+            setSessionsTotalPages(data.data.pagination?.totalPages || 1)
+          }
+        } else {
+          console.warn('Failed to fetch user sessions:', response.status)
+          setSessions([])
+        }
+      } catch (error) {
+        console.error('Error fetching user sessions:', error)
+        setSessions([])
+      } finally {
+        setSessionsLoading(false)
+      }
+    }
+
+    fetchSessions()
+  }, [user, sessionsPage])
+
+  // Fetch user communities
+  useEffect(() => {
+    const fetchCommunities = async () => {
+      if (!user?._id && !user?.id) return
+
+      try {
+        setCommunitiesLoading(true)
+        const apiBase = "/api"
+        const communitiesUrl = `${apiBase}/communities/by-user/${encodeURIComponent(user._id || user.id)}?page=${communitiesPage}&limit=12&type=all`
+        const response = await fetch(communitiesUrl)
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            setCommunities(data.data.communities || [])
+            setCommunitiesTotalPages(data.data.pagination?.totalPages || 1)
+          }
+        } else {
+          console.warn('Failed to fetch user communities:', response.status)
+          setCommunities([])
+        }
+      } catch (error) {
+        console.error('Error fetching user communities:', error)
+        setCommunities([])
+      } finally {
+        setCommunitiesLoading(false)
+      }
+    }
+
+    fetchCommunities()
+  }, [user, communitiesPage])
+
+  // Fetch authenticated viewer profile when viewing someone else
+  useEffect(() => {
+    if (isOwnProfile) {
+      setViewer(user)
+      setViewerCommunities(communities)
+      return
+    }
+
+    let isActive = true
+    const loadViewer = async () => {
+      try {
+        const profile = await getProfile()
+        if (!isActive) return
+        setViewer(profile)
+      } catch (error) {
+        if (!isActive) return
+        setViewer(null)
+      }
+    }
+
+    loadViewer()
+    return () => {
+      isActive = false
+    }
+  }, [isOwnProfile, user, communities])
+
+  // Fetch viewer communities to check shared membership
+  useEffect(() => {
+    if (isOwnProfile) return
+    if (!viewer?._id && !viewer?.id) {
+      setViewerCommunities([])
+      return
+    }
+
+    const fetchViewerCommunities = async () => {
+      try {
+        setViewerCommunitiesLoading(true)
+        const apiBase = "/api"
+        const viewerId = viewer?._id || viewer?.id
+        const communitiesUrl = `${apiBase}/communities/by-user/${encodeURIComponent(viewerId)}?page=1&limit=100&type=all`
+        const token = tokenManager.getAccessToken()
+        const headers: HeadersInit = { "Content-Type": "application/json" }
+        if (token) headers["Authorization"] = `Bearer ${token}`
+        const response = await fetch(communitiesUrl, { headers, credentials: "include" })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            setViewerCommunities(data.data.communities || [])
+          } else {
+            setViewerCommunities([])
+          }
+        } else {
+          setViewerCommunities([])
+        }
+      } catch (error) {
+        setViewerCommunities([])
+      } finally {
+        setViewerCommunitiesLoading(false)
+      }
+    }
+
+    fetchViewerCommunities()
+  }, [isOwnProfile, viewer])
+
+  // Fetch user achievements
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      if (!isOwnProfile) {
+        setFetchedAchievements([])
+        setAchievementsLoading(false)
+        return
+      }
+      if (!user?._id && !user?.id) return
+      try {
+        setAchievementsLoading(true)
+        const apiBase = "/api"
+        const token = tokenManager.getAccessToken()
+        const headers: HeadersInit = { 'Content-Type': 'application/json' }
+        if (token) headers['Authorization'] = `Bearer ${token}`
+
+        const res = await fetch(`${apiBase}/achievements/user`, { headers, credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          const list = extractArrayPayload(data)
+          const unlocked = list.filter((a: any) => a?.isUnlocked === undefined ? true : Boolean(a.isUnlocked))
+          setFetchedAchievements(normalizeFetchedAchievements(unlocked))
+        } else {
+          setFetchedAchievements([])
+        }
+      } catch (error) {
+        console.error("Error fetching achievements:", error)
+        setFetchedAchievements([])
+      } finally {
+        setAchievementsLoading(false)
+      }
+    }
+    fetchAchievements()
+  }, [user, isOwnProfile])
+
+  // Fetch user recent activity
+  useEffect(() => {
+    const fetchActivity = async () => {
+      if (!isOwnProfile) {
+        setFetchedActivity([])
+        setActivityLoading(false)
+        return
+      }
+      if (!user?._id && !user?.id) return
+      try {
+        setActivityLoading(true)
+        const apiBase = "/api"
+        const token = tokenManager.getAccessToken()
+        const headers: HeadersInit = { 'Content-Type': 'application/json' }
+        if (token) headers['Authorization'] = `Bearer ${token}`
+
+        const res = await fetch(`${apiBase}/tracking/user/actions/recent?limit=5`, { headers, credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          const normalized = normalizeFetchedActivity(extractArrayPayload(data))
+          setFetchedActivity(normalized.slice(0, 5))
+        } else {
+          setFetchedActivity([])
+        }
+      } catch (error) {
+        console.error("Error fetching activity:", error)
+        setFetchedActivity([])
+      } finally {
+        setActivityLoading(false)
+      }
+    }
+    fetchActivity()
+  }, [user, isOwnProfile])
+
+
+  // Current authenticated user only (no mock fallback)
+  const currentUser = user
+  const isCreator = currentUser?.role === "creator"
+
+  // Get dynamic data based on user role
+  // Get dynamic data based on current user
+  const stats = getStatsForUser(currentUser, isCreator)
+  const displayAchievements = fetchedAchievements
+  const displayActivity = fetchedActivity
+  const totalLearningItems = courses.length + challenges.length
+  const totalOffers = sessions.length + products.length
+  const profileChecklist = [
+    Boolean(currentUser?.name),
+    ...(isOwnProfile ? [Boolean(currentUser?.email)] : []),
+    Boolean(currentUser?.avatar),
+    Boolean(currentUser?.bio),
+    Boolean(currentUser?.ville || currentUser?.pays),
+  ]
+  const profileCompleteness = Math.round((profileChecklist.filter(Boolean).length / profileChecklist.length) * 100)
+  const profileHighlights = [
+    { label: "Achievements", value: displayAchievements.length, icon: Trophy, color: "#8e78fb" },
+    { label: "Communities", value: communities.length, icon: Users, color: "#b07df8" },
+    { label: "Learning", value: totalLearningItems, icon: GraduationCap, color: "#47c7ea" },
+    { label: "Offers", value: totalOffers, icon: ShoppingBag, color: "#f65887" },
+  ]
+  const profileHandle = getUserProfileHandle(currentUser)
+  const profileSocialLinks = cleanSocialLinks({
+    ...((currentUser as any)?.socialLinks || {}),
+    instagram: (currentUser as any)?.socialLinks?.instagram || (currentUser as any)?.lien_instagram || "",
   })
+  const socialEntries = SOCIAL_PLATFORMS
+    .filter((platform) => Boolean(profileSocialLinks[platform]))
+    .map((platform) => ({
+      platform,
+      label: SOCIAL_LABELS[platform],
+      href: profileSocialLinks[platform] as string,
+    }))
 
-  const [editOpen, setEditOpen]         = useState(false)
-  const [editTab, setEditTab]           = useState<'profile' | 'socials' | 'security'>('profile')
-  const [draft, setDraft]               = useState<ProfileData>(profile)
-  const [pwForm, setPwForm]             = useState({ current: '', newPw: '', confirm: '' })
-  const [pwError, setPwError]           = useState('')
-  const [pwSuccess, setPwSuccess]       = useState(false)
-  const [deleteOpen, setDeleteOpen]     = useState(false)
-  const [deleteInput, setDeleteInput]   = useState('')
-  const [saved, setSaved]               = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const viewerCommunityKeys = new Set(
+    viewerCommunities.flatMap((community) => getCommunityKeys(community)),
+  )
+  const preferredCommunityId = String(searchParams?.get("communityId") || "").trim()
+  const preferredCommunityPath = String(searchParams?.get("communityPath") || "").trim()
+  const preferredCommunityKey = preferredCommunityId.toLowerCase()
+  const viewerInPreferred = Boolean(preferredCommunityKey && viewerCommunityKeys.has(preferredCommunityKey))
+  const preferredBasePath = preferredCommunityPath.startsWith("/") ? preferredCommunityPath : ""
 
-  const saveProfile = () => {
-    setProfile(draft)
-    try { localStorage.setItem('chabaqa_profile', JSON.stringify(draft)) } catch { /* ignore */ }
-    setSaved(true)
-    setTimeout(() => { setSaved(false); setEditOpen(false) }, 900)
+  const commonCommunity = !isOwnProfile
+    ? communities.find((community) =>
+        getCommunityKeys(community).some((key) => viewerCommunityKeys.has(key)),
+      ) || null
+    : null
+
+  const dmBasePath = viewerInPreferred
+    ? preferredBasePath
+    : commonCommunity
+      ? resolveCommunityBasePath(commonCommunity)
+      : null
+  const dmCommunityId = viewerInPreferred
+    ? preferredCommunityId
+    : commonCommunity
+      ? resolveCommunityId(commonCommunity)
+      : ""
+  const canDm = Boolean(
+    !isOwnProfile &&
+      viewer &&
+      dmCommunityId &&
+      dmBasePath &&
+      !viewerCommunitiesLoading,
+  )
+
+  const handleDmClick = () => {
+    if (!dmCommunityId || !dmBasePath) return
+    const targetUserId = String(currentUser?._id || currentUser?.id || "")
+    if (!targetUserId) return
+    const query = new URLSearchParams()
+    query.set("communityId", dmCommunityId)
+    query.set("targetUserId", targetUserId)
+    router.push(`${dmBasePath}/messages?${query.toString()}`)
   }
 
-  const openEdit = (tab: typeof editTab = 'profile') => {
-    setDraft({ ...profile, socials: { ...profile.socials } })
-    setEditTab(tab)
-    setPwForm({ current: '', newPw: '', confirm: '' })
-    setPwError('')
-    setPwSuccess(false)
-    setEditOpen(true)
-  }
-
-  const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setDraft(d => ({ ...d, avatar: reader.result as string }))
-    reader.readAsDataURL(file)
-  }
-
-  const handlePwSubmit = () => {
-    setPwError('')
-    if (!pwForm.current) return setPwError('Enter your current password')
-    if (pwForm.newPw.length < 8) return setPwError('New password must be at least 8 characters')
-    if (pwForm.newPw !== pwForm.confirm) return setPwError('Passwords do not match')
-    setPwSuccess(true)
-    setPwForm({ current: '', newPw: '', confirm: '' })
-    setTimeout(() => setPwSuccess(false), 3000)
-  }
-
-  const activeSocials = SOCIALS.filter(s => {
-    const v = profile.socials[s.id as keyof SocialLinks]
-    return v && v.trim().length > 0
-  })
-
-  return (
-    <>
-      <Header />
-      <main className="min-h-screen" style={{ background: 'var(--bg)', paddingTop: 80 }}>
-        <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
-
-          {/* ── Hero Card ── */}
-          <div className="rounded-2xl"
-            style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 2px 16px rgba(0,0,0,.07)' }}>
-            {/* Edit button row */}
-            <div className="flex justify-end px-5 pt-5">
-              <button onClick={() => openEdit('profile')}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-medium cursor-pointer transition-opacity hover:opacity-70"
-                style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }}>
-                <Pencil className="w-3.5 h-3.5" strokeWidth={1.8} />
-                Edit Profile
-              </button>
+  if (!loading && !currentUser) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto text-center space-y-4">
+            <h2 className="text-2xl font-semibold">Connectez-vous pour voir votre profil</h2>
+            <p className="text-muted-foreground">Votre session a expiré ou vous n&apos;êtes pas connecté.</p>
+            <div className="flex justify-center">
+              <Button asChild>
+                <Link href="/signin">Se connecter</Link>
+              </Button>
             </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
-            {/* Centered content */}
-            <div className="flex flex-col items-center text-center px-6 pb-7 pt-2">
-              {/* Avatar */}
-              <div className="w-[100px] h-[100px] rounded-full overflow-hidden mb-4"
-                style={{ border: '3px solid var(--white)', boxShadow: '0 0 0 2.5px var(--p), 0 4px 16px rgba(0,0,0,.1)' }}>
-                {profile.avatar
-                  ? <img src={profile.avatar} alt="Avatar" loading="lazy" className="w-full h-full object-cover" />  // eslint-disable-line @next/next/no-img-element
-                  : <div className="w-full h-full flex items-center justify-center text-[34px] font-bold text-white"
-                      style={{ background: 'var(--p)' }}>
-                      {profile.name.charAt(0).toUpperCase()}
+  return (
+    <div className="min-h-screen bg-[linear-gradient(180deg,rgba(142,120,251,0.10)_0,rgba(255,255,255,0)_24rem)] bg-background">
+      <Header />
+      <main className="w-full px-4 sm:px-8 md:px-12 lg:px-20 xl:px-40 pt-12 md:pt-16 lg:pt-20 pb-24">
+        <div className="w-full max-w-7xl mx-auto flex flex-col gap-8">
+          <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex-1 flex flex-col gap-6">
+              {/* Header Card */}
+              <div className="relative overflow-hidden rounded-2xl border border-border-color bg-white/90 p-6 shadow-subtle backdrop-blur-sm">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-[#8e78fb]/20 via-[#47c7ea]/10 to-transparent" />
+                <div className="relative flex flex-col gap-6 @[520px]:flex-row @[520px]:justify-between @[520px]:items-center">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-24 w-24 sm:h-32 sm:w-32 flex-shrink-0 ring-4 ring-white shadow-lg"
+                      style={{ backgroundImage: `url(${currentUser?.avatar || '/placeholder.svg'})` }} />
+                    <div className="flex flex-col justify-center gap-1">
+                      <p className="text-2xl sm:text-3xl font-bold leading-tight tracking-tight">{currentUser?.name}</p>
+                      <p className="text-text-secondary text-base">@{profileHandle}</p>
+                      {isOwnProfile && currentUser?.email && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Mail className="w-4 h-4 text-text-tertiary" />
+                          <p className="text-text-secondary text-sm break-all">{currentUser?.email}</p>
+                        </div>
+                      )}
+                      <p className="text-text-secondary text-base flex items-center gap-1.5 mt-1 break-words">
+                        <MapPin className="w-4 h-4" /> {[currentUser?.ville, currentUser?.pays].filter(Boolean).join(', ') || '—'}
+                      </p>
+                      {currentUser?.bio && (
+                        <p className="text-text-secondary text-sm mt-3 w-full leading-relaxed break-words whitespace-pre-wrap overflow-hidden">{currentUser.bio}</p>
+                      )}
                     </div>
-                }
+                  </div>
+                  {isOwnProfile && (
+                    <a href={`/profile/${profileHandle}/edit`} className="flex w-full @[520px]:w-auto min-w-[84px] items-center justify-center gap-2 rounded-lg h-10 px-4 bg-primary hover:bg-primary-dark text-white text-sm font-bold border border-primary-dark">
+                      <Pencil className="w-4 h-4" />
+                      <span>Edit Profile</span>
+                    </a>
+                  )}
+                  {!isOwnProfile && canDm && (
+                    <Button
+                      type="button"
+                      onClick={handleDmClick}
+                      className="flex w-full @[520px]:w-auto min-w-[84px] items-center justify-center gap-2 rounded-lg h-10 px-4 bg-primary hover:bg-primary-dark text-white text-sm font-bold border border-primary-dark"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>DM</span>
+                    </Button>
+                  )}
+                </div>
               </div>
 
-              {/* Name + handle */}
-              <h1 className="text-[22px] font-bold leading-tight" style={{ color: 'var(--t1)' }}>{profile.name}</h1>
-              <p className="text-[12px] mt-1 px-2.5 py-0.5 rounded-full font-mono"
-                style={{ color: 'var(--t3)', background: 'var(--bg)', border: '1px solid var(--bd)' }}>
-                {profile.handle}
-              </p>
-
-              {/* Location + email */}
-              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mt-3.5">
-                {profile.location && (
-                  <span className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--t2)' }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`https://flagcdn.com/w20/${profile.location.code.toLowerCase()}.png`}
-                      width={18} height={14} alt={profile.location.name} loading="lazy"
-                      style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />
-                    {profile.location.name}
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--t2)' }}>
-                  <Mail className="w-3.5 h-3.5 shrink-0" strokeWidth={1.7} />
-                  {profile.email}
-                </span>
-              </div>
-
-              {/* Bio */}
-              {profile.bio && (
-                <p className="mt-4 text-[13px] leading-relaxed" style={{ color: 'var(--t2)', maxWidth: 460 }}>
-                  {profile.bio}
-                </p>
-              )}
-
-              {/* Social icon buttons */}
-              {activeSocials.length > 0 && (
-                <>
-                  <div className="w-full mt-5 mb-4" style={{ borderTop: '1px solid var(--bd)' }} />
-                  <div className="flex items-center gap-2.5">
-                    {activeSocials.map(s => (
-                      <a key={s.id}
-                        href={profile.socials[s.id as keyof SocialLinks]}
-                        target="_blank" rel="noopener noreferrer"
-                        title={s.label}
-                        className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer"
-                        style={{ background: 'var(--bg)', border: '1.5px solid var(--bd)', color: 'var(--t3)', transition: 'all .15s' }}
-                        onMouseEnter={e => {
-                          const el = e.currentTarget as HTMLElement
-                          el.style.background = s.color + '15'
-                          el.style.borderColor = s.color
-                          el.style.color = s.color
-                        }}
-                        onMouseLeave={e => {
-                          const el = e.currentTarget as HTMLElement
-                          el.style.background = 'var(--bg)'
-                          el.style.borderColor = 'var(--bd)'
-                          el.style.color = 'var(--t3)'
-                        }}>
-                        <SocialSvg platform={s.id} size={16} />
-                      </a>
+              {/* Tabs + Courses Grid */}
+              <div className="border border-border-color rounded-xl bg-white shadow-subtle">
+                <div className="pb-3">
+                  <div className="flex border-b border-border-color px-6 gap-4 sm:gap-8 overflow-x-auto overscroll-x-contain">
+                    {(['communities', 'courses', 'challenges', 'sessions', 'products'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        className={cn(
+                          "flex flex-col items-center justify-center pb-[13px] pt-4 text-sm font-bold shrink-0 whitespace-nowrap",
+                          activeTab === tab
+                            ? (
+                              tab === 'courses' ? "border-b-[3px] border-b-[#47c7ea] text-[#47c7ea]" :
+                                tab === 'challenges' ? "border-b-[3px] border-b-[#ff9b28] text-[#ff9b28]" :
+                                  tab === 'sessions' ? "border-b-[3px] border-b-[#f65887] text-[#f65887]" :
+                                    tab === 'products' ? "border-b-[3px] border-b-[#8e78fb] text-[#8e78fb]" :
+                                /* communities */ "border-b-[3px] border-b-[#b07df8] text-[#b07df8]"
+                            )
+                            : "border-b-[3px] border-b-transparent text-text-tertiary hover:text-text-primary"
+                        )}
+                        onClick={() => setActiveTab(tab)}
+                      >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      </button>
                     ))}
                   </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* ── Activity ── */}
-          <div className="rounded-2xl p-6"
-            style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 2px 16px rgba(0,0,0,.07)' }}>
-            <ActivityGrid />
-          </div>
-
-          {/* ── Communities ── */}
-          <section>
-            <h2 className="text-[15px] font-semibold mb-3" style={{ color: 'var(--t1)' }}>Communities</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {COMMUNITIES.map(c => {
-                const meta = ROLE_META[c.role] ?? ROLE_META.Member
-                return (
-                  <div key={c.id} className="rounded-2xl p-4 flex items-center gap-3"
-                    style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: 'var(--bg)' }}>
-                      <Users className="w-5 h-5" style={{ color: c.color }} strokeWidth={1.7} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>{c.name}</p>
-                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>{c.members.toLocaleString()} members</p>
-                    </div>
-                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium"
-                      style={{ background: meta.bg, color: meta.color }}>
-                      {c.role}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-
-          {/* ── My Content ── */}
-          <section>
-            <h2 className="text-[15px] font-semibold mb-3" style={{ color: 'var(--t1)' }}>My Content</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {CONTENT.map(c => (
-                <div key={c.id} className="rounded-2xl p-4"
-                  style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-white"
-                      style={{ background: c.color }}>
-                      {TYPE_ICON[c.type]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium truncate" style={{ color: 'var(--t1)' }}>{c.title}</p>
-                      <p className="text-[11px] capitalize mt-0.5" style={{ color: 'var(--t3)' }}>{c.type}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <div className="flex justify-between text-[11px] mb-1.5" style={{ color: 'var(--t3)' }}>
-                      <span>Progress</span>
-                      <span style={{ color: c.progress === 100 ? '#16a34a' : 'var(--t3)', fontWeight: 500 }}>{c.progress}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg)' }}>
-                      <div className="h-full rounded-full"
-                        style={{ width: `${c.progress}%`, background: c.progress === 100 ? '#16a34a' : c.color }} />
-                    </div>
-                  </div>
                 </div>
-              ))}
-            </div>
-          </section>
 
+                {/* Tab Panels */}
+                {activeTab === 'courses' && (
+                  <div className="p-6">
+                    {coursesLoading ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Array.from({ length: 6 }).map((_, idx) => (
+                          <div key={idx} className="flex flex-col gap-3">
+                            <div className="w-full aspect-video bg-gray-200 rounded-lg animate-pulse" />
+                            <div className="space-y-2">
+                              <div className="h-4 bg-gray-200 rounded animate-pulse" />
+                              <div className="h-2 bg-gray-200 rounded animate-pulse" />
+                              <div className="h-3 bg-gray-200 rounded w-3/4 animate-pulse" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : courses.length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {courses.map((course) => (
+                            <div key={course.id} className="flex flex-col gap-3 group rounded-lg border border-border-color bg-white shadow-subtle overflow-hidden hover:shadow-md transition-shadow">
+                              <div className="relative w-full bg-center bg-no-repeat aspect-video bg-cover rounded-t-lg overflow-hidden transform group-hover:scale-105 transition-transform duration-300" style={{ backgroundImage: `url(${course.thumbnail})` }}>
+                                <div className="absolute inset-0 bg-black/20" />
+                                <BookOpen className="absolute top-3 right-3 w-8 h-8" style={{ color: '#47c7ea' }} />
+                                {course.type === 'created' && (
+                                  <div className="absolute top-3 left-3 px-2 py-1 bg-purple-500 text-white text-xs rounded-full">
+                                    Created
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-4 flex-1 flex flex-col justify-between">
+                                <div>
+                                  <p className="text-base font-medium line-clamp-2">{course.titre}</p>
+                                  {course.type === 'enrolled' && (
+                                    <>
+                                      <div className="w-full bg-border-color rounded-full h-2 mt-2">
+                                        <div className="h-2 rounded-full" style={{ width: `${course.progress}%`, background: '#47c7ea' }} />
+                                      </div>
+                                      <p className="text-text-secondary text-sm mt-1">
+                                        {course.status === 'completed' ? 'Completed' :
+                                          course.status === 'in_progress' ? `${course.progress}% Complete` :
+                                            'Not Started'}
+                                      </p>
+                                    </>
+                                  )}
+                                  {course.type === 'created' && (
+                                    <p className="text-text-secondary text-sm mt-1">
+                                      Status: {course.status === 'published' ? 'Published' : 'Draft'}
+                                    </p>
+                                  )}
+                                  {course.communityName && (
+                                    <div className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full w-fit mt-2">
+                                      <Users className="w-3 h-3" />
+                                      <span className="font-medium">{course.communityName}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                {course.slug && (
+                                  <a
+                                    href={`/community/${course.slug}/home`}
+                                    className="mt-4 pt-4 border-t border-border-color w-full text-center py-2 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-sm font-medium"
+                                  >
+                                    View Course
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination */}
+                        {coursesTotalPages > 1 && (
+                          <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mt-6">
+                            <button
+                              onClick={() => setCoursesPage(prev => Math.max(1, prev - 1))}
+                              disabled={coursesPage === 1}
+                              className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                              Previous
+                            </button>
+                            <span className="text-sm text-gray-600">
+                              Page {coursesPage} of {coursesTotalPages}
+                            </span>
+                            <button
+                              onClick={() => setCoursesPage(prev => Math.min(coursesTotalPages, prev + 1))}
+                              disabled={coursesPage === coursesTotalPages}
+                              className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <BookOpen className="w-16 h-16 mx-auto mb-4" style={{ color: '#47c7ea' }} />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No courses yet</h3>
+                        <p className="text-gray-500 mb-4">
+                          {isOwnProfile ? "You haven't enrolled in or created any courses yet." : "This user hasn't enrolled in or created any courses yet."}
+                        </p>
+                        {isOwnProfile && (
+                          <Link href="/explore">
+                            <button className="text-white px-4 py-2 rounded-lg hover:opacity-90 transition-opacity" style={{ background: '#47c7ea' }}>
+                              Explore Courses
+                            </button>
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'challenges' && (
+                  <div className="p-6">
+                    {challengesLoading ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Array.from({ length: 6 }).map((_, idx) => (
+                          <div key={idx} className="flex flex-col gap-3">
+                            <div className="w-full aspect-video bg-gray-200 rounded-lg animate-pulse" />
+                            <div className="space-y-2">
+                              <div className="h-4 bg-gray-200 rounded animate-pulse" />
+                              <div className="h-2 bg-gray-200 rounded animate-pulse" />
+                              <div className="h-3 bg-gray-200 rounded w-3/4 animate-pulse" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : challenges.length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {challenges.map((challenge) => (
+                            <div key={challenge.id} className="flex flex-col gap-3 group rounded-lg border border-border-color bg-white shadow-subtle overflow-hidden hover:shadow-md transition-shadow">
+                              <div className="relative w-full bg-center bg-no-repeat aspect-video bg-cover rounded-t-lg overflow-hidden transform group-hover:scale-105 transition-transform duration-300" style={{ backgroundImage: `url(${challenge.thumbnail})` }}>
+                                <div className="absolute inset-0 bg-black/20" />
+                                <Trophy className="absolute top-3 right-3 w-8 h-8" style={{ color: '#ff9b28' }} />
+                                {challenge.type === 'created' && (
+                                  <div className="absolute top-3 left-3 px-2 py-1 bg-purple-500 text-white text-xs rounded-full">
+                                    Created
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-4 flex-1 flex flex-col justify-between">
+                                <div>
+                                  <p className="text-base font-medium line-clamp-2">{challenge.title}</p>
+                                  {challenge.progress !== undefined && (
+                                    <>
+                                      <div className="w-full bg-border-color rounded-full h-2 mt-2">
+                                        <div className="h-2 rounded-full" style={{ width: `${challenge.progress}%`, background: '#ff9b28' }} />
+                                      </div>
+                                      <div className="flex justify-between items-center text-text-secondary text-sm mt-1">
+                                        <span>{challenge.status}</span>
+                                        <span>{challenge.progress}%</span>
+                                      </div>
+                                    </>
+                                  )}
+                                  {challenge.difficulty && (
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full">{challenge.difficulty}</span>
+                                      {challenge.category && (
+                                        <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full">{challenge.category}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                {challenge.slug && (
+                                  <a
+                                    href={`/community/${challenge.slug}/challenges`}
+                                    className="mt-4 pt-4 border-t border-border-color w-full text-center py-2 rounded-md bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors text-sm font-medium"
+                                  >
+                                    View Challenge
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination */}
+                        {challengesTotalPages > 1 && (
+                          <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mt-6">
+                            <button
+                              onClick={() => setChallengesPage(prev => Math.max(1, prev - 1))}
+                              disabled={challengesPage === 1}
+                              className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                              Previous
+                            </button>
+                            <span className="text-sm text-gray-600">
+                              Page {challengesPage} of {challengesTotalPages}
+                            </span>
+                            <button
+                              onClick={() => setChallengesPage(prev => Math.min(challengesTotalPages, prev + 1))}
+                              disabled={challengesPage === challengesTotalPages}
+                              className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Trophy className="w-16 h-16 mx-auto mb-4" style={{ color: '#ff9b28' }} />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No challenges yet</h3>
+                        <p className="text-gray-500 mb-4">
+                          {isOwnProfile ? "You haven't participated in or created any challenges yet." : "This user hasn't participated in or created any challenges yet."}
+                        </p>
+                        {isOwnProfile && (
+                          <Link href="/explore">
+                            <button className="text-white px-4 py-2 rounded-lg hover:opacity-90 transition-opacity" style={{ background: '#ff9b28' }}>
+                              Explore Challenges
+                            </button>
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'sessions' && (
+                  <div className="p-6">
+                    {sessionsLoading ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Array.from({ length: 6 }).map((_, idx) => (
+                          <div key={idx} className="flex flex-col gap-3">
+                            <div className="w-full aspect-video bg-gray-200 rounded-lg animate-pulse" />
+                            <div className="space-y-2">
+                              <div className="h-4 bg-gray-200 rounded animate-pulse" />
+                              <div className="h-3 bg-gray-200 rounded w-3/4 animate-pulse" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : sessions.length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {sessions.map((session) => {
+                            const statusColors = {
+                              'upcoming': '#f65887',
+                              'past': '#6b7280',
+                              'live': '#10b981'
+                            }
+                            const color = statusColors[session.status as keyof typeof statusColors] || '#8e78fb'
+                            
+                            // Handle date safely - check if startTime exists and is valid
+                            let timeStr = "Date TBD"
+                            if (session.startTime) {
+                              const startTime = new Date(session.startTime)
+                              if (!isNaN(startTime.getTime())) {
+                                const isToday = startTime.toDateString() === new Date().toDateString()
+                                timeStr = isToday ?
+                                  `Today ${startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` :
+                                  startTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                              }
+                            }
+
+                            return (
+                              <div key={session.id} className="flex flex-col gap-0 group rounded-xl overflow-hidden shadow-subtle hover:shadow-md transition-all duration-300 bg-white border border-gray-100">
+                                {/* Header avec gradient et icône calendrier */}
+                                <div className="relative h-32 bg-gradient-to-br from-pink-500 via-purple-500 to-blue-500 flex items-center justify-center">
+                                  <Calendar className="w-16 h-16 text-white opacity-90" />
+                                  {session.type === 'created' && (
+                                    <div className="absolute top-3 left-3 px-2 py-1 bg-purple-600 text-white text-xs rounded-full">
+                                      Created
+                                    </div>
+                                  )}
+                                  {session.status === 'live' && (
+                                    <div className="absolute top-3 right-3 px-2 py-1 bg-red-500 text-white text-xs rounded-full animate-pulse">
+                                      LIVE
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Contenu de la carte */}
+                                <div className="p-4 flex-1 flex flex-col gap-2">
+                                  <h3 className="text-base font-semibold line-clamp-2 min-h-[3rem]">{session.title}</h3>
+                                  <p className="text-sm text-gray-600">{timeStr}</p>
+                                  
+                                  {/* Durée et créateur sur une ligne */}
+                                  {session.duration && session.creator?.name && (
+                                    <p className="text-xs text-gray-500">
+                                      {session.duration} mins • {session.creator.name}
+                                    </p>
+                                  )}
+                                  
+                                  {/* Community name */}
+                                  {session.communityName && (
+                                    <div className="flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full w-fit">
+                                      <Users className="w-3 h-3" />
+                                      <span className="font-medium">{session.communityName}</span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Bouton View Session */}
+                                  {session.slug && (
+                                    <a
+                                      href={`/community/${session.slug}/sessions`}
+                                      className="mt-auto w-full text-center py-2 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 transition-all text-sm font-medium"
+                                    >
+                                      View Session
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {/* Pagination */}
+                        {sessionsTotalPages > 1 && (
+                          <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mt-6">
+                            <button
+                              onClick={() => setSessionsPage(prev => Math.max(1, prev - 1))}
+                              disabled={sessionsPage === 1}
+                              className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                              Previous
+                            </button>
+                            <span className="text-sm text-gray-600">
+                              Page {sessionsPage} of {sessionsTotalPages}
+                            </span>
+                            <button
+                              onClick={() => setSessionsPage(prev => Math.min(sessionsTotalPages, prev + 1))}
+                              disabled={sessionsPage === sessionsTotalPages}
+                              className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Calendar className="w-16 h-16 mx-auto mb-4" style={{ color: '#f65887' }} />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No sessions yet</h3>
+                        <p className="text-gray-500 mb-4">
+                          {isOwnProfile ? "You haven't booked or created any sessions yet." : "This user hasn't booked or created any sessions yet."}
+                        </p>
+                        {isOwnProfile && (
+                          <Link href="/explore">
+                            <button className="text-white px-4 py-2 rounded-lg hover:opacity-90 transition-opacity" style={{ background: '#f65887' }}>
+                              Browse Sessions
+                            </button>
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'products' && (
+                  <div className="p-6">
+                    {productsLoading ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Array.from({ length: 6 }).map((_, idx) => (
+                          <div key={idx} className="flex flex-col gap-3">
+                            <div className="w-full aspect-video bg-gray-200 rounded-lg animate-pulse" />
+                            <div className="space-y-2">
+                              <div className="h-4 bg-gray-200 rounded animate-pulse" />
+                              <div className="h-3 bg-gray-200 rounded w-3/4 animate-pulse" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : products.length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {products.map((product) => (
+                            <div key={product.id || product._id} className="flex flex-col gap-3 group rounded-lg border border-border-color bg-white shadow-subtle overflow-hidden hover:shadow-md transition-shadow">
+                              <div className="relative w-full bg-center bg-no-repeat aspect-video bg-cover rounded-t-lg overflow-hidden transform group-hover:scale-105 transition-transform duration-300" style={{ backgroundImage: `url(${(product.images && product.images[0]) || product.image || product.thumbnail || 'https://images.unsplash.com/photo-1579275542618-a1dfed5f54ba?q=80&w=1200&auto=format&fit=crop'})` }}>
+                                <div className="absolute inset-0 bg-black/10" />
+                                <ShoppingBag className="absolute top-3 right-3 w-8 h-8" style={{ color: '#8e78fb' }} />
+                                {product.type === 'created' && (
+                                  <div className="absolute top-3 left-3 px-2 py-1 bg-purple-500 text-white text-xs rounded-full">
+                                    Created
+                                  </div>
+                                )}
+                                {product.type === 'purchased' && (
+                                  <div className="absolute top-3 left-3 px-2 py-1 bg-blue-500 text-white text-xs rounded-full">
+                                    Purchased
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-4 flex-1 flex flex-col justify-between">
+                                <div>
+                                  <p className="text-base font-medium line-clamp-2">{product.title || product.name || 'Untitled product'}</p>
+                                  {typeof product.price === 'number' && (
+                                    <p className="text-sm text-text-secondary">{new Intl.NumberFormat('fr-TN', { style: 'currency', currency: product.currency || 'TND' }).format(product.price)}</p>
+                                  )}
+                                  {product.status && (
+                                    <div className="mt-2 flex items-center gap-2">
+                                      <span className={`text-xs px-2 py-0.5 rounded-full ${product.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                        {product.status === 'active' ? 'Active' : 'Draft'}
+                                      </span>
+                                      {product.category && (
+                                        <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full truncate max-w-[100px]">
+                                          {product.category}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                {product.slug && (
+                                  <a
+                                    href={`/community/${product.slug}/home`}
+                                    className="mt-4 pt-4 border-t border-border-color w-full text-center py-2 rounded-md bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors text-sm font-medium"
+                                  >
+                                    View Product
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination */}
+                        {productsTotalPages > 1 && (
+                          <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mt-6">
+                            <button
+                              onClick={() => setProductsPage(prev => Math.max(1, prev - 1))}
+                              disabled={productsPage === 1}
+                              className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                              Previous
+                            </button>
+                            <span className="text-sm text-gray-600">
+                              Page {productsPage} of {productsTotalPages}
+                            </span>
+                            <button
+                              onClick={() => setProductsPage(prev => Math.min(productsTotalPages, prev + 1))}
+                              disabled={productsPage === productsTotalPages}
+                              className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <ShoppingBag className="w-16 h-16 mx-auto mb-4" style={{ color: '#8e78fb' }} />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No products yet</h3>
+                        <p className="text-gray-500 mb-4">
+                          {isOwnProfile ? "You haven't created or purchased any products yet." : "This user hasn't created any products yet."}
+                        </p>
+                        {isOwnProfile && (
+                          <Link href="/explore">
+                            <button className="text-white px-4 py-2 rounded-lg hover:opacity-90 transition-opacity" style={{ background: '#8e78fb' }}>
+                              Explore Products
+                            </button>
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'communities' && (
+                  <div className="p-6">
+                    {communitiesLoading ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Array.from({ length: 6 }).map((_, idx) => (
+                          <div key={idx} className="rounded-xl border border-border-color overflow-hidden bg-white shadow-subtle">
+                            <div className="aspect-[16/9] bg-gray-200 animate-pulse" />
+                            <div className="p-4 space-y-2">
+                              <div className="h-4 bg-gray-200 rounded animate-pulse" />
+                              <div className="h-3 bg-gray-200 rounded w-2/3 animate-pulse" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : communities.length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {communities.map((community) => {
+                            const roleColors = {
+                              'admin': 'bg-red-100 text-red-800 border-red-200',
+                              'moderator': 'bg-blue-100 text-blue-800 border-blue-200',
+                              'member': 'bg-gray-100 text-gray-800 border-gray-200',
+                              'owner': 'bg-purple-100 text-purple-800 border-purple-200'
+                            }
+                            const roleClass = roleColors[community.role?.toLowerCase() as keyof typeof roleColors] || roleColors.member
+
+                            return (
+                              <div key={community.id} className="group rounded-xl border border-border-color overflow-hidden bg-white shadow-subtle hover:shadow-md transition-shadow flex flex-col">
+                                <div className="relative aspect-[16/9] bg-center bg-cover" style={{ backgroundImage: `url(${community.coverImage || community.logo})` }}>
+                                  <div className="absolute inset-0 bg-black/15" />
+                                  {community.type === 'created' && (
+                                    <div className="absolute top-3 left-3 px-2 py-1 bg-purple-500 text-white text-xs rounded-full">
+                                      Created
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="p-4 flex-1 flex flex-col justify-between">
+                                  <div>
+                                    <p className="font-semibold leading-tight truncate">{community.name}</p>
+                                    <p className="text-xs text-text-secondary">
+                                      {community.membersCount?.toLocaleString() || 0} members
+                                    </p>
+                                    {community.joinedAt && (
+                                      <p className="text-xs text-gray-400 mt-1">
+                                        Joined {new Date(community.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border-color">
+                                    <div className="flex items-center justify-between">
+                                      <span className={`text-xs px-2 py-1 rounded-full border ${roleClass}`}>
+                                        {community.role || 'Member'}
+                                      </span>
+                                      {community.slug && (
+                                        <a
+                                          href={`/community/${community.slug}/home`}
+                                          className="text-xs px-3 py-1 rounded-md bg-primary hover:bg-primary-dark text-white transition-colors"
+                                        >
+                                          Visit
+                                        </a>
+                                      )}
+                                    </div>
+                                    {isOwnProfile && community.role?.toLowerCase() === 'owner' && (
+                                      <Link
+                                        href="/creator/dashboard"
+                                        className="w-full text-center text-xs px-3 py-2 rounded-md bg-purple-600 hover:bg-purple-700 text-white transition-colors font-medium"
+                                      >
+                                        Manage Dashboard
+                                      </Link>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {/* Pagination */}
+                        {communitiesTotalPages > 1 && (
+                          <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mt-6">
+                            <button
+                              onClick={() => setCommunitiesPage(prev => Math.max(1, prev - 1))}
+                              disabled={communitiesPage === 1}
+                              className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                              Previous
+                            </button>
+                            <span className="text-sm text-gray-600">
+                              Page {communitiesPage} of {communitiesTotalPages}
+                            </span>
+                            <button
+                              onClick={() => setCommunitiesPage(prev => Math.min(communitiesTotalPages, prev + 1))}
+                              disabled={communitiesPage === communitiesTotalPages}
+                              className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Users className="w-16 h-16 mx-auto mb-4" style={{ color: '#b07df8' }} />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No communities yet</h3>
+                        <p className="text-gray-500 mb-4">
+                          {isOwnProfile ? "You haven't joined or created any communities yet." : "This user hasn't joined or created any communities yet."}
+                        </p>
+                        {isOwnProfile && (
+                          <Link href="/explore">
+                            <button className="text-white px-4 py-2 rounded-lg hover:opacity-90 transition-opacity" style={{ background: '#b07df8' }}>
+                              Explore Communities
+                            </button>
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-6">
+              {isOwnProfile && <LearnerProfileCard />}
+              <SocialMediaSidebar
+                entries={socialEntries}
+                isOwnProfile={isOwnProfile}
+                editHref={`/profile/${profileHandle}/edit`}
+              />
+            </div>
+          </div>
         </div>
       </main>
       <Footer />
-
-      {/* ── Edit Modal ── */}
-      {editOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)' }}
-          onClick={e => { if (e.target === e.currentTarget) setEditOpen(false) }}>
-          <div className="w-full max-w-[540px] max-h-[88vh] overflow-y-auto rounded-2xl"
-            style={{ background: 'var(--white)', border: '1px solid var(--bd)', boxShadow: '0 24px 80px rgba(0,0,0,.22)' }}>
-
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-0">
-              <h2 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>Edit Profile</h2>
-              <button onClick={() => setEditOpen(false)}
-                className="p-1.5 rounded-lg cursor-pointer transition-opacity hover:opacity-60"
-                style={{ color: 'var(--t3)' }}>
-                <X className="w-4 h-4" strokeWidth={1.8} />
-              </button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex px-6 mt-4 gap-0" style={{ borderBottom: '1px solid var(--bd)' }}>
-              {(['profile', 'socials', 'security'] as const).map(tab => (
-                <button key={tab} onClick={() => setEditTab(tab)}
-                  className="px-4 py-2.5 text-[13px] font-medium cursor-pointer transition-colors"
-                  style={{
-                    color: editTab === tab ? 'var(--p)' : 'var(--t3)',
-                    borderBottom: editTab === tab ? '2px solid var(--p)' : '2px solid transparent',
-                    marginBottom: -1,
-                  }}>
-                  {tab === 'profile' ? 'Profile' : tab === 'socials' ? 'Social Links' : 'Security'}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab body */}
-            <div className="px-6 py-5">
-
-              {/* ── Profile tab ── */}
-              {editTab === 'profile' && (
-                <div className="space-y-4">
-                  {/* Avatar */}
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <div className="w-[72px] h-[72px] rounded-full overflow-hidden"
-                        style={{ border: '2.5px solid var(--bd)' }}>
-                        {draft.avatar
-                          ? <img src={draft.avatar} alt="Avatar preview" loading="lazy" className="w-full h-full object-cover" />  // eslint-disable-line @next/next/no-img-element
-                          : <div className="w-full h-full flex items-center justify-center text-[26px] font-bold text-white"
-                              style={{ background: 'var(--p)' }}>
-                              {draft.name.charAt(0).toUpperCase()}
-                            </div>
-                        }
-                      </div>
-                      <button type="button" onClick={() => fileRef.current?.click()}
-                        className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
-                        style={{ background: 'var(--p)', color: '#fff', border: '2px solid var(--white)' }}>
-                        <Camera className="w-3 h-3" strokeWidth={2} />
-                      </button>
-                      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatar} />
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>Profile photo</p>
-                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--t3)' }}>JPG or PNG, max 4 MB</p>
-                    </div>
-                  </div>
-
-                  {/* Name */}
-                  <div>
-                    <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>Full Name</label>
-                    <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
-                      className="w-full h-10 px-3 rounded-xl text-[13px] outline-none"
-                      style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)', transition: 'border-color .15s' }}
-                      onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--p)' }}
-                      onBlur={e =>  { (e.target as HTMLInputElement).style.borderColor = 'var(--bd)' }} />
-                  </div>
-
-                  {/* Handle */}
-                  <div>
-                    <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>Username</label>
-                    <input value={draft.handle} onChange={e => setDraft(d => ({ ...d, handle: e.target.value }))}
-                      placeholder="@yourhandle"
-                      className="w-full h-10 px-3 rounded-xl text-[13px] outline-none"
-                      style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)', transition: 'border-color .15s' }}
-                      onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--p)' }}
-                      onBlur={e =>  { (e.target as HTMLInputElement).style.borderColor = 'var(--bd)' }} />
-                  </div>
-
-                  {/* Bio */}
-                  <div>
-                    <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>Bio</label>
-                    <textarea value={draft.bio} onChange={e => setDraft(d => ({ ...d, bio: e.target.value }))}
-                      rows={3} className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none resize-none"
-                      style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)', transition: 'border-color .15s' }}
-                      onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--p)' }}
-                      onBlur={e =>  { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--bd)' }} />
-                  </div>
-
-                  {/* Country */}
-                  <div>
-                    <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>Country</label>
-                    <CountryPicker value={draft.location} onChange={c => setDraft(d => ({ ...d, location: c }))} />
-                  </div>
-                </div>
-              )}
-
-              {/* ── Socials tab ── */}
-              {editTab === 'socials' && (
-                <div className="space-y-3.5">
-                  <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
-                    Enter the full URL to your social media profiles (e.g. https://x.com/yourhandle).
-                  </p>
-                  {SOCIALS.map(s => (
-                    <div key={s.id}>
-                      <label className="flex items-center gap-2 text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>
-                        <span style={{ color: s.color }}>
-                          <SocialSvg platform={s.id} size={14} />
-                        </span>
-                        {s.label}
-                      </label>
-                      <input
-                        type="url"
-                        value={draft.socials[s.id as keyof SocialLinks]}
-                        onChange={e => setDraft(d => ({ ...d, socials: { ...d.socials, [s.id]: e.target.value } }))}
-                        placeholder={s.placeholder}
-                        className="w-full h-10 px-3 rounded-xl text-[13px] outline-none"
-                        style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)', transition: 'border-color .15s' }}
-                        onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--p)' }}
-                        onBlur={e =>  { (e.target as HTMLInputElement).style.borderColor = 'var(--bd)' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* ── Security tab ── */}
-              {editTab === 'security' && (
-                <div className="space-y-6">
-                  {/* Change password */}
-                  <div>
-                    <h3 className="text-[14px] font-semibold mb-4" style={{ color: 'var(--t1)' }}>Change Password</h3>
-                    <div className="space-y-3">
-                      <PwField label="Current Password" value={pwForm.current}
-                        onChange={v => setPwForm(f => ({ ...f, current: v }))} placeholder="Enter current password" />
-                      <PwField label="New Password" value={pwForm.newPw}
-                        onChange={v => setPwForm(f => ({ ...f, newPw: v }))} placeholder="At least 8 characters" />
-                      <PwField label="Confirm New Password" value={pwForm.confirm}
-                        onChange={v => setPwForm(f => ({ ...f, confirm: v }))} placeholder="Repeat new password" />
-                    </div>
-                    {pwError && (
-                      <p className="mt-2 text-[12px] font-medium" style={{ color: '#dc2626' }}>{pwError}</p>
-                    )}
-                    {pwSuccess && (
-                      <div className="mt-2 flex items-center gap-1.5 text-[12px] font-medium" style={{ color: '#16a34a' }}>
-                        <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
-                        Password updated successfully!
-                      </div>
-                    )}
-                    <button onClick={handlePwSubmit}
-                      className="mt-4 w-full h-10 rounded-xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-85"
-                      style={{ background: 'var(--p)', color: '#fff' }}>
-                      Update Password
-                    </button>
-                  </div>
-
-                  {/* Danger Zone */}
-                  <div className="rounded-xl p-4" style={{ border: '1.5px solid #fca5a5', background: '#fff5f5' }}>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <AlertTriangle className="w-4 h-4 shrink-0" style={{ color: '#dc2626' }} strokeWidth={1.8} />
-                      <h3 className="text-[13px] font-semibold" style={{ color: '#dc2626' }}>Danger Zone</h3>
-                    </div>
-                    <p className="text-[12px] mb-3 leading-relaxed" style={{ color: '#7f1d1d' }}>
-                      Once you delete your account, all your data, communities, and content will be permanently removed.
-                      This action cannot be undone.
-                    </p>
-                    <button onClick={() => setDeleteOpen(true)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-85"
-                      style={{ background: '#dc2626', color: '#fff' }}>
-                      <Trash2 className="w-3.5 h-3.5" strokeWidth={1.8} />
-                      Delete Account
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal footer — only for profile & socials tabs */}
-            {editTab !== 'security' && (
-              <div className="px-6 pb-5 pt-2 flex items-center justify-end gap-3"
-                style={{ borderTop: '1px solid var(--bd)' }}>
-                <button onClick={() => setEditOpen(false)}
-                  className="px-5 h-9 rounded-xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-60"
-                  style={{ color: 'var(--t2)' }}>
-                  Cancel
-                </button>
-                <button onClick={saveProfile}
-                  className="flex items-center gap-1.5 px-5 h-9 rounded-xl text-[13px] font-semibold cursor-pointer transition-all hover:opacity-85"
-                  style={{ background: saved ? '#16a34a' : 'var(--p)', color: '#fff' }}>
-                  {saved
-                    ? <><Check className="w-3.5 h-3.5" strokeWidth={2.5} /> Saved!</>
-                    : 'Save Changes'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Delete Confirm Modal ── */}
-      {deleteOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)' }}>
-          <div className="w-full max-w-[400px] rounded-2xl p-6"
-            style={{ background: 'var(--white)', border: '1.5px solid #fca5a5', boxShadow: '0 24px 80px rgba(0,0,0,.28)' }}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ background: '#fee2e2' }}>
-                <AlertTriangle className="w-5 h-5" style={{ color: '#dc2626' }} strokeWidth={1.8} />
-              </div>
-              <h3 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>Delete Account</h3>
-            </div>
-            <p className="text-[13px] mb-4 leading-relaxed" style={{ color: 'var(--t2)' }}>
-              This will permanently delete your account and all associated data.
-              To confirm, type{' '}
-              <strong style={{ color: 'var(--t1)' }}>{profile.name}</strong>{' '}below.
-            </p>
-            <input
-              value={deleteInput}
-              onChange={e => setDeleteInput(e.target.value)}
-              placeholder={profile.name}
-              className="w-full h-10 px-3 rounded-xl text-[13px] outline-none mb-4"
-              style={{ border: '1.5px solid #fca5a5', background: '#fff5f5', color: 'var(--t1)' }}
-            />
-            <div className="flex gap-3">
-              <button onClick={() => { setDeleteOpen(false); setDeleteInput('') }}
-                className="flex-1 h-10 rounded-xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-70"
-                style={{ border: '1px solid var(--bd)', color: 'var(--t2)' }}>
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (deleteInput !== profile.name) return
-                  try { localStorage.clear() } catch { /* ignore */ }
-                  setDeleteOpen(false)
-                  setDeleteInput('')
-                  setEditOpen(false)
-                }}
-                className="flex-1 h-10 rounded-xl text-[13px] font-semibold transition-all"
-                style={{
-                  background: deleteInput === profile.name ? '#dc2626' : '#fca5a5',
-                  color: '#fff',
-                  cursor: deleteInput === profile.name ? 'pointer' : 'not-allowed',
-                }}>
-                Delete Account
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   )
 }
+
+export default function ProfilePage() {
+  return <ProfilePageContent />
+}
+
+// Allow usage with overrideUser from slug page
+;(ProfilePage as any).__profileContent = ProfilePageContent

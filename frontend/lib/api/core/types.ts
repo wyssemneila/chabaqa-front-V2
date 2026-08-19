@@ -358,7 +358,7 @@ export interface SessionBooking {
   creatorId?: string;
   communityId?: string;
   scheduledAt: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'awaiting_payment' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
   meetingLink?: string;
   notes?: string;
   createdAt: string;

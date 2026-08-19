@@ -8,7 +8,9 @@ import { resolveImageUrl } from '@/lib/resolve-image-url'
 // In particular, local upload URLs must not be forced from http to https.
 export { resolveImageUrl } from '@/lib/resolve-image-url'
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.170:3000/api'
+// This module runs in browser components. Keep requests on the public origin
+// instead of leaking build-time LAN/localhost API addresses into users' tabs.
+const apiBase = '/api'
 
 export function normalizeUser(user: any) {
   if (!user) return user

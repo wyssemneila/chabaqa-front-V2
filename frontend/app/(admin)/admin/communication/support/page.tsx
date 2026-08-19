@@ -183,7 +183,7 @@ export default function AdminLiveSupportPage() {
   useEffect(() => {
     if (!isAuthenticated) return
 
-    const socketUrl = resolveSocketBaseUrl(process.env.NEXT_PUBLIC_API_URL)
+    const socketUrl = resolveSocketBaseUrl()
     const socket = io(`${socketUrl}/live-support`, {
       withCredentials: true,
       reconnectionAttempts: 5,

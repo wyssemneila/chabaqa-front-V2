@@ -280,6 +280,7 @@ export class UploadService {
    */
   async processUploadedFile(file: Express.Multer.File, filename: string, context?: UploadContext): Promise<UploadResult> {
     let usageAdded = false;
+    let registeredAssetId: string | undefined;
     try {
       const fileType = this.validateFile(file);
       await this.assertFileSignature(file, fileType);
@@ -296,6 +297,7 @@ export class UploadService {
       }
       const url = this.generateFileUrl(filename, fileType);
       const mediaRecord = await this.registerMediaAsset(file, filename, fileType, url, context, scanResult);
+      registeredAssetId = mediaRecord.assetId;
       await this.mirrorFileToObjectStorage(file, mediaRecord.storageKey);
 
       return {
@@ -312,8 +314,19 @@ export class UploadService {
       // Multer writes first, then service-level validation/quota checks happen.
       // Remove the persisted file on any failure to avoid orphan uploads.
       await this.safeRemoveUploadedFile(file?.path);
+      if (registeredAssetId) {
+        try {
+          await this.mediaAssetModel.deleteOne({ _id: registeredAssetId });
+        } catch {
+          // Preserve the upload error if database rollback also fails.
+        }
+      }
       if (usageAdded && context?.userId) {
-        await this.addUsageBytes(context.userId, -file.size);
+        try {
+          await this.addUsageBytes(context.userId, -file.size);
+        } catch {
+          // Preserve the upload error if quota rollback also fails.
+        }
       }
       throw error;
     }
@@ -338,6 +351,42 @@ export class UploadService {
         throw error;
       }
     }
+  }
+
+  async createProtectedDownloadUrl(storageReference: string, fileName: string): Promise<string> {
+    if (!this.mirrorToS3) {
+      throw new BadRequestException('Protected downloads require S3 object storage');
+    }
+    let storageKey = String(storageReference || '').trim();
+    let absoluteReference = false;
+    try {
+      storageKey = new URL(storageKey).pathname;
+      absoluteReference = true;
+    } catch {
+      // Relative upload paths and storage keys are expected here too.
+    }
+
+    const assetMatch = storageKey.match(/^\/?api\/media\/([0-9a-f]{24})\/access\/?$/i);
+    if (assetMatch) {
+      const asset = await this.mediaAssetModel.findOne({
+        _id: assetMatch[1],
+        status: { $ne: MediaAssetStatus.DELETED },
+      });
+      if (!asset?.storageKey) {
+        throw new BadRequestException('Product media asset is unavailable');
+      }
+      storageKey = asset.storageKey;
+    } else {
+      if (absoluteReference && !/^\/uploads\//.test(storageKey)) {
+        throw new BadRequestException('Protected media must reference managed storage');
+      }
+      storageKey = storageKey.replace(/^\/?uploads\//, '');
+    }
+
+    if (!storageKey || storageKey.includes('..') || storageKey.includes('\\')) {
+      throw new BadRequestException('Invalid protected media reference');
+    }
+    return this.s3StorageAdapter.presignDownload(storageKey, fileName, 300);
   }
 
   private getMediaVisibility(context?: UploadContext): MediaVisibility {
@@ -397,7 +446,7 @@ export class UploadService {
       entityId: context?.entityId,
     });
 
-    if (visibility === MediaVisibility.PRIVATE && process.env.MEDIA_PRIVATE_ENFORCEMENT === 'true') {
+    if (visibility === MediaVisibility.PRIVATE) {
       created.url = `${this.baseUrl}/api/media/${created._id}/access`;
       await created.save();
     }
@@ -597,6 +646,10 @@ export class UploadService {
       },
       scanResult,
     );
+
+    // Base64 image uploads do not pass through Multer's normal upload flow.
+    // Mirror them explicitly so every persistent upload is available in S3.
+    await this.mirrorFileToObjectStorage(pseudoMulterFile, mediaRecord.storageKey);
 
     if (options?.userId) {
       await this.addUsageBytes(options.userId, buffer.length);

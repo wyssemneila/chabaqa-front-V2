@@ -49,7 +49,7 @@ export function YouTubeVideos() {
 
   return (
     <>
-      <section ref={sectionRef} className="py-24 bg-white" tabIndex={0} aria-label="Tutorial videos carousel" style={{ outline: 'none' }}>
+      <section ref={sectionRef} className="py-24 bg-white dark:!bg-[var(--section-alt)]" tabIndex={0} aria-label="Tutorial videos carousel" style={{ outline: 'none' }}>
         {/* Header */}
         <div className="max-w-6xl mx-auto px-6 md:px-10 mb-10 text-center">
           <div className="reveal">
@@ -107,8 +107,8 @@ export function YouTubeVideos() {
               )
             })}
           </InfiniteSlider>
-          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-white via-white/75 to-transparent sm:w-14" />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-white via-white/75 to-transparent sm:w-14" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-white via-white/75 to-transparent dark:from-[var(--bg)] dark:via-[#12111abf] sm:w-14" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-white via-white/75 to-transparent dark:from-[var(--bg)] dark:via-[#12111abf] sm:w-14" />
         </div>
 
       </section>

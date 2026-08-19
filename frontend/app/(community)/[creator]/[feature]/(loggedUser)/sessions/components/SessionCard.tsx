@@ -22,7 +22,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { CalendarIcon, Clock, Video, Star, Loader2 } from "lucide-react"
 import { format, isSameDay } from "date-fns"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { tokenStorage } from "@/lib/token-storage"
 import { sessionsApi } from "@/lib/api/sessions.api"
 import { feedbackApi, type Feedback, type FeedbackStats } from "@/lib/api/feedback.api"
@@ -50,9 +49,6 @@ interface SessionCardProps {
 
 export default function SessionCard({ session, selectedSession, setSelectedSession }: SessionCardProps) {
   const { toast } = useToast()
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedTime, setSelectedTime] = useState<string>("")
   const [selectedSlotId, setSelectedSlotId] = useState<string>("")
@@ -69,13 +65,9 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
   // Available slots from backend
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
-  const pendingToastShown = useRef(false)
   const hasTrackedViewRef = useRef(false)
 
   const isPaidSession = useMemo(() => Number(session?.price ?? 0) > 0, [session])
-  const pendingOrderId = searchParams.get("orderId")
-  const paymentAction = searchParams.get("paymentAction")
-  const pendingSessionId = searchParams.get("sessionId")
   const sessionFeedbackId = useMemo(
     () => String(session?.id || session?._id || "").trim(),
     [session?.id, session?._id],
@@ -87,29 +79,9 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
     username: session?.mentor?.username,
     name: session?.mentor?.name || session?.creatorName || "Mentor",
   })
-  const isPendingFinalizeForThisSession =
-    paymentAction === "choose-slot" &&
-    Boolean(pendingOrderId) &&
-    (!pendingSessionId ||
-      String(pendingSessionId) === String(session?.id) ||
-      String(pendingSessionId) === String(session?._id))
-
-  useEffect(() => {
-    if (isPendingFinalizeForThisSession && !pendingToastShown.current) {
-      pendingToastShown.current = true
-      setDialogOpen(true)
-      setSelectedSession(session?.id || session?._id || "")
-      toast({
-        title: "Finalize your booking",
-        description: "Payment is complete. Choose a date and time to confirm your session.",
-      })
-    }
-  }, [isPendingFinalizeForThisSession, session?.id, session?._id, setSelectedSession, toast])
-
   // Fetch available slots when dialog opens
   useEffect(() => {
     if (dialogOpen && session?.id) {
-      console.log('[SessionCard] Dialog opened, fetching slots for session:', session.id)
       fetchAvailableSlots()
     }
   }, [dialogOpen, session?.id])
@@ -159,24 +131,16 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
     setLoadingSlots(true)
     try {
       const sessionId = session?.id || session?._id
-      console.log('[SessionCard] Session object:', JSON.stringify(session, null, 2))
-      console.log('[SessionCard] Fetching available slots for session ID:', sessionId)
-      
       const response: any = await sessionsApi.getAvailableSlots(sessionId)
-      console.log('[SessionCard] Raw API response:', JSON.stringify(response, null, 2))
       
       // Handle different response structures
       // Backend returns: { slots: [...], total, available, booked }
       const slotsData = response?.slots || response?.data?.slots || response?.data || []
       const slots = Array.isArray(slotsData) ? slotsData : []
       
-      console.log('[SessionCard] Parsed slots count:', slots.length)
-      console.log('[SessionCard] Available slots:', slots.filter((s: AvailableSlot) => s.isAvailable).length)
-      
       // Set all slots (not just available ones) so we can show booked status too
       setAvailableSlots(slots)
     } catch (error) {
-      console.error('[SessionCard] Failed to fetch available slots:', error)
       // If no slots configured, we'll show a message
       setAvailableSlots([])
     } finally {
@@ -193,11 +157,6 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
     // Remove duplicates by converting to date strings and back
     const uniqueDates = [...new Set(dates.map(d => d.toDateString()))].map(ds => new Date(ds))
     
-    console.log('[SessionCard] Dates with available slots:', uniqueDates.length, 'unique dates')
-    if (uniqueDates.length > 0) {
-      console.log('[SessionCard] First few dates:', uniqueDates.slice(0, 5).map(d => d.toDateString()))
-    }
-    
     return dates
   }, [availableSlots])
 
@@ -210,7 +169,6 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
       
       const firstAvailableDate = datesWithSlots.find(d => d >= today)
       if (firstAvailableDate && (!selectedDate || !datesWithSlots.some(d => isSameDay(d, selectedDate)))) {
-        console.log('[SessionCard] Auto-selecting first available date:', firstAvailableDate.toISOString())
         setSelectedDate(firstAvailableDate)
       }
     }
@@ -219,19 +177,14 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
   // Get time slots for the selected date
   const timeSlotsForDate = useMemo(() => {
     if (!selectedDate || availableSlots.length === 0) {
-      console.log('[SessionCard] No date selected or no slots available')
       return []
     }
-    
-    console.log('[SessionCard] Filtering slots for date:', selectedDate.toDateString())
-    console.log('[SessionCard] Total slots in state:', availableSlots.length)
     
     const filtered = availableSlots
       .filter(slot => {
         const slotDate = new Date(slot.startTime)
         const sameDay = isSameDay(slotDate, selectedDate)
         const isAvail = slot.isAvailable
-        console.log(`[SessionCard] Slot ${slot.id}: ${slotDate.toDateString()} sameDay=${sameDay} isAvailable=${isAvail}`)
         return sameDay && isAvail
       })
       .map(slot => {
@@ -244,22 +197,23 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
       })
       .sort((a, b) => a.time.localeCompare(b.time))
     
-    console.log('[SessionCard] Filtered slots for selected date:', filtered.length)
     return filtered
   }, [selectedDate, availableSlots])
 
   const scheduledAt = useMemo(() => {
+    const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId)
+    if (selectedSlot) return new Date(selectedSlot.startTime).toISOString()
     if (!selectedDate || !selectedTime) return null
     const [hh, mm] = selectedTime.split(":").map((v) => Number(v))
     if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null
     const next = new Date(selectedDate)
     next.setHours(hh, mm, 0, 0)
     return next.toISOString()
-  }, [selectedDate, selectedTime])
+  }, [availableSlots, selectedDate, selectedSlotId, selectedTime])
 
   const paymentModal = usePaymentProviderModal({
     initStripe: (key) => sessionsApi.initStripePayment(String(session?.id), {
-      scheduledAt: scheduledAt || new Date().toISOString(),
+      scheduledAt: scheduledAt || "",
       notes: bookingNotes.trim() || undefined,
       slotId: selectedSlotId || undefined,
     }, promoCode.trim() || undefined, key),
@@ -283,20 +237,7 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
         return
       }
 
-      if (isPendingFinalizeForThisSession && pendingOrderId) {
-        const bookingData = {
-          scheduledAt: scheduledAt || new Date().toISOString(),
-          notes: bookingNotes.trim() || undefined,
-          slotId: selectedSlotId || undefined,
-        }
-
-        await sessionsApi.finalizePaidSessionBooking(pendingOrderId, bookingData)
-        toast({
-          title: "Booking confirmed",
-          description: "Your paid session has been finalized successfully.",
-        })
-        router.replace(pathname)
-      } else if (isPaidSession) {
+      if (isPaidSession) {
         // Only use Stripe Link payment
         try {
           if (!selectedSlotId && !scheduledAt) {
@@ -304,7 +245,7 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
           }
 
           const bookingData = {
-            scheduledAt: scheduledAt || new Date().toISOString(),
+            scheduledAt: scheduledAt || "",
             notes: bookingNotes.trim() || undefined,
             // Pass slot ID if available
             slotId: selectedSlotId || undefined
@@ -644,20 +585,16 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
 
                   {isPaidSession && (
                     <div className="space-y-4">
-                      {!isPendingFinalizeForThisSession && (
-                        <div className="space-y-2">
-                          <Label htmlFor="promoCode" className="text-sm font-medium">Promo code (optional)</Label>
-                          <Input
-                            id="promoCode"
-                            value={promoCode}
-                            onChange={(e) => setPromoCode(e.target.value)}
-                            placeholder="e.g. WELCOME10"
-                            disabled={isSubmitting}
-                          />
-                        </div>
-                      )}
-
-                      {/* Payment proof removed */}
+                      <div className="space-y-2">
+                        <Label htmlFor="promoCode" className="text-sm font-medium">Promo code (optional)</Label>
+                        <Input
+                          id="promoCode"
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value)}
+                          placeholder="e.g. WELCOME10"
+                          disabled={isSubmitting}
+                        />
+                      </div>
                     </div>
                   )}
 
@@ -697,7 +634,7 @@ export default function SessionCard({ session, selectedSession, setSelectedSessi
                         Processing...
                       </>
                     ) : isPaidSession ? (
-                      isPendingFinalizeForThisSession ? "Finalize Booking" : `Pay with Card - ${session.price} TND`
+                      `Pay with Card - ${session.price} ${session.currency || 'TND'}`
                     ) : (
                       `Confirm Booking${session.price > 0 ? ` - ${session.price} TND` : ''}`
                     )}

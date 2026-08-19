@@ -15,7 +15,7 @@ export default function AdminRootLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="admin-theme">
+    <div className="admin-theme min-h-screen bg-background text-foreground">
       <AdminAuthProvider>
         {children}
       </AdminAuthProvider>

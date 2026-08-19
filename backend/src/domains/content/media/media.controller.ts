@@ -24,18 +24,20 @@ import { UploadService } from '@/domains/shared/upload/upload.service';
 import { MediaCompleteDto, MediaPresignDto, MediaUploadBodyDto } from '@/domains/content/media/dto/media.dto';
 import { MediaService } from '@/domains/content/media/media.service';
 import { MediaPurpose, MediaVisibility } from '@/domains/content/media/media.types';
+import { ensureUploadDirectories, resolveUploadTypeDir } from '@/domains/shared/upload/upload-paths';
 
 const multerOptions = {
   storage: diskStorage({
     destination: (req, file, cb) => {
+      ensureUploadDirectories();
       const extension = extname(file.originalname).toLowerCase();
-      let folder = 'uploads/document';
+      let folder = resolveUploadTypeDir('document');
       if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(extension)) {
-        folder = 'uploads/image';
+        folder = resolveUploadTypeDir('image');
       } else if (['.mp4', '.mov', '.webm'].includes(extension)) {
-        folder = 'uploads/video';
+        folder = resolveUploadTypeDir('video');
       } else if (['.mp3', '.wav', '.ogg', '.aac', '.flac'].includes(extension)) {
-        folder = 'uploads/audio';
+        folder = resolveUploadTypeDir('audio');
       }
       cb(null, folder);
     },
@@ -129,9 +131,9 @@ export class MediaController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Presign upload URL for direct-to-storage flow' })
-  async presignUpload(@Body() dto: MediaPresignDto) {
+  async presignUpload(@Body() dto: MediaPresignDto, @Request() req: any) {
     this.ensureMediaEnabled();
-    return this.mediaService.createPresign(dto);
+    return this.mediaService.createPresign(dto, this.getRequester(req).userId);
   }
 
   @Post('complete')
@@ -187,9 +189,9 @@ export class MediaController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get media asset metadata' })
-  async getAsset(@Param('assetId') assetId: string) {
+  async getAsset(@Param('assetId') assetId: string, @Request() req: any) {
     this.ensureMediaEnabled();
-    return this.mediaService.getAsset(assetId);
+    return this.mediaService.getAsset(assetId, this.getRequester(req));
   }
 
   @Delete(':assetId')

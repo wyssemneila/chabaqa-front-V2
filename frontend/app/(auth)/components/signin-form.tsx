@@ -177,9 +177,9 @@ export default function SignInForm({ onSuccess }: SignInFormProps = {}) {
   }
 
   const handleGoogleLogin = () => {
-    const apiBase =
-      process.env.NEXT_PUBLIC_API_URL ||
-      (typeof window !== "undefined" ? `${window.location.origin}/api` : "/api")
+    // Browser OAuth must use the same-origin proxy. A build-time public API URL
+    // may be a localhost/internal address and would send users off-site.
+    const apiBase = "/api"
     const requestedRedirect = searchParams.get("redirect")
     const safeRedirect = isSafeRedirect(requestedRedirect)
       ? localizeHref(pathname, requestedRedirect)

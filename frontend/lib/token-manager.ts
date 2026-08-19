@@ -17,8 +17,7 @@ class TokenManager {
   private accessToken: string | null = null;
   private refreshTimer: NodeJS.Timeout | null = null;
   private readonly REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiration
-  private readonly API_BASE =
-    (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api').replace(/\/$/, '');
+  private readonly API_BASE = '/api';
 
   /**
    * Initialize token manager and set up automatic refresh

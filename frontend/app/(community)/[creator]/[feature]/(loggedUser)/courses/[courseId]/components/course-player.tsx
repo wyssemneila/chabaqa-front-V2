@@ -65,7 +65,7 @@ export default function CoursePlayer({
   const [theaterMode, setTheaterMode] = useState(false)
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null)
   const [accessibleChapters, setAccessibleChapters] = useState<Record<string, boolean>>({})
-  const [chapterAccessReason, setChapterAccessReason] = useState<Record<string, string | undefined>>({})
+  const [, setChapterAccessReason] = useState<Record<string, string | undefined>>({})
   const accessCheckInFlight = useRef<Record<string, Promise<boolean> | undefined>>({})
   // Optimistic watch-time overrides so UI updates live without fetching backend every second
   const [watchTimeOverride, setWatchTimeOverride] = useState<number | null>(null)
@@ -93,18 +93,15 @@ export default function CoursePlayer({
     })
   }, [course?.sections])
   const isUserEnrolled = Boolean(enrollment)
-  const firstChapterId = allChapters[0]?.id ? String(allChapters[0].id) : null
   const resolvedCourseId = String(course?.mongoId || course?.id || courseId)
   const userStorageScopeId = useMemo(() => {
     const userIdFromEnrollment = enrollment?.userId ? String(enrollment.userId) : ""
     const userIdFromToken = typeof window !== "undefined" ? tokenStorage.getUserInfo()?.id : undefined
     return userIdFromEnrollment || userIdFromToken || "guest"
   }, [enrollment?.userId])
-  const effectiveSequentialProgressionEnabled = Boolean(
-    sequentialProgressionEnabled || course?.sequentialProgression,
-  )
   const effectiveUnlockMessage =
     unlockMessage || (typeof course?.unlockMessage === "string" ? course.unlockMessage : undefined)
+  const effectiveSequentialProgressionEnabled = Boolean(sequentialProgressionEnabled || course?.sequentialProgression)
   const previewLockedReason = "Only the first chapter is available as preview. Enroll to unlock full course."
   const mapLockCodeToReason = useCallback((lockCode?: string): string | undefined => {
     switch (lockCode) {
@@ -120,40 +117,6 @@ export default function CoursePlayer({
         return undefined
     }
   }, [effectiveUnlockMessage, previewLockedReason])
-  const unlockedMap = useMemo(() => {
-    if (!Array.isArray(unlockedChapters)) return new Map<string, any>()
-    return new Map<string, any>(unlockedChapters.map((c: any) => [String(c.id), c]))
-  }, [unlockedChapters])
-
-  const resolveSequentialAccessLocally = useCallback(
-    (chapterId: string): { canAccess: boolean; reason?: string } => {
-      const resolvedChapterId = String(chapterId)
-      const chapterIndex = allChapters.findIndex((c: any) => String(c.id) === resolvedChapterId)
-      if (chapterIndex === -1) {
-        return { canAccess: false, reason: "Chapter not found" }
-      }
-
-      if (chapterIndex === 0) {
-        return { canAccess: true }
-      }
-
-      const previousChapter = allChapters[chapterIndex - 1]
-      const previousProgress = Array.isArray(enrollment?.progress)
-        ? enrollment.progress.find((p: any) => String(p.chapterId) === String(previousChapter?.id))
-        : null
-
-      if (previousProgress?.isCompleted) {
-        return { canAccess: true }
-      }
-
-      return {
-        canAccess: false,
-        reason: effectiveUnlockMessage || "You need to complete the previous chapter to unlock this one.",
-      }
-    },
-    [allChapters, enrollment?.progress, effectiveUnlockMessage],
-  )
-
   // Chapter completion handler: replaces the global window.__onChapterComplete pattern.
   // When the session hook is available, delegate to it for deterministic state updates.
   useEffect(() => {
@@ -197,57 +160,13 @@ export default function CoursePlayer({
         }
       }
 
-      if (!isUserEnrolled) {
-        if (firstChapterId && resolvedChapterId === firstChapterId) {
-          return { canAccess: true }
-        }
-        return { canAccess: false, reason: previewLockedReason }
+      return {
+        canAccess: false,
+        reason: "We couldn't confirm access to this chapter. Please refresh and try again.",
       }
-
-      const requiresPaidAccess = Boolean(chapter.isPaidChapter)
-      if (requiresPaidAccess) {
-        // Ask backend for paid access decision (covers freemium membership rule)
-        try {
-          const paidAccessRaw = await coursesApi.checkChapterAccessPaid(resolvedCourseId, resolvedChapterId)
-          const paidAccess = (paidAccessRaw as any)?.data || paidAccessRaw
-          const paidAllowed = Boolean((paidAccess as any)?.canAccess)
-          if (!paidAllowed) {
-            const reasonFromCode = mapLockCodeToReason((paidAccess as any)?.lockCode)
-            return {
-              canAccess: false,
-              reason:
-                (paidAccess as any)?.reason ||
-                reasonFromCode ||
-                effectiveUnlockMessage ||
-                "You need to enroll to access this chapter.",
-            }
-          }
-        } catch (e: any) {
-          // A network or API failure must never turn into access to paid content.
-          return {
-            canAccess: false,
-            reason: "We couldn't confirm your purchase. Please try again.",
-          }
-        }
-      }
-
-      // Sequential progression is an additional restriction if enabled.
-      // We enforce it locally to avoid backend endpoint inconsistencies for free/preview chapters.
-      if (!effectiveSequentialProgressionEnabled) {
-        return { canAccess: true }
-      }
-
-      return resolveSequentialAccessLocally(resolvedChapterId)
     },
     [
-      resolvedCourseId,
       allChapters,
-      isUserEnrolled,
-      firstChapterId,
-      previewLockedReason,
-      effectiveSequentialProgressionEnabled,
-      effectiveUnlockMessage,
-      resolveSequentialAccessLocally,
       mapLockCodeToReason,
       courseSession,
     ],
@@ -286,35 +205,14 @@ export default function CoursePlayer({
       const chapter = allChapters.find((c: any) => String(c.id) === key)
       if (!chapter) return false
 
-      const isPendingPaidUnlock =
-        chapterUnlockState === "unlocked" &&
-        pendingPaidChapterId &&
-        key === String(pendingPaidChapterId)
-      const unlockedEntry = unlockedMap.get(key)
-      // Prefer the centralized session's access decisions (backend-authoritative, no stale closure).
       if (courseSession && courseSession.chapters.length > 0) {
         return courseSession.isChapterAccessible(key)
       }
-
-      if (isPendingPaidUnlock || (Boolean(chapter.isPaidChapter) && Boolean(unlockedEntry?.isUnlocked))) {
-        return true
-      }
-      if (accessibleChapters[key] === true) {
-        return true
-      }
-
-      // Fail closed while the backend/session source of truth is not ready.
-      // The only runtime fallback is the first chapter public preview.
-      return Boolean(firstChapterId && key === firstChapterId)
+      return false
     },
     [
       allChapters,
-      firstChapterId,
       courseSession,
-      unlockedMap,
-      chapterUnlockState,
-      pendingPaidChapterId,
-      accessibleChapters,
     ],
   )
 
@@ -359,7 +257,7 @@ export default function CoursePlayer({
     setAccessibleChapters({})
     setChapterAccessReason({})
     accessCheckInFlight.current = {}
-  }, [courseId, effectiveSequentialProgressionEnabled, unlockedChapters, isUserEnrolled, firstChapterId])
+  }, [courseId, effectiveSequentialProgressionEnabled, unlockedChapters, isUserEnrolled])
 
   // Handler called by EnhancedVideoPlayer with latest seconds (and optional duration)
   const handleWatchTimeUpdate = useCallback(
@@ -733,14 +631,9 @@ export default function CoursePlayer({
 
     if (courseSession) {
       if (courseSession.chapters.length === 0) {
-        const isFirstChapter = Boolean(firstChapterId && String(chapterId) === firstChapterId)
-        if (isFirstChapter) {
-          setSelectedChapter(String(chapterId))
-          return true
-        }
         toast({
           title: "Chapter locked",
-          description: "Finish this chapter to unlock the next one.",
+          description: "We couldn't confirm access to this chapter. Please refresh and try again.",
           variant: "destructive",
         })
         return false
@@ -763,15 +656,9 @@ export default function CoursePlayer({
       return true
     }
 
-    const isFirstChapterFallback = Boolean(firstChapterId && String(chapterId) === firstChapterId)
-    if (isFirstChapterFallback) {
-      setSelectedChapter(String(chapterId))
-      return true
-    }
-
     toast({
       title: "Chapter locked",
-      description: "Finish this chapter to unlock the next one.",
+      description: "We couldn't confirm access to this chapter. Please refresh and try again.",
       variant: "destructive",
     })
     return false
@@ -782,10 +669,6 @@ export default function CoursePlayer({
     selectedChapter,
     courseSession,
     mapLockCodeToReason,
-    firstChapterId,
-    unlockedMap,
-    chapterUnlockState,
-    pendingPaidChapterId,
   ])
 
   const handleSelectChapter = useCallback(async (chapterId: string) => {

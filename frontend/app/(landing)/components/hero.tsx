@@ -228,15 +228,16 @@ export function Hero() {
   const STAT_COLORS = ['#8e78fb', '#ff9b28', '#47c7ea', '#f65887']
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 md:px-12 pt-28 pb-20 overflow-hidden bg-white" aria-label="Hero">
+    <section className="relative flex min-h-[680px] flex-col items-center justify-center overflow-hidden bg-white px-6 pb-10 pt-24 text-center dark:!bg-[var(--section-alt)] sm:min-h-[720px] md:px-12 md:pb-14 md:pt-28 lg:min-h-[760px]" aria-label="Hero">
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div
-          className="absolute inset-0 opacity-60"
+          className="absolute inset-0 opacity-[0.22] dark:opacity-[0.14]"
           style={{
-            backgroundImage: 'linear-gradient(#e8e4ff 1px,transparent 1px),linear-gradient(90deg,#e8e4ff 1px,transparent 1px)',
-            backgroundSize: '52px 52px',
-            maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%,black 20%,transparent 100%)',
+            backgroundImage: 'linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px)',
+            backgroundSize: '64px 64px',
+            maskImage: 'radial-gradient(ellipse 72% 68% at 50% 46%,black 12%,transparent 100%)',
+            WebkitMaskImage: 'radial-gradient(ellipse 72% 68% at 50% 46%,black 12%,transparent 100%)',
           }}
         />
         <div className="absolute w-[520px] h-[420px] rounded-full blur-[60px] opacity-20 -top-24 -left-28 bg-[#8e78fb]" style={{ animation: 'blobMove 9s ease-in-out infinite' }} />
@@ -384,7 +385,7 @@ export function Hero() {
 
         {/* Stats */}
         <div
-          className="flex items-center bg-white border border-gray-200 rounded-2xl overflow-hidden mt-8 md:mt-12 max-w-[680px] w-full mx-auto shadow-[0_4px_24px_rgba(142,120,251,.1)]"
+          className="flex items-center bg-white border border-gray-200 rounded-2xl overflow-hidden mt-8 md:mt-10 max-w-[680px] w-full mx-auto shadow-[0_4px_24px_rgba(142,120,251,.1)]"
           style={{ animation: 'fadeUp .7s .5s ease both' }}
           role="list"
           aria-label="Key stats"
@@ -472,8 +473,14 @@ export function Hero() {
           }
         }
       `}</style>
-      {/* Bottom fade to white */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-10" style={{ background: 'linear-gradient(to bottom, transparent, white)' }} aria-hidden="true" />
+      {/* Layered hand-off into the next section's white surface. */}
+      <div
+        className="hero-bottom-fade absolute bottom-0 left-0 right-0 z-10 h-28 pointer-events-none md:h-32"
+        style={{
+          background: "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.52) 48%, #ffffff 100%)",
+        }}
+        aria-hidden="true"
+      />
     </section>
   )
 }

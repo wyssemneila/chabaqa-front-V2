@@ -3,9 +3,6 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { extname, basename } from 'path';
-import { resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
 import { attachMongoSlowQueryLogger } from '@/shared/database/mongo-slow-query';
 
 import { AppController } from '@/app/app.controller';
@@ -27,8 +24,10 @@ import { PolicyModule } from '@/shared/modules/policy.module';
 import { StripePaymentService } from '@/shared/services/stripe-payment.service';
 import { PromoService } from '@/shared/services/promo.service';
 import { FeeService } from '@/shared/services/fee.service';
+import { PaymentAccessRevocationService } from '@/shared/services/payment-access-revocation.service';
 import { PromoCode, PromoCodeSchema } from '@/infrastructure/database/schemas/commerce/promo-code.schema';
 import { Subscription, SubscriptionSchema } from '@/infrastructure/database/schemas/commerce/subscription.schema';
+import { CommunityMemberSubscription, CommunityMemberSubscriptionSchema } from '@/infrastructure/database/schemas/commerce/community-member-subscription.schema';
 import { CourseEnrollmentSchema, CourseProgressSchema } from '@/infrastructure/database/schemas/learning/course.schema';
 import { StorageUsage, StorageUsageSchema } from '@/infrastructure/database/schemas/shared/storage-usage.schema';
 import { TrackingController } from '@/shared/controllers/tracking.controller';
@@ -66,6 +65,7 @@ import { CommunityDmBroadcastModule } from '@/domains/community/dm-broadcast/com
 import { CommunityAccessModule } from '@/domains/community/access/community-access.module';
 import { VideoModule } from '@/domains/shared/video/video.module';
 import { SearchModule } from '@/domains/search/search.module';
+import { CreatorIntegrationsModule } from '@/domains/communication/integrations/creator-integrations.module';
 
 // Import new admin schemas
 import { AdminUser, AdminUserSchema } from '@/domains/admin/schemas/admin-user.schema';
@@ -81,45 +81,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
 
-    // 2) Configuration pour servir les fichiers statiques
-    // NOTE: Video files are served via X-Accel-Redirect through VideoModule.
-    // ServeStaticModule only serves images, documents, and audio.
-    ServeStaticModule.forRoot({
-      rootPath: resolveUploadsRoot(),
-      serveRoot: '/uploads',
-      serveStaticOptions: {
-        index: false,
-        setHeaders: (res, filePath) => {
-          const extension = extname(filePath).toLowerCase();
-          const filename = basename(filePath).replace(/["\r\n]/g, '_');
-          const inlineSafeExtensions = new Set([
-            '.jpg',
-            '.jpeg',
-            '.png',
-            '.gif',
-            '.webp',
-            '.mp3',
-            '.wav',
-            '.ogg',
-            '.aac',
-            '.flac',
-            '.mp4',
-            '.mov',
-            '.webm',
-          ]);
-
-          res.setHeader('X-Content-Type-Options', 'nosniff');
-          res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-          res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
-
-          if (!inlineSafeExtensions.has(extension)) {
-            res.setHeader('Content-Disposition', `attachment; filename="${filename || 'download'}"`);
-          }
-        },
-      },
-    }),
-
-    // 3) connexion MongoDB + test immédiat
+    // 2) connexion MongoDB + test immédiat
     MongooseModule.forRootAsync({
       useFactory: () => ({
         uri: process.env.MONGO_URI,
@@ -171,6 +133,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
       { name: UserAchievement.name, schema: UserAchievementSchema },
       { name: PromoCode.name, schema: PromoCodeSchema },
       { name: Subscription.name, schema: SubscriptionSchema },
+      { name: CommunityMemberSubscription.name, schema: CommunityMemberSubscriptionSchema },
       { name: 'CourseEnrollment', schema: CourseEnrollmentSchema },
       { name: 'CourseProgress', schema: CourseProgressSchema },
       // New admin schemas
@@ -212,6 +175,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     CommunityAccessModule,
     VideoModule,
     SearchModule,
+    CreatorIntegrationsModule,
   ],
   controllers: [AppController, UserController, TrackingController, PaymentController],
   providers: [
@@ -220,6 +184,7 @@ import { PaymentAuditLog, PaymentAuditLogSchema } from '@/infrastructure/databas
     StripePaymentService,
     PromoService,
     FeeService,
+    PaymentAccessRevocationService,
   ],
 })
 export class AppModule { }

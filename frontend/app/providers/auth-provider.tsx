@@ -5,8 +5,6 @@ import type { ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { normalizeUser } from "@/lib/hooks/useUser"
 import { registerBrowserPushForCurrentUser } from "@/lib/push-notifications"
-import { io, Socket } from "socket.io-client"
-import { resolveSocketBaseUrl } from "@/lib/socket-url"
 import { localizeHref } from "@/lib/i18n/client"
 import { syncAccessTokenCookie } from "@/lib/cookie-sync"
 import { hasBrowserRefreshSession, refreshBrowserAccessToken } from "@/lib/auth-refresh"
@@ -115,7 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const pushRegistrationAttemptedForUserRef = useRef<string | null>(null)
-  const presenceSocketRef = useRef<Socket | null>(null)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -405,44 +402,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [pathname, router, updateAuth])
 
-  // Keep a lightweight DM socket connected for all authenticated web users.
-  // This makes cross-platform presence (mobile online dots) accurate everywhere on web.
+  // `refreshBrowserAccessToken()` dispatches a same-window StorageEvent after
+  // rotating an access token. Keeping this state in sync lets the single DM
+  // socket reconnect with the new credential instead of an expired one.
   useEffect(() => {
-    const userId = user?._id ? String(user._id) : ""
-    const accessToken = token ? String(token).trim() : ""
+    const syncTokenFromStorage = (event: StorageEvent) => {
+      if (event.key && event.key !== 'accessToken' && event.key !== 'access_token') return
 
-    if (!isAuthenticated || !userId || !accessToken) {
-      if (presenceSocketRef.current) {
-        presenceSocketRef.current.disconnect()
-        presenceSocketRef.current = null
+      const nextToken = String(
+        event.newValue || localStorage.getItem('accessToken') || localStorage.getItem('access_token') || '',
+      ).trim()
+      setToken(nextToken || null)
+      if (!nextToken) {
+        syncAccessTokenCookie(null)
+        setUser(null)
+        return
       }
-      return
+      // Native storage events originate in another tab. Revalidate the user
+      // record as well so we never render one account with another account's
+      // access token after a cross-tab login/logout.
+      void fetchMe()
     }
 
-    const socketUrl = resolveSocketBaseUrl(process.env.NEXT_PUBLIC_API_URL)
-    const socket = io(`${socketUrl}/dm`, {
-      auth: {
-        token: `Bearer ${accessToken}`,
-      },
-      transports: ["websocket", "polling"],
-      autoConnect: false,
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-    })
-    presenceSocketRef.current = socket
-    socket.connect()
+    const syncTokenAfterRefresh = () => {
+      const nextToken = String(
+        localStorage.getItem('accessToken') || localStorage.getItem('access_token') || '',
+      ).trim()
+      setToken(nextToken || null)
+      if (nextToken) {
+        void fetchMe()
+      } else {
+        syncAccessTokenCookie(null)
+        setUser(null)
+      }
+    }
 
+    window.addEventListener('storage', syncTokenFromStorage)
+    window.addEventListener('auth-token-refreshed', syncTokenAfterRefresh)
     return () => {
-      if (presenceSocketRef.current === socket) {
-        presenceSocketRef.current = null
-      }
-      // Defer cleanup by one tick. React Strict Mode mounts and immediately
-      // unmounts effects in development; synchronous disconnect otherwise
-      // aborts the WebSocket while its handshake is still in progress.
-      window.setTimeout(() => socket.disconnect(), 0)
+      window.removeEventListener('storage', syncTokenFromStorage)
+      window.removeEventListener('auth-token-refreshed', syncTokenAfterRefresh)
     }
-  }, [isAuthenticated, user?._id, token])
+  }, [fetchMe])
 
   const register = useCallback(async (payload: any) => {
     try {

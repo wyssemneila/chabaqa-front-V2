@@ -19,7 +19,14 @@ export class AnalyticsController {
   ) {}
 
   private parseDateRange(from?: string, to?: string) {
+    // The dashboard sends calendar dates (YYYY-MM-DD). Treat a supplied end
+    // date as inclusive; otherwise the whole current day is accidentally
+    // excluded because JavaScript parses it as 00:00:00 UTC.
+    const isDateOnly = typeof to === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(to);
     const toDate = to ? new Date(to) : new Date();
+    if (isDateOnly) {
+      toDate.setUTCHours(23, 59, 59, 999);
+    }
     if (Number.isNaN(toDate.getTime())) {
       throw new BadRequestException('Invalid "to" date parameter');
     }

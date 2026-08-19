@@ -19,6 +19,7 @@ import { Post, PostDocument } from '@/infrastructure/database/schemas/content/po
 import { EmailCampaignService } from '@/domains/communication/email-campaign/email-campaign.service';
 import { CommunityStaff, CommunityStaffDocument } from '@/infrastructure/database/schemas/community/community-staff.schema';
 import { DmCampaignProcessor } from '@/domains/communication/dm/dm-campaign.processor';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 @Injectable()
 export class CommunityAffCreaJoinService implements OnModuleInit {
@@ -39,6 +40,7 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
     private readonly cacheService: CacheService,
     private readonly emailCampaignService: EmailCampaignService,
     private readonly dmCampaignProcessor: DmCampaignProcessor,
+    private readonly creatorIntegrationsService: CreatorIntegrationsService,
   ) { }
 
   async onModuleInit(): Promise<void> {
@@ -730,6 +732,23 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
     };
   }
 
+  private async assertCommunityJoinEntitlement(community: CommunityDocument, userId: string): Promise<void> {
+    const price = Number((community as any).fees_of_join || (community as any).price || 0);
+    if (price <= 0) return;
+    const paidOrder = await this.orderModel.exists({
+      buyerId: new Types.ObjectId(userId),
+      contentType: TrackableContentType.COMMUNITY,
+      contentId: { $in: [String(community._id), String((community as any).id || '')] },
+      status: 'paid',
+    });
+    if (!paidOrder) {
+      throw new HttpException(
+        { message: 'A completed payment is required before joining this community', initEndpoint: '/payment/stripe-link/init/community' },
+        HttpStatus.PAYMENT_REQUIRED,
+      );
+    }
+  }
+
   private normalizeCommunitySettings(communityName: string, rawSettings: any = {}) {
     const settings = rawSettings || {};
     const primaryColor = typeof settings.primaryColor === 'string' ? settings.primaryColor : '#3b82f6';
@@ -1015,10 +1034,10 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
   async getAllCommunities(): Promise<any[]> {
     try {
       const communities = await this.communityModel
-        .find({ isActive: true })
-        .populate('createur', 'name email profile_picture photo_profil avatar photo')
-        .populate('members', 'name email profile_picture photo_profil avatar photo')
-        .populate('admins', 'name email profile_picture photo_profil avatar photo')
+        .find({ isActive: true, isPrivate: { $ne: true } })
+        .populate('createur', 'name username profile_picture photo_profil avatar photo')
+        .populate('members', 'name username profile_picture photo_profil avatar photo')
+        .populate('admins', 'name username profile_picture photo_profil avatar photo')
         .sort({ createdAt: -1 })
         .exec();
 
@@ -1579,6 +1598,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       await community.save();
       await this.userModel.findByIdAndUpdate(userId, { $addToSet: { joinedCommunities: community._id } });
       await this.notifyCreatorMemberJoined(community, userId);
+      void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+        communityId: String(community._id), memberId: String(userId), joinedAt: new Date().toISOString(), source: 'free_checkout',
+      }, String(community._id));
       void this.emailCampaignService.sendWelcomeEmailToNewMember(userId, community._id.toString());
       try {
         await this.trackingService.trackStart(userId, community._id.toString(), TrackableContentType.COMMUNITY, {
@@ -1633,6 +1655,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       await community.save();
       await this.userModel.findByIdAndUpdate(userId, { $addToSet: { joinedCommunities: community._id } });
       await this.notifyCreatorMemberJoined(community, userId);
+      void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+        communityId: String(community._id), memberId: String(userId), joinedAt: new Date().toISOString(), source: 'paid_order_join',
+      }, String(community._id));
       void this.emailCampaignService.sendWelcomeEmailToNewMember(userId, community._id.toString());
       try {
         await this.trackingService.trackStart(userId, community._id.toString(), TrackableContentType.COMMUNITY, {
@@ -1676,6 +1701,9 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
     await community.save();
     await this.userModel.findByIdAndUpdate(userId, { $addToSet: { joinedCommunities: community._id } });
     await this.notifyCreatorMemberJoined(community, userId);
+    void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+      communityId: String(community._id), memberId: String(userId), joinedAt: new Date().toISOString(), source: 'legacy_paid_join',
+    }, String(community._id));
     void this.emailCampaignService.sendWelcomeEmailToNewMember(userId, community._id.toString());
     try {
       await this.trackingService.trackStart(userId, community._id.toString(), TrackableContentType.COMMUNITY, {
@@ -1906,6 +1934,8 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
         throw new ForbiddenException('Cette communauté est privée. Vous devez utiliser un lien d\'invitation pour la rejoindre.');
       }
 
+      await this.assertCommunityJoinEntitlement(community, userId);
+
       // Ajouter l'utilisateur à la communauté
       community.members.push(new Types.ObjectId(userId));
       community.membersCount = community.members.length;
@@ -1943,7 +1973,13 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       });
 
       await this.notifyCreatorMemberJoined(community, userId, this.resolveMemberDisplayName(user));
+      void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+        communityId: String(community._id), memberId: String(userId), joinedAt: new Date().toISOString(), source: 'invite_join',
+      }, String(community._id));
       await this.dmCampaignProcessor.queueNewMemberAutomations(community._id.toString(), userId).catch(() => undefined);
+      void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+        communityId: String(community._id), communityName: community.name, memberId: String(userId), memberName: this.resolveMemberDisplayName(user),
+      }, String(community._id));
 
       // Retourner la communauté avec les relations peuplées
       const populatedCommunity = await this.communityModel
@@ -2021,6 +2057,10 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
 
         return this.transformCommunityForFrontend(populatedCommunity);
       }
+
+      // An invite proves eligibility for a private community; it never replaces
+      // the completed payment required by a paid community.
+      await this.assertCommunityJoinEntitlement(community, userId);
 
       // Ajouter l'utilisateur à la communauté
       community.members.push(new Types.ObjectId(userId));
@@ -2298,6 +2338,14 @@ export class CommunityAffCreaJoinService implements OnModuleInit {
       await this.invalidateCommunityAndProfileCaches({
         communitySlug: community.slug,
         communityId: community._id?.toString?.(),
+      });
+
+      void this.creatorIntegrationsService.emit(String(community.createur), 'member.left', {
+        communityId: String(community._id),
+        memberId: String(userId),
+        leftAt: new Date().toISOString(),
+      }, String(community._id)).catch((error) => {
+        console.warn(`⚠️ [COMMUNITY] member.left integration event failed: ${error?.message || error}`);
       });
 
       return {

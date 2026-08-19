@@ -70,7 +70,7 @@ export class Order {
   paymentMethod?: string; // e.g. 'stripe'
 
   @Prop({ type: String, default: 'pending' })
-  status: 'paid' | 'refunded' | 'pending' | 'cancelled';
+  status: 'paid' | 'refunded' | 'pending' | 'failed' | 'cancelled';
 
   @Prop({ type: Object, default: {} })
   metadata?: Record<string, any>;

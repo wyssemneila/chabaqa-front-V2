@@ -10,7 +10,7 @@ export function About() {
   const pills = t.raw('pills') as string[]
 
   return (
-    <div className="py-24 px-6 md:px-10 bg-white" id="about">
+    <div className="relative py-24 px-6 md:px-10 bg-white dark:!bg-[var(--section-alt)]" id="about">
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
         <div className="reveal-left">
           <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-[0_8px_40px_rgba(142,120,251,.12)] aspect-video bg-white">

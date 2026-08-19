@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useCourseSession } from "@/hooks/use-course-session"
 import { PaymentProviderModal } from "@/components/payment-provider-modal"
 import { usePaymentProviderModal } from "@/lib/hooks/use-payment-provider-modal"
+import { tokenStorage } from "@/lib/token-storage"
 
 type CoursePlayerPageProps = {
   params: Promise<{ creator: string; feature: string; courseId: string }>
@@ -24,9 +25,10 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
   const { toast } = useToast()
 
   const [isEnrollDialogOpen, setIsEnrollDialogOpen] = useState(false)
-  const [isEnrolling, setIsEnrolling] = useState(false)
+  const [, setIsEnrolling] = useState(false)
 
   const [isLoading, setIsLoading] = useState(true)
+  const [accessGate, setAccessGate] = useState<"checking" | "allowed" | "redirecting" | "error">("checking")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [course, setCourse] = useState<any | null>(null)
   const [enrollment, setEnrollment] = useState<any | null>(null)
@@ -52,6 +54,7 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
   // ── Centralized course session hook ─────────────────────────────────────
   const resolvedCourseIdForSession = String(course?.mongoId || courseId)
   const courseSession = useCourseSession(resolvedCourseIdForSession, {
+    enabled: accessGate === "allowed",
     initialEnrollment: enrollment,
     onRefreshEnrollment: async () => {
       await refreshEnrollmentProgress(resolvedCourseIdForSession, course)
@@ -413,6 +416,20 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
         const resolvedCourseId = String(normalizedCourse?.mongoId || courseId)
 
         setCourse(normalizedCourse)
+        if (!tokenStorage.isAuthenticated()) {
+          setAccessGate("redirecting")
+          router.replace(`/${creator}/${feature}/courses/${courseId}/overview?access=required`)
+          return
+        }
+        const sessionRaw = await coursesApi.getCourseSession(resolvedCourseId)
+        const session = unwrapApiPayload(sessionRaw)
+        if (!session || typeof session !== "object" || !Array.isArray((session as any).chapters) || !(session as any).isEnrolled) {
+          if (!isActive) return
+          setAccessGate("redirecting")
+          router.replace(`/${creator}/${feature}/courses/${courseId}/overview?access=required`)
+          return
+        }
+        setAccessGate("allowed")
         if (!trackingSentRef.view) {
           trackingSentRef.view = true
           const trackingId = String(normalizedCourse?.id || courseId)
@@ -423,11 +440,8 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
         await refreshProgress(resolvedCourseId, normalizedCourse)
       } catch (error) {
         if (!isActive) return
-        const message =
-          typeof error === "object" && error && "message" in error
-            ? String((error as { message?: unknown }).message ?? "Failed to load course")
-            : "Failed to load course"
-        setErrorMessage(message)
+        setAccessGate("redirecting")
+        router.replace(`/${creator}/${feature}/courses/${courseId}/overview?access=required`)
       } finally {
         if (!isActive) return
         setIsLoading(false)
@@ -438,7 +452,7 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
     return () => {
       isActive = false
     }
-  }, [courseId])
+  }, [courseId, creator, feature, router])
 
   useEffect(() => {
     const fromQuery = searchParams.get("paidChapterId")
@@ -456,6 +470,18 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
     if (!course || !course.id) return { title: "Course not found", description: "This course may be unpublished or no longer exists." }
     return null
   }, [isLoading, errorMessage, course])
+
+  if (accessGate === "checking" || accessGate === "redirecting") {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-10">
+          <div className="rounded-lg border bg-white p-6 text-sm text-muted-foreground">
+            Checking course access…
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (status) {
     return (
@@ -478,6 +504,8 @@ export default function CoursePlayerPage({ params }: CoursePlayerPageProps) {
       </div>
     )
   }
+
+  if (accessGate !== "allowed") return null
 
   return (
     <>

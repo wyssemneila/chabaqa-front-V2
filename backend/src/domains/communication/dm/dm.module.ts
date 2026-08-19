@@ -18,6 +18,7 @@ import { DmBroadcast, DmBroadcastSchema } from '@/infrastructure/database/schema
 import { DmAutomation, DmAutomationSchema } from '@/infrastructure/database/schemas/communication/dm-automation.schema';
 import { DmDelivery, DmDeliverySchema } from '@/infrastructure/database/schemas/communication/dm-delivery.schema';
 import { DmCampaignProcessor } from '@/domains/communication/dm/dm-campaign.processor';
+import { DmConversationAccessGuard } from '@/domains/communication/dm/guards/dm-conversation-access.guard';
 
 @Module({
   imports: [
@@ -38,7 +39,7 @@ import { DmCampaignProcessor } from '@/domains/communication/dm/dm-campaign.proc
     PolicyModule,
   ],
   controllers: [DmController],
-  providers: [DmService, DmGateway, DmBroadcastService, DmCampaignProcessor],
+  providers: [DmService, DmGateway, DmBroadcastService, DmCampaignProcessor, DmConversationAccessGuard],
   exports: [DmService, DmGateway, DmBroadcastService, DmCampaignProcessor],
 })
 export class DmModule {}

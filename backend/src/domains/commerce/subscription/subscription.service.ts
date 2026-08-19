@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { StripePaymentService } from '@/shared/services/stripe-payment.service';
@@ -24,6 +24,7 @@ import {
 } from '@/infrastructure/database/schemas/commerce/subscription-addon.schema';
 import { UsageEvent, UsageEventDocument } from '@/infrastructure/database/schemas/commerce/usage-event.schema';
 import { Community, CommunityDocument } from '@/infrastructure/database/schemas/community/community.schema';
+import { User, UserDocument } from '@/infrastructure/database/schemas/auth/user.schema';
 import { Cours, CoursDocument } from '@/infrastructure/database/schemas/learning/course.schema';
 import { CommunityStaff, CommunityStaffDocument } from '@/infrastructure/database/schemas/community/community-staff.schema';
 import { StorageUsage, StorageUsageDocument } from '@/infrastructure/database/schemas/shared/storage-usage.schema';
@@ -52,6 +53,7 @@ import {
   getDefaultCreatorPlanDoc,
   normalizeCreatorPlanTier,
 } from '@/domains/commerce/subscription/default-creator-plans';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 @Injectable()
 export class SubscriptionService {
@@ -113,12 +115,14 @@ export class SubscriptionService {
     @InjectModel(CommunityMemberSubscription.name)
     private readonly memberSubscriptionModel: Model<CommunityMemberSubscriptionDocument>,
     @InjectModel(Community.name) private readonly communityModel: Model<CommunityDocument>,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @InjectModel(Cours.name) private readonly courseModel: Model<CoursDocument>,
     @InjectModel(CommunityStaff.name) private readonly communityStaffModel: Model<CommunityStaffDocument>,
     @InjectModel(StorageUsage.name) private readonly storageUsageModel: Model<StorageUsageDocument>,
     @InjectModel(EmailCampaign.name) private readonly emailCampaignModel: Model<any>,
     @InjectModel(WhatsappCampaign.name) private readonly whatsappCampaignModel: Model<any>,
     private readonly stripePaymentService: StripePaymentService,
+    @Optional() private readonly creatorIntegrationsService?: CreatorIntegrationsService,
   ) {}
 
   getPlanAmount(plan: PlanDocument, interval: BillingInterval | 'month' | 'year' = BillingInterval.MONTH): number {
@@ -179,6 +183,220 @@ export class SubscriptionService {
     return String(interval || '').toLowerCase() === BillingInterval.YEAR
       ? BillingInterval.YEAR
       : BillingInterval.MONTH;
+  }
+
+  private toValidDate(value?: Date | string | number): Date | undefined {
+    if (!value) return undefined;
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? undefined : date;
+  }
+
+  private async reconcileRecurringRecord(
+    record: any,
+    options: {
+      status?: string;
+      currentPeriodStart?: Date;
+      currentPeriodEnd?: Date;
+      cancelAtPeriodEnd?: boolean;
+      customerId?: string;
+      trialEndsAt?: Date;
+      paymentOutcome?: 'succeeded' | 'failed';
+      isCommunityMemberSubscription?: boolean;
+    },
+  ): Promise<boolean> {
+    if (!record) return false;
+
+    const now = new Date();
+    const currentPeriodEnd = this.toValidDate(record.currentPeriodEnd);
+    const incomingPeriodEnd = this.toValidDate(options.currentPeriodEnd);
+    // Stripe events are not guaranteed to arrive in order. Never shorten an already
+    // reconciled entitlement period from an older event.
+    const isStalePeriod = Boolean(
+      incomingPeriodEnd && currentPeriodEnd && incomingPeriodEnd.getTime() < currentPeriodEnd.getTime(),
+    );
+    const normalizedStatus = options.status ? this.normalizeProviderStatus(options.status) : undefined;
+    // A failed renewal invoice may describe the next attempted period. It is not
+    // proof of a paid extension, so retain the current entitlement boundary.
+    const canApplyPeriod = !isStalePeriod &&
+      options.paymentOutcome !== 'failed' &&
+      normalizedStatus !== SubscriptionStatus.PAST_DUE;
+    let changed = false;
+
+    if (canApplyPeriod && options.currentPeriodStart) {
+      const currentPeriodStart = this.toValidDate(record.currentPeriodStart);
+      const incomingPeriodStart = this.toValidDate(options.currentPeriodStart);
+      if (incomingPeriodStart && (!currentPeriodStart || incomingPeriodStart.getTime() !== currentPeriodStart.getTime())) {
+        record.currentPeriodStart = incomingPeriodStart;
+        changed = true;
+      }
+    }
+    if (canApplyPeriod && incomingPeriodEnd && (!currentPeriodEnd || incomingPeriodEnd.getTime() !== currentPeriodEnd.getTime())) {
+      record.currentPeriodEnd = incomingPeriodEnd;
+      record.nextBillingAt = incomingPeriodEnd;
+      changed = true;
+    }
+    if (canApplyPeriod && options.customerId && record.providerCustomerId !== options.customerId) {
+      record.providerCustomerId = options.customerId;
+      changed = true;
+    }
+    if (!options.isCommunityMemberSubscription && canApplyPeriod && options.trialEndsAt) {
+      const trialEndsAt = this.toValidDate(options.trialEndsAt);
+      if (trialEndsAt && (!record.trialEndsAt || trialEndsAt.getTime() !== record.trialEndsAt.getTime())) {
+        record.trialEndsAt = trialEndsAt;
+        changed = true;
+      }
+    }
+
+    const effectivePeriodEnd = canApplyPeriod && incomingPeriodEnd
+      ? incomingPeriodEnd
+      : currentPeriodEnd;
+    const hasCurrentAccess = Boolean(effectivePeriodEnd && effectivePeriodEnd.getTime() > now.getTime());
+    const canceledStatus = options.isCommunityMemberSubscription
+      ? CommunityMemberSubscriptionStatus.CANCELED
+      : SubscriptionStatus.CANCELED;
+    const activeStatus = options.isCommunityMemberSubscription
+      ? CommunityMemberSubscriptionStatus.ACTIVE
+      : SubscriptionStatus.ACTIVE;
+    const extendsCanceledPeriod = Boolean(
+      incomingPeriodEnd && currentPeriodEnd && incomingPeriodEnd.getTime() > currentPeriodEnd.getTime(),
+    );
+
+    if (options.paymentOutcome === 'failed' || normalizedStatus === SubscriptionStatus.PAST_DUE) {
+      // A renewal can fail before the paid-for period ends. Keep the existing
+      // entitlement active until the scheduler reaches currentPeriodEnd.
+      if (!hasCurrentAccess && record.status !== canceledStatus && record.status !== SubscriptionStatus.PAST_DUE) {
+        record.status = SubscriptionStatus.PAST_DUE;
+        changed = true;
+      }
+    } else if (normalizedStatus === SubscriptionStatus.CANCELED && !isStalePeriod) {
+      if (hasCurrentAccess) {
+        if (!record.cancelAtPeriodEnd) {
+          record.cancelAtPeriodEnd = true;
+          changed = true;
+        }
+      } else {
+        if (record.status !== canceledStatus) {
+          record.status = canceledStatus;
+          changed = true;
+        }
+        if (record.cancelAtPeriodEnd) {
+          record.cancelAtPeriodEnd = false;
+          changed = true;
+        }
+      }
+    } else if (
+      !isStalePeriod &&
+      (normalizedStatus === SubscriptionStatus.ACTIVE || normalizedStatus === SubscriptionStatus.TRIALING)
+    ) {
+      // A canceled record must only be reactivated by a strictly newer period.
+      if (record.status !== canceledStatus || extendsCanceledPeriod) {
+        if (record.status !== normalizedStatus) {
+          record.status = normalizedStatus;
+          changed = true;
+        }
+      }
+    } else if (!isStalePeriod && normalizedStatus === SubscriptionStatus.INCOMPLETE && record.status !== canceledStatus) {
+      if (record.status !== SubscriptionStatus.INCOMPLETE) {
+        record.status = SubscriptionStatus.INCOMPLETE;
+        changed = true;
+      }
+    }
+
+    if (canApplyPeriod && typeof options.cancelAtPeriodEnd === 'boolean' && normalizedStatus !== SubscriptionStatus.CANCELED) {
+      if (record.cancelAtPeriodEnd !== options.cancelAtPeriodEnd) {
+        record.cancelAtPeriodEnd = options.cancelAtPeriodEnd;
+        changed = true;
+      }
+    }
+
+    if (
+      options.paymentOutcome === 'succeeded' &&
+      !isStalePeriod &&
+      (record.status !== canceledStatus || extendsCanceledPeriod) &&
+      record.status !== activeStatus
+    ) {
+      record.status = activeStatus;
+      changed = true;
+    }
+
+    if (changed) await record.save();
+    return changed;
+  }
+
+  private async restoreCommunityMembership(subscription: CommunityMemberSubscriptionDocument): Promise<void> {
+    const communityId = subscription.communityId;
+    const subscriberId = subscription.subscriberId;
+    const communityResult = await this.communityModel.updateOne(
+      { _id: communityId, createur: { $ne: subscriberId } },
+      [
+        {
+          $set: {
+            members: { $setUnion: [{ $ifNull: ['$members', []] }, [subscriberId]] },
+          },
+        },
+        { $set: { membersCount: { $size: '$members' } } },
+      ] as any,
+    ).exec();
+
+    if (communityResult.matchedCount > 0) {
+      await this.userModel.updateOne(
+        { _id: subscriberId },
+        { $addToSet: { joinedCommunities: communityId } },
+      ).exec();
+    }
+  }
+
+  /**
+   * Reconciles a known provider subscription without creating records or allowing
+   * late webhooks to roll a paid period backwards.
+   */
+  async reconcileRecurringSubscription(
+    providerSubscriptionId: string,
+    options: {
+      status?: string;
+      currentPeriodStart?: Date;
+      currentPeriodEnd?: Date;
+      cancelAtPeriodEnd?: boolean;
+      customerId?: string;
+      trialEndsAt?: Date;
+      paymentOutcome?: 'succeeded' | 'failed';
+    },
+  ): Promise<{
+    creatorSubscription: SubscriptionDocument | null;
+    memberSubscription: CommunityMemberSubscriptionDocument | null;
+  }> {
+    const normalizedProviderSubscriptionId = String(providerSubscriptionId || '').trim();
+    if (!normalizedProviderSubscriptionId) {
+      return { creatorSubscription: null, memberSubscription: null };
+    }
+
+    const [creatorSubscription, memberSubscription] = await Promise.all([
+      this.subModel.findOne({ providerSubscriptionId: normalizedProviderSubscriptionId }),
+      this.memberSubscriptionModel.findOne({ providerSubscriptionId: normalizedProviderSubscriptionId }),
+    ]);
+
+    await Promise.all([
+      this.reconcileRecurringRecord(creatorSubscription, options),
+      this.reconcileRecurringRecord(memberSubscription, {
+        ...options,
+        isCommunityMemberSubscription: true,
+      }),
+    ]);
+
+    const memberPeriodEnd = memberSubscription
+      ? this.toValidDate(memberSubscription.currentPeriodEnd)
+      : undefined;
+    if (
+      memberSubscription &&
+      options.paymentOutcome === 'succeeded' &&
+      [CommunityMemberSubscriptionStatus.ACTIVE, CommunityMemberSubscriptionStatus.TRIALING].includes(memberSubscription.status) &&
+      memberPeriodEnd &&
+      memberPeriodEnd.getTime() > Date.now()
+    ) {
+      await this.restoreCommunityMembership(memberSubscription);
+    }
+
+    return { creatorSubscription, memberSubscription };
   }
 
   private async upsertDefaultCreatorPlan(tier: PlanTier, session: any = null): Promise<PlanDocument | null> {
@@ -988,26 +1206,14 @@ export class SubscriptionService {
 
   private async handleSubscriptionCreated(webhookEvent: WebhookEventDto): Promise<WebhookResponseDto> {
     const data = webhookEvent.data.object;
-    
-    // Find subscription by provider subscription ID
-    const subscription = await this.subModel.findOne({ 
-      providerSubscriptionId: data.id 
+    await this.reconcileRecurringSubscription(data.id, {
+      status: data.status,
+      currentPeriodStart: data.current_period_start ? new Date(data.current_period_start * 1000) : undefined,
+      currentPeriodEnd: data.current_period_end ? new Date(data.current_period_end * 1000) : undefined,
+      cancelAtPeriodEnd: data.cancel_at_period_end,
+      customerId: data.customer,
+      trialEndsAt: data.trial_end ? new Date(data.trial_end * 1000) : undefined,
     });
-
-    if (subscription) {
-      subscription.status = this.normalizeProviderStatus(data.status);
-      if (data.current_period_start) {
-        subscription.currentPeriodStart = new Date(data.current_period_start * 1000);
-      }
-      if (data.current_period_end) {
-        subscription.currentPeriodEnd = new Date(data.current_period_end * 1000);
-        subscription.nextBillingAt = subscription.currentPeriodEnd;
-      }
-      if (typeof data.cancel_at_period_end === 'boolean') {
-        subscription.cancelAtPeriodEnd = data.cancel_at_period_end;
-      }
-      await subscription.save();
-    }
 
     return {
       message: 'Subscription created event processed',
@@ -1018,22 +1224,18 @@ export class SubscriptionService {
 
   private async handleSubscriptionUpdated(webhookEvent: WebhookEventDto): Promise<WebhookResponseDto> {
     const data = webhookEvent.data.object;
-    
-    const subscription = await this.subModel.findOne({ 
-      providerSubscriptionId: data.id 
+    const existing = await this.subModel.findOne({ providerSubscriptionId: data.id });
+    const previousStatus = existing?.status;
+    const { creatorSubscription } = await this.reconcileRecurringSubscription(data.id, {
+      status: data.status,
+      currentPeriodStart: data.current_period_start ? new Date(data.current_period_start * 1000) : undefined,
+      currentPeriodEnd: data.current_period_end ? new Date(data.current_period_end * 1000) : undefined,
+      cancelAtPeriodEnd: data.cancel_at_period_end,
+      customerId: data.customer,
+      trialEndsAt: data.trial_end ? new Date(data.trial_end * 1000) : undefined,
     });
-
-    if (subscription) {
-      subscription.status = this.normalizeProviderStatus(data.status);
-      if (data.current_period_start) {
-        subscription.currentPeriodStart = new Date(data.current_period_start * 1000);
-      }
-      if (data.current_period_end) {
-        subscription.currentPeriodEnd = new Date(data.current_period_end * 1000);
-        subscription.nextBillingAt = subscription.currentPeriodEnd;
-      }
-      subscription.cancelAtPeriodEnd = data.cancel_at_period_end || false;
-      await subscription.save();
+    if (creatorSubscription && previousStatus) {
+      this.emitSubscriptionCanceled(creatorSubscription, previousStatus);
     }
 
     return {
@@ -1045,14 +1247,17 @@ export class SubscriptionService {
 
   private async handleSubscriptionDeleted(webhookEvent: WebhookEventDto): Promise<WebhookResponseDto> {
     const data = webhookEvent.data.object;
-    
-    const subscription = await this.subModel.findOne({ 
-      providerSubscriptionId: data.id 
+    const existing = await this.subModel.findOne({ providerSubscriptionId: data.id });
+    const previousStatus = existing?.status;
+    const { creatorSubscription } = await this.reconcileRecurringSubscription(data.id, {
+      status: SubscriptionStatus.CANCELED,
+      currentPeriodStart: data.current_period_start ? new Date(data.current_period_start * 1000) : undefined,
+      currentPeriodEnd: data.current_period_end ? new Date(data.current_period_end * 1000) : undefined,
+      customerId: data.customer,
+      trialEndsAt: data.trial_end ? new Date(data.trial_end * 1000) : undefined,
     });
-
-    if (subscription) {
-      subscription.status = SubscriptionStatus.CANCELED;
-      await subscription.save();
+    if (creatorSubscription && previousStatus) {
+      this.emitSubscriptionCanceled(creatorSubscription, previousStatus);
     }
 
     return {
@@ -1062,24 +1267,33 @@ export class SubscriptionService {
     };
   }
 
+  private emitSubscriptionCanceled(subscription: SubscriptionDocument, previousStatus: SubscriptionStatus | string): void {
+    if (!this.creatorIntegrationsService || previousStatus === SubscriptionStatus.CANCELED || subscription.status !== SubscriptionStatus.CANCELED) {
+      return;
+    }
+    void this.creatorIntegrationsService.emit(String(subscription.creatorId), 'subscription.canceled', {
+      subscriptionId: String(subscription._id),
+      plan: String(subscription.plan || ''),
+      billingInterval: String(subscription.billingInterval || ''),
+      amount: Number(subscription.amount || 0),
+      currency: String(subscription.currency || 'TND'),
+      currentPeriodEnd: subscription.currentPeriodEnd?.toISOString?.(),
+      canceledAt: new Date().toISOString(),
+      provider: String(subscription.provider || 'stripe'),
+    }).catch((error) => this.logger.warn(`Subscription cancellation integration event failed: ${error?.message || error}`));
+  }
+
   private async handleInvoicePaymentSucceeded(webhookEvent: WebhookEventDto): Promise<WebhookResponseDto> {
     const data = webhookEvent.data.object;
-    
-    const subscription = await this.subModel.findOne({ 
-      providerSubscriptionId: data.subscription 
+    const { creatorSubscription: subscription } = await this.reconcileRecurringSubscription(data.subscription, {
+      currentPeriodStart: data.period_start ? new Date(data.period_start * 1000) : undefined,
+      currentPeriodEnd: data.period_end ? new Date(data.period_end * 1000) : undefined,
+      customerId: data.customer,
+      paymentOutcome: 'succeeded',
     });
 
     if (subscription) {
-      subscription.status = SubscriptionStatus.ACTIVE;
       subscription.hasPaymentMethod = true;
-      // Update billing period from invoice data
-      if (data.period_start) {
-        subscription.currentPeriodStart = new Date(data.period_start * 1000);
-      }
-      if (data.period_end) {
-        subscription.currentPeriodEnd = new Date(data.period_end * 1000);
-        subscription.nextBillingAt = subscription.currentPeriodEnd;
-      }
       if (data.amount_paid) {
         subscription.amount = data.amount_paid / 100;
       }
@@ -1130,17 +1344,15 @@ export class SubscriptionService {
 
   private async handleInvoicePaymentFailed(webhookEvent: WebhookEventDto): Promise<WebhookResponseDto> {
     const data = webhookEvent.data.object;
-    
-    const subscription = await this.subModel.findOne({ 
-      providerSubscriptionId: data.subscription 
+    const { creatorSubscription: subscription, memberSubscription } = await this.reconcileRecurringSubscription(data.subscription, {
+      currentPeriodStart: data.period_start ? new Date(data.period_start * 1000) : undefined,
+      currentPeriodEnd: data.period_end ? new Date(data.period_end * 1000) : undefined,
+      customerId: data.customer,
+      paymentOutcome: 'failed',
     });
 
-    if (subscription) {
-      subscription.status = SubscriptionStatus.PAST_DUE;
-      await subscription.save();
-      
-      // Log failed payment
-      this.logger.warn(`Payment failed for subscription ${subscription._id}, amount: ${data.amount_due / 100}`);
+    if (subscription || memberSubscription) {
+      this.logger.warn(`Payment failed for recurring subscription ${data.subscription}, amount: ${data.amount_due / 100}`);
     }
 
     return {

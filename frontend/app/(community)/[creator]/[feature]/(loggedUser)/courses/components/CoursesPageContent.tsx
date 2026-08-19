@@ -258,19 +258,6 @@ export default function CoursesPageContent({
               getCoursePricing={getCoursePricing}
               creatorSlug={creatorSlug}
               slug={slug}
-              onEnroll={(courseId: string) => {
-                const targetCourse = allCourses.find((course) => idsMatch(course, courseId))
-                const routeCourseId = resolveCourseRouteId(targetCourse ?? courseId) || normalizeCourseId(courseId)
-                const alreadyEnrolled = enrollments.some((e) => idsMatch(e?.courseId, targetCourse ?? courseId))
-                
-                if (alreadyEnrolled) {
-                  router.push(`/${creatorSlug}/${slug}/courses/${routeCourseId}`)
-                  return
-                }
-                
-                setEnrollTargetCourseId(routeCourseId)
-                setIsEnrollDialogOpen(true)
-              }}
             />
             {/* The learning plan follows the course list on mobile and remains a right sidebar on desktop. */}
             <div className="lg:col-span-1">

@@ -3,14 +3,26 @@ import { useEffect, useState, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 
 export default function LoadingScreen() {
-  const [visible, setVisible] = useState(true)
+  // Start hidden so the homepage never flashes this loader before its own intro mounts.
+  const [visible, setVisible] = useState(false)
   const [fading, setFading]   = useState(false)
   const pathname = usePathname()
   const isFirst = useRef(true)
+  // Until Next supplies a pathname, do not risk flashing this loader over the homepage intro.
+  const hasResolvedPathname = Boolean(pathname)
+  // The homepage owns its cinematic greeting preloader; every other route keeps this loader.
+  const isMainLandingPage = !hasResolvedPathname || /^\/(?:en|ar)?\/?$/.test(pathname)
 
   useEffect(() => {
+    if (!hasResolvedPathname || isMainLandingPage) {
+      setVisible(false)
+      return
+    }
+
     if (isFirst.current) {
       isFirst.current = false
+      setVisible(true)
+      setFading(false)
     } else {
       setVisible(true)
       setFading(false)
@@ -19,9 +31,9 @@ export default function LoadingScreen() {
     const t1 = setTimeout(() => setFading(true),  900)
     const t2 = setTimeout(() => setVisible(false), 1250)
     return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [pathname])
+  }, [pathname, hasResolvedPathname, isMainLandingPage])
 
-  if (!visible) return null
+  if (!hasResolvedPathname || isMainLandingPage || !visible) return null
 
   return (
     <div

@@ -277,8 +277,8 @@ export class ChapterAccessService {
 
 
     if (!hasEnrollment) {
-      // Strict playback policy: only the first chapter is available before enrollment.
-      if (descriptor.index === 0) {
+      // Preview access is opt-in; never infer it from the chapter's position.
+      if (descriptor.chapter?.isPreview === true && descriptor.chapter?.isPaidChapter !== true) {
         return {
           canAccess: true,
           lockCode: 'allowed',
@@ -307,7 +307,7 @@ export class ChapterAccessService {
     }
 
     // Strict sequential policy: chapter N requires chapter N-1 completed.
-    if (descriptor.index > 0) {
+    if (context.course.sequentialProgression === true && descriptor.index > 0) {
       const previous = context.orderedChapters[descriptor.index - 1];
       const previousProgress = previous?.chapter?.id
         ? context.progressMap.get(String(previous.chapter.id))

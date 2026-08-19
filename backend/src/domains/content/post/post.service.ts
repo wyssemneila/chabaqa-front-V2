@@ -24,6 +24,7 @@ import {
   PostShareMetaResponseDto,
 } from '@/domains/content/post/dto/post-response.dto';
 import { NotificationService } from '@/domains/communication/notification/notification.service';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 @Injectable()
 export class PostService {
@@ -37,6 +38,7 @@ export class PostService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private readonly contentTrackingService: ContentTrackingService,
     private readonly notificationService: NotificationService,
+    private readonly creatorIntegrationsService: CreatorIntegrationsService,
   ) { }
 
   private serializeLogArg(arg: unknown): string {
@@ -380,6 +382,15 @@ export class PostService {
       community,
       resolvedMentionedUserIds: savedPost.mentionedUserIds,
     });
+
+    // Integration delivery is deliberately non-blocking: a creator's external
+    // automation must never prevent a community post from being published.
+    void this.creatorIntegrationsService.emit(
+      String(community.createur),
+      'post.created',
+      { postId: savedPost.id, title: savedPost.title, authorId: String(authorObjectId), communityId: String(savedPost.communityId) },
+      String(savedPost.communityId),
+    );
 
     return await this.transformToResponseDto(populatedPost!, community);
   }

@@ -22,6 +22,7 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
   private requestDurationCounts = new Map<number, number>();
   private requestDurationSumMs = 0;
   private requestDurationCount = 0;
+  private metricsCollectionTimer?: NodeJS.Timeout;
 
   constructor(
     private health: HealthCheckService,
@@ -43,6 +44,10 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy() {
     this.logger.log('Monitoring service shutting down');
+    if (this.metricsCollectionTimer) {
+      clearInterval(this.metricsCollectionTimer);
+      this.metricsCollectionTimer = undefined;
+    }
   }
 
   private initializeMetrics() {
@@ -56,7 +61,7 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
 
   private startMetricsCollection() {
     // Collect metrics every 30 seconds
-    setInterval(() => {
+    this.metricsCollectionTimer = setInterval(() => {
       try {
         this.collectPerformanceMetrics();
       } catch (error) {

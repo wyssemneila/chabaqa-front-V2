@@ -210,6 +210,13 @@ services:
         volumes:
             - meili-data:/meili_data
         restart: unless-stopped
+        # Meilisearch otherwise inherits the whole host memory limit and can
+        # force the kernel to OOM-kill the application during indexing.
+        deploy:
+            resources:
+                limits:
+                    cpus: "0.75"
+                    memory: 512M
         healthcheck:
             test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:7700/health"]
             interval: 10s
@@ -236,6 +243,9 @@ services:
             REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in backend/.env}
             REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
             SOCKET_IO_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+            # Bound native worker allocation on the two-vCPU VPS. The legacy
+            # production env set this to 128, which can exhaust memory under load.
+            UV_THREADPOOL_SIZE: "8"
             MEILI_HOST: http://meilisearch:7700
             MEILI_API_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY must be set in root .env}
             MEILI_GLOBAL_INDEX: ${MEILI_GLOBAL_INDEX:-chabaqa_content}
@@ -313,7 +323,7 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: "2.0"
+                    cpus: "1.0"
                     memory: 512M
         healthcheck:
             test:
@@ -357,6 +367,9 @@ services:
             NEXT_PUBLIC_APP_URL: https://chabaqa.io
             SENTRY_DSN: ${SENTRY_DSN:-}
             SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+            # Keep the Next.js server below its container limit rather than
+            # allowing V8 to size its heap from host memory.
+            NODE_OPTIONS: --max-old-space-size=384 --max-semi-space-size=32
         depends_on:
             chabaqa-backend:
                 condition: service_healthy
@@ -379,7 +392,7 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: "2.0"
+                    cpus: "1.0"
                     memory: 512M
         healthcheck:
             test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8083/api/health/ping"]

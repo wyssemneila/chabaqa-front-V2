@@ -22,7 +22,7 @@ function getApiBaseFromUrl(url: string): string {
     // Fall through to the configured same-origin API base.
   }
 
-  return process.env.NEXT_PUBLIC_API_URL || '/api'
+  return '/api'
 }
 
 export async function authenticatedFetch(

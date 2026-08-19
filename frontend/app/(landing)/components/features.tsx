@@ -130,7 +130,7 @@ export function Features() {
   }
 
   return (
-    <div className="py-24 px-6 md:px-10 bg-white" id="features">
+    <div className="py-24 px-6 md:px-10 bg-white dark:!bg-[var(--section-alt)]" id="features">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14 reveal">
           <div className="text-xs font-bold uppercase tracking-[.1em] text-[#8e78fb] mb-3">{t('eyebrow')}</div>
@@ -187,16 +187,18 @@ export function Features() {
                   key={f.id}
                   onClick={() => setActive(f.id)}
                   className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-start transition-all border ${
-                    active === f.id ? 'border-[#c4b8fd] bg-[#ede9ff] shadow-[0_4px_16px_rgba(142,120,251,.15)]' : 'border-transparent bg-transparent hover:bg-[#ede9ff] hover:border-gray-200'
+                    active === f.id
+                      ? 'border-[#c4b8fd] bg-[#ede9ff] shadow-[0_4px_16px_rgba(142,120,251,.15)] dark:border-[var(--p3)] dark:bg-[var(--p2)] dark:shadow-[0_4px_18px_rgba(0,0,0,.24)]'
+                      : 'border-transparent bg-transparent hover:bg-[#ede9ff] hover:border-gray-200 dark:hover:border-[var(--bd)] dark:hover:bg-[var(--p2)]'
                   }`}
                 >
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: itemColors.iconBg, border: `1.5px solid ${itemColors.iconBorder}` }}>
                     <FeatureIcon id={f.id} color={itemColors.iconColor} size={14} />
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm font-bold text-gray-900">{f.name}</div>
+                    <div className="text-sm font-bold text-gray-900 dark:text-[var(--t1)]">{f.name}</div>
                   </div>
-                  <span className="text-gray-400 text-sm">→</span>
+                  <span className="text-gray-400 text-sm dark:text-[var(--t2)]">→</span>
                 </button>
               )
             })}

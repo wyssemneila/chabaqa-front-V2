@@ -1,11 +1,13 @@
 import { Injectable, Logger, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { createHash, randomBytes } from 'crypto';
 import { User, UserDocument } from '@/infrastructure/database/schemas/auth/user.schema';
 import { decryptFieldValue, encryptFieldValue } from '@/shared/utils/field-encryption.util';
 import { Session, SessionDocument } from '@/infrastructure/database/schemas/commerce/session.schema';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
+import { GoogleCalendarOAuthState, GoogleCalendarOAuthStateDocument } from '@/infrastructure/database/schemas/communication/google-calendar-oauth-state.schema';
 
 export type GoogleCalendarFailureCategory =
   | 'auth_expired'
@@ -31,6 +33,7 @@ export class GoogleCalendarService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Session.name) private sessionModel: Model<SessionDocument>,
+    @InjectModel(GoogleCalendarOAuthState.name) private oauthStateModel: Model<GoogleCalendarOAuthStateDocument>,
   ) {
     this.calendarClientId =
       process.env.GOOGLE_CALENDAR_CLIENT_ID ||
@@ -63,6 +66,10 @@ export class GoogleCalendarService {
 
   private decryptGoogleTokens(value: any): any | null {
     return decryptFieldValue(value);
+  }
+
+  private createOAuthClient(): OAuth2Client {
+    return new google.auth.OAuth2(this.calendarClientId, this.calendarClientSecret, this.oauthRedirectUri);
   }
 
   private classifyGoogleError(error: any): GoogleCalendarFailureDetails {
@@ -121,7 +128,7 @@ export class GoogleCalendarService {
   /**
    * Generate Google OAuth authorization URL
    */
-  getAuthUrl(userId: string): string {
+  async getAuthUrl(userId: string): Promise<string> {
     this.logger.log(`[getAuthUrl] Generating auth URL for user: ${userId}`);
     this.logger.debug(`[getAuthUrl] GOOGLE_CLIENT_ID: ${this.calendarClientId?.substring(0, 20)}...`);
     this.logger.debug(`[getAuthUrl] GOOGLE_REDIRECT_URI: ${this.oauthRedirectUri}`);
@@ -135,23 +142,20 @@ export class GoogleCalendarService {
       'https://www.googleapis.com/auth/calendar.events'
     ];
 
-    // Generate base auth URL
-    let authUrl = this.oauth2Client.generateAuthUrl({
+    const state = randomBytes(32).toString('base64url');
+    await this.oauthStateModel.create({
+      userId: new Types.ObjectId(userId),
+      stateHash: createHash('sha256').update(state).digest('hex'),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+    const authUrl = this.createOAuthClient().generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
-      prompt: 'consent', // Force consent screen to get refresh token
-      include_granted_scopes: true
+      prompt: 'consent',
+      include_granted_scopes: true,
+      state,
     });
-    
-    // Manually add state parameter (the library sometimes doesn't include it properly)
-    const stateParam = `state=${encodeURIComponent(userId)}`;
-    if (authUrl.includes('?')) {
-      authUrl = `${authUrl}&${stateParam}`;
-    } else {
-      authUrl = `${authUrl}?${stateParam}`;
-    }
-    
-    this.logger.log(`[getAuthUrl] Generated auth URL with state=${userId}`);
+    this.logger.log(`[getAuthUrl] Generated one-time OAuth state for user ${userId}`);
     this.logger.debug(`[getAuthUrl] Full auth URL: ${authUrl}`);
     return authUrl;
   }
@@ -159,10 +163,16 @@ export class GoogleCalendarService {
   /**
    * Exchange authorization code for tokens
    */
-  async handleCallback(code: string, userId: string): Promise<{ success: boolean; message: string }> {
+  async handleCallback(code: string, state: string): Promise<{ success: boolean; message: string }> {
     try {
+      const stateRecord = await this.oauthStateModel.findOneAndDelete({
+        stateHash: createHash('sha256').update(String(state || '')).digest('hex'),
+        expiresAt: { $gt: new Date() },
+      });
+      if (!stateRecord) throw new BadRequestException('OAuth state is expired, invalid, or already used');
+      const userId = String(stateRecord.userId);
       this.logger.log(`[handleCallback] Exchanging code for tokens, userId: ${userId}`);
-      const { tokens } = await this.oauth2Client.getToken(code);
+      const { tokens } = await this.createOAuthClient().getToken(code);
       this.logger.log(`[handleCallback] Got tokens, scope: ${tokens.scope}`);
       
       // Verify the state matches the user ID for security
@@ -217,11 +227,12 @@ export class GoogleCalendarService {
       const googleTokens = this.decryptGoogleTokens(user?.googleTokens);
       if (!googleTokens?.refresh_token) return false;
 
-      this.oauth2Client.setCredentials({
+      const oauthClient = this.createOAuthClient();
+      oauthClient.setCredentials({
         refresh_token: googleTokens.refresh_token
       });
 
-      const { credentials } = await this.oauth2Client.refreshAccessToken();
+      const { credentials } = await oauthClient.refreshAccessToken();
       
       // Update user with new tokens
       await this.userModel.findByIdAndUpdate(userId, {
@@ -250,7 +261,8 @@ export class GoogleCalendarService {
     startTime: Date,
     endTime: Date,
     sessionTitle: string,
-    sessionDescription?: string
+    sessionDescription?: string,
+    bookingId?: string,
   ): Promise<{ meetLink: string; eventId: string }> {
     try {
       // Check if creator has valid Google access
@@ -267,12 +279,13 @@ export class GoogleCalendarService {
       }
 
       // Set up OAuth client with creator's tokens
-      this.oauth2Client.setCredentials({
+      const oauthClient = this.createOAuthClient();
+      oauthClient.setCredentials({
         access_token: googleTokens.access_token,
         refresh_token: googleTokens.refresh_token
       });
 
-      const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+      const calendar = google.calendar({ version: 'v3', auth: oauthClient });
 
       // Create the event with Meet link
       const event = {
@@ -292,7 +305,9 @@ export class GoogleCalendarService {
         ],
         conferenceData: {
           createRequest: {
-            requestId: new Types.ObjectId().toString(),
+            // Reusing the booking ID lets Google treat retries for this booking
+            // as the same conference request.
+            requestId: bookingId || new Types.ObjectId().toString(),
             conferenceSolutionKey: {
               type: 'hangoutsMeet'
             }
@@ -306,7 +321,8 @@ export class GoogleCalendarService {
       const response = await calendar.events.insert({
         calendarId: 'primary',
         requestBody: event,
-        conferenceDataVersion: 1
+        conferenceDataVersion: 1,
+        sendUpdates: 'all',
       });
 
       const meetLink = response.data.conferenceData?.entryPoints?.[0]?.uri;

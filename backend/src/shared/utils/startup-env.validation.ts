@@ -64,6 +64,10 @@ export function validateStartupEnv(): void {
   requireAny(['STRIPE_SECRET_KEY', 'STRIPE_API_KEY'], missing);
   requireAny(['STRIPE_WEBHOOK_SECRET', 'STRIPE_LINK_WEBHOOK_SECRET'], missing);
   requireStripePlanPrices(missing);
+  if (String(process.env.WHATSAPP_ENABLED || '').trim().toLowerCase() === 'true') {
+    requireAny(['OPENWA_API_KEY'], missing);
+    requireAny(['OPENWA_WEBHOOK_SECRET'], missing);
+  }
 
   if (missing.length > 0) {
     throw new Error(`[startup-env] Missing required production env: ${missing.join(', ')}`);

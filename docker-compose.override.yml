@@ -1,0 +1,15 @@
+# VPS-only resource profile: monitoring is opt-in.
+# Start it explicitly with: docker compose --profile monitoring up -d
+services:
+  prometheus:
+    profiles: ["monitoring"]
+  grafana:
+    profiles: ["monitoring"]
+  alertmanager:
+    profiles: ["monitoring"]
+  blackbox-exporter:
+    profiles: ["monitoring"]
+  node-exporter:
+    profiles: ["monitoring"]
+  cadvisor:
+    profiles: ["monitoring"]

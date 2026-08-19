@@ -36,12 +36,12 @@ export type MediaStorageDriver = 'disk' | 's3';
 export const PURPOSE_DEFAULT_VISIBILITY: Record<MediaPurpose, MediaVisibility> = {
   [MediaPurpose.COMMUNITY_LOGO]: MediaVisibility.PUBLIC,
   [MediaPurpose.COMMUNITY_COVER]: MediaVisibility.PUBLIC,
-  [MediaPurpose.COURSE_VIDEO]: MediaVisibility.PUBLIC,
-  [MediaPurpose.CHALLENGE_VIDEO]: MediaVisibility.PUBLIC,
+  [MediaPurpose.COURSE_VIDEO]: MediaVisibility.PRIVATE,
+  [MediaPurpose.CHALLENGE_VIDEO]: MediaVisibility.PRIVATE,
   [MediaPurpose.DM_ATTACHMENT]: MediaVisibility.PRIVATE,
   [MediaPurpose.MANUAL_PAYMENT_PROOF]: MediaVisibility.PRIVATE,
   [MediaPurpose.WALLET_TOPUP_PROOF]: MediaVisibility.PRIVATE,
-  [MediaPurpose.PRODUCT_FILE]: MediaVisibility.PUBLIC,
+  [MediaPurpose.PRODUCT_FILE]: MediaVisibility.PRIVATE,
   [MediaPurpose.GENERIC]: MediaVisibility.PUBLIC,
 };
 
@@ -70,4 +70,3 @@ export const TYPE_EXTENSIONS: Record<MediaType, string[]> = {
   ],
   [MediaType.AUDIO]: ['.mp3', '.wav', '.ogg', '.aac', '.flac'],
 };
-

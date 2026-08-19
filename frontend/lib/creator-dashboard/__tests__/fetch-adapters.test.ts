@@ -69,7 +69,15 @@ describe('creator dashboard fetch adapters', () => {
     })
     expect(mapSession({ id: 's2', title: 'Coaching', status: 'live' })).toMatchObject({
       _id: 's2',
+      isActive: false,
+    })
+    expect(mapSession({ id: 's3', title: 'Published coaching', isActive: true, status: 'past' })).toMatchObject({
+      _id: 's3',
       isActive: true,
+    })
+    expect(mapSession({ id: 's4', title: 'Draft coaching', isActive: false, status: 'upcoming' })).toMatchObject({
+      _id: 's4',
+      isActive: false,
     })
 
     expect(mapBooking({ id: 'b1', userName: 'Louay', scheduledAt: '2026-06-07T10:00:00.000Z', status: 'cancelled' })).toMatchObject({

@@ -29,7 +29,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#ffffff",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f7fe" },
+    { media: "(prefers-color-scheme: dark)", color: "#12111a" },
+  ],
   viewportFit: "cover",
 }
 
@@ -53,9 +56,9 @@ export default async function CreatorLayout({
   }
 
   return (
-    <>
+    <div className="community-theme min-h-screen bg-[var(--bg)] text-[var(--t1)]">
       <CommunityHeader currentCommunity={feature} creatorSlug={creator} />
       <main className="min-h-screen community-mobile-main">{children}</main>
-    </>
+    </div>
   )
 }

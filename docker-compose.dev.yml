@@ -19,12 +19,14 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
       NODE_OPTIONS: --max-old-space-size=1024
-      SERVER_URL: http://localhost:3000/api
-      FRONTEND_URL: http://localhost:8083
-      NEXT_PUBLIC_APP_URL: http://localhost:8083
-      CORS_ORIGIN: http://localhost:8083
-      CORS_ALLOWED_ORIGINS: http://localhost:8083,http://127.0.0.1:8083
-      MEDIA_PUBLIC_BASE_URL: http://localhost:3000
+      # Browser-facing URLs must use the HTTPS reverse proxy, not the host-only
+      # Docker ports. This keeps generated media URLs free of mixed content.
+      SERVER_URL: https://chabaqa.io/api
+      FRONTEND_URL: https://chabaqa.io
+      NEXT_PUBLIC_APP_URL: https://chabaqa.io
+      CORS_ORIGIN: https://chabaqa.io
+      CORS_ALLOWED_ORIGINS: https://chabaqa.io
+      MEDIA_PUBLIC_BASE_URL: https://chabaqa.io
     command: ["npm", "run", "start:dev"]
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/api/health/ping"]
@@ -65,11 +67,16 @@ services:
       - frontend-node-modules:/app/node_modules
     environment:
       NODE_ENV: development
+      # Needed only for the temporary recovery server: Next's automatic heap
+      # sizing is too low under a cgroup limit and causes a restart loop.
+      NODE_OPTIONS: --max-old-space-size=1024 --max-semi-space-size=32
       PORT: 8083
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: http://localhost:8083/api
-      NEXT_PUBLIC_APP_URL: http://localhost:8083
-      NEXT_PUBLIC_SOCKET_URL: http://localhost:3000
+      # Keep browser traffic on the public domain while this container serves
+      # chabaqa.io through Nginx. This avoids localhost-only API/socket URLs.
+      NEXT_PUBLIC_API_URL: https://chabaqa.io/api
+      NEXT_PUBLIC_APP_URL: https://chabaqa.io
+      NEXT_PUBLIC_SOCKET_URL: https://chabaqa.io
       API_INTERNAL_URL: http://chabaqa-backend:3000/api
     command: ["npm", "run", "dev"]
     depends_on:

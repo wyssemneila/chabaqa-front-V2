@@ -51,6 +51,7 @@ import {
 import { Header } from "@/components/header"
 import { getMe, updateProfile, changePassword, deleteAccount, exportUserData, setTwoFactorEnabled } from "@/lib/api/user.api"
 import { notificationsApi } from "@/lib/api/notifications.api"
+import { creatorIntegrationsApi, type ContactConsentOption } from "@/lib/api/creator-integrations.api"
 import { toast } from "sonner"
 
 
@@ -80,6 +81,9 @@ export default function SettingsPage() {
   const [communityUpdates, setCommunityUpdates] = useState(true)
   const [newMessages, setNewMessages] = useState(true)
   const [eventReminders, setEventReminders] = useState(true)
+  const [contactConsentOptions, setContactConsentOptions] = useState<ContactConsentOption[]>([])
+  const [isLoadingContactConsents, setIsLoadingContactConsents] = useState(true)
+  const [contactConsentBusy, setContactConsentBusy] = useState<string | null>(null)
   
   // Privacy states
   const [showEmail, setShowEmail] = useState(false)
@@ -104,9 +108,10 @@ export default function SettingsPage() {
     const loadSettings = async () => {
       setIsLoadingSettings(true)
       try {
-        const [meResult, preferencesResult] = await Promise.allSettled([
+        const [meResult, preferencesResult, consentResult] = await Promise.allSettled([
           getMe(),
           notificationsApi.getPreferences(),
+          creatorIntegrationsApi.contactConsentOptions(),
         ])
 
         if (meResult.status === "fulfilled" && meResult.value) {
@@ -134,8 +139,15 @@ export default function SettingsPage() {
           setNewMessages(prefs.messages?.enabled ?? true)
           setEventReminders(prefs.events?.enabled ?? true)
         }
+
+        if (consentResult?.status === "fulfilled") {
+          const options = (consentResult.value as any)?.data || consentResult.value || []
+          setContactConsentOptions(Array.isArray(options) ? options : [])
+        }
+        setIsLoadingContactConsents(false)
       } catch (error: any) {
         toast.error(error?.message || "Unable to load settings")
+        setIsLoadingContactConsents(false)
       } finally {
         setIsLoadingSettings(false)
       }
@@ -227,6 +239,29 @@ export default function SettingsPage() {
     }
   }
 
+  const handleContactConsent = async (option: ContactConsentOption, granted: boolean) => {
+    const key = `${option.communityId}:${option.provider}`
+    setContactConsentBusy(key)
+    try {
+      await creatorIntegrationsApi.setContactConsent({
+        provider: option.provider,
+        communityId: option.communityId,
+        policyVersion: option.policyVersion,
+        granted,
+      })
+      setContactConsentOptions((current) => current.map((item) =>
+        item.communityId === option.communityId && item.provider === option.provider
+          ? { ...item, granted, consentedAt: granted ? new Date().toISOString() : item.consentedAt, revokedAt: granted ? undefined : new Date().toISOString() }
+          : item,
+      ))
+      toast.success(granted ? "Marketing consent saved" : "Marketing consent withdrawn")
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to update marketing consent")
+    } finally {
+      setContactConsentBusy(null)
+    }
+  }
+
   const handleDeleteAccount = async () => {
     try {
       await deleteAccount({ currentPassword, confirmText: confirmDeleteText })
@@ -260,7 +295,7 @@ export default function SettingsPage() {
           </div>
 
           <Tabs defaultValue="profile" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto gap-2">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 h-auto gap-2">
               <TabsTrigger value="profile" className="text-xs sm:text-sm">
                 <User className="w-4 h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">Profile</span>
@@ -276,6 +311,10 @@ export default function SettingsPage() {
               <TabsTrigger value="security" className="text-xs sm:text-sm">
                 <Lock className="w-4 h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">Security</span>
+              </TabsTrigger>
+              <TabsTrigger value="marketing" className="text-xs sm:text-sm">
+                <Mail className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Marketing</span>
               </TabsTrigger>
               {userType === "creator" && (
                 <>
@@ -523,6 +562,51 @@ export default function SettingsPage() {
                       Save Preferences
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="marketing">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Community Marketing Consent</CardTitle>
+                  <CardDescription>
+                    Choose whether each community may share your contact details with its connected marketing provider. You can withdraw consent at any time.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {isLoadingContactConsents ? (
+                    <p className="text-sm text-gray-500">Loading community marketing choices...</p>
+                  ) : contactConsentOptions.length === 0 ? (
+                    <p className="rounded-lg border border-dashed p-4 text-sm text-gray-600">
+                      No connected community marketing providers currently need your consent.
+                    </p>
+                  ) : contactConsentOptions.map((option) => {
+                    const key = `${option.communityId}:${option.provider}`
+                    const providerName = option.provider === "kit" ? "Kit" : "Brevo"
+                    return (
+                      <div key={key} className="flex items-start justify-between gap-4 rounded-lg border p-4">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-medium">{option.communityName} via {providerName}</h4>
+                          <p className="mt-1 text-xs text-gray-600">
+                            Allow this community to share your contact details with {providerName} for updates and offers under policy version {option.policyVersion}.
+                          </p>
+                          <p className="mt-2 text-xs text-gray-500">
+                            Withdrawing consent stops future synchronization. Existing contacts are not automatically deleted.
+                          </p>
+                          {option.granted && option.consentedAt && (
+                            <p className="mt-2 text-xs text-emerald-700">Consented {new Date(option.consentedAt).toLocaleDateString()}</p>
+                          )}
+                        </div>
+                        <Switch
+                          checked={option.granted}
+                          disabled={contactConsentBusy === key}
+                          onCheckedChange={(granted) => void handleContactConsent(option, granted)}
+                          aria-label={`Allow ${option.communityName} to share contact details with ${providerName}`}
+                        />
+                      </div>
+                    )
+                  })}
                 </CardContent>
               </Card>
             </TabsContent>

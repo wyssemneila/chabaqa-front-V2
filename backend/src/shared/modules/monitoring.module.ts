@@ -4,7 +4,9 @@ import { MonitoringService } from '@/shared/services/monitoring.service';
 import { HealthController } from '@/shared/controllers/health.controller';
 import { MetricsController } from '@/shared/controllers/metrics.controller';
 import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
+import { InternalMetricsGuard } from '@/shared/guards/internal-metrics.guard';
 import { CacheModule } from '@/infrastructure/cache/cache.module';
+import { CreatorIntegrationsModule } from '@/domains/communication/integrations/creator-integrations.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   ProcessedWebhookEvent,
@@ -19,12 +21,13 @@ import {
       gracefulShutdownTimeoutMs: 1000,
     }),
     CacheModule,
+    CreatorIntegrationsModule,
     MongooseModule.forFeature([
       { name: ProcessedWebhookEvent.name, schema: ProcessedWebhookEventSchema },
     ]),
   ],
   controllers: [HealthController, MetricsController],
-  providers: [MonitoringService, WebhookRetryService],
+   providers: [MonitoringService, WebhookRetryService, InternalMetricsGuard],
   exports: [MonitoringService, WebhookRetryService],
 })
 export class MonitoringModule {}

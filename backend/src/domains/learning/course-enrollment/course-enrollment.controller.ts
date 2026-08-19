@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '@/domains/auth/guards/jwt-auth.guard';
 import { StartChapterDto, StartChapterResponseDto } from '@/domains/learning/course/dto/start-chapter.dto';
 import { CompleteSectionDto, CompleteSectionResponseDto } from '@/domains/learning/course/dto/complete-section.dto';
 import { UpdateTotalWatchTimeDto } from '@/shared/dto/update-watch-time.dto';
+import { ContentAccessService } from '@/shared/services/content-access.service';
 
 // Interface pour typer l'objet req.user
 interface AuthenticatedUser {
@@ -31,7 +32,10 @@ interface AuthenticatedUser {
 @ApiTags('Course Enrollment (User)')
 @ApiBearerAuth('JWT-auth')
 export class CourseEnrollmentController {
-  constructor(private readonly courseEnrollmentService: CourseEnrollmentService) { }
+  constructor(
+    private readonly courseEnrollmentService: CourseEnrollmentService,
+    private readonly contentAccessService: ContentAccessService,
+  ) { }
 
   /**
    * Get all user enrollments
@@ -80,6 +84,8 @@ export class CourseEnrollmentController {
     console.log(`   📖 Section: ${sectionId}`);
     console.log(`   📄 Chapitre: ${chapterId}`);
 
+    await this.contentAccessService.assertCourseAccess(req.user._id, courseId);
+
     return await this.courseEnrollmentService.startChapter(
       req.user._id,
       courseId,
@@ -108,6 +114,8 @@ export class CourseEnrollmentController {
     console.log(`📊 [CourseEnrollmentController] Récupération de la progression pour le cours ${courseId}`);
     console.log(`   👤 Utilisateur: ${req.user._id}`);
 
+    await this.contentAccessService.assertCourseAccess(req.user._id, courseId);
+
     return await this.courseEnrollmentService.getUserCourseProgress(
       req.user._id,
       courseId
@@ -135,6 +143,8 @@ export class CourseEnrollmentController {
     console.log(`✅ [CourseEnrollmentController] Marquage du chapitre ${chapterId} comme terminé`);
     console.log(`   👤 Utilisateur: ${req.user._id}`);
     console.log(`   📚 Cours: ${courseId}`);
+
+    await this.contentAccessService.assertCourseAccess(req.user._id, courseId);
 
     return await this.courseEnrollmentService.completeChapter(
       req.user._id,
@@ -173,6 +183,8 @@ export class CourseEnrollmentController {
       console.log(`   📐 Durée vidéo: ${body.videoDuration} secondes`);
     }
 
+    await this.contentAccessService.assertCourseAccess(req.user._id, courseId);
+
     return await this.courseEnrollmentService.updateWatchTime(
       req.user._id,
       courseId,
@@ -208,6 +220,8 @@ export class CourseEnrollmentController {
     console.log(`   📚 Cours: ${courseId}`);
     console.log(`   📖 Section: ${sectionId}`);
 
+    await this.contentAccessService.assertCourseAccess(req.user._id, courseId);
+
     return await this.courseEnrollmentService.completeSection(
       req.user._id,
       courseId,
@@ -238,6 +252,8 @@ export class CourseEnrollmentController {
     console.log(`   👤 Utilisateur: ${req.user._id}`);
     console.log(`   📚 Cours: ${courseId}`);
 
+    await this.contentAccessService.assertCourseAccess(req.user._id, courseId);
+
     return await this.courseEnrollmentService.getSectionProgress(
       req.user._id,
       courseId,
@@ -262,6 +278,8 @@ export class CourseEnrollmentController {
   ) {
     console.log(`🎓 [CourseEnrollmentController] Marquage du cours ${courseId} comme terminé`);
     console.log(`   👤 Utilisateur: ${req.user._id}`);
+
+    await this.contentAccessService.assertCourseAccess(req.user._id, courseId);
 
     return await this.courseEnrollmentService.completeCourse(
       req.user._id,

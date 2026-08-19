@@ -121,6 +121,42 @@ describe("CourseSidebar chapter selection", () => {
     expect(screen.getByText("Locked")).toBeInTheDocument()
   })
 
+  it("renders the configured first chapter before later unordered chapters", () => {
+    render(
+      <CourseSidebar
+        course={{
+          id: "course-1",
+          mongoId: "65f0f0f0f0f0f0f0f0f0f0f0",
+          creator: { name: "Creator", avatar: "", bio: "Instructor" },
+          sections: [
+            {
+              id: "section-2",
+              title: "Later section",
+              order: 2,
+              chapters: [{ id: "chapter-2", title: "Later lesson", sectionId: "section-2", order: 2, duration: 60, isPaidChapter: false }],
+            },
+            {
+              id: "section-1",
+              title: "Start here",
+              order: 1,
+              chapters: [{ id: "chapter-1", title: "Introduction", sectionId: "section-1", order: 1, duration: 60, isPreview: true, isPaidChapter: false }],
+            },
+          ],
+        }}
+        enrollment={{ progress: [], progressPercentage: 0 }}
+        allChapters={[]}
+        progress={0}
+        completedChaptersCount={0}
+        remainingChaptersCount={2}
+        selectedChapter={null}
+        setSelectedChapter={jest.fn()}
+        isChapterAccessible={(id) => id === "chapter-1"}
+      />,
+    )
+
+    expect(screen.getByText("Start here").compareDocumentPosition(screen.getByText("Later section")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it("starts checkout directly for locked paid next chapter", async () => {
     const goToNextChapter = jest.fn()
 

@@ -176,11 +176,28 @@ export class SessionBooking {
 
   @Prop({
     required: true,
-    enum: ['pending', 'confirmed', 'completed', 'cancelled'],
+    enum: ['awaiting_payment', 'pending', 'confirmed', 'completed', 'cancelled'],
     type: String,
     default: 'pending'
   })
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'awaiting_payment' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+
+  // A paid checkout is tied to one booking, rather than treating any past
+  // session purchase by the member as authorization to create a booking.
+  @Prop({ type: String, index: true })
+  sourceOrderId?: string;
+
+  @Prop({ type: String })
+  slotId?: string;
+
+  @Prop({ type: String, enum: ['manual', 'paid'], default: 'manual' })
+  bookingOrigin?: 'manual' | 'paid';
+
+  @Prop({ type: Number, min: 0 })
+  amountPaid?: number;
+
+  @Prop({ type: Date })
+  paymentHoldExpiresAt?: Date;
 
   @Prop({
     trim: true
@@ -215,11 +232,14 @@ export class SessionBooking {
   })
   meetRetryCount?: number;
 
+  @Prop({ type: Date })
+  meetLinkNotifiedAt?: Date;
+
   @Prop({
     type: String,
-    enum: ['book_session', 'confirm_booking', 'manual', 'worker']
+    enum: ['book_session', 'confirm_booking', 'manual', 'worker', 'paid_payment']
   })
-  meetProvisioningSource?: 'book_session' | 'confirm_booking' | 'manual' | 'worker';
+  meetProvisioningSource?: 'book_session' | 'confirm_booking' | 'manual' | 'worker' | 'paid_payment';
 
   @Prop({
     trim: true,

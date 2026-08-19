@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
@@ -22,6 +23,7 @@ import {
   Send,
   SmilePlus,
   Trash2,
+  Users,
   Video,
   X,
 } from "lucide-react"
@@ -40,6 +42,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAuthContext } from "@/app/providers/auth-provider"
 import { api } from "@/lib/api"
+import { communitiesApi } from "@/lib/api/communities.api"
+import { normalizeDmMessage } from "@/lib/api/dm.api"
 import type { Conversation, Message, MessageAttachment, MessageReaction } from "@/lib/api/types"
 import { useSocket } from "@/lib/socket-context"
 import { cn } from "@/lib/utils"
@@ -169,28 +173,11 @@ const getReactionCount = (reaction: MessageReaction) => reaction.count || reacti
 const hasMyReaction = (reaction: MessageReaction, myId: string) =>
   Boolean(reaction.usersIncludeMe || reaction.userIds?.includes(myId))
 
-const coerceSocketMessage = (rawMessage: any): Message => {
-  const raw = rawMessage?._doc || rawMessage || {}
-  return {
-    ...raw,
-    id: raw.id || raw._id || "",
-    conversationId: normalizeId(raw.conversationId),
-    senderId: normalizeId(raw.senderId),
-    recipientId: normalizeId(raw.recipientId),
-    attachments: raw.attachments || [],
-    reactions: (raw.reactions || []).map((reaction: any) => ({
-      ...reaction,
-      userIds: (reaction.userIds || []).map(normalizeId).filter(Boolean),
-      count: reaction.count || reaction.userIds?.length || 0,
-    })),
-    createdAt: raw.createdAt || new Date().toISOString(),
-    updatedAt: raw.updatedAt || raw.createdAt || new Date().toISOString(),
-  } as Message
-}
+const coerceSocketMessage = (rawMessage: any): Message => normalizeDmMessage(rawMessage?._doc || rawMessage || {})
 
 export default function MessagesPage() {
-  const { user: currentUser } = useAuthContext()
-  const { socket, isConnected, onlineUsers } = useSocket()
+  const { user: currentUser, loading: authLoading } = useAuthContext()
+  const { socket, isConnected, onlineUsers, connectionError, refreshPresence } = useSocket()
   const router = useRouter()
   const searchParams = useSearchParams()
   const params = useParams()
@@ -203,6 +190,7 @@ export default function MessagesPage() {
   const [pinnedMessages, setPinnedMessages] = React.useState<Message[]>([])
   const [searchResults, setSearchResults] = React.useState<Message[]>([])
   const [isLoadingInbox, setIsLoadingInbox] = React.useState(false)
+  const [inboxError, setInboxError] = React.useState<string | null>(null)
   const [isLoadingMessages, setIsLoadingMessages] = React.useState(false)
   const [isUploading, setIsUploading] = React.useState(false)
   const [isSearching, setIsSearching] = React.useState(false)
@@ -216,7 +204,11 @@ export default function MessagesPage() {
   const [typingUsers, setTypingUsers] = React.useState<Record<string, number>>({})
 
   const myId = currentUser?.id || (currentUser as any)?._id || ""
-  const messagesBasePath = creator && feature ? `/${creator}/${feature}/messages` : "/messages"
+  const communityBasePath = creator && feature
+    ? `/${encodeURIComponent(creator)}/${encodeURIComponent(feature)}`
+    : ""
+  const messagesBasePath = communityBasePath ? `${communityBasePath}/messages` : "/messages"
+  const membersHref = communityBasePath ? `${communityBasePath}/members` : "/explore"
   const selectedOtherParticipant = selectedConversation ? getOtherParticipant(selectedConversation, myId) : null
   const selectedOtherId = getParticipantId(selectedOtherParticipant)
   const selectedName = getParticipantName(selectedOtherParticipant)
@@ -232,6 +224,8 @@ export default function MessagesPage() {
   const typingTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const typingSentRef = React.useRef(false)
   const messageRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
+  const openConversationByIdRef = React.useRef<(conversationId: string) => Promise<void>>(async () => undefined)
+  const ensurePeerConversationRef = React.useRef<(communityId: string, targetUserId: string) => Promise<void>>(async () => undefined)
 
   const scrollToBottom = React.useCallback(() => {
     requestAnimationFrame(() => {
@@ -241,13 +235,45 @@ export default function MessagesPage() {
     })
   }, [])
 
+  const updateConversationPreview = React.useCallback((conversationId: string, message: Message) => {
+    if (!conversationId) return
+
+    const preview = message.deletedAt
+      ? "Deleted message"
+      : message.text?.trim() || (message.attachments?.[0]?.type === "image" ? "Image attachment" : "Attachment")
+    const senderId = getMsgSenderId(message)
+
+    setConversations((previous) => {
+      const index = previous.findIndex((conversation) => conversation.id === conversationId)
+      if (index < 0) return previous
+
+      const current = previous[index]
+      const nextConversation: Conversation = {
+        ...current,
+        lastMessageText: preview,
+        lastMessageAt: message.createdAt || new Date().toISOString(),
+        updatedAt: message.updatedAt || message.createdAt || new Date().toISOString(),
+        unreadCountA: getParticipantId(current.participantA) === myId
+          ? (senderId === myId || selectedConversation?.id === conversationId ? 0 : (current.unreadCountA || 0) + 1)
+          : current.unreadCountA,
+        unreadCountB: getParticipantId(current.participantB) === myId
+          ? (senderId === myId || selectedConversation?.id === conversationId ? 0 : (current.unreadCountB || 0) + 1)
+          : current.unreadCountB,
+      }
+
+      return [nextConversation, ...previous.filter((_, itemIndex) => itemIndex !== index)]
+    })
+  }, [myId, selectedConversation?.id])
+
   const fetchConversations = React.useCallback(async () => {
     try {
       setIsLoadingInbox(true)
+      setInboxError(null)
       const res = await api.dm.listInbox({ limit: 50 })
       setConversations(res.conversations || [])
     } catch (err) {
       console.error("Error fetching conversations:", err)
+      setInboxError(getErrorMessage(err) || "We couldn't load your conversations. Please try again.")
     } finally {
       setIsLoadingInbox(false)
     }
@@ -306,9 +332,21 @@ export default function MessagesPage() {
       return
     }
 
+    try {
+      const currentCommunity = await communitiesApi.getBySlug(feature)
+      const routeCommunityId = normalizeId((currentCommunity as any)?.data || currentCommunity)
+      if (!routeCommunityId || routeCommunityId !== communityId) {
+        setError("This member belongs to a different community.")
+        return
+      }
+    } catch (err) {
+      setError(getErrorMessage(err) || "We couldn't verify this community.")
+      return
+    }
+
     const existingConv = conversations.find((c) => {
       const otherId = getParticipantId(getOtherParticipant(c, myId))
-      return otherId === targetUserId
+      return otherId === targetUserId && normalizeId(c.communityId) === communityId
     })
 
     if (existingConv?.id) {
@@ -331,11 +369,25 @@ export default function MessagesPage() {
     } finally {
       setIsLoadingMessages(false)
     }
-  }, [conversations, fetchConversations, messagesBasePath, myId, openConversationById, router])
+  }, [conversations, feature, fetchConversations, messagesBasePath, myId, openConversationById, router])
+
+  // The query-string route must only open a thread when the URL changes.
+  // Keeping the latest handlers in refs prevents inbox/message state updates
+  // from recreating the effect and reloading the active conversation.
+  openConversationByIdRef.current = openConversationById
+  ensurePeerConversationRef.current = ensurePeerConversation
 
   React.useEffect(() => {
-    fetchConversations()
-  }, [fetchConversations])
+    if (authLoading || !currentUser) return
+    void fetchConversations()
+  }, [authLoading, currentUser?._id, fetchConversations])
+
+  React.useEffect(() => {
+    const participantIds = conversations
+      .map((conversation) => getParticipantId(getOtherParticipant(conversation, myId)))
+      .filter(Boolean)
+    refreshPresence(participantIds)
+  }, [conversations, isConnected, myId, refreshPresence])
 
   React.useEffect(() => {
     const conversationId = searchParams.get("conversationId") || ""
@@ -343,14 +395,14 @@ export default function MessagesPage() {
     const targetUserId = searchParams.get("targetUserId") || ""
 
     if (conversationId) {
-      openConversationById(conversationId)
+      void openConversationByIdRef.current(conversationId)
       return
     }
 
     if (communityId && targetUserId) {
-      ensurePeerConversation(communityId, targetUserId)
+      void ensurePeerConversationRef.current(communityId, targetUserId)
     }
-  }, [searchParams, ensurePeerConversation, openConversationById])
+  }, [searchParams])
 
   React.useEffect(() => {
     if (selectedConversation?.id && selectedConversation.id !== loadedConvIdRef.current) {
@@ -377,14 +429,27 @@ export default function MessagesPage() {
 
       if (selectedConversation?.id === convId && message.id) {
         setMessages((prev) => {
-          const withoutTemp = prev.filter((m) => m.clientRequestId !== message.clientRequestId)
-          if (withoutTemp.some((m) => m.id === message.id)) return withoutTemp
-          return [...withoutTemp, message]
+          // Only replace an optimistic item when the server supplied the
+          // client request ID. Attachments, support welcome messages, and
+          // legacy messages do not have one; filtering on `undefined` would
+          // otherwise erase the entire existing thread.
+          const withoutOptimisticDuplicate = message.clientRequestId
+            ? prev.filter((m) => m.clientRequestId !== message.clientRequestId)
+            : prev
+          if (withoutOptimisticDuplicate.some((m) => m.id === message.id)) {
+            return withoutOptimisticDuplicate
+          }
+          return [...withoutOptimisticDuplicate, message]
         })
         scrollToBottom()
         api.dm.markRead(convId).catch(() => undefined)
       }
-      fetchConversations().catch(() => undefined)
+      if (conversations.some((conversation) => conversation.id === convId)) {
+        updateConversationPreview(convId, message)
+      } else if (selectedConversation?.id !== convId) {
+        // A new conversation is the only case that needs an inbox request.
+        fetchConversations().catch(() => undefined)
+      }
     }
 
     const handleRead = (payload: any) => {
@@ -480,20 +545,31 @@ export default function MessagesPage() {
       socket.off("dm:message:pinned", handlePinned)
       socket.off("dm:typing", handleTyping)
     }
-  }, [fetchConversations, loadPinnedMessages, myId, scrollToBottom, selectedConversation?.id, socket])
+  }, [conversations, fetchConversations, loadPinnedMessages, myId, scrollToBottom, selectedConversation?.id, socket, updateConversationPreview])
 
   React.useEffect(() => {
     if (!socket || !selectedConversation?.id) return
-    socket.emit("dm:join", { conversationId: selectedConversation.id })
+    const conversationId = selectedConversation.id
+    const joinConversation = () => socket.emit("dm:join", { conversationId })
+    socket.on("connect", joinConversation)
+    if (socket.connected) joinConversation()
+    return () => {
+      socket.off("connect", joinConversation)
+      socket.emit("dm:leave", { conversationId })
+    }
   }, [socket, selectedConversation?.id])
 
   React.useEffect(() => {
     if (isConnected) return
-    const interval = setInterval(() => {
-      fetchConversations().catch(() => undefined)
-    }, 30000)
+    const refreshWhileOffline = () => {
+      void fetchConversations()
+      if (selectedConversation?.id) {
+        void loadMessages(selectedConversation.id)
+      }
+    }
+    const interval = setInterval(refreshWhileOffline, 20000)
     return () => clearInterval(interval)
-  }, [isConnected, fetchConversations])
+  }, [fetchConversations, isConnected, loadMessages, selectedConversation?.id])
 
   React.useEffect(() => {
     scrollToBottom()
@@ -593,6 +669,8 @@ export default function MessagesPage() {
       .filter(Boolean)
   }, [selectedName, selectedOtherId, typingUsers])
 
+  const connectionLabel = isConnected ? "Live" : connectionError ? "Reconnecting" : "Connecting"
+
   const handleSelectConversation = (conv: Conversation) => {
     setError(null)
     setReplyTarget(null)
@@ -684,8 +762,8 @@ export default function MessagesPage() {
           if (withoutTemp.some((m) => m.id === serverMsg.id)) return withoutTemp
           return [...withoutTemp, serverMsg]
         })
+        updateConversationPreview(selectedConversation.id, serverMsg)
       }
-      fetchConversations().catch(() => undefined)
       scrollToBottom()
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
@@ -716,7 +794,7 @@ export default function MessagesPage() {
           return [...prev, serverMsg]
         })
         scrollToBottom()
-        fetchConversations().catch(() => undefined)
+        updateConversationPreview(selectedConversation.id, serverMsg)
       }
     } catch (err) {
       setError(getErrorMessage(err))
@@ -888,9 +966,9 @@ export default function MessagesPage() {
                   </div>
                   <span className={cn(
                     "rounded-full px-2 py-1 text-[11px] font-semibold",
-                    isConnected ? "bg-teal-50 text-teal-700" : "bg-stone-100 text-stone-600",
-                  )}>
-                    {isConnected ? "Live" : "Polling"}
+                    isConnected ? "bg-teal-50 text-teal-700" : "bg-amber-50 text-amber-700",
+                  )} title={connectionError || undefined}>
+                    {connectionLabel}
                   </span>
                 </div>
                 <div className="relative">
@@ -909,11 +987,32 @@ export default function MessagesPage() {
                   <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
                   </div>
+                ) : inboxError ? (
+                  <EmptyState
+                    icon={<MessageSquare className="h-5 w-5" />}
+                    title="We couldn't load your inbox"
+                    description={inboxError}
+                    action={(
+                      <Button type="button" size="sm" variant="outline" onClick={() => void fetchConversations()}>
+                        Try again
+                      </Button>
+                    )}
+                  />
                 ) : filteredConversations.length === 0 ? (
                   <EmptyState
                     icon={<MessageSquare className="h-5 w-5" />}
-                    title="No conversations yet"
-                    description="Start a direct message from the Members page."
+                    title={conversationSearch.trim() ? "No matching conversations" : "No conversations yet"}
+                    description={conversationSearch.trim()
+                      ? "Try a different person or message search."
+                      : "Start a direct message with a community member from the Members page."}
+                    action={!conversationSearch.trim() ? (
+                      <Button asChild size="sm" className="gap-2 bg-[#2d261e] text-white hover:bg-[#46392d]">
+                        <Link href={membersHref}>
+                          <Users className="h-4 w-4" />
+                          Browse members
+                        </Link>
+                      </Button>
+                    ) : undefined}
                   />
                 ) : (
                   <div className="divide-y divide-[#f0eae0]">
@@ -1283,7 +1382,17 @@ export default function MessagesPage() {
   )
 }
 
-function EmptyState({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+  action?: React.ReactNode
+}) {
   return (
     <div className="flex h-full min-h-[220px] flex-col items-center justify-center px-6 text-center">
       <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[8px] bg-[#f0eae0] text-[#81766a]">
@@ -1291,6 +1400,7 @@ function EmptyState({ icon, title, description }: { icon: React.ReactNode; title
       </div>
       <p className="text-sm font-semibold text-[#2d261e]">{title}</p>
       <p className="mt-1 max-w-xs text-xs text-[#81766a]">{description}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   )
 }

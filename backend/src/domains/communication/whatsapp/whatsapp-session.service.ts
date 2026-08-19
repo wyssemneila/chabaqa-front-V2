@@ -132,6 +132,14 @@ export class WhatsappSessionService {
       await this.registerWebhook(session);
       return session.save();
     } catch (error: any) {
+      if (this.isMissingOpenWaSession(error)) {
+        const replacement = await this.replaceMissingOpenWaSession(
+          session,
+          creatorId,
+          communityId,
+        );
+        return this.startSession(creatorId, String(replacement.communityId));
+      }
       if (
         String(error?.message || '')
           .toLowerCase()
@@ -143,6 +151,10 @@ export class WhatsappSessionService {
         session.lastSyncedAt = new Date();
         return session.save();
       }
+      session.status = WhatsappSessionStatus.FAILED;
+      session.lastError = error?.message || 'Failed to start OpenWA session';
+      session.lastSyncedAt = new Date();
+      await session.save();
       throw error;
     }
   }
@@ -362,6 +374,39 @@ export class WhatsappSessionService {
       throw new NotFoundException('WhatsApp session not found');
     }
     return session;
+  }
+
+  private isMissingOpenWaSession(error: any): boolean {
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('session with id') && message.includes('not found');
+  }
+
+  private async replaceMissingOpenWaSession(
+    session: WhatsappSessionDocument,
+    creatorId: string,
+    communityId: string,
+  ): Promise<WhatsappSessionDocument> {
+    const community = await this.communityModel
+      .findById(communityId)
+      .select('slug')
+      .lean();
+    const fallbackName = `chabaqa-${community?.slug || communityId}`
+      .replace(/[^a-zA-Z0-9-]/g, '-')
+      .slice(0, 50);
+    const created = await this.openWaClient.createSession(session.name || fallbackName);
+    session.creatorId = new Types.ObjectId(creatorId);
+    session.openwaSessionId = created.id;
+    session.name = created.name || session.name || fallbackName;
+    session.status = this.mapOpenWaStatus(created.status, WhatsappSessionStatus.NOT_CREATED);
+    session.phone = undefined;
+    session.pushName = undefined;
+    session.qrCodeData = undefined;
+    session.pairingCode = undefined;
+    session.connectedAt = undefined;
+    session.lastWebhookRegisteredAt = undefined;
+    session.lastError = undefined;
+    session.lastSyncedAt = new Date();
+    return session.save();
   }
 
   private normalizePairingPhoneNumber(phoneNumber: string): string {

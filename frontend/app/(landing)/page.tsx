@@ -1,9 +1,11 @@
 import { Suspense } from "react"
 import { About } from "@/app/(landing)/components/about"
 import { AppInstallCTA } from "@/app/(landing)/components/app-install-cta"
+import { AuroraCardShowcase } from "@/app/(landing)/components/aurora-card-showcase"
 import { FAQ } from "@/app/(landing)/components/faq"
 import { Features } from "@/app/(landing)/components/features"
 import { Hero } from "@/app/(landing)/components/hero"
+import { MainLandingPreloader } from "@/app/(landing)/components/main-landing-preloader"
 import { Pricing } from "@/app/(landing)/components/pricing"
 import { RevealProvider } from "@/app/(landing)/components/reveal-provider"
 import { YouTubeVideos } from "@/app/(landing)/components/youtube-videos"
@@ -50,10 +52,16 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <>
-      <main className="min-h-screen bg-white">
+      <MainLandingPreloader />
+      <main id="landing-page-content" className="min-h-screen bg-white dark:!bg-[var(--section-alt)]">
         <Header />
         <RevealProvider />
         <Hero />
+        {/* Dark-mode-only transition: softly carries the hero's atmosphere into “What is Chabaqa?”. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none hidden h-28 dark:block dark:bg-[radial-gradient(ellipse_65%_110%_at_50%_0%,rgba(142,120,251,0.18)_0%,rgba(71,199,234,0.07)_35%,transparent_72%),var(--section-alt)]"
+        />
         <About />
         <Suspense fallback={<div className="h-96 animate-pulse bg-muted" />}>
           <Features />
@@ -64,6 +72,7 @@ export default function Home() {
         <Suspense fallback={<div className="h-96 animate-pulse bg-muted" />}>
           <Pricing />
         </Suspense>
+        <AuroraCardShowcase />
         <Suspense fallback={<div className="h-48 animate-pulse bg-muted" />}>
           <AppInstallCTA />
         </Suspense>

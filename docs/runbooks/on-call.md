@@ -47,3 +47,4 @@ Set `PAGERDUTY_ROUTING_KEY` and `PAGERDUTY_EVENTS_URL=https://events.eu.pagerdut
 - [Stripe webhooks](./stripe-webhooks.md)
 - [High memory / OOM](./high-memory.md)
 - [ClamAV uploads](./clamav-uploads.md)
+- [Creator integrations](./creator-integrations.md)

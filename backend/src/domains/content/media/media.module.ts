@@ -6,15 +6,16 @@ import { MediaService } from '@/domains/content/media/media.service';
 import { DiskStorageAdapter } from '@/domains/content/media/storage/disk-storage.adapter';
 import { S3StorageAdapter } from '@/domains/content/media/storage/s3-storage.adapter';
 import { MediaAsset, MediaAssetSchema } from '@/infrastructure/database/schemas/content/media-asset.schema';
+import { PolicyModule } from '@/shared/modules/policy.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: MediaAsset.name, schema: MediaAssetSchema }]),
     UploadModule,
+    PolicyModule,
   ],
   controllers: [MediaController],
   providers: [MediaService, DiskStorageAdapter, S3StorageAdapter],
   exports: [MediaService, MongooseModule],
 })
 export class MediaModule {}
-

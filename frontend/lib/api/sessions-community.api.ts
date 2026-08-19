@@ -29,6 +29,8 @@ export interface BookingWithSession extends SessionBooking {
   session?: SessionWithMentor;
   meetingUrl?: string;
   amountPaid?: number;
+  bookingOrigin?: 'manual' | 'paid';
+  meetStatus?: 'not_required' | 'pending' | 'created' | 'failed';
 }
 
 export interface SessionsPageData {
@@ -143,6 +145,7 @@ function transformBooking(backendBooking: any, session?: any): BookingWithSessio
     scheduledAt: backendBooking.scheduledAt || new Date().toISOString(),
     status: backendBooking.status || 'pending',
     meetingUrl: backendBooking.meetingUrl || undefined,
+    bookingOrigin: backendBooking.bookingOrigin || 'manual',
     notes: backendBooking.notes || undefined,
     createdAt: backendBooking.createdAt || new Date().toISOString(),
     updatedAt: backendBooking.updatedAt || new Date().toISOString(),
@@ -256,6 +259,8 @@ export const sessionsCommunityApi = {
           scheduledAt: booking.scheduledAt || new Date().toISOString(),
           status: booking.status || 'pending',
           meetingUrl: booking.meetingUrl || undefined,
+          bookingOrigin: booking.bookingOrigin || 'manual',
+          meetStatus: booking.meetStatus || (booking.meetingUrl ? 'created' : 'not_required'),
           notes: booking.notes || undefined,
           createdAt: booking.createdAt || new Date().toISOString(),
           updatedAt: booking.updatedAt || new Date().toISOString(),

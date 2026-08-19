@@ -36,7 +36,7 @@ export interface BookSessionData {
 }
 
 export interface UpdateBookingData {
-  status?: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status?: 'awaiting_payment' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
   meetingLink?: string;
   notes?: string;
 }
@@ -64,7 +64,8 @@ export interface CreatorBookingViewModel {
   userAvatar?: string;
   scheduledAt: string;
   isUpcoming: boolean;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'awaiting_payment' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  bookingOrigin?: 'manual' | 'paid';
   meetingUrl?: string;
   googleEventId?: string;
   meetStatus?: MeetStatus;
@@ -178,7 +179,7 @@ export const sessionsApi = {
 
   // Get sessions by community (using slug)
   getByCommunity: async (slug: string): Promise<any> => {
-    return apiClient.get(`/sessions/community/${slug}`);
+    return apiClient.get(`/sessions/community/${slug}`, undefined, { cache: 'no-store' });
   },
 
   // Book session
@@ -285,7 +286,7 @@ export const sessionsApi = {
 
   // Get sessions by user (creator)
   getByCreator: async (userId: string, params?: { page?: number; limit?: number; isActive?: boolean; communityId?: string }): Promise<any> => {
-    return apiClient.get(`/sessions/by-user/${userId}`, { ...(params || {}), type: 'created' });
+    return apiClient.get(`/sessions/by-user/${userId}`, { ...(params || {}), type: 'created' }, { cache: 'no-store' });
   },
 
   // Initiate Stripe Link payment for session
@@ -296,14 +297,4 @@ export const sessionsApi = {
     return apiClient.post<any>(endpoint, { sessionId, bookingDto }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
   },
 
-  // Finalize booking for already-paid session orders
-  finalizePaidSessionBooking: async (
-    orderId: string,
-    bookingDto: BookSessionData,
-  ): Promise<any> => {
-    return apiClient.post<any>('/payment/session/finalize-booking', {
-      orderId,
-      ...bookingDto,
-    });
-  },
 };

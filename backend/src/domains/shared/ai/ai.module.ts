@@ -37,12 +37,14 @@ import { Plan, PlanSchema } from '@/infrastructure/database/schemas/commerce/pla
 import { CreatorUsageCounter, CreatorUsageCounterSchema } from '@/infrastructure/database/schemas/commerce/creator-usage-counter.schema';
 import { CreatorWritingController } from './creator-writing/creator-writing.controller';
 import { CreatorWritingService } from './creator-writing/creator-writing.service';
+import { PolicyModule } from '@/shared/modules/policy.module';
 
 @Module({
   imports: [
     ConfigModule,
     forwardRef(() => CoursModule),
     ChapterAccessModule,
+    PolicyModule,
     MongooseModule.forFeature([
       { name: AiChapterConversation.name, schema: AiChapterConversationSchema },
       { name: Community.name, schema: CommunitySchema },

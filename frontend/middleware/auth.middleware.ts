@@ -112,9 +112,9 @@ const SECURITY_HEADERS: Array<[string, string]> = [
         'https://yt3.ggpht.com',
         'https://yt3.googleusercontent.com',
       ].join(' '),
-      "font-src 'self' data:",
+      "font-src 'self' data: https://fonts.gstatic.com",
       scriptSrcDirective,
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       [
         "connect-src 'self'",
         apiOrigin,
@@ -176,7 +176,6 @@ const CREATOR_ROUTES = [
 ]
 const CREATOR_ONBOARDING_ROUTES = [
   '/creator/create-community',
-  '/creator/onboarding',
 ]
 
 function allowsThirdPartyEmbeds(path: string): boolean {

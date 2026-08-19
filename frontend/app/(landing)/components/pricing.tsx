@@ -172,7 +172,7 @@ export function Pricing() {
     withLocale(`/pricing?plan=${tier}&billing=${yearly ? 'yearly' : 'monthly'}`)
 
   return (
-    <section className="py-24 px-6 md:px-10 bg-white relative" id="pricing" aria-label="Pricing plans">
+    <section className="py-24 px-6 md:px-10 bg-white dark:!bg-[var(--section-alt)] relative" id="pricing" aria-label="Pricing plans">
       {/* Confetti canvas */}
       <canvas
         ref={canvasRef}

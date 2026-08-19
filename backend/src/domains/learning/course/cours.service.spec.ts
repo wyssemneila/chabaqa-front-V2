@@ -410,3 +410,106 @@ describe('CoursService chapter video/content validation', () => {
     expect((service as any).resolveChapterVideoUrlForUpdate(legacyUrl, legacyUrl)).toBe(legacyUrl);
   });
 });
+
+describe('CoursService public course response access', () => {
+  const userId = new Types.ObjectId().toString();
+  const course: any = {
+    _id: new Types.ObjectId(),
+    id: 'course-public-id',
+    titre: 'Course',
+    description: 'Description',
+    prix: 0,
+    isPaidCourse: false,
+    devise: 'TND',
+    communityId: 'community-slug',
+    creatorId: new Types.ObjectId(),
+    isPublished: true,
+    inscriptions: [],
+    sections: [
+      {
+        id: 'section-id',
+        titre: 'Section',
+        description: '',
+        courseId: 'course-public-id',
+        ordre: 1,
+        chapitres: [
+          {
+            id: 'first-unmarked',
+            titre: 'Unmarked chapter',
+            contenu: 'Must remain locked',
+            isPreview: false,
+            isPaidChapter: false,
+            ordre: 1,
+            sectionId: 'section-id',
+            ressources: [{ id: 'resource-id' }],
+          },
+          {
+            id: 'explicit-preview',
+            titre: 'Preview chapter',
+            contenu: 'Public preview content',
+            isPreview: true,
+            isPaidChapter: false,
+            ordre: 2,
+            sectionId: 'section-id',
+            ressources: [],
+          },
+        ],
+      },
+    ],
+  };
+
+  const buildService = () => {
+    const enrollmentModel = {
+      findOne: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(null),
+        }),
+      }),
+    };
+    const service = new CoursService(
+      {} as any,
+      enrollmentModel as any,
+      {} as any,
+      {} as any,
+      { findOne: jest.fn().mockResolvedValue({ slug: 'community-slug' }) } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { ensureAbsoluteUrl: (url: string | undefined) => url || '' } as any,
+      {} as any,
+    );
+    return { service, enrollmentModel };
+  };
+
+  it('does not grant full public access to an unenrolled user in a free course', async () => {
+    const { service } = buildService();
+
+    await expect((service as any).hasFullCourseAccess(course, userId)).resolves.toBe(false);
+  });
+
+  it('exposes content only for chapters explicitly marked as previews', async () => {
+    const { service } = buildService();
+
+    const response = await (service as any).transformerEnReponse(course, { fullAccess: false });
+    const [unmarked, preview] = response.sections[0].chapitres;
+
+    expect(unmarked).toMatchObject({
+      id: 'first-unmarked',
+      description: '',
+      ressources: [],
+      locked: true,
+    });
+    expect(preview).toMatchObject({
+      id: 'explicit-preview',
+      description: 'Public preview content',
+      isPreview: true,
+    });
+    expect(preview.locked).toBeUndefined();
+  });
+});

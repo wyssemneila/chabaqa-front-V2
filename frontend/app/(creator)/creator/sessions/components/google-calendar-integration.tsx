@@ -6,16 +6,17 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
-import { Calendar, CheckCircle, AlertCircle, ExternalLink, Unlink } from "lucide-react"
+import { CheckCircle, AlertCircle, ExternalLink, Unlink } from "lucide-react"
 import { googleCalendarApi } from "@/lib/api/google-calendar.api"
 import { sessionsApi } from "@/lib/api/sessions.api"
 
 interface GoogleCalendarIntegrationProps {
   className?: string
   onConnectionUpdated?: () => void
+  onStatusChange?: (status: { connected: boolean; hasValidAccess: boolean }) => void
 }
 
-export default function GoogleCalendarIntegration({ className, onConnectionUpdated }: GoogleCalendarIntegrationProps) {
+export default function GoogleCalendarIntegration({ className, onConnectionUpdated, onStatusChange }: GoogleCalendarIntegrationProps) {
   const { toast } = useToast()
   const [status, setStatus] = useState<{ connected: boolean; hasValidAccess: boolean } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -23,11 +24,16 @@ export default function GoogleCalendarIntegration({ className, onConnectionUpdat
   const [disconnecting, setDisconnecting] = useState(false)
   const cleanupRef = useRef<(() => void) | null>(null)
 
+  const applyStatus = useCallback((nextStatus: { connected: boolean; hasValidAccess: boolean }) => {
+    setStatus(nextStatus)
+    onStatusChange?.(nextStatus)
+  }, [onStatusChange])
+
   const checkConnectionStatus = useCallback(async () => {
     try {
       setLoading(true)
       const response = await googleCalendarApi.getConnectionStatus()
-      setStatus(response.data)
+      applyStatus(response.data)
     } catch {
       toast({
         title: "Connection check failed",
@@ -37,7 +43,7 @@ export default function GoogleCalendarIntegration({ className, onConnectionUpdat
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [applyStatus, toast])
 
   useEffect(() => {
     void checkConnectionStatus()
@@ -200,7 +206,7 @@ export default function GoogleCalendarIntegration({ className, onConnectionUpdat
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Calendar className="h-5 w-5 mr-2" />
+            <img src="/integrations/googlecalendar.svg" alt="Google Calendar" className="mr-2 h-5 w-5" />
             Google Calendar Integration
           </CardTitle>
         </CardHeader>
@@ -218,7 +224,7 @@ export default function GoogleCalendarIntegration({ className, onConnectionUpdat
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center">
-            <Calendar className="h-5 w-5 mr-2" />
+            <img src="/integrations/googlecalendar.svg" alt="Google Calendar" className="mr-2 h-5 w-5" />
             Google Calendar Integration
           </div>
           {status?.connected && (
@@ -291,7 +297,7 @@ export default function GoogleCalendarIntegration({ className, onConnectionUpdat
                 className="w-full"
                 onClick={() => window.open('https://calendar.google.com', '_blank')}
               >
-                <Calendar className="h-4 w-4 mr-2" />
+                <img src="/integrations/googlecalendar.svg" alt="" className="mr-2 h-4 w-4" />
                 Open Google Calendar
                 <ExternalLink className="h-3 w-3 ml-2" />
               </Button>

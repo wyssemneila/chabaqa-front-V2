@@ -56,7 +56,7 @@ export class DmService {
       .populate('recipientId', this.userPopulateFields)
       .populate({
         path: 'replyToMessageId',
-        select: 'text attachments senderId deletedAt createdAt',
+        select: 'text attachments senderId senderModel deletedAt createdAt',
         populate: { path: 'senderId', select: this.userPopulateFields },
       })
       .populate('pinnedBy', this.userPopulateFields)
@@ -97,10 +97,17 @@ export class DmService {
     const isParticipantA = !!participantAId && uid.equals(participantAId);
     const isParticipantB = !!participantBId && uid.equals(participantBId);
     const isParticipant = isParticipantA || isParticipantB;
-    const isAdminViewingHelp = !!options?.isAdmin && conv.type === 'HELP_DM';
-    const canUseUnassignedHelp = !!options?.allowUnassignedHelpAdmin && isAdminViewingHelp && !participantBId;
+    // An assigned HELP_DM must be visible only to its member and its assigned
+    // admin. An admin can access an unassigned help request only when the
+    // caller explicitly allows claiming it.
+    const isAssignedHelpAdmin = !!options?.isAdmin && conv.type === 'HELP_DM' && isParticipantB;
+    const canUseUnassignedHelp =
+      !!options?.allowUnassignedHelpAdmin &&
+      !!options?.isAdmin &&
+      conv.type === 'HELP_DM' &&
+      !participantBId;
 
-    if (!isParticipant && !isAdminViewingHelp && !canUseUnassignedHelp) {
+    if (!isParticipant && !isAssignedHelpAdmin && !canUseUnassignedHelp) {
       throw new ForbiddenException('You do not have access to this conversation');
     }
 
@@ -111,7 +118,20 @@ export class DmService {
       }
     }
 
-    return { conv, uid, isParticipantA, isParticipantB, isAdminViewingHelp };
+    return { conv, uid, isParticipantA, isParticipantB, isAdminViewingHelp: isAssignedHelpAdmin };
+  }
+
+  /**
+   * Performs the same authorization used by every message operation. This is
+   * exposed for guards that must authorize before Multer writes an attachment
+   * to disk.
+   */
+  async assertConversationAccess(
+    conversationId: string,
+    userId: string,
+    options?: { isAdmin?: boolean; allowUnassignedHelpAdmin?: boolean },
+  ): Promise<void> {
+    await this.getConversationForUser(conversationId, userId, options);
   }
 
   private async findMessageForConversation(conversationId: Types.ObjectId, messageId: string) {
@@ -575,6 +595,7 @@ export class DmService {
         throw new ForbiddenException();
       }
       conv.participantB = sid; // auto-assign to this admin
+      (conv as any).participantBModel = 'Admin';
     }
 
     // Membership check for COMMUNITY_DM and PEER_DM
@@ -604,6 +625,8 @@ export class DmService {
       conversationId: conv._id,
       senderId: sid,
       recipientId: recipientId!,
+      senderModel: conv.type === 'HELP_DM' && options?.isAdmin ? 'Admin' : 'User',
+      recipientModel: conv.type === 'HELP_DM' && !options?.isAdmin ? 'Admin' : 'User',
       text: payload.text,
       attachments: payload.attachments || [],
     });
@@ -729,6 +752,7 @@ export class DmService {
 
     if (conv.type === 'HELP_DM' && !participantBId && options?.isAdmin) {
       conv.participantB = sid;
+      (conv as any).participantBModel = 'Admin';
     }
 
     if (conv.type === 'HELP_DM' && participantBId && options?.isAdmin && !sid.equals(participantBId)) {
@@ -773,10 +797,14 @@ export class DmService {
       throw new BadRequestException('Recipient is unavailable');
     }
 
+    const isHelpAdminMessage = conv.type === 'HELP_DM' && !!options?.isAdmin;
+    const isHelpMemberMessage = conv.type === 'HELP_DM' && !options?.isAdmin;
     const msg = await this.messageModel.create({
       conversationId: conv._id,
       senderId: sid,
       recipientId,
+      senderModel: isHelpAdminMessage ? 'Admin' : 'User',
+      recipientModel: isHelpMemberMessage ? 'Admin' : 'User',
       text,
       attachments,
       replyToMessageId,
@@ -822,8 +850,8 @@ export class DmService {
     return realtimeMessage;
   }
 
-  async markReadRich(conversationId: string, userId: string) {
-    const { conv, uid } = await this.getConversationForUser(conversationId, userId);
+  async markReadRich(conversationId: string, userId: string, options?: { isAdmin?: boolean }) {
+    const { conv, uid } = await this.getConversationForUser(conversationId, userId, options);
     const now = new Date();
     if (this.isSameId(uid, conv.participantA)) conv.unreadCountA = 0;
     else if (this.isSameId(uid, conv.participantB)) conv.unreadCountB = 0;
@@ -854,11 +882,17 @@ export class DmService {
 
     msg.editHistory = [
       ...(msg.editHistory || []),
-      { text: msg.text || '', editedBy: uid, editedAt: new Date() } as any,
+      {
+        text: msg.text || '',
+        editedBy: uid,
+        editedByModel: options?.isAdmin ? 'Admin' : 'User',
+        editedAt: new Date(),
+      } as any,
     ];
     msg.text = normalizedText;
     msg.editedAt = new Date();
     msg.editedBy = uid;
+    (msg as any).editedByModel = options?.isAdmin ? 'Admin' : 'User';
     await msg.save();
 
     const populated = await this.buildMessagePopulate(this.messageModel.findById(msg._id));
@@ -888,6 +922,7 @@ export class DmService {
       msg.attachments = [];
       msg.deletedAt = new Date();
       msg.deletedBy = uid;
+      (msg as any).deletedByModel = options?.isAdmin ? 'Admin' : 'User';
       msg.reactions = [];
       await msg.save();
       await this.refreshConversationLastMessage(conv);
@@ -944,6 +979,7 @@ export class DmService {
 
     msg.pinnedAt = pinned ? new Date() : undefined;
     msg.pinnedBy = pinned ? uid : undefined;
+    (msg as any).pinnedByModel = pinned ? (options?.isAdmin ? 'Admin' : 'User') : undefined;
     await msg.save();
 
     const populated = await this.buildMessagePopulate(this.messageModel.findById(msg._id));
@@ -1039,6 +1075,7 @@ export class DmService {
     if (!admin) throw new NotFoundException('Admin introuvable');
 
     conv.participantB = new Types.ObjectId(adminId);
+    (conv as any).participantBModel = 'Admin';
     await conv.save();
 
     // Send welcome message from admin
@@ -1074,6 +1111,8 @@ export class DmService {
       conversationId: conv._id,
       senderId: new Types.ObjectId(adminId),
       recipientId: conv.participantA,
+      senderModel: 'Admin',
+      recipientModel: 'User',
       text: welcomeText,
       attachments: [],
     });
@@ -1091,9 +1130,12 @@ export class DmService {
   /**
    * Get admin info for help conversations
    */
-  async getHelpConversationAdmin(conversationId: string) {
-    const conv = await this.conversationModel.findById(conversationId)
-      .populate('participantB', 'name email photo_profil poste departement');
+  async getHelpConversationAdmin(
+    conversationId: string,
+    userId: string,
+    options?: { isAdmin?: boolean },
+  ) {
+    const { conv } = await this.getConversationForUser(conversationId, userId, options);
 
     if (conv?.type === 'HELP_DM' && conv.participantB) {
       return conv.participantB;

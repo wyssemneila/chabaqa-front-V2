@@ -9,6 +9,7 @@ import { AchievementModule } from '@/domains/shared/achievement/achievement.modu
 import { TrackingModule } from '@/shared/modules/tracking.module';
 import { ChapterAccessModule } from '@/shared/modules/chapter-access.module';
 import { AnalyticsDaily, AnalyticsDailySchema } from '@/infrastructure/database/schemas/analytics/analytics-daily.schema';
+import { PolicyModule } from '@/shared/modules/policy.module';
 
 @Module({
   imports: [
@@ -20,7 +21,8 @@ import { AnalyticsDaily, AnalyticsDailySchema } from '@/infrastructure/database/
     ]),
     AchievementModule,
     TrackingModule,
-    ChapterAccessModule
+    ChapterAccessModule,
+    PolicyModule,
   ],
   controllers: [CourseEnrollmentController],
   providers: [CourseEnrollmentService],

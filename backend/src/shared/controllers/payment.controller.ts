@@ -39,6 +39,8 @@ import { isStrictProductionRuntime } from '@/shared/utils/security-config.util';
 import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
 import { AdminGuard } from '@/domains/auth/guards/admin.guard';
 import { EntitlementService } from '@/shared/services/entitlement.service';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
+import { PaymentAccessRevocationService } from '@/shared/services/payment-access-revocation.service';
 
 
 @ApiTags('Payments')
@@ -75,6 +77,8 @@ export class PaymentController {
     private readonly affiliateAttributionService: AffiliateAttributionService,
     private readonly affiliateCommissionService: AffiliateCommissionService,
     private readonly entitlementService: EntitlementService,
+    private readonly creatorIntegrationsService: CreatorIntegrationsService,
+    @Optional() private readonly paymentAccessRevocationService?: PaymentAccessRevocationService,
     @Optional() private readonly webhookRetryService?: WebhookRetryService,
   ) { }
 
@@ -924,6 +928,7 @@ export class PaymentController {
     };
     await order.save();
     await this.entitlementService.revokeForOrder(orderId, reason);
+    await this.paymentAccessRevocationService?.revokeForOrder(order, reason);
 
     await this.affiliateCommissionService.onOrderRefunded(orderId).catch((error) => {
       this.logger.warn(`Affiliate refund reversal failed for order ${orderId}: ${error?.message || error}`);
@@ -938,10 +943,103 @@ export class PaymentController {
       reason,
     });
 
+    const creatorId = (order as any).creatorId?.toString?.();
+    if (creatorId) {
+      void this.creatorIntegrationsService.emit(creatorId, 'purchase.refunded', {
+        orderId: String((order as any)._id),
+        contentId: String((order as any).contentId || (order as any).metadata?.contentId || ''),
+        contentType: String((order as any).contentType || ''),
+        amount: Number((order as any).amountDT || 0),
+        currency: String((order as any).currency || 'TND'),
+        buyerId: String((order as any).buyerId || ''),
+        refundedAt: new Date().toISOString(),
+        source: 'admin_refund',
+      }, (order as any).communityId?.toString?.() || (order as any).metadata?.communityId).catch((error) => this.logger.warn(`Refund integration event failed: ${error?.message || error}`));
+    }
+
     return {
       success: true,
       data: { orderId, status: 'refunded' },
     };
+  }
+
+  /** Reconcile a full refund completed directly in Stripe.  This is separate
+   * from the admin refund route so Stripe Dashboard actions cannot leave local
+   * entitlements, affiliate commissions, or creator automations stale. */
+  private async reconcileStripeChargeRefund(charge: any): Promise<void> {
+    if (!charge?.refunded) return;
+    const paymentIntentId = String(charge.payment_intent || charge.paymentIntentId || '');
+    if (!paymentIntentId) return;
+    const order: any = await this.orderModel.findOne({ paymentIntentId }).exec();
+    if (!order || order.status === 'refunded') return;
+    if (order.status !== 'paid') {
+      this.logger.warn(`Ignoring Stripe refund for non-paid order ${String(order._id)}`);
+      return;
+    }
+
+    order.status = 'refunded';
+    order.metadata = {
+      ...(order.metadata || {}),
+      refund: {
+        source: 'stripe_charge_refunded_webhook',
+        refundedAt: new Date().toISOString(),
+        providerChargeId: String(charge.id || ''),
+      },
+    };
+    await order.save();
+    await this.entitlementService.revokeForOrder(String(order._id), 'stripe_charge_refunded_webhook');
+    await this.paymentAccessRevocationService?.revokeForOrder(order, 'stripe_charge_refunded_webhook');
+    await this.affiliateCommissionService.onOrderRefunded(String(order._id)).catch((error) => {
+      this.logger.warn(`Affiliate refund reversal failed for Stripe webhook order ${String(order._id)}: ${error?.message || error}`);
+    });
+    await this.auditPaymentEvent({
+      orderId: String(order._id),
+      eventType: 'refund_completed',
+      provider: 'stripe',
+      paymentMethod: order.paymentMethod,
+      previousStatus: 'paid',
+      nextStatus: 'refunded',
+      reason: 'stripe_charge_refunded_webhook',
+    });
+    const creatorId = order.creatorId?.toString?.();
+    if (creatorId) {
+      void this.creatorIntegrationsService.emit(creatorId, 'purchase.refunded', {
+        orderId: String(order._id),
+        contentId: String(order.contentId || order.metadata?.contentId || ''),
+        contentType: String(order.contentType || ''),
+        amount: Number(order.amountDT || 0),
+        currency: String(order.currency || 'TND'),
+        buyerId: String(order.buyerId || ''),
+        refundedAt: new Date().toISOString(),
+        source: 'stripe_charge_refunded_webhook',
+      }, order.communityId?.toString?.() || order.metadata?.communityId).catch((error) => this.logger.warn(`Stripe refund integration event failed: ${error?.message || error}`));
+    }
+  }
+
+  private async markPendingStripeOrderFailed(providerId: string, source: string, details: Record<string, unknown> = {}): Promise<void> {
+    if (!providerId) return;
+    const order: any = await this.orderModel.findOne({
+      $or: [
+        { paymentId: providerId },
+        { paymentIntentId: providerId },
+        { 'metadata.providerCheckoutSessionId': providerId },
+      ],
+      status: { $in: ['pending', 'failed'] },
+    }).exec();
+    if (!order || order.status === 'failed') return;
+    order.status = 'failed';
+    order.metadata = {
+      ...(order.metadata || {}),
+      failure: { source, failedAt: new Date().toISOString(), ...details },
+    };
+    await order.save();
+    if (order.contentType === TrackableContentType.SESSION) {
+      await this.sessionService.releasePaidBookingIntent(order._id.toString());
+    }
+    await this.auditPaymentEvent({
+      orderId: String(order._id), eventType: 'payment_failed', provider: 'stripe',
+      paymentMethod: order.paymentMethod, previousStatus: 'pending', nextStatus: 'failed', reason: source,
+    });
   }
 
   // ==================== STRIPE LINK ENDPOINTS ====================
@@ -1586,8 +1684,12 @@ export class PaymentController {
     const clientContext = this.normalizeClientContext(clientContextRaw);
     const sessionDoc = await this.sessionModel.findOne({ id: sessionId }) || await this.sessionModel.findById(sessionId);
     if (!sessionDoc) throw new BadRequestException('Session not found');
+    if (!sessionDoc.isActive) throw new BadRequestException('This session is no longer active');
     if (sessionDoc.creatorId?.toString() === userId) {
       throw new BadRequestException('Vous ne pouvez pas réserver votre propre session');
+    }
+    if (!bookingDto || (!bookingDto.scheduledAt && !bookingDto.slotId)) {
+      throw new BadRequestException('Select a future session slot before starting payment');
     }
 
     const price = sessionDoc.price || 0;
@@ -1639,6 +1741,33 @@ export class PaymentController {
       })
     });
 
+    let bookingIntent: { bookingId: string; scheduledAt: string; slotId?: string; holdExpiresAt: string };
+    try {
+      bookingIntent = await this.sessionService.createPaidBookingIntent({
+        sessionId,
+        userId,
+        orderId: pendingOrder._id.toString(),
+        amountPaid: breakdown.amountDT,
+        bookingDto,
+      });
+    } catch (error) {
+      await pendingOrder.deleteOne();
+      throw error;
+    }
+
+    pendingOrder.metadata = {
+      ...(pendingOrder.metadata || {}),
+      bookingId: bookingIntent.bookingId,
+      slotId: bookingIntent.slotId,
+      bookingDto: {
+        scheduledAt: bookingIntent.scheduledAt,
+        notes: bookingDto?.notes,
+        slotId: bookingIntent.slotId,
+      },
+      checkoutHoldExpiresAt: bookingIntent.holdExpiresAt,
+    };
+    await pendingOrder.save();
+
     const defaultSuccessUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?scope=session&id=${sessionId}&provider=stripe&sessionId={CHECKOUT_SESSION_ID}`;
     const defaultFailUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?scope=session&id=${sessionId}&provider=stripe`;
     const successUrl = this.resolveCheckoutRedirectUrl(defaultSuccessUrl, successRedirectUrl);
@@ -1656,10 +1785,12 @@ export class PaymentController {
         contentType: 'session',
         contentId: sessionId,
         orderId: pendingOrder._id.toString(),
-        bookingDto: JSON.stringify(bookingDto), // Serialize object to string
+        bookingId: bookingIntent.bookingId,
+        slotId: bookingIntent.slotId || '',
         channel,
         ...(Object.keys(clientContext).length > 0 ? { clientContext: JSON.stringify(clientContext) } : {}),
       },
+      expiresAt: new Date(bookingIntent.holdExpiresAt),
       lineItems: [{
         name: sessionDoc.title || 'Session',
         description: sessionDoc.description,
@@ -1668,7 +1799,12 @@ export class PaymentController {
       }]
     });
 
-    if (!session.success) throw new BadRequestException(session.error);
+    if (!session.success) {
+      await this.sessionService.releasePaidBookingIntent(pendingOrder._id.toString());
+      pendingOrder.status = 'failed';
+      await pendingOrder.save();
+      throw new BadRequestException(session.error);
+    }
 
     await this.persistStripeCheckout(pendingOrder, session);
 
@@ -2123,6 +2259,9 @@ export class PaymentController {
           await userUpdateQuery.exec();
 
           await this.notifyCommunityCreatorMemberJoined(community, order.buyerId);
+          void this.creatorIntegrationsService.emit(String(community.createur), 'member.joined', {
+            communityId: String(community._id), memberId: String(order.buyerId), orderId: String(order._id), joinedAt: new Date().toISOString(), source: 'payment_fulfillment',
+          }, String(community._id));
           await this.subscriptionService.recordCommunityMemberSubscriptionFromOrder(order, {
             provider: stripeSessionMetadata?.provider || order.metadata?.provider || order.paymentMethod,
             providerCustomerId: stripePaymentDetails?.customerId,
@@ -2208,28 +2347,7 @@ export class PaymentController {
           this.logger.warn(`Skipping self-booking for session order ${order._id}`);
           break;
         }
-        const bookingSessionId = order.metadata?.contentId || stripeSessionMetadata?.contentId || order.contentId;
-        const orderBookingDto = this.parseBookingDto(order.metadata?.bookingDto);
-        const stripeBookingDto = this.parseBookingDto(stripeSessionMetadata?.bookingDto);
-        const bookingDto: any = {
-          ...stripeBookingDto,
-          ...orderBookingDto,
-        };
-
-        const slotId =
-          bookingDto.slotId ||
-          order.metadata?.slotId ||
-          stripeSessionMetadata?.slotId;
-
-        if (!bookingDto.scheduledAt && slotId) {
-          const scheduledAtFromSlot = await this.resolveScheduledAtFromSlot(bookingSessionId, slotId, session);
-          if (scheduledAtFromSlot) {
-            bookingDto.scheduledAt = scheduledAtFromSlot;
-            bookingDto.slotId = slotId;
-          }
-        }
-
-        await this.sessionService.bookSession(bookingSessionId, bookingDto, order.buyerId.toString(), order.promoCode, session, 'confirmed');
+        await this.sessionService.confirmPaidBookingForOrder(order, session);
         break;
 
       case TrackableContentType.PRODUCT:
@@ -2385,6 +2503,10 @@ export class PaymentController {
         await this.affiliateCommissionService.onOrderPaid(order).catch((e) => this.logger.error(`Affiliate onOrderPaid failed: ${e?.message}`));
       }
 
+      if (order.contentType === TrackableContentType.SESSION && order.status === 'paid') {
+        await this.sessionService.provisionPaidBookingMeet(order._id.toString());
+      }
+
       const refreshedOrder = await this.orderModel.findById(order._id);
       if (refreshedOrder) {
         order = refreshedOrder;
@@ -2493,6 +2615,16 @@ export class PaymentController {
     }
     if (order.status !== 'paid') {
       throw new BadRequestException('Order must be paid before finalizing booking');
+    }
+    if (order.metadata?.bookingId) {
+      await this.sessionService.provisionPaidBookingMeet(order._id.toString());
+      return {
+        status: 'paid',
+        bookingFinalized: true,
+        automatic: true,
+        orderId: order._id,
+        sessionContentId: order.metadata?.contentId || order.contentId,
+      };
     }
     if (order.creatorId?.toString() === userId) {
       throw new BadRequestException('Vous ne pouvez pas réserver votre propre session');
@@ -2687,9 +2819,48 @@ export class PaymentController {
               if (didCompleteFulfillment) {
                 await this.incrementProductSalesFromOrder(order);
                 await this.affiliateCommissionService.onOrderPaid(order).catch((e) => this.logger.error(`Affiliate onOrderPaid failed: ${e?.message}`));
+                const creatorId = order.creatorId?.toString?.();
+                if (creatorId) {
+                  void this.creatorIntegrationsService.emit(creatorId, 'purchase.paid', {
+                    orderId: String(order._id), contentId: String(order.contentId || order.metadata?.contentId || ''),
+                    contentType: order.contentType, amount: Number(order.amountDT || 0), currency: order.currency || 'TND', buyerId: String(order.buyerId || ''),
+                  });
+                }
+                if (order.contentType === TrackableContentType.SUBSCRIPTION) {
+                  const subscriberId = String(order.buyerId || '');
+                  if (subscriberId) {
+                    void this.creatorIntegrationsService.emit(subscriberId, 'subscription.started', {
+                      orderId: String(order._id), plan: String(order.metadata?.tier || order.contentId || ''),
+                      billingInterval: String(order.metadata?.billingInterval || ''), amount: Number(order.amountDT || 0),
+                      currency: order.currency || 'TND', provider: String(order.metadata?.provider || order.paymentMethod || 'stripe'),
+                    }).catch((e) => this.logger.warn(`Subscription integration event failed: ${e?.message || e}`));
+                  }
+                }
+              }
+              if (order.contentType === TrackableContentType.SESSION && order.status === 'paid') {
+                await this.sessionService.provisionPaidBookingMeet(order._id.toString());
               }
             }
           }
+          break;
+
+        case 'checkout.session.expired': {
+          const checkout = stripeEvent.data.object as any;
+          await this.markPendingStripeOrderFailed(String(checkout.id || ''), 'stripe_checkout_session_expired');
+          break;
+        }
+
+        case 'payment_intent.payment_failed': {
+          const intent = stripeEvent.data.object as any;
+          await this.markPendingStripeOrderFailed(String(intent.id || ''), 'stripe_payment_intent_failed', {
+            code: intent.last_payment_error?.code,
+            message: intent.last_payment_error?.message,
+          });
+          break;
+        }
+
+        case 'charge.refunded':
+          await this.reconcileStripeChargeRefund(stripeEvent.data.object as any);
           break;
 
         case 'customer.subscription.created':

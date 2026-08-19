@@ -8,6 +8,7 @@ import { ForgotPasswordDto } from '@/domains/auth/dto/forgot-password.dto';
 import { ResetPasswordDto } from '@/domains/auth/dto/reset-password.dto';
 import { ChangePasswordDto } from '@/domains/auth/dto/change-password.dto';
 import { DeleteAccountDto } from '@/domains/auth/dto/delete-account.dto';
+import { CreatorDashboardOnboardingDto } from '@/domains/user/dto/creator-dashboard-onboarding.dto';
 import { JwtAuthGuard } from '@/domains/auth/guards/jwt-auth.guard';
 import { HttpCacheInterceptor } from '@/shared/interceptors/cache.interceptor';
 import { CacheTTL } from '@/shared/decorators/cache-ttl.decorator';
@@ -75,7 +76,6 @@ export class UserController {
             _id: '64a1b2c3d4e5f6789abcdef0',
             name: 'John Doe',
             username: 'john-doe',
-            email: 'john@example.com',
             role: 'user',
             createdAt: '2023-07-01T10:00:00.000Z'
           }
@@ -328,7 +328,6 @@ export class UserController {
             _id: '64a1b2c3d4e5f6789abcdef0',
             name: 'John Doe',
             username: 'john-doe',
-            email: 'john@example.com',
             role: 'user',
             avatar: 'https://example.com/avatar.jpg',
             ville: 'Tunis',
@@ -536,6 +535,19 @@ export class UserController {
           details: err.message
         });
       }
+    }
+
+    @Put('creator-dashboard-onboarding')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Save creator dashboard onboarding progress' })
+    async updateCreatorDashboardOnboarding(@Request() req, @Body() dto: CreatorDashboardOnboardingDto) {
+      const userId = req.user.sub || req.user._id;
+      const user = await this.userService.updateCreatorDashboardOnboarding(userId, dto);
+      return {
+        success: true,
+        data: { creatorOnboarding: (user as any).creatorOnboarding || {} },
+      };
     }
 
 

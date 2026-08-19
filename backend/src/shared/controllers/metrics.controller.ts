@@ -1,19 +1,23 @@
-import { Controller, Get, Res } from '@nestjs/common';
+import { Controller, Get, Res, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { MonitoringService } from '@/shared/services/monitoring.service';
 import { SecurityService } from '@/shared/services/security.service';
 import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
 import { CacheService } from '@/infrastructure/cache/cache.service';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 import { Response } from 'express';
+import { InternalMetricsGuard } from '@/shared/guards/internal-metrics.guard';
 
 @ApiTags('Health & Monitoring')
 @Controller('metrics')
+@UseGuards(InternalMetricsGuard)
 export class MetricsController {
   constructor(
     private monitoringService: MonitoringService,
     private securityService: SecurityService,
     private webhookRetryService: WebhookRetryService,
     private cacheService: CacheService,
+    private creatorIntegrationsService: CreatorIntegrationsService,
   ) {}
 
   @Get()
@@ -168,10 +172,11 @@ export class MetricsController {
       }
     }
   })
-  getPrometheusMetrics(@Res() res: Response): void {
+  async getPrometheusMetrics(@Res() res: Response): Promise<void> {
     const metrics = this.monitoringService.getMetrics();
     const securityMetrics = this.securityService.getSecurityMetrics();
     const webhookRetryMetrics = this.webhookRetryService.getStats();
+    const integrationDeliveryMetrics = await this.creatorIntegrationsService.getDeliveryStats();
 
     let output = `# Shabaka Application Metrics\n`;
 
@@ -219,6 +224,22 @@ export class MetricsController {
     output += `# HELP shabaka_webhook_retry_queued Failed webhook jobs queued for retry\n`;
     output += `# TYPE shabaka_webhook_retry_queued gauge\n`;
     output += `shabaka_webhook_retry_queued ${webhookRetryMetrics.queued}\n\n`;
+
+    output += `# HELP shabaka_integration_delivery_retrying Creator integration deliveries pending retry\n`;
+    output += `# TYPE shabaka_integration_delivery_retrying gauge\n`;
+    output += `shabaka_integration_delivery_retrying ${integrationDeliveryMetrics.retrying}\n\n`;
+
+    output += `# HELP shabaka_integration_delivery_exhausted Creator integration deliveries that exhausted retries\n`;
+    output += `# TYPE shabaka_integration_delivery_exhausted gauge\n`;
+    output += `shabaka_integration_delivery_exhausted ${integrationDeliveryMetrics.exhausted}\n\n`;
+
+    output += `# HELP shabaka_integration_oauth_callback_failures_total Failed creator integration OAuth callbacks since process start\n`;
+    output += `# TYPE shabaka_integration_oauth_callback_failures_total counter\n`;
+    output += `shabaka_integration_oauth_callback_failures_total ${integrationDeliveryMetrics.oauthCallbackFailures}\n\n`;
+
+    output += `# HELP shabaka_integration_credential_encryption_failures_total Integration credential encryption or decryption failures since process start\n`;
+    output += `# TYPE shabaka_integration_credential_encryption_failures_total counter\n`;
+    output += `shabaka_integration_credential_encryption_failures_total ${integrationDeliveryMetrics.credentialEncryptionFailures}\n\n`;
 
     const cacheMetrics = this.cacheService.getCacheMetrics();
     output += `# HELP shabaka_cache_hits_total Cache hits\n`;

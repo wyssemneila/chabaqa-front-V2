@@ -1,27 +1,17 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useTheme } from 'next-themes'
 
 export type DashLang = 'en' | 'ar'
 
-const LANG_KEY  = 'chabaqa_dash_lang'
-const THEME_KEY = 'chabaqa_dash_theme'
-const EVENT     = 'dashpref-change'
-
-function applyTheme(dark: boolean) {
-  if (typeof document === 'undefined') return
-  document.documentElement.classList.toggle('dark', dark)
-}
+const LANG_KEY = 'chabaqa_dash_lang'
+const EVENT = 'dashpref-change'
 
 function applyLang(lang: DashLang) {
   if (typeof document === 'undefined') return
   document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr')
   document.documentElement.setAttribute('lang', lang)
-}
-
-function readDark(): boolean {
-  if (typeof localStorage === 'undefined') return false
-  return localStorage.getItem(THEME_KEY) === 'dark'
 }
 
 function readLang(): DashLang {
@@ -34,18 +24,14 @@ function emit() {
 }
 
 export function useDashPrefs() {
-  const [dark, setDark] = useState<boolean>(false)
+  const { resolvedTheme, setTheme } = useTheme()
   const [lang, setLang] = useState<DashLang>('en')
 
-  // Sync from storage on mount + whenever EVENT fires
   useEffect(() => {
     const sync = () => {
-      const d = readDark()
-      const l = readLang()
-      setDark(d)
-      setLang(l)
-      applyTheme(d)
-      applyLang(l)
+      const nextLang = readLang()
+      setLang(nextLang)
+      applyLang(nextLang)
     }
     sync()
     window.addEventListener(EVENT, sync)
@@ -57,11 +43,8 @@ export function useDashPrefs() {
   }, [])
 
   const toggleDark = useCallback(() => {
-    const next = !readDark()
-    localStorage.setItem(THEME_KEY, next ? 'dark' : 'light')
-    applyTheme(next)
-    emit()
-  }, [])
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
+  }, [resolvedTheme, setTheme])
 
   const toggleLang = useCallback(() => {
     const next: DashLang = readLang() === 'en' ? 'ar' : 'en'
@@ -70,5 +53,5 @@ export function useDashPrefs() {
     emit()
   }, [])
 
-  return { dark, lang, toggleDark, toggleLang }
+  return { dark: resolvedTheme === 'dark', lang, toggleDark, toggleLang }
 }

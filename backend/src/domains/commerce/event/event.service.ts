@@ -18,6 +18,7 @@ import { ContentTrackingService } from '@/shared/services/content-tracking.servi
 import { TrackableContentType } from '@/infrastructure/database/schemas/learning/content-tracking.schema';
 import { EmailService } from '@/shared/services/email.service';
 import { StripePaymentService } from '@/shared/services/stripe-payment.service';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
 
 @Injectable()
 export class EventService {
@@ -35,6 +36,7 @@ export class EventService {
     private readonly trackingService: ContentTrackingService,
     private readonly emailService: EmailService,
     @Optional() private readonly stripePaymentService?: StripePaymentService,
+    private readonly creatorIntegrationsService?: CreatorIntegrationsService,
   ) {}
 
   /**
@@ -1194,6 +1196,21 @@ export class EventService {
     await event.save(options.session ? { session: options.session } : undefined);
     await this.invalidateEventCaches(event.id || event._id?.toString());
 
+    void this.creatorIntegrationsService?.emit(
+      String(event.creatorId),
+      'event.registered',
+      {
+        eventId: event.id || String(event._id),
+        eventTitle: event.title,
+        attendeeId: attendee.id,
+        learnerId: userId,
+        ticketType,
+        registeredAt: attendee.registeredAt.toISOString(),
+        fulfillment: ticket.price && ticket.price > 0 ? 'paid' : 'free',
+      },
+      String(event.communityId),
+    ).catch((error) => console.error('⚠️ [EventService] Failed to emit event.registered integration event:', error?.message || error));
+
     // Unified Progression Tracking: Track the start of event participation (successful registration)
     try {
       await this.trackingService.trackStart(
@@ -1304,6 +1321,19 @@ export class EventService {
       refundReason: 'event_attendee_unregister',
     };
     await order.save();
+    const creatorId = String(order.creatorId || event.creatorId || '');
+    if (creatorId && Types.ObjectId.isValid(creatorId)) {
+      void this.creatorIntegrationsService?.emit(creatorId, 'purchase.refunded', {
+        orderId: String(order._id),
+        contentId: String(order.contentId || event._id),
+        contentType: String(order.contentType || TrackableContentType.EVENT),
+        amount: Number(order.amountDT || 0),
+        currency: String(order.currency || 'TND'),
+        buyerId: String(order.buyerId || userId),
+        refundedAt: new Date().toISOString(),
+        source: 'event_attendee_unregister',
+      }, String(event.communityId)).catch(() => undefined);
+    }
     return { status: 'refunded', orderId: order._id.toString() };
   }
 
