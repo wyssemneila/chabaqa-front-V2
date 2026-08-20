@@ -3,10 +3,12 @@ updates:
   - package-ecosystem: npm
     directory: /backend
     schedule:
-      interval: weekly
+      # Monthly (was weekly) to cut the number of PR waves that each trigger a
+      # full CI run. Security-critical bumps still surface via the audit gates.
+      interval: monthly
       day: monday
       time: "06:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     groups:
       backend-security-and-patches:
         patterns:
@@ -18,10 +20,10 @@ updates:
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
       time: "06:30"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     groups:
       frontend-security-and-patches:
         patterns:
@@ -33,7 +35,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
       time: "07:00"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3

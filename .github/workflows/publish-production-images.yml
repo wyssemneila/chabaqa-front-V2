@@ -1,8 +1,12 @@
 name: Publish Production Images
 
+# The VPS deploy (deploy.sh) builds its own images with `docker compose build`
+# and never pulls these GHCR images, so publishing on every push to main was
+# pure waste. Publish only on release tags (or on demand) to keep versioned
+# images available without a heavy two-image build on every commit.
 on:
   push:
-    branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +20,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
