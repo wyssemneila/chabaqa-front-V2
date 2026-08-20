@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress"
 import { StarRating } from "./star-rating"
 import { ReviewForm } from "./review-form"
 import { ReviewsList } from "./reviews-list"
-import { feedbackApi, Feedback, FeedbackStats, CreateFeedbackDto } from "@/lib/api/feedback.api"
+import { feedbackApi, Feedback, FeedbackStats, CreateFeedbackDto } from "@/lib/api/social/feedback.api"
 import { Star, MessageSquare, Award, ThumbsUp } from "lucide-react"
 
 export type RelatedModel = 'Cours' | 'Community' | 'Challenge' | 'Event' | 'Product' | 'Session'
@@ -22,10 +22,10 @@ interface ReviewsSectionProps {
   promptMessage?: string
 }
 
-export function ReviewsSection({ 
-  relatedId, 
-  relatedModel, 
-  showForm = true, 
+export function ReviewsSection({
+  relatedId,
+  relatedModel,
+  showForm = true,
   onRefresh,
   title = "Community Feedback",
   description = "See what our members have to say",
@@ -94,7 +94,7 @@ export function ReviewsSection({
           <CardContent className="p-6 sm:p-8">
             <div className="flex flex-col md:flex-row gap-8 items-center">
               {/* Overall Rating */}
-              <div className="text-center md:text-left flex-shrink-0 min-w-[180px]">
+              <div className="text-center md:text-start flex-shrink-0 min-w-[180px]">
                 <div className="text-5xl font-bold text-gray-900 tracking-tight mb-2">
                   {stats.averageRating.toFixed(1)}
                 </div>
@@ -118,12 +118,12 @@ export function ReviewsSection({
                         <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
                       </div>
                       <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-yellow-400 rounded-full transition-all duration-500 ease-out group-hover:bg-yellow-500"
-                          style={{ width: `${percentage}%` }} 
+                          style={{ width: `${percentage}%` }}
                         />
                       </div>
-                      <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">
+                      <span className="text-xs text-muted-foreground w-10 text-end tabular-nums">
                         {percentage > 0 ? `${Math.round(percentage)}%` : '0%'}
                       </span>
                     </div>
@@ -132,7 +132,7 @@ export function ReviewsSection({
               </div>
 
               {/* Highlights */}
-              <div className="hidden lg:flex flex-col gap-4 border-l pl-8 ml-auto min-w-[200px]">
+              <div className="hidden lg:flex flex-col gap-4 border-l ps-8 ms-auto min-w-[200px]">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
                     <MessageSquare className="h-5 w-5" />
@@ -196,9 +196,9 @@ export function ReviewsSection({
               <p className="text-muted-foreground mt-1">{description}</p>
             </div>
           </div>
-          
-          <ReviewsList 
-            reviews={reviews} 
+
+          <ReviewsList
+            reviews={reviews}
             isLoading={isLoading}
             currentUserId={myReview?.user?._id}
             emptyMessage={emptyMessage}

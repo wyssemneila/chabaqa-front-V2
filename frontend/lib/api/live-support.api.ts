@@ -1,5 +1,5 @@
-import { apiClient } from './client';
-import type { LiveSupportMessage, LiveSupportTicket } from './types';
+import { apiClient } from '../core/client';
+import type { LiveSupportMessage, LiveSupportTicket } from '../core/types';
 
 const normalizeTicket = (ticket: any): LiveSupportTicket | null => {
   if (!ticket) return null;

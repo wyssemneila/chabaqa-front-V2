@@ -1,37 +1,40 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
-import { useCreatorProductsPage } from '@/hooks/creator-dashboard/use-creator-dashboard-data'
-import { productsApi } from '@/lib/api'
-import { toast } from 'sonner'
-import { useState } from 'react'
-import type { CreatorProductCard } from '@/lib/creator-dashboard/fetch-adapters'
-import { Plus, Package, Pencil, Trash2, ShieldCheck, FileArchive, DollarSign, Tag } from 'lucide-react'
+import { Plus, Package, Pencil, Trash2, ShieldCheck, FileArchive, DollarSign, Tag, Layers } from 'lucide-react'
+
+interface Product {
+  id: string; title: string; description: string; category: string
+  thumbnail: string; license: string; priceType: 'free' | 'paid'
+  price: number; hasTiers: boolean; tiers: any[]
+  isPublished: boolean; files: any[]; whatIncluded: string[]
+}
 
 export default function ProductsPage() {
   const router = useRouter()
   const { lang } = useDashPrefs()
-  const { data: products, loading, error, refetch } = useCreatorProductsPage()
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading,  setLoading]  = useState(true)
 
-  const del = async (id: string) => {
-    if (!window.confirm('Delete this product?')) return
-    setDeletingId(id)
+  useEffect(() => {
     try {
-      await productsApi.delete(id)
-      toast.success('Product deleted')
-      refetch()
-    } catch (err: any) {
-      toast.error(err?.message || 'Could not delete the product.')
-    } finally {
-      setDeletingId(null)
-    }
+      const raw = localStorage.getItem('chabaqa_products')
+      setProducts(raw ? JSON.parse(raw) : [])
+    } catch { setProducts([]) }
+    finally   { setLoading(false) }
+  }, [])
+
+  const del = (id: string) => {
+    const next = products.filter(p => p.id !== id)
+    setProducts(next)
+    localStorage.setItem('chabaqa_products', JSON.stringify(next))
   }
 
-  const priceLabel = (p: CreatorProductCard) => {
+  const priceLabel = (p: Product) => {
     if (p.priceType === 'free') return 'Free'
     if (p.hasTiers && p.tiers?.length) {
       const min = Math.min(...p.tiers.map((t:any)=>t.price))
@@ -63,18 +66,11 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            {error && !loading && (
-              <div className="mb-4 px-4 py-3 rounded-xl text-sm"
-                style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412' }}>
-                Could not load the live product list. <button onClick={refetch} className="font-bold underline">Retry</button>
-              </div>
-            )}
-
             {loading ? (
               <div className="flex items-center justify-center py-32">
                 <div className="w-8 h-8 rounded-full border-2 border-[var(--p3)] border-t-[var(--p)] animate-spin" />
               </div>
-            ) : error ? null : products.length === 0 ? (
+            ) : products.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
                 style={{ borderColor:'var(--bd)', background:'var(--white)' }}>
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
@@ -125,14 +121,13 @@ export default function ProductsPage() {
                           <p className="text-[12px] truncate" style={{ color:'var(--t2)' }}>{p.description}</p>
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <button onClick={() => router.push(`/creator/products/${p.id}/manage`)}
+                          <button onClick={() => router.push(`/creator/products/${p.id}/edit`)}
                             aria-label="Edit product"
                             className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
                             style={{ background:'var(--bg)', color:'var(--t3)' }}>
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button onClick={() => del(p.id)}
-                            disabled={deletingId === p.id}
                             aria-label="Delete product"
                             className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70"
                             style={{ background:'rgba(239,68,68,.08)', color:'#ef4444' }}>

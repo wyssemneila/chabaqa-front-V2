@@ -1,5 +1,5 @@
 import { cookies } from "next/headers"
-import type { User } from "@/lib/api/types"
+import type { User } from "@/lib/api/core/types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
@@ -11,11 +11,11 @@ export async function authenticatedFetch(
   const accessToken = cookieStore.get("accessToken")
 
   const headers = new Headers(options.headers || {})
-  
+
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken.value}`)
   }
-  
+
   headers.set("Content-Type", "application/json")
 
   return fetch(url, {
@@ -66,7 +66,7 @@ export async function getProfileServer(): Promise<User | null> {
         const refreshData = await refreshResponse.json()
         const refreshPayload = refreshData?.data || refreshData || {}
         const refreshedAccessToken = refreshPayload.accessToken || refreshPayload.access_token
-        
+
         // Update access token cookie
         if (refreshedAccessToken) {
           const expiresIn = refreshPayload.expires_in || refreshPayload.expiresIn || 2 * 60 * 60
@@ -76,7 +76,7 @@ export async function getProfileServer(): Promise<User | null> {
             sameSite: 'lax',
             maxAge: expiresIn
           })
-          
+
           // Retry getting profile with new token
           const profileResponse = await fetch(`${API_BASE_URL}/auth/me`, {
             headers: {

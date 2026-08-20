@@ -126,7 +126,6 @@ export interface CommunitySettings {
   metaDescription?: string;
   customDomain?: string;
   headerScripts?: string;
-  brand?: import('../types').CommunityBrandConfig;
 }
 
 export interface CommunityMember {
@@ -368,7 +367,7 @@ export interface SessionBooking {
 // Event types
 /**
  * Event interface for frontend
- * 
+ *
  * **Dual ID System:**
  * - `_id`: MongoDB ObjectId (optional) - Used internally by backend
  * - `id`: Custom string ID (required) - Primary identifier for API operations

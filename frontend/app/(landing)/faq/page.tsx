@@ -2,58 +2,16 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { FAQ } from "../components/faq"
 import type { Metadata } from "next"
-import {
-  absoluteUrl,
-  generateAlternateLanguages,
-  generateBreadcrumbSchema,
-  generateKeywords,
-  generateOGMetadata,
-  generateRobotsMetadata,
-  generateTwitterMetadata,
-} from "@/lib/seo-config"
+import { getTranslations } from "next-intl/server"
+import { generateAlternateLanguages } from "@/lib/seo-config"
 
-const faqTitle = "Frequently Asked Questions"
-const faqDescription =
-  "Find answers to common questions about Chabaqa, the all-in-one community platform for courses, challenges, coaching sessions, events, and creator monetization."
-
-export const metadata: Metadata = {
-  title: faqTitle,
-  description: faqDescription,
-  keywords: generateKeywords([
-    "chabaqa faq",
-    "community platform questions",
-    "online course platform faq",
-    "creator platform help",
-    "community building questions",
-    "course creation help",
-    "coaching platform faq",
-    "membership site questions",
-    "creator monetization faq",
-    "how to create community chabaqa",
-    "chabaqa pricing questions",
-    "online course platform comparison",
-    "best community platform for creators",
-    "how to monetize community",
-    "chabaqa vs other platforms",
-    "community engagement tools",
-    "creator economy platform"
-  ]),
-  authors: [{ name: "Chabaqa" }],
-  openGraph: generateOGMetadata(faqTitle, faqDescription, "/faq", {
-    url: "/og-faq.jpg",
-    width: 1200,
-    height: 630,
-    alt: "Chabaqa FAQ - Community Platform Questions",
-  }),
-  twitter: generateTwitterMetadata(faqTitle, faqDescription, "/og-faq.jpg"),
-  alternates: generateAlternateLanguages("/faq"),
-  robots: generateRobotsMetadata(true, true),
-  other: {
-    'revisit-after': '7 days',
-    'distribution': 'global',
-    'rating': 'general',
-    'geo.region': 'TN',
-    'geo.placename': 'Tunisia',
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("landing.faq")
+  return {
+    title: t("metaTitle"),
+    description: t("metaDesc"),
+    alternates: generateAlternateLanguages("/faq"),
+    robots: { index: true, follow: true },
   }
 }
 
@@ -65,7 +23,7 @@ export default function FAQPage() {
         <FAQ />
         <Footer />
       </main>
-      
+
       {/* Enhanced JSON-LD Structured Data for FAQ Page */}
       <script
         type="application/ld+json"
@@ -75,7 +33,7 @@ export default function FAQPage() {
             "@type": "FAQPage",
             "name": "Chabaqa Frequently Asked Questions",
             "description": "Comprehensive FAQ about Chabaqa community platform, online courses, challenges, coaching, and monetization",
-            "url": absoluteUrl("/faq"),
+            "url": "https://chabaqa.io/faq",
             "inLanguage": "en",
             "mainEntity": [
               {
@@ -122,10 +80,10 @@ export default function FAQPage() {
             "publisher": {
               "@type": "Organization",
               "name": "Chabaqa",
-              "url": absoluteUrl("/"),
+              "url": "https://chabaqa.io",
               "logo": {
                 "@type": "ImageObject",
-                "url": absoluteUrl("/logo_chabaqa.png")
+                "url": "https://chabaqa.io/logo.png"
               },
               "sameAs": [
                 "https://twitter.com/chabaqa",
@@ -136,20 +94,32 @@ export default function FAQPage() {
           })
         }}
       />
-      
+
       {/* BreadcrumbList Schema */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
-            generateBreadcrumbSchema([
-              { name: "Home", url: absoluteUrl("/") },
-              { name: "FAQ", url: absoluteUrl("/faq") },
-            ]),
-          )
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://chabaqa.io"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "FAQ",
+                "item": "https://chabaqa.io/faq"
+              }
+            ]
+          })
         }}
       />
-      
+
       {/* WebSite Schema with Search Action */}
       <script
         type="application/ld+json"
@@ -159,12 +129,12 @@ export default function FAQPage() {
             "@type": "WebSite",
             "name": "Chabaqa",
             "alternateName": ["Shabqa", "Chabka", "Shabka", "شبقة"],
-            "url": absoluteUrl("/"),
+            "url": "https://chabaqa.io",
             "potentialAction": {
               "@type": "SearchAction",
               "target": {
                 "@type": "EntryPoint",
-                "urlTemplate": `${absoluteUrl("/search")}?q={search_term_string}`
+                "urlTemplate": "https://chabaqa.io/search?q={search_term_string}"
               },
               "query-input": "required name=search_term_string"
             }

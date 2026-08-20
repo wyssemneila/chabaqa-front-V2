@@ -3,19 +3,14 @@
  * Centralized SEO settings including keywords, metadata, and structured data
  */
 
-const configuredSiteUrl =
-  process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith("http")
-    ? process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
-    : "https://chabaqa.io"
-
 export const seoConfig = {
   // Base configuration
   siteName: "Chabaqa",
-  siteUrl: configuredSiteUrl,
-  defaultTitle: "Chabaqa | The Creator Community Platform",
+  siteUrl: "https://chabaqa.io",
+  defaultTitle: "Chabaqa Official Site | All-in-One Community Platform for Creators",
   defaultDescription:
-    "Build, engage, and monetize your community with courses, memberships, events, coaching, challenges, and digital products on Chabaqa.",
-  
+    "Official Chabaqa platform for creators to build and monetize communities with courses, challenges, coaching sessions, events, and digital products.",
+
   // Brand variations for search optimization
   brandVariations: [
     "Chabaqa",
@@ -25,7 +20,7 @@ export const seoConfig = {
     "Chabqa",
     "شبكة" // Arabic
   ],
-  
+
   // Core keywords - English
   coreKeywords: [
     "community platform",
@@ -44,7 +39,7 @@ export const seoConfig = {
     "online learning platform",
     "creator tools"
   ],
-  
+
   // Arabic transliteration keywords for SEO
   transliterationKeywords: [
     "chabaqa",
@@ -58,7 +53,7 @@ export const seoConfig = {
     "chabaqa tunisia",
     "shabqa tunisie"
   ],
-  
+
   // Location-based keywords
   locationKeywords: [
     "community platform tunisia",
@@ -69,7 +64,7 @@ export const seoConfig = {
     "north africa creator platform",
     "middle east community platform"
   ],
-  
+
   // Long-tail keywords
   longTailKeywords: [
     "all in one community platform",
@@ -85,7 +80,7 @@ export const seoConfig = {
     "build engaged community",
     "monetize creator business"
   ],
-  
+
   // Social media handles
   social: {
     twitter: "@chabaqa",
@@ -94,13 +89,13 @@ export const seoConfig = {
     linkedin: "https://linkedin.com/company/chabaqa",
     instagram: "https://instagram.com/chabaqa",
   },
-  
+
   // Contact information
   contact: {
     email: "contactchabaqa@gmail.com",
     supportEmail: "contactchabaqa@gmail.com"
   },
-  
+
   // Geographic information
   geo: {
     region: "TN",
@@ -108,7 +103,7 @@ export const seoConfig = {
     position: "36.8065;10.1815",
     icbm: "36.8065, 10.1815"
   },
-  
+
   // Language support
   languages: {
     default: "en",
@@ -118,7 +113,7 @@ export const seoConfig = {
       ar: "ar_TN"
     }
   },
-  
+
   // Open Graph default image
   ogImage: {
     url: "/og-image.jpg",
@@ -126,19 +121,19 @@ export const seoConfig = {
     height: 630,
     alt: "Chabaqa - Community Platform for Creators"
   },
-  
+
   // Organization structured data
   organization: {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Chabaqa",
     alternateName: ["Shabqa", "Chabka", "Shabka", "شبقة"],
-    url: configuredSiteUrl,
+    url: "https://chabaqa.io",
     logo: {
       "@type": "ImageObject",
-      url: `${configuredSiteUrl}/logo_chabaqa.png`,
-      width: 2000,
-      height: 525
+      url: "https://chabaqa.io/logo.png",
+      width: 250,
+      height: 60
     },
     description: "All-in-one community platform for creators to build, engage, and monetize their communities",
     foundingDate: "2023",
@@ -167,30 +162,6 @@ export const seoConfig = {
   }
 }
 
-export function getSiteUrl(): string {
-  return seoConfig.siteUrl
-}
-
-export function normalizeSeoPath(path = ""): string {
-  if (!path || path === "/") return ""
-  return `/${path.replace(/^\/+/, "").replace(/\/+$/, "")}`
-}
-
-export function absoluteUrl(pathOrUrl = ""): string {
-  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl
-  const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`
-  return `${seoConfig.siteUrl}${path}`
-}
-
-export function getCanonicalUrl(path = ""): string {
-  return `${seoConfig.siteUrl}${normalizeSeoPath(path)}`
-}
-
-export const defaultSeoImage = {
-  ...seoConfig.ogImage,
-  url: absoluteUrl(seoConfig.ogImage.url),
-}
-
 /**
  * Generate comprehensive keywords array for a page
  */
@@ -212,16 +183,15 @@ export function generateOGMetadata(
   url: string,
   image?: { url: string; width: number; height: number; alt: string }
 ) {
-  const imageConfig = image || defaultSeoImage
   return {
     title,
     description,
-    url: absoluteUrl(url),
+    url,
     siteName: seoConfig.siteName,
     type: "website" as const,
     locale: seoConfig.languages.locales.en,
     alternateLocale: [seoConfig.languages.locales.ar],
-    images: [{ ...imageConfig, url: absoluteUrl(imageConfig.url) }]
+    images: [image || seoConfig.ogImage]
   }
 }
 
@@ -237,7 +207,7 @@ export function generateTwitterMetadata(
     card: "summary_large_image" as const,
     title,
     description,
-    images: [absoluteUrl(image || seoConfig.ogImage.url)],
+    images: [image || seoConfig.ogImage.url],
     creator: seoConfig.social.twitter,
     site: seoConfig.social.twitter
   }
@@ -247,14 +217,12 @@ export function generateTwitterMetadata(
  * Generate alternate language links
  */
 export function generateAlternateLanguages(path: string = "") {
-  const normalizedPath = normalizeSeoPath(path)
-  const canonical = `${seoConfig.siteUrl}${normalizedPath}`
+  const baseUrl = seoConfig.siteUrl
   return {
-    canonical,
+    canonical: `${baseUrl}${path}`,
     languages: {
-      "en": canonical,
-      "ar": `${seoConfig.siteUrl}/ar${normalizedPath}`,
-      "x-default": canonical,
+      'en': `${baseUrl}${path}`,
+      'ar': `${baseUrl}/ar${path}`
     }
   }
 }
@@ -277,8 +245,6 @@ export function generateRobotsMetadata(index: boolean = true, follow: boolean = 
   }
 }
 
-export const noIndexRobots = generateRobotsMetadata(false, false)
-
 /**
  * Generate WebSite structured data with search action
  */
@@ -298,39 +264,6 @@ export function generateWebSiteSchema() {
       "query-input": "required name=search_term_string"
     },
     inLanguage: seoConfig.languages.supported
-  }
-}
-
-export function generateWebPageSchema({
-  path = "",
-  name,
-  description,
-}: {
-  path?: string
-  name: string
-  description: string
-}) {
-  const url = getCanonicalUrl(path)
-  return {
-    "@context": "https://schema.org",
-    "@type": "WebPage",
-    name,
-    description,
-    url,
-    isPartOf: {
-      "@type": "WebSite",
-      name: seoConfig.siteName,
-      url: seoConfig.siteUrl,
-    },
-    publisher: {
-      "@type": "Organization",
-      name: seoConfig.siteName,
-      url: seoConfig.siteUrl,
-      logo: {
-        "@type": "ImageObject",
-        url: absoluteUrl("/logo_chabaqa.png"),
-      },
-    },
   }
 }
 

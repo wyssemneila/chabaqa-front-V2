@@ -1,7 +1,7 @@
-import { apiClient, ApiSuccessResponse } from './client';
-import { communitiesApi } from './communities.api';
-import { getMe } from './user.api';
-import type { Event, EventTicket } from './types';
+import { apiClient, ApiSuccessResponse } from '../core/client';
+import { communitiesApi } from '../community/communities.api';
+import { getMe } from '../user/user.api';
+import type { Event, EventTicket } from '../core/types';
 import { resolveImageUrl } from '@/lib/resolve-image-url';
 
 export interface EventWithTickets extends Event {
@@ -92,7 +92,7 @@ function resolveRegistrationTicket(eventSource: any, userRegistration: any): any
       ]
         .map((value) => toStringOrUndefined(value)?.toLowerCase())
         .filter(Boolean);
-      return candidates.some((candidate) => requestedValues.includes(candidate!));
+      return candidates.some((candidate) => requestedValues.includes(candidate));
     });
 
     if (matched) {
@@ -184,7 +184,7 @@ function transformEvent(backendEvent: any): EventWithTickets {
   const isVirtualByType = type.toLowerCase().includes('online') || type.toLowerCase().includes('hybrid');
   const startTime = toStringOrUndefined(source.startTime);
   const endTime = toStringOrUndefined(source.endTime);
-  const ticketMinPrice = tickets.length > 0 ? Math.min(...tickets.map((ticket: any) => toNumber(ticket.price))) : toNumber(source.price);
+  const ticketMinPrice = tickets.length > 0 ? Math.min(...tickets.map((ticket) => toNumber(ticket.price))) : toNumber(source.price);
 
   return {
     id: String(source.id || source._id || ''),
@@ -382,5 +382,3 @@ export const eventsCommunityApi = {
     }
   },
 };
-
-

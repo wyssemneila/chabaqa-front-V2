@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
-import { cn } from "@/lib/utils"
 
 import {
   DropdownMenu,
@@ -32,8 +31,6 @@ import {
   Calendar,
   BookOpen,
   Building,
-  GraduationCap,
-  Target,
 } from "lucide-react"
 import { communitiesApi } from "@/lib/api"
 import { useAuth } from "@/hooks/use-auth"
@@ -50,12 +47,6 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
   const [searchQuery, setSearchQuery] = useState("")
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const router = useRouter()
-
-  const submitSearch = () => {
-    const q = searchQuery.trim()
-    if (q.length < 2) return
-    router.push(`/search?q=${encodeURIComponent(q)}`)
-  }
 
   const { user } = useAuth()
   const [userCommunities, setUserCommunities] = useState<Community[]>([])
@@ -283,12 +274,6 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
               placeholder="Search courses, challenges, posts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  submitSearch()
-                }
-              }}
               className="ps-10 bg-muted/50 border-0 focus-visible:ring-1"
             />
           </div>
@@ -460,12 +445,6 @@ export function AppHeader({ userType, currentCommunity, showCommunitySelector = 
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        submitSearch()
-                      }
-                    }}
                     className="ps-10"
                   />
                 </div>

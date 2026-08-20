@@ -3,11 +3,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { normalizeUser } from "@/lib/hooks/useUser"
+import { normalizeUser } from "@/hooks/use-user"
 import { registerBrowserPushForCurrentUser } from "@/lib/push-notifications"
 import { localizeHref } from "@/lib/i18n/client"
-import { syncAccessTokenCookie } from "@/lib/cookie-sync"
-import { hasBrowserRefreshSession, refreshBrowserAccessToken } from "@/lib/auth-refresh"
+import { isDemoToken, parseJwtPayload, userFromDemoPayload, readAccessTokenCookie } from "@/lib/demo-auth"
 
 export interface User {
   _id: string
@@ -18,16 +17,6 @@ export interface User {
   [key: string]: any
 }
 
-export class Requires2FAError extends Error {
-  email: string
-
-  constructor(email: string) {
-    super('Two-factor authentication required')
-    this.name = 'Requires2FAError'
-    this.email = email
-  }
-}
-
 interface AuthContextValue {
   user: User | null
   loading: boolean
@@ -35,8 +24,6 @@ interface AuthContextValue {
   isAuthenticated: boolean
   register: (payload: any) => Promise<void>
   login: (payload: { email: string; password: string; rememberMe?: boolean }) => Promise<void>
-  verify2FA: (payload: { email: string; verificationCode: string }) => Promise<void>
-  resend2FA: (email: string) => Promise<void>
   updateAuth: (accessToken: string, user: any) => void
   logout: () => Promise<void>
   fetchMe: () => Promise<User | null>
@@ -44,6 +31,9 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+
+const ACCESS_TOKEN_COOKIE_NAME = 'accessToken'
+const ACCESS_TOKEN_COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
 function extractAccessTokenFromResponse(payload: any): string {
   const rawToken =
@@ -56,6 +46,14 @@ function extractAccessTokenFromResponse(payload: any): string {
   return String(rawToken || '').trim()
 }
 
+function extractRefreshTokenFromResponse(payload: any): string {
+  const rawToken =
+    payload?.refreshToken ||
+    payload?.refresh_token ||
+    ''
+
+  return String(rawToken || '').trim()
+}
 function clearAllAuthCookies() {
   if (typeof document === 'undefined') return
   const isSecure =
@@ -63,6 +61,7 @@ function clearAllAuthCookies() {
     process.env.NODE_ENV === 'production'
   const securePart = isSecure ? '; Secure' : ''
 
+  // Clear cookies with multiple names and paths for thorough cleanup
   const cookieNames = ['accessToken', 'access_token', 'token', 'refreshToken', 'refresh_token']
   const paths = ['/', '/en', '/ar', '/api', '/creator', '/admin', '/dashboard']
 
@@ -71,9 +70,29 @@ function clearAllAuthCookies() {
       document.cookie = `${name}=; Path=${path}; Max-Age=0; SameSite=Lax${securePart}`
       document.cookie = `${name}=; Path=${path}; Max-Age=0; SameSite=Strict${securePart}`
       document.cookie = `${name}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 UTC${securePart}`
+      // Also try without Secure for local dev
       document.cookie = `${name}=; Path=${path}; Max-Age=0; SameSite=Lax`
     }
   }
+}
+
+
+
+function syncAccessTokenCookie(accessToken: string | null) {
+  if (typeof document === 'undefined') return
+  const isSecure =
+    (typeof window !== 'undefined' && window.location.protocol === 'https:') ||
+    process.env.NODE_ENV === 'production'
+  const securePart = isSecure ? '; Secure' : ''
+
+  if (!accessToken) {
+    // Clear cookie with multiple methods for better browser compatibility
+    document.cookie = `${ACCESS_TOKEN_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax${securePart}`
+    document.cookie = `${ACCESS_TOKEN_COOKIE_NAME}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax${securePart}`
+    return
+  }
+
+  document.cookie = `${ACCESS_TOKEN_COOKIE_NAME}=${encodeURIComponent(accessToken)}; Path=/; Max-Age=${ACCESS_TOKEN_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax${securePart}`
 }
 
 function extractErrorMessage(data: any): string {
@@ -117,18 +136,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
 
   const isAuthenticated = !!user
-  const browserApiBase = '/api'
 
   const fetchMe = useCallback(async () => {
     try {
-      const apiBase = browserApiBase
+      // Read from localStorage first; fall back to cookie (set server-side after
+      // demo login or OAuth redirect before the client has had a chance to sync).
       let token = localStorage.getItem('accessToken') || localStorage.getItem('access_token')
-      const hasStoredUser = Boolean(localStorage.getItem('user'))
-      if (!token && hasBrowserRefreshSession()) {
-        token = await refreshBrowserAccessToken(apiBase, { skipWhenNoSessionHint: true })
-      } else if (!token && hasStoredUser) {
-        token = await refreshBrowserAccessToken(apiBase)
+      if (!token) {
+        const cookieToken = readAccessTokenCookie()
+        if (cookieToken) {
+          token = cookieToken
+          localStorage.setItem('accessToken', cookieToken)
+        }
       }
+
       setToken(token)
       if (!token) {
         syncAccessTokenCookie(null)
@@ -137,19 +158,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null
       }
 
-      // Normalize legacy key to the middleware-consumed key.
+      // Normalize legacy key + keep cookie in sync
       localStorage.setItem('accessToken', token)
       localStorage.removeItem('access_token')
-
-      // Keep middleware-accessible cookie synced with local storage token.
       syncAccessTokenCookie(token)
 
-      // We can just use the stored user if we want to be super simple, 
-      // or verify token with backend. For now, let's verify.
-      const res = await fetch(`${apiBase}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // ── Demo token: build user from JWT payload, skip backend call ──────────
+      if (isDemoToken(token)) {
+        const payload = parseJwtPayload(token)
+        if (payload) {
+          const demoUser = userFromDemoPayload(payload)
+          localStorage.setItem('user', JSON.stringify(demoUser))
+          const normalizedUser = normalizeUser(demoUser)
+          setUser(normalizedUser)
+          return normalizedUser
         }
+        setUser(null)
+        return null
+      }
+
+      // ── Real token: verify with backend ──────────────────────────────────────
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+      const res = await fetch(`${apiBase}/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       })
 
       if (res.ok) {
@@ -158,39 +189,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const normalizedUser = normalizeUser(userData)
         setUser(normalizedUser)
         return normalizedUser
+      } else {
+        // Token invalid — clear everything
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('user')
+        syncAccessTokenCookie(null)
+        setUser(null)
+        return null
       }
-
-      // Access token expired/invalid — try to refresh before clearing the session.
-      // The backend's httpOnly refreshToken cookie may still be valid.
-      if (res.status === 401) {
-        try {
-          const newToken = await refreshBrowserAccessToken(apiBase)
-          if (newToken) {
-            setToken(newToken)
-            // Retry /auth/me with the fresh token
-            const retryRes = await fetch(`${apiBase}/auth/me`, {
-              headers: { 'Authorization': `Bearer ${newToken}` },
-            })
-            if (retryRes.ok) {
-              const retryData = await retryRes.json()
-              const userData = retryData.data || retryData
-              const normalizedUser = normalizeUser(userData)
-              setUser(normalizedUser)
-              return normalizedUser
-            }
-          }
-        } catch {
-          // Refresh failed — fall through to clear session
-        }
-      }
-
-      // All attempts failed — clear session completely
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('user')
-      syncAccessTokenCookie(null)
-      setUser(null)
-      return null
     } catch (e) {
       setUser(null)
       return null
@@ -199,55 +206,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const finalizeAuthenticatedSession = useCallback((accessToken: string, user: any) => {
-    localStorage.setItem('accessToken', accessToken)
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('refresh_token')
-    localStorage.setItem('user', JSON.stringify(user))
-    syncAccessTokenCookie(accessToken)
-    setToken(accessToken)
-    const normalizedUser = normalizeUser(user)
-    setUser(normalizedUser)
-
-    const redirectParam = typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('redirect') ||
-        new URLSearchParams(window.location.search).get('returnUrl')
-      : null
-    const safeRedirect =
-      redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
-        ? redirectParam
-        : null
-    let destination: string
-    if (safeRedirect && safeRedirect !== localizeHref(pathname || '/', '/signin')) {
-      destination = localizeHref(pathname || '/', safeRedirect)
-    } else {
-      const role = user.role?.toLowerCase()
-      destination = role === 'creator'
-        ? localizeHref(pathname || '/', '/creator/dashboard')
-        : role === 'admin'
-          ? localizeHref(pathname || '/', '/admin')
-          : localizeHref(pathname || '/', '/explore')
-    }
-
-    // Use a document navigation after login so the middleware receives the
-    // freshly written accessToken cookie on the first protected-page request.
-    window.location.assign(destination)
-  }, [pathname])
-
   const login = useCallback(async (payload: { email: string; password: string; rememberMe?: boolean }) => {
     try {
       setError(null)
       // Use configured API URL or fallback to APP_URL/api, then localhost
-      const apiBase = browserApiBase
-      
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ||
+                     (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api` : "http://localhost:3000/api")
+
       const normalizedPayload = {
         email: String(payload.email || '').trim().toLowerCase(),
         password: String(payload.password || ''),
         remember_me: Boolean(payload.rememberMe),
       }
-
-      console.log(`Attempting login to: ${apiBase}/auth/login`);
 
       let res;
       try {
@@ -262,23 +232,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Unable to connect to server. Please check your internet connection or try again later.');
       }
 
-      const contentType = res.headers.get('content-type') || ''
-      const data = contentType.includes('application/json')
-        ? await res.json().catch(() => ({}))
-        : { message: (await res.text().catch(() => '')).trim() || 'Authentication service unavailable' }
-
-      const responseData = data.data || data
-
-      if (responseData?.requires2FA || data?.requires2FA) {
-        throw new Requires2FAError(responseData?.email || normalizedPayload.email)
-      }
+      const data = await res.json()
 
       if (!res.ok) {
         throw new Error(extractErrorMessage(data))
       }
 
       // Handle potential data wrapping (e.g. { data: { user, accessToken } })
+      const responseData = data.data || data;
       const accessToken = extractAccessTokenFromResponse(responseData)
+      const refreshToken = extractRefreshTokenFromResponse(responseData)
       const user = responseData?.user
 
       if (!user || !accessToken) {
@@ -286,7 +249,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Invalid server response: auth payload missing");
       }
 
-      finalizeAuthenticatedSession(accessToken, user)
+      localStorage.setItem('accessToken', accessToken)
+      localStorage.removeItem('access_token')
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken)
+      }
+      localStorage.setItem('user', JSON.stringify(user))
+      syncAccessTokenCookie(accessToken)
+      setToken(accessToken)
+      const normalizedUser = normalizeUser(user)
+      setUser(normalizedUser)
+
+      const redirectParam = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('redirect') ||
+          new URLSearchParams(window.location.search).get('returnUrl')
+        : null
+      const safeRedirect =
+        redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+          ? redirectParam
+          : null
+      if (safeRedirect && safeRedirect !== localizeHref(pathname || '/', '/signin')) {
+        router.push(localizeHref(pathname || '/', safeRedirect))
+        return
+      }
+
+      // Redirect based on role
+      const role = user.role?.toLowerCase()
+      if (role === 'creator') {
+        router.push(localizeHref(pathname || '/', '/creator'))
+      } else if (role === 'admin') {
+        router.push(localizeHref(pathname || '/', '/admin'))
+      } else {
+        router.push(localizeHref(pathname || '/', '/explore'))
+      }
 
     } catch (e: any) {
       console.error("Login error:", e);
@@ -298,59 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       throw e
     }
-  }, [finalizeAuthenticatedSession])
-
-  const verify2FA = useCallback(async (payload: { email: string; verificationCode: string }) => {
-    try {
-      setError(null)
-      const apiBase = browserApiBase
-
-      const res = await fetch(`${apiBase}/auth/verify-2fa`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: String(payload.email || '').trim().toLowerCase(),
-          verificationCode: String(payload.verificationCode || '').trim(),
-        }),
-      })
-
-      const contentType = res.headers.get('content-type') || ''
-      const data = contentType.includes('application/json')
-        ? await res.json().catch(() => ({}))
-        : { message: (await res.text().catch(() => '')).trim() || 'Verification service unavailable' }
-      if (!res.ok) {
-        throw new Error(extractErrorMessage(data))
-      }
-
-      const responseData = data.data || data
-      const accessToken = extractAccessTokenFromResponse(responseData)
-      const user = responseData?.user
-      if (!user || !accessToken) {
-        throw new Error('Invalid server response: auth payload missing')
-      }
-
-      finalizeAuthenticatedSession(accessToken, user)
-    } catch (e: any) {
-      const errorMessage = e?.message || 'Verification failed'
-      setError(errorMessage)
-      throw e
-    }
-  }, [finalizeAuthenticatedSession])
-
-  const resend2FA = useCallback(async (email: string) => {
-    const apiBase = browserApiBase
-    const res = await fetch(`${apiBase}/auth/resend-2fa`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email: String(email || '').trim().toLowerCase() }),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      throw new Error(extractErrorMessage(data))
-    }
-  }, [])
+  }, [router, pathname])
 
   const updateAuth = useCallback((accessToken: string, userData: any) => {
     if (typeof window !== 'undefined') {
@@ -391,7 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const role = String(userData?.role || '').toLowerCase()
       if (role === 'creator') {
-        router.replace(localizeHref(pathname || '/', '/creator/dashboard'))
+        router.replace(localizeHref(pathname || '/', '/creator'))
       } else if (role === 'admin') {
         router.replace(localizeHref(pathname || '/', '/admin'))
       } else {
@@ -448,8 +391,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (payload: any) => {
     try {
       setError(null)
-      const apiBase = browserApiBase
-      
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+
       let res;
       try {
         res = await fetch(`${apiBase}/auth/register`, {
@@ -497,14 +440,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     // 1. Save the current token BEFORE clearing (needed for backend API calls)
     const currentToken = localStorage.getItem('accessToken') || localStorage.getItem('access_token')
-    
+
     // 2. Call the backend logout endpoints FIRST (while we still have the token)
-    const apiBase = browserApiBase
-    
-    const authHeaders: HeadersInit = currentToken 
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ||
+                   (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api` : "http://localhost:3000/api")
+
+    const authHeaders: HeadersInit = currentToken
       ? { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' }
       : { 'Content-Type': 'application/json' }
-    
+
     // Revoke tokens on the backend (parallel, non-blocking)
     await Promise.allSettled([
       fetch(`${apiBase}/auth/logout`, {
@@ -527,7 +471,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user')
     localStorage.removeItem('auth-preferences')
     localStorage.removeItem('user-session')
-    
+
     // 4. Clear session storage
     if (typeof window !== 'undefined') {
       sessionStorage.clear()
@@ -536,7 +480,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 5. Clear client-side cookies (non-httpOnly ones)
     clearAllAuthCookies()
     syncAccessTokenCookie(null)
-    
+
     // 6. Clear React state
     setToken(null)
     setUser(null)
@@ -575,13 +519,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated,
     register,
     login,
-    verify2FA,
-    resend2FA,
     updateAuth,
     logout,
     fetchMe,
     token,
-  }), [user, loading, error, isAuthenticated, register, login, verify2FA, resend2FA, updateAuth, logout, fetchMe, token])
+  }), [user, loading, error, isAuthenticated, register, login, updateAuth, logout, fetchMe, token])
 
   return (
     <AuthContext.Provider value={value}>

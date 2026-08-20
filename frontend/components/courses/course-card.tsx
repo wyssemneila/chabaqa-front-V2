@@ -1,14 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { BookOpen, Clock, Users, Star, Zap, Globe, Lock, Settings } from 'lucide-react'
-import { resolveImageUrl } from '@/lib/resolve-image-url'
+import { BookOpen, Clock, Users, Star, Zap, Globe, Lock, Settings, Eye } from 'lucide-react'
 
 export interface CourseCardData {
   _id?: string
   id?: string
-  mongoId?: string
-  publicId?: string
   title: string
   description?: string
   thumbnail?: string
@@ -35,10 +32,9 @@ const LEVEL_ICONS: Record<string, React.ElementType> = {
 }
 
 export function CourseCard({ course }: { course: CourseCardData }) {
-  const id = course.mongoId ?? course._id ?? course.id ?? ''
+  const id = course._id ?? course.id ?? ''
   const lvl = LEVEL_COLORS[course.level ?? '']
   const LvlIcon = LEVEL_ICONS[course.level ?? ''] ?? BookOpen
-  const thumbnail = resolveImageUrl(course.thumbnail) || course.thumbnail
 
   return (
     <div
@@ -53,8 +49,8 @@ export function CourseCard({ course }: { course: CourseCardData }) {
     >
       {/* thumbnail */}
       <div className="relative aspect-video overflow-hidden" style={{ background: 'var(--bg)' }}>
-        {thumbnail
-          ? <img src={thumbnail} alt={course.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+        {course.thumbnail
+          ? <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
           : <div className="w-full h-full flex items-center justify-center">
               <BookOpen className="w-10 h-10 opacity-20" style={{ color: 'var(--t3)' }} />
             </div>
@@ -129,6 +125,15 @@ export function CourseCard({ course }: { course: CourseCardData }) {
           </span>
 
           <div className="flex items-center gap-2">
+            <Link
+              href={`/creator/courses/${id}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all"
+              style={{ border: '1.5px solid var(--bd)', color: 'var(--t2)', background: 'transparent' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            >
+              <Eye className="w-3.5 h-3.5" /> View
+            </Link>
             <Link
               href={`/creator/courses/${id}/manage`}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold text-white transition-all hover:opacity-90"

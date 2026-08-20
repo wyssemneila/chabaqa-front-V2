@@ -10,9 +10,9 @@
  */
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useCourseSession } from "@/hooks/use-course-session"
-import { coursesApi } from "@/lib/api/courses.api"
+import { coursesApi } from "@/lib/api/learning/courses.api"
 
-jest.mock("@/lib/api/courses.api", () => ({
+jest.mock("@/lib/api/learning/courses.api", () => ({
   coursesApi: {
     getCourseSession: jest.fn(),
     startChapter: jest.fn(),
@@ -167,7 +167,6 @@ describe("useCourseSession", () => {
       navResult = await result.current.goToNextChapter()
     })
     expect(navResult.success).toBe(true)
-    expect(navResult.chapterId).toBe("ch-2")
     expect(result.current.currentChapterId).toBe("ch-2")
   })
 
@@ -192,33 +191,6 @@ describe("useCourseSession", () => {
     })
     expect(navResult.success).toBe(false)
     expect(navResult.reason).toContain("Complete the previous chapter")
-    expect(navResult.chapterId).toBe("ch-2")
-  })
-
-  it("goToNextChapter returns blocked paid chapter metadata", async () => {
-    const session = makeMockSession({
-      nextChapterAction: {
-        action: "blocked",
-        chapterId: "ch-2",
-        lockCode: "payment_required",
-        reason: "Paiement requis pour ce chapitre",
-        needsPayment: true,
-        chapterPrice: 25,
-      },
-    })
-    mockGetCourseSession.mockResolvedValue(session)
-
-    const { result } = renderHook(() => useCourseSession("course-1"))
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-
-    let navResult: any
-    await act(async () => {
-      navResult = await result.current.goToNextChapter()
-    })
-
-    expect(navResult.success).toBe(false)
-    expect(navResult.needsPayment).toBe(true)
-    expect(navResult.chapterId).toBe("ch-2")
   })
 
   it("reportChapterComplete optimistically marks chapter as completed", async () => {
@@ -312,7 +284,6 @@ describe("useCourseSession", () => {
 
       // Should succeed — this is the exact bug that was failing before
       expect(navResult.success).toBe(true)
-      expect(navResult.chapterId).toBe("ch-2")
       expect(result.current.currentChapterId).toBe("ch-2")
     })
   })

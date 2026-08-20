@@ -1,6 +1,6 @@
-import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from './client';
-import type { ApiGetOptions } from './client';
-import type { Event, EventTicket } from './types';
+import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from '../core/client';
+import type { ApiGetOptions } from '../core/client';
+import type { Event, EventTicket } from '../core/types';
 
 export interface CreateEventSessionData {
   title: string;
@@ -79,26 +79,6 @@ export interface EventListParams extends PaginationParams {
   search?: string;
 }
 
-export const normalizeEventResponse = (response: any): any => {
-  if (!response) return response;
-  if (response?.event) return response.event;
-  if (response?.data?.event) return response.data.event;
-  if (response?.data?.data?.event) return response.data.data.event;
-  if (response?.data?.data) return response.data.data;
-  if (response?.data) return response.data;
-  return response;
-};
-
-export const normalizeEventListResponse = (response: any): any[] => {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.events)) return response.events;
-  if (Array.isArray(response?.data)) return response.data;
-  if (Array.isArray(response?.data?.events)) return response.data.events;
-  if (Array.isArray(response?.data?.data)) return response.data.data;
-  if (Array.isArray(response?.data?.data?.events)) return response.data.data.events;
-  return [];
-};
-
 // Events API
 export const eventsApi = {
   // Get all events
@@ -110,18 +90,18 @@ export const eventsApi = {
   },
 
   // Create event
-  create: async (data: CreateEventData): Promise<any> => {
-    return apiClient.post<any>('/events', data);
+  create: async (data: CreateEventData): Promise<ApiSuccessResponse<Event>> => {
+    return apiClient.post<ApiSuccessResponse<Event>>('/events', data);
   },
 
   // Get event by ID
-  getById: async (id: string): Promise<any> => {
-    return apiClient.get<any>(`/events/${id}`);
+  getById: async (id: string): Promise<ApiSuccessResponse<Event>> => {
+    return apiClient.get<ApiSuccessResponse<Event>>(`/events/${id}`);
   },
 
   // Update event
-  update: async (id: string, data: UpdateEventData): Promise<any> => {
-    return apiClient.patch<any>(`/events/${id}`, data);
+  update: async (id: string, data: UpdateEventData): Promise<ApiSuccessResponse<Event>> => {
+    return apiClient.patch<ApiSuccessResponse<Event>>(`/events/${id}`, data);
   },
 
   // Delete event
@@ -135,32 +115,24 @@ export const eventsApi = {
   },
 
   // Register for event
-  register: async (id: string, ticketType: string, promoCode?: string, specialRequests?: string): Promise<ApiSuccessResponse<void>> => {
-    const endpoint = promoCode 
+  register: async (id: string, ticketType: string, promoCode?: string): Promise<ApiSuccessResponse<void>> => {
+    const endpoint = promoCode
       ? `/events/${id}/register?promoCode=${encodeURIComponent(promoCode)}`
       : `/events/${id}/register`;
-    return apiClient.post<ApiSuccessResponse<void>>(endpoint, { ticketType, specialRequests });
+    return apiClient.post<ApiSuccessResponse<void>>(endpoint, { ticketType });
   },
 
-  initStripePayment: async (eventId: string, ticketType: string, promoCode?: string, idempotencyKey?: string, specialRequests?: string): Promise<any> => {
+  initStripePayment: async (eventId: string, ticketType: string, promoCode?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/event?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/event`;
 
-    return apiClient.post<any>(endpoint, { eventId, ticketType, specialRequests }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
+    return apiClient.post<any>(endpoint, { eventId, ticketType });
   },
 
   // Unregister from event
   unregister: async (id: string): Promise<ApiSuccessResponse<void>> => {
     return apiClient.post<ApiSuccessResponse<void>>(`/events/${id}/unregister`, {});
-  },
-
-  checkInByQr: async (id: string, token: string): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.post<ApiSuccessResponse<any>>(`/events/${id}/check-in`, { token });
-  },
-
-  checkInAttendee: async (id: string, attendeeId: string): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.patch<ApiSuccessResponse<any>>(`/events/${id}/attendees/${attendeeId}/check-in`, {});
   },
 
   // Get attendees
@@ -203,8 +175,6 @@ export const eventsApi = {
     return apiClient.get<ApiSuccessResponse<{ token: string; payload: any; expiresIn: string }>>(`/events/${id}/qr`);
   },
 
-  getMyTicket: async (id: string): Promise<ApiSuccessResponse<any>> => apiClient.get<ApiSuccessResponse<any>>(`/events/${id}/my-ticket`),
-
   // Toggle published status
   togglePublished: async (id: string): Promise<ApiSuccessResponse<{ isPublished: boolean; message: string }>> => {
     return apiClient.patch<ApiSuccessResponse<{ isPublished: boolean; message: string }>>(`/events/${id}/toggle-published`, {});
@@ -218,11 +188,6 @@ export const eventsApi = {
   // Remove session from event
   removeSession: async (id: string, sessionId: string): Promise<ApiSuccessResponse<void>> => {
     return apiClient.delete<ApiSuccessResponse<void>>(`/events/${id}/sessions/${sessionId}`);
-  },
-
-  // Update session in event
-  updateSession: async (id: string, sessionId: string, data: Partial<CreateEventSessionData>): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.patch<ApiSuccessResponse<any>>(`/events/${id}/sessions/${sessionId}`, data);
   },
 
   // Add ticket to event

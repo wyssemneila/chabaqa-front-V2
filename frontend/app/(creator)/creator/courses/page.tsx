@@ -1,13 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
-import { CourseCard } from '@/components/courses/course-card'
+import { CourseCard, type CourseCardData } from '@/components/courses/course-card'
 import { BookOpen, Plus, RefreshCw, Users, Zap } from 'lucide-react'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
-import { useCreatorCoursesPage } from '@/hooks/creator-dashboard/use-creator-dashboard-data'
 
 const TR = {
   en: {
@@ -56,8 +55,40 @@ function SkeletonCard() {
 export default function CoursesPage() {
   const { lang } = useDashPrefs()
   const t = TR[lang]
+  const [courses, setCourses] = useState<CourseCardData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState('')
   const [tab,     setTab]     = useState<'all'|'active'|'inactive'>('all')
-  const { data: courses, loading, error, refetch: load } = useCreatorCoursesPage()
+
+  const load = () => {
+    setLoading(true); setError('')
+    try {
+      const stored = localStorage.getItem('chabaqa_mock_courses')
+      const list: CourseCardData[] = stored ? JSON.parse(stored) : []
+
+      const last = localStorage.getItem('chabaqa_last_course')
+      if (last) {
+        const parsed = JSON.parse(last)
+        if (parsed.id && !list.some(c => (c._id ?? c.id) === parsed.id)) {
+          list.unshift({
+            _id: parsed.id, title: parsed.title, thumbnail: parsed.thumbnail,
+            level: parsed.level, duration: parsed.duration, priceType: parsed.priceType,
+            price: parsed.price, isPublished: parsed.isPublished,
+            sectionsCount: parsed.sectionsCount, chaptersCount: parsed.chaptersCount,
+          })
+          localStorage.setItem('chabaqa_mock_courses', JSON.stringify(list))
+          localStorage.removeItem('chabaqa_last_course')
+        }
+      }
+      setCourses(list)
+    } catch {
+      setError('Failed to load courses')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
 
   const totalCourses    = courses.length
   const activeCourses   = courses.filter(c => c.isPublished).length
@@ -118,7 +149,7 @@ export default function CoursesPage() {
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
                   <RefreshCw className="w-4 h-4" />
                 </button>
-                <Link href="/creator/courses/new"
+                <Link href="/creator/courses/create"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90"
                   style={{ background: 'var(--p)', boxShadow: '0 4px 14px rgba(142,120,251,.4)' }}>
                   <Plus className="w-4 h-4" /> {t.createCourse}
@@ -179,7 +210,7 @@ export default function CoursesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                   {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
                 </div>
-              ) : error ? null : filtered.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <div className="rounded-2xl flex flex-col items-center justify-center py-20 text-center"
                   style={{ background: 'var(--white)', border: '1.5px dashed var(--bd)' }}>
                   <div className="w-16 h-16 rounded-3xl flex items-center justify-center mb-4"
@@ -193,7 +224,7 @@ export default function CoursesPage() {
                     {tab === 'all' ? t.noCoursesDesc : t.switchTab}
                   </p>
                   {tab === 'all' && (
-                    <Link href="/creator/courses/new"
+                    <Link href="/creator/courses/create"
                       className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-bold text-white hover:opacity-90"
                       style={{ background: 'var(--p)', boxShadow: '0 4px 14px rgba(142,120,251,.35)' }}>
                       <Plus className="w-4 h-4" /> {t.createFirst}

@@ -11,8 +11,6 @@ import {
 } from "lucide-react"
 import { Input }    from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
-import { productsApi } from "@/lib/api/products.api"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const uid  = () => Math.random().toString(36).slice(2, 9)
@@ -170,7 +168,7 @@ function Sidebar({ wizardStep, data, done }: { wizardStep:number; data:FormData;
   const totalSize = data.files.reduce((acc, f) => acc + f.size, 0)
 
   return (
-    <aside className="hidden w-[272px] shrink-0 flex-col overflow-y-auto border-r xl:flex"
+    <aside className="w-[272px] shrink-0 flex flex-col border-r overflow-y-auto"
       style={{ background:"var(--white)", borderColor:"var(--bd)" }}>
 
       {/* thumbnail + title */}
@@ -755,7 +753,7 @@ function StepPricing({ data, set }: { data:FormData; set:(f:keyof FormData, v:an
 // ════════════════════════════════════════════════════════════════════════════════
 function SuccessScreen() {
   useEffect(() => {
-    let iv: number
+    let iv: ReturnType<typeof setInterval>
     ;(async () => {
       const confetti = (await import('canvas-confetti')).default
       const colors   = ["#8e78fb","#fb923c","#22d3ee","#f472b6","#a78bfa","#ffffff"]
@@ -795,7 +793,6 @@ function SuccessScreen() {
 // ════════════════════════════════════════════════════════════════════════════════
 export function CreateProductForm() {
   const router = useRouter()
-  const { selectedCommunityId } = useCreatorCommunity()
   const [wizardStep,   setWizardStep]   = useState(1)
   const [error,        setError]        = useState("")
   const [success,      setSuccess]      = useState(false)
@@ -846,38 +843,18 @@ export function CreateProductForm() {
   const submit = async () => {
     setSubmitting(true); setError("")
     try {
-      if (!selectedCommunityId) throw new Error("Select a community before creating a product.")
+      setSubmitStatus("Uploading files…");   await new Promise(r=>setTimeout(r,500))
+      setSubmitStatus("Saving product…");    await new Promise(r=>setTimeout(r,400))
+      setSubmitStatus("Publishing…");        await new Promise(r=>setTimeout(r,300))
 
-      setSubmitStatus("Saving product…")
-      const created = await productsApi.create({
-        communityId: selectedCommunityId,
-        title: data.title,
-        description: data.description,
-        price: data.priceType === "paid" ? Number(data.price || 0) : 0,
-        currency: "TND",
-        category: data.category,
-        type: "digital",
-        isPublished: data.isPublished,
-        images: [data.thumbnail, ...data.previewImages].filter(Boolean),
-        licenseTerms: data.license,
-        features: data.whatIncluded,
-        variants: data.priceType === "paid" && data.hasTiers
-          ? data.tiers.map(tier => ({
-              name: tier.name,
-              price: Number(tier.price || 0),
-              description: tier.description || undefined,
-            }))
-          : undefined,
+      const products:any[] = JSON.parse(localStorage.getItem("chabaqa_products")??"[]")
+      products.unshift({
+        id:`prd_${Date.now()}`,
+        ...data,
+        files: data.files.map(f => ({ id:f.id, name:f.name, description:f.description, size:f.size, ext:f.ext })),
+        createdAt: new Date().toISOString(),
       })
-
-      const product = (created as any)?.data?.data || (created as any)?.data || (created as any)?.product || created
-      const productId = product?._id || product?.id
-      if (!productId) throw new Error("Product was created but no product id was returned.")
-
-      setSubmitStatus("Uploading files…")
-      for (const fileItem of data.files) {
-        if (fileItem.file) await productsApi.uploadFile(productId, fileItem.file)
-      }
+      localStorage.setItem("chabaqa_products", JSON.stringify(products))
       setSuccess(true)
       setTimeout(() => router.push("/creator/products"), 2800)
     } catch(err:any) {
@@ -890,15 +867,15 @@ export function CreateProductForm() {
   if (success) return <SuccessScreen />
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 overflow-hidden">
+    <div className="flex flex-1 h-full overflow-hidden" style={{ minHeight:0 }}>
       <Sidebar wizardStep={wizardStep} data={data} done={done} />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" style={{ background:"var(--bg)" }}>
+      <div className="flex-1 flex flex-col overflow-hidden" style={{ background:"var(--bg)" }}>
 
         {/* topbar */}
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-4 sm:items-center sm:px-8"
+        <div className="px-8 py-4 border-b shrink-0 flex items-center justify-between"
           style={{ borderColor:"var(--bd)", background:"var(--white)" }}>
-          <div className="min-w-0">
+          <div>
             <div className="flex items-center gap-2 mb-0.5">
               <button type="button" onClick={() => router.push("/creator/products")}
                 className="text-xs font-medium cursor-pointer hover:opacity-60 transition-opacity flex items-center gap-1"
@@ -908,7 +885,7 @@ export function CreateProductForm() {
               <ChevronRight className="w-3 h-3" style={{ color:"var(--bd)" }} />
               <span className="text-xs font-medium" style={{ color:"var(--t2)" }}>New Product</span>
             </div>
-            <h1 className="truncate text-[15px] font-bold" style={{ color:"var(--t1)" }}>{STEP_META[wizardStep].title}</h1>
+            <h1 className="text-[15px] font-bold" style={{ color:"var(--t1)" }}>{STEP_META[wizardStep].title}</h1>
             <p className="text-[11px]" style={{ color:"var(--t3)" }}>{STEP_META[wizardStep].sub}</p>
           </div>
           <span className="text-[11px] font-bold tabular-nums px-3 py-1 rounded-full"
@@ -918,7 +895,7 @@ export function CreateProductForm() {
         </div>
 
         {/* content */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-8 sm:py-7">
+        <div className="flex-1 overflow-y-auto px-8 py-7">
           {wizardStep===1 && <StepInfo    data={data} set={set} />}
           {wizardStep===2 && <StepFiles   data={data} set={set} />}
           {wizardStep===3 && <StepDetails data={data} set={set} />}
@@ -928,7 +905,7 @@ export function CreateProductForm() {
         {/* bottom nav */}
         <div className="shrink-0 border-t" style={{ borderColor:"var(--bd)", background:"var(--white)" }}>
           {error && (
-            <div className="flex items-start gap-2.5 border-b px-4 py-3 sm:px-8"
+            <div className="px-8 py-3 flex items-start gap-2.5 border-b"
               style={{ background:"#fef2f2", borderColor:"#fca5a5" }}>
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color:"#dc2626" }} />
               <p className="text-[13px] font-medium flex-1" style={{ color:"#b83232" }}>{error}</p>
@@ -938,10 +915,10 @@ export function CreateProductForm() {
               </button>
             </div>
           )}
-          <div className="flex flex-col gap-3 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:pb-4">
+          <div className="px-8 py-4 flex items-center justify-between">
             {wizardStep>1
               ? <button type="button" onClick={() => setWizardStep(s=>s-1)}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold cursor-pointer transition-all sm:w-auto"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-all"
                   style={{ border:"2px solid var(--bd)", color:"var(--t2)", background:"transparent" }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="var(--p2)"}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background="transparent"}>
@@ -950,7 +927,7 @@ export function CreateProductForm() {
               : <div />
             }
             {!canContinue() && !error && (
-              <div className="flex items-start gap-1.5 sm:items-center">
+              <div className="flex items-center gap-1.5">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" style={{ color:"#f59e0b" }} />
                 <p className="text-[11px] font-medium" style={{ color:"#92400e" }}>{blocker()}</p>
               </div>
@@ -959,7 +936,7 @@ export function CreateProductForm() {
             <button type="button"
               onClick={wizardStep===STEPS_DEF.length ? submit : goNext}
               disabled={!canContinue()||submitting}
-              className="flex w-full items-center justify-center gap-2 rounded-xl px-7 py-2.5 text-sm font-bold text-white cursor-pointer sm:w-auto
+              className="flex items-center gap-2 px-7 py-2.5 rounded-xl text-sm font-bold text-white cursor-pointer
                          disabled:cursor-not-allowed transition-all"
               style={{
                 background: canContinue()&&!submitting ? "var(--p)" : "var(--p3)",

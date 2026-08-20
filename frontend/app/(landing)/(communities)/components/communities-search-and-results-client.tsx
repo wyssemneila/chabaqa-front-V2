@@ -14,8 +14,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react"
+import { communitiesData } from "@/lib/data-communities"
 import { CommunityCard } from "@/app/(landing)/(communities)/components/community-card"
-import type { Explore } from "@/lib/explore-types"
+import { Explore } from "@/lib/data-communities"
 import { useTranslations } from "next-intl"
 
 type ItemType = "community" | "course" | "challenge" | "product" | "oneToOne" | "event"
@@ -52,15 +53,6 @@ export function CommunitiesSearchAndResultsClient({ communities }: CommunitiesSe
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(12)
-  const categories = useMemo(() => ["All", ...Array.from(new Set(communities.map(item => item.category).filter(Boolean)))], [communities])
-  const sortOptions = useMemo(() => [
-    { value: "popular", label: t("sort.popular") },
-    { value: "newest", label: t("sort.newest") },
-    { value: "members", label: t("sort.members") },
-    { value: "rating", label: t("sort.rating") },
-    { value: "price-low", label: t("sort.priceLow") },
-    { value: "price-high", label: t("sort.priceHigh") },
-  ], [t])
 
   // SWAPPED: Now these are the quick filter badges with gradient colors
   const typeQuickFilters: { key: ItemType; label: string; color: string }[] = [
@@ -272,7 +264,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
               placeholder={t("searchPlaceholder")}
               value={filters.query}
               onChange={(e) => handleFilterChange("query", e.target.value)}
-              className="pl-8 sm:pl-10 h-7 sm:h-9 border-gray-300 focus:border-chabaqa-primary text-[10px] sm:text-sm rounded-md"
+              className="ps-8 sm:ps-10 h-7 sm:h-9 border-gray-300 focus:border-chabaqa-primary text-[10px] sm:text-sm rounded-md"
             />
           </div>
 
@@ -283,7 +275,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
               onChange={(e) => handleFilterChange("category", e.target.value)}
               className="h-7 sm:h-9 px-1 sm:px-2 bg-white border border-gray-300 rounded-md text-[10px] sm:text-sm min-w-[80px] sm:min-w-[110px]"
             >
-              {categories.slice(0, 6).map((category) => (
+              {communitiesData.categories.slice(0, 6).map((category) => (
                 <option key={category} value={category}>
                   {category === "All" ? t("all") : category.split(" ")[0]}
                 </option>
@@ -303,8 +295,8 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
             >
               <option value="">{t("filters.label")}</option>
               {filterDropdownOptions.map((option) => (
-                <option 
-                  key={option.value} 
+                <option
+                  key={option.value}
                   value={option.value}
                   disabled={filters.quickFilters.includes(option.value)}
                 >
@@ -318,7 +310,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
               onChange={(e) => handleFilterChange("sortBy", e.target.value)}
               className="h-7 sm:h-9 px-1 sm:px-2 bg-white border border-gray-300 rounded-md text-[10px] sm:text-sm min-w-[80px] sm:min-w-[100px]"
             >
-              {sortOptions.map((option) => (
+              {communitiesData.sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.value === "popular"
                     ? t("sort.popular")
@@ -356,7 +348,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
                 }`}
               >
                 {typeFilter.label}
-                {filters.type === typeFilter.key && <X className="w-2 h-2 sm:w-2.5 sm:h-2.5 ml-1" />}
+                {filters.type === typeFilter.key && <X className="w-2 h-2 sm:w-2.5 sm:h-2.5 ms-1" />}
               </Button>
             ))}
           </div>
@@ -371,7 +363,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
               )}
               {t("showing", { start: startIndex + 1, end: Math.min(endIndex, totalItems), total: totalItems })}
               {activeFiltersCount > 0 && (
-                <Badge className="bg-chabaqa-primary/10 text-chabaqa-primary border border-chabaqa-primary/20 text-xs px-2 py-0.5 ml-1 sm:ml-2">
+                <Badge className="bg-chabaqa-primary/10 text-chabaqa-primary border border-chabaqa-primary/20 text-xs px-2 py-0.5 ms-1 sm:ms-2">
                   {t("activeCount", { count: activeFiltersCount })}
                 </Badge>
               )}
@@ -387,7 +379,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
                   viewMode === "grid" ? "bg-white text-chabaqa-primary shadow-sm" : "text-gray-600"
                 }`}
               >
-                <Grid className="w-3 h-3 mr-1" />
+                <Grid className="w-3 h-3 me-1" />
                 {t("view.grid")}
               </Button>
               <Button
@@ -398,7 +390,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
                   viewMode === "list" ? "bg-white text-chabaqa-primary shadow-sm" : "text-gray-600"
                 }`}
               >
-                <List className="w-3 h-3 mr-1" />
+                <List className="w-3 h-3 me-1" />
                 {t("view.list")}
               </Button>
             </div>
@@ -410,7 +402,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
                 onClick={clearAllFilters}
                 className="h-5 sm:h-6 px-1 sm:px-2 text-[10px] sm:text-xs text-red-600 hover:text-red-700"
               >
-                <X className="w-2 h-2 sm:w-3 sm:h-3 mr-1" />
+                <X className="w-2 h-2 sm:w-3 sm:h-3 me-1" />
                 {t("clear")} ({activeFiltersCount})
               </Button>
             )}
@@ -452,7 +444,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
         {/* Active Quick Filters Display */}
         {filters.quickFilters.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
-            <span className="text-[10px] sm:text-xs text-gray-500 mr-1">{t("activeFilters")}:</span>
+            <span className="text-[10px] sm:text-xs text-gray-500 me-1">{t("activeFilters")}:</span>
             {filters.quickFilters.map((filter) => {
               const filterOption = filterDropdownOptions.find(opt => opt.value === filter)
               return (
@@ -464,7 +456,7 @@ const handleFilterChange = <K extends keyof Omit<SearchFilters, "quickFilters">>
                   className="h-5 px-2 text-[10px] bg-chabaqa-primary/10 text-chabaqa-primary border-chabaqa-primary/20"
                 >
                   {filterOption?.label}
-                  <X className="w-2 h-2 ml-1" />
+                  <X className="w-2 h-2 ms-1" />
                 </Button>
               )
             })}

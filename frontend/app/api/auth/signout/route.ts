@@ -54,7 +54,6 @@ export async function GET(request: NextRequest) {
   signinUrl.searchParams.set('message', 'Logged out successfully')
 
   const response = NextResponse.redirect(signinUrl)
-  response.headers.set('Cache-Control', 'private, no-cache')
   clearAllCookies(response)
   return response
 }
@@ -66,7 +65,7 @@ export async function POST(request: NextRequest) {
 
   const response = NextResponse.json(
     { success: true, message: 'Signed out', redirect: signinUrl.toString() },
-    { status: 200, headers: { 'Cache-Control': 'private, no-cache' } },
+    { status: 200 },
   )
   clearAllCookies(response)
   return response

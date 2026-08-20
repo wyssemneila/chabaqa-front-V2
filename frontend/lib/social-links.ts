@@ -23,9 +23,8 @@ export function cleanSocialLinks(input?: UserSocialLinks | null): UserSocialLink
   const links = input || {};
   const normalized: UserSocialLinks = {};
   for (const platform of SOCIAL_PLATFORMS) {
-    const raw = (links[platform] || '').trim();
-    if (!raw) continue;
-    const value = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const value = normalizeSocialUrl(links[platform]);
+    if (!value) continue;
     normalized[platform] = value;
   }
   return normalized;

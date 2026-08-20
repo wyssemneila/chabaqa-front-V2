@@ -3,7 +3,6 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { LegalDocumentLayout } from "@/app/(landing)/components/legal-document-layout"
 import { getTranslations } from "next-intl/server"
-import { generateAlternateLanguages, generateOGMetadata, generateRobotsMetadata } from "@/lib/seo-config"
 
 const TERMS_SECTIONS = [
   {
@@ -101,17 +100,21 @@ const TERMS_SECTIONS = [
   },
 ] as const
 
-export const metadata: Metadata = {
-  title: "Terms of Service",
-  description:
-    "Read Chabaqa's Terms of Service covering platform access, account responsibilities, payments, content standards, and legal terms.",
-  alternates: generateAlternateLanguages("/terms-of-service"),
-  openGraph: generateOGMetadata(
-    "Terms of Service | Chabaqa",
-    "Understand the terms that govern use of Chabaqa, including accounts, payments, content, and platform policies.",
-    "/terms-of-service",
-  ),
-  robots: generateRobotsMetadata(true, true),
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("landing.termsOfService")
+  return {
+    title: t("metaTitle"),
+    description: t("metaDesc"),
+    alternates: { canonical: "https://chabaqa.io/terms-of-service" },
+    openGraph: {
+      title: t("metaTitle"),
+      description: t("metaDesc"),
+      url: "https://chabaqa.io/terms-of-service",
+      siteName: "Chabaqa",
+      type: "website",
+    },
+    robots: { index: true, follow: true },
+  }
 }
 
 export default function TermsOfServicePage() {
@@ -136,7 +139,7 @@ async function TermsOfServiceContent() {
           onThisPage: t("legal.onThisPage"),
           relatedDocument: t("legal.relatedDocument"),
         }}
-        sections={TERMS_SECTIONS as any}
+        sections={[...TERMS_SECTIONS]}
         relatedLink={{
           href: "/privacy-policy",
           label: t("termsOfService.relatedLabel"),

@@ -151,7 +151,7 @@ export function CommunityCard({ community, viewMode = "grid" }: CommunityCardPro
                 </h3>
                 {community.verified && (
                   <Badge className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 text-[10px] sm:text-sm px-2 py-0.5 sm:py-1 flex items-center">
-                    <CheckCircle className="w-3 h-3 mr-1" />
+                    <CheckCircle className="w-3 h-3 me-1" />
                     Verified
                   </Badge>
                 )}
@@ -197,11 +197,11 @@ export function CommunityCard({ community, viewMode = "grid" }: CommunityCardPro
             <div className="flex items-center justify-between mt-1">
               <div className="flex gap-2">
                 <div className="flex items-center text-[11px] sm:text-sm bg-gray-50 px-2 py-0.5 sm:py-1 rounded-full font-medium text-gray-700">
-                  <Users className="w-3 h-3 mr-1 text-[#8e78fb]" />
+                  <Users className="w-3 h-3 me-1 text-[#8e78fb]" />
                   {formatMembers(community.members)}
                 </div>
                 <div className="flex items-center text-[11px] sm:text-sm bg-gray-50 px-2 py-0.5 sm:py-1 rounded-full font-medium text-gray-700">
-                  <Star className="w-3 h-3 mr-1 fill-yellow-400 text-yellow-400" />
+                  <Star className="w-3 h-3 me-1 fill-yellow-400 text-yellow-400" />
                   {community.rating}
                 </div>
                 <Badge
@@ -279,11 +279,11 @@ export function CommunityCard({ community, viewMode = "grid" }: CommunityCardPro
 
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
           <div className="flex items-center text-[10px] sm:text-[11px] bg-gray-50 px-2 py-0.5 sm:py-1 rounded-full font-medium text-gray-700">
-            <Users className="w-3 h-3 mr-1 text-[#8e78fb]" />
+            <Users className="w-3 h-3 me-1 text-[#8e78fb]" />
             {formatMembers(community.members)}
           </div>
           <div className="flex items-center text-[10px] sm:text-[11px] bg-gray-50 px-2 py-0.5 sm:py-1 rounded-full font-medium text-gray-700">
-            <Star className="w-3 h-3 mr-1 fill-yellow-400 text-yellow-400" />
+            <Star className="w-3 h-3 me-1 fill-yellow-400 text-yellow-400" />
             {community.rating}
           </div>
           <Badge

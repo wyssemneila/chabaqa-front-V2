@@ -22,8 +22,8 @@ export async function resetPasswordAction(data: {
     const result = response?.data ?? response
     const success = Boolean(response?.success ?? result?.success)
     if (success) {
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: result?.message || response?.message || "Password reset successfully"
       }
     }

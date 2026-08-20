@@ -1,8 +1,8 @@
-import { apiClient } from './client';
+import { apiClient } from '../core/client';
 import type {
   ProgressionContentType,
   ProgressionOverview,
-} from './types';
+} from '../core/types';
 
 export interface ProgressionOverviewParams {
   communityId?: string;

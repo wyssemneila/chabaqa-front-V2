@@ -1,14 +1,14 @@
-import { sessionsCommunityApi } from "@/lib/api/sessions-community.api"
-import { communitiesApi } from "@/lib/api/communities.api"
-import { sessionsApi } from "@/lib/api/sessions.api"
+import { sessionsCommunityApi } from "@/lib/api/events/sessions-community.api"
+import { communitiesApi } from "@/lib/api/community/communities.api"
+import { sessionsApi } from "@/lib/api/events/sessions.api"
 
-jest.mock("@/lib/api/communities.api", () => ({
+jest.mock("@/lib/api/community/communities.api", () => ({
   communitiesApi: {
     getBySlug: jest.fn(),
   },
 }))
 
-jest.mock("@/lib/api/sessions.api", () => ({
+jest.mock("@/lib/api/events/sessions.api", () => ({
   sessionsApi: {
     getByCommunity: jest.fn(),
   },

@@ -1,22 +1,22 @@
-import { productsCommunityApi } from "@/lib/api/products-community.api"
-import { communitiesApi } from "@/lib/api/communities.api"
-import { productsApi } from "@/lib/api/products.api"
-import { getMe } from "@/lib/api/user.api"
+import { productsCommunityApi } from "@/lib/api/commerce/products-community.api"
+import { communitiesApi } from "@/lib/api/community/communities.api"
+import { productsApi } from "@/lib/api/commerce/products.api"
+import { getMe } from "@/lib/api/user/user.api"
 
-jest.mock("@/lib/api/communities.api", () => ({
+jest.mock("@/lib/api/community/communities.api", () => ({
   communitiesApi: {
     getBySlug: jest.fn(),
   },
 }))
 
-jest.mock("@/lib/api/products.api", () => ({
+jest.mock("@/lib/api/commerce/products.api", () => ({
   productsApi: {
     getByCommunity: jest.fn(),
     getMyPurchases: jest.fn(),
   },
 }))
 
-jest.mock("@/lib/api/user.api", () => ({
+jest.mock("@/lib/api/user/user.api", () => ({
   getMe: jest.fn(),
 }))
 

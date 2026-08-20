@@ -1,5 +1,5 @@
-import { apiClient, ApiSuccessResponse } from './client';
-import type { User, Community, CourseEnrollment, SessionBooking } from './types';
+import { apiClient, ApiSuccessResponse } from '../core/client';
+import type { User, Community, CourseEnrollment, SessionBooking } from '../core/types';
 
 export interface UpdateUserData {
   firstName?: string;

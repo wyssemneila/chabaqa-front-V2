@@ -12,7 +12,7 @@ import {
   type ChannelPreferencesPayload,
   type NotificationPreferencesResponse,
   type PreferenceItemPayload,
-} from "@/lib/api/notifications.api";
+} from "@/lib/api/social/notifications.api";
 
 const NOTIFICATION_TYPES = [
   { key: "post_mention", label: "Post Mentions" },
@@ -164,7 +164,7 @@ export function NotificationPreferences({ communityId }: NotificationPreferences
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="py-2 text-left font-medium">Type</th>
+                  <th className="py-2 text-start font-medium">Type</th>
                   {CHANNELS.map((ch) => (
                     <th key={ch} className="py-2 text-center font-medium w-20">
                       {CHANNEL_LABELS[ch]}

@@ -24,10 +24,10 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
       // Check immediately
       checkAuth()
-      
+
       // Also check after a short delay to ensure cookies are set
       const timer = setTimeout(checkAuth, 100)
-      
+
       return () => clearTimeout(timer)
     }
   }, [router, pathname])

@@ -1,5 +1,5 @@
-import { apiClient, ApiSuccessResponse, PaginationParams } from './client';
-import type { Post, PostComment, PostLink, PostShareMeta, PostShareMethod, PostStats } from './types';
+import { apiClient, ApiSuccessResponse, PaginationParams } from '../core/client';
+import type { Post, PostComment, PostLink, PostShareMeta, PostShareMethod, PostStats } from '../core/types';
 
 export interface CreatePostData {
   title?: string;

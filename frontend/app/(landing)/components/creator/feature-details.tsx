@@ -1,6 +1,7 @@
 // FeatureDetails.tsx
+"use client"
 
-import{ Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { CheckCircle, BookOpen, Target, Users, Calendar, Clock } from "lucide-react"
 import Image from "next/image"
 

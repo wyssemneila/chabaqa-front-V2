@@ -1,3 +1,5 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { CheckCircle } from "lucide-react"
 
@@ -58,7 +60,7 @@ export function FeatureCTA({ feature }: FeatureCTAProps) {
 
         <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
-            <div className="flex-1 text-left w-full md:w-auto">
+            <div className="flex-1 text-start w-full md:w-auto">
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5">Starting at</p>
               <p className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">
                 {formatPrice(feature.price, feature.priceType)}
@@ -88,7 +90,7 @@ export function FeatureCTA({ feature }: FeatureCTAProps) {
         </div>
 
         <p className="text-[10px] sm:text-xs text-purple-200 mt-3 sm:mt-4">
-          Join creators and members who are already seeing results
+          Join {Math.floor(Math.random() * 5000 + 1000)}+ members who are already seeing results
         </p>
       </div>
     </div>

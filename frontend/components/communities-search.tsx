@@ -5,13 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Search, X } from "lucide-react"
-
-const categories = ["All", "Technology", "Business", "Design", "Marketing", "Education"]
-const sortOptions = [
-  { value: "popular", label: "Most Popular" },
-  { value: "rating", label: "Highest Rated" },
-  { value: "newest", label: "Newest" },
-]
+import { communitiesData } from "@/lib/data-communities"
 
 interface SearchFilters {
   query: string
@@ -96,7 +90,7 @@ export function CommunitiesSearch({ onFiltersChange }: CommunitiesSearchProps) {
             placeholder="Search communities..."
             value={filters.query}
             onChange={(e) => handleFilterChange("query", e.target.value)}
-            className="pl-10 h-9 border-gray-300 focus:border-chabaqa-primary"
+            className="ps-10 h-9 border-gray-300 focus:border-chabaqa-primary"
           />
         </div>
 
@@ -107,7 +101,7 @@ export function CommunitiesSearch({ onFiltersChange }: CommunitiesSearchProps) {
             onChange={(e) => handleFilterChange("category", e.target.value)}
             className="h-9 px-3 bg-white border border-gray-300 rounded-md min-w-[120px]"
           >
-            {categories.map((category) => (
+            {communitiesData.categories.slice(0, 6).map((category) => (
               <option key={category} value={category}>
                 {category}
               </option>
@@ -119,7 +113,7 @@ export function CommunitiesSearch({ onFiltersChange }: CommunitiesSearchProps) {
             onChange={(e) => handleFilterChange("sortBy", e.target.value)}
             className="h-9 px-3 bg-white border border-gray-300 rounded-md min-w-[120px]"
           >
-            {sortOptions.map((option) => (
+            {communitiesData.sortOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -145,7 +139,7 @@ export function CommunitiesSearch({ onFiltersChange }: CommunitiesSearchProps) {
               }`}
             >
               {option.label}
-              {filters.quickFilters.includes(option.value) && <X className="w-3 h-3 ml-1" />}
+              {filters.quickFilters.includes(option.value) && <X className="w-3 h-3 ms-1" />}
             </Button>
           ))}
         </div>
@@ -167,7 +161,7 @@ export function CommunitiesSearch({ onFiltersChange }: CommunitiesSearchProps) {
               onClick={clearAllFilters}
               className="h-7 px-3 text-xs text-red-600 hover:text-red-700"
             >
-              <X className="w-3 h-3 mr-1" />
+              <X className="w-3 h-3 me-1" />
               Clear All
             </Button>
           )}

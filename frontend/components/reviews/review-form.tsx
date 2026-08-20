@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StarRating } from "./star-rating"
-import { feedbackApi, Feedback, CreateFeedbackDto } from "@/lib/api/feedback.api"
+import { feedbackApi, Feedback, CreateFeedbackDto } from "@/lib/api/social/feedback.api"
 import { useToast } from "@/components/ui/use-toast"
 
 export type RelatedModel = 'Cours' | 'Community' | 'Challenge' | 'Event' | 'Product' | 'Session'

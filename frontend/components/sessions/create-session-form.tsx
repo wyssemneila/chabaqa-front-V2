@@ -10,8 +10,6 @@ import {
 } from "lucide-react"
 import { Input }    from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
-import { normalizeSessionResponse, sessionsApi } from "@/lib/api/sessions.api"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -880,7 +878,7 @@ function StepPricing({ data, set }: { data: FormData; set: (f: keyof FormData, v
 // ════════════════════════════════════════════════════════════════════════════════
 function SuccessScreen() {
   useEffect(() => {
-    let iv: number
+    let iv: ReturnType<typeof setInterval>
     ;(async () => {
       const confetti = (await import('canvas-confetti')).default
       const colors   = ["#8e78fb","#fb923c","#22d3ee","#f472b6","#a78bfa","#ffffff"]
@@ -1045,7 +1043,6 @@ const STEP_BLOCKER: Record<number, (d: FormData) => string> = {
 
 export function CreateSessionForm() {
   const router = useRouter()
-  const { selectedCommunity } = useCreatorCommunity()
 
   const [step,         setStep]         = useState(1)
   const [error,        setError]        = useState("")
@@ -1070,35 +1067,21 @@ export function CreateSessionForm() {
   const submit = async () => {
     setSubmitting(true); setError("")
     try {
-      const communitySlug = selectedCommunity?.slug
-      if (!communitySlug) throw new Error("Select a community before creating a session.")
+      setSubmitStatus("Creating session…");   await new Promise(r => setTimeout(r, 400))
+      setSubmitStatus("Saving availability…"); await new Promise(r => setTimeout(r, 300))
+      setSubmitStatus("Publishing…");          await new Promise(r => setTimeout(r, 300))
 
-      setSubmitStatus("Creating session…")
-      const created = await sessionsApi.create({
-        title: data.title,
-        description: data.description,
-        thumbnail: data.banner || undefined,
-        duration: Number(data.duration),
-        price: data.priceType === "paid" ? Number(data.price || 0) : 0,
-        currency: "TND",
-        communitySlug,
-        notes: data.requirements || undefined,
-        isActive: data.isPublished,
-        resources: [],
+      const mockId     = `session_${Date.now()}`
+      const totalSlots = data.availability.reduce((n, a) => n + a.slots.length, 0)
+
+      const sessions: any[] = JSON.parse(localStorage.getItem("chabaqa_mock_sessions") ?? "[]")
+      sessions.unshift({
+        _id: mockId, title: data.title, banner: data.banner,
+        duration: data.duration, priceType: data.priceType, price: data.price,
+        isPublished: data.isPublished, availabilityDays: data.availability.length,
+        totalSlots, description: data.description,
       })
-
-      const session = normalizeSessionResponse(created)
-      const sessionId = session?._id || session?.id
-      if (sessionId && data.availability.length > 0) {
-        setSubmitStatus("Saving availability…")
-        await sessionsApi.setAvailableHours(sessionId, {
-          availability: data.availability.map(day => ({
-            date: day.date,
-            recurring: day.recurring,
-            slots: day.slots.map(slot => slot.time),
-          })),
-        })
-      }
+      localStorage.setItem("chabaqa_mock_sessions", JSON.stringify(sessions))
       setSuccess(true)
       setTimeout(() => router.push("/creator/sessions"), 2800)
     } catch (err: any) {

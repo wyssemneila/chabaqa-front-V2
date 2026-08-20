@@ -1,4 +1,4 @@
-import { apiClient, ApiSuccessResponse } from './client'
+import { apiClient, ApiSuccessResponse } from '../core/client'
 
 export interface CommunityMentionMember {
   id: string

@@ -1,10 +1,8 @@
 'use client';
 
-import { syncAccessTokenCookie } from '@/lib/cookie-sync'
-
 /**
- * Legacy token storage compatibility.
- * Refresh tokens are intentionally not persisted in JavaScript-readable storage.
+ * Secure token storage using localStorage
+ * Handles access and refresh tokens for cookie-less auth
  */
 
 export interface TokenPair {
@@ -17,14 +15,14 @@ class TokenStorage {
   private readonly REFRESH_KEY = 'refreshToken';
 
   /**
-   * Store the access token for legacy callers and rely on HttpOnly cookies for refresh.
+   * Store both tokens
    */
   setTokens(tokens: TokenPair): void {
     try {
       localStorage.setItem(this.ACCESS_KEY, tokens.accessToken);
-      localStorage.removeItem(this.REFRESH_KEY);
-      syncAccessTokenCookie(tokens.accessToken)
+      localStorage.setItem(this.REFRESH_KEY, tokens.refreshToken);
 
+      // Sync to other tabs
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new StorageEvent('storage', {
           key: this.ACCESS_KEY,
@@ -32,7 +30,7 @@ class TokenStorage {
         }));
         window.dispatchEvent(new StorageEvent('storage', {
           key: this.REFRESH_KEY,
-          newValue: null,
+          newValue: tokens.refreshToken,
         }));
       }
     } catch (error) {
@@ -56,32 +54,31 @@ class TokenStorage {
    * Get refresh token
    */
   getRefreshToken(): string | null {
-    return null;
+    try {
+      return localStorage.getItem(this.REFRESH_KEY);
+    } catch (error) {
+      console.error('Failed to get refresh token:', error);
+      return null;
+    }
   }
 
   /**
-   * Clear all tokens, sync cookie, and notify other tabs
+   * Clear all tokens
    */
   clearTokens(): void {
     try {
-      // Capture old values BEFORE removal so StorageEvent carries correct oldValue
-      const oldAccessToken = this.getAccessToken();
-      const oldRefreshToken = this.getRefreshToken();
-
       localStorage.removeItem(this.ACCESS_KEY);
       localStorage.removeItem(this.REFRESH_KEY);
-      syncAccessTokenCookie(null)
 
+      // Sync to other tabs
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new StorageEvent('storage', {
           key: this.ACCESS_KEY,
-          oldValue: oldAccessToken,
-          newValue: null,
+          oldValue: this.getAccessToken(),
         }));
         window.dispatchEvent(new StorageEvent('storage', {
           key: this.REFRESH_KEY,
-          oldValue: oldRefreshToken,
-          newValue: null,
+          oldValue: this.getRefreshToken(),
         }));
       }
     } catch (error) {
@@ -93,7 +90,7 @@ class TokenStorage {
    * Check if tokens exist
    */
   hasTokens(): boolean {
-    return !!this.getAccessToken();
+    return !!(this.getAccessToken() && this.getRefreshToken());
   }
 
   /**
@@ -134,7 +131,14 @@ class TokenStorage {
    * Check if refresh token is expired
    */
   isRefreshTokenExpired(): boolean {
-    return false;
+    const token = this.getRefreshToken();
+    if (!token) return true;
+
+    const payload = this.parseJwt(token);
+    if (!payload || !payload.exp) return true;
+
+    // Expired if now >= exp (with 10s buffer)
+    return Date.now() >= (payload.exp * 1000 - 10000);
   }
 
   /**

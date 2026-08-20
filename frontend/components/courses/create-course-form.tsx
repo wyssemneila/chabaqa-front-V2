@@ -10,7 +10,6 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { coursesApi } from "@/lib/api/courses.api"
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const slugify = (t: string) =>
   t.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "")
@@ -971,7 +970,7 @@ const STEP_META: Record<number, { title: string; sub: string }> = {
 
 function SuccessScreen() {
   useEffect(() => {
-    let interval: number
+    let interval: ReturnType<typeof setInterval>
     ;(async () => {
       const confetti = (await import('canvas-confetti')).default
       const colors = ["#8e78fb", "#fb923c", "#22d3ee", "#f472b6", "#a78bfa", "#ffffff"]
@@ -1066,76 +1065,37 @@ export function CreateCourseForm() {
   const submit = async () => {
     setSubmitting(true); setError("")
     try {
+      // ── Mock: simulate course creation steps ──────────────────────────────
       setSubmitStatus("Creating course…")
-      const created = await coursesApi.create({
-        title: data.title,
-        titre: data.title,
-        slug: data.slug || slugify(data.title),
-        description: data.description,
-        thumbnail: data.thumbnail || undefined,
-        category: data.category,
-        level: data.level || undefined,
-        niveau: data.level || undefined,
-        duration: data.duration,
-        duree: String(data.duration),
-        priceType: data.priceType,
-        price: data.priceType === "paid" ? data.price : 0,
-        prix: data.priceType === "paid" ? data.price : 0,
-        isPaid: data.priceType === "paid",
-        isPublished: data.isPublished,
-        sections: data.sections.map((section, sectionIndex) => ({
-          titre: section.title,
-          title: section.title,
-          ordre: sectionIndex,
-          order: sectionIndex,
-          chapters: section.chapters.map((chapter, chapterIndex) => ({
-            titre: chapter.title,
-            title: chapter.title,
-            videoUrl: chapter.videoUrl || undefined,
-            duree: chapter.duration ? String(chapter.duration) : undefined,
-            duration: chapter.duration || undefined,
-            ordre: chapterIndex,
-            order: chapterIndex,
-            isPaid: !chapter.isFree,
-            isFree: chapter.isFree,
-            prix: chapter.isFree ? 0 : chapter.price,
-            price: chapter.isFree ? 0 : chapter.price,
-            notes: chapter.notes || undefined,
-          })),
-        })),
-      })
-
-      const course = created?.data?.data || created?.data || created?.course || created
-      const courseId = course?._id || course?.id
+      await new Promise(r => setTimeout(r, 600))
 
       for (let si = 0; si < data.sections.length; si++) {
         setSubmitStatus(`Section ${si + 1} / ${data.sections.length}…`)
-        if (!courseId) continue
-        const sectionResponse = await coursesApi.createSection(courseId, {
-          title: data.sections[si].title,
-          order: si,
-        })
-        const createdSection = (sectionResponse as any)?.data?.data || (sectionResponse as any)?.data || sectionResponse
-        const sectionId = createdSection?._id || createdSection?.id
+        await new Promise(r => setTimeout(r, 200))
         for (let ci = 0; ci < data.sections[si].chapters.length; ci++) {
           setSubmitStatus(`Chapter ${ci + 1}/${data.sections[si].chapters.length} in section ${si + 1}…`)
-          if (!sectionId) continue
-          const chapter = data.sections[si].chapters[ci]
-          await coursesApi.createChapter(courseId, sectionId, {
-            title: chapter.title,
-            content: chapter.notes,
-            videoUrl: chapter.videoUrl,
-            duration: chapter.duration,
-            order: ci,
-            isFree: chapter.isFree,
-            price: chapter.price,
-            notes: chapter.notes,
-          })
+          await new Promise(r => setTimeout(r, 150))
         }
       }
 
+      const mockId = `mock_${Date.now()}`
+      const totalChapters = data.sections.reduce((n, s) => n + s.chapters.length, 0)
+
+      localStorage.setItem("chabaqa_last_course", JSON.stringify({
+        id: mockId,
+        title: data.title,
+        thumbnail: data.thumbnail,
+        level: data.level,
+        duration: data.duration,
+        priceType: data.priceType,
+        price: data.price,
+        isPublished: data.isPublished,
+        sectionsCount: data.sections.length,
+        chaptersCount: totalChapters,
+      }))
+
       setSuccess(true)
-      router.push("/creator/courses")
+      setTimeout(() => router.push("/creator/courses"), 2800)
     } catch (err: any) {
       setError(err.message || "Something went wrong.")
     } finally {

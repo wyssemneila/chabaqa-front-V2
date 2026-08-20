@@ -1,7 +1,7 @@
-import { apiClient, ApiSuccessResponse } from './client';
+import { apiClient, ApiSuccessResponse } from '../core/client';
 import { productsApi } from './products.api';
-import { communitiesApi } from './communities.api';
-import { getMe } from './user.api';
+import { communitiesApi } from '../community/communities.api';
+import { getMe } from '../user/user.api';
 
 export interface ProductFileDetail {
   id: string;
@@ -359,7 +359,7 @@ export const productsCommunityApi = {
     try {
       const response = await productsApi.getById(productId);
       const productData = (response as any)?.data?.data ?? (response as any)?.data ?? response;
-      
+
       if (!productData) {
         return null;
       }
@@ -378,11 +378,11 @@ export const productsCommunityApi = {
     try {
       const response = await productsApi.checkPurchase(productId);
       const data = (response as any)?.data ?? response;
-      
+
       if (data?.purchased && data?.purchase) {
         return transformPurchase(data.purchase);
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error checking purchase status:', error);
@@ -398,7 +398,7 @@ export const productsCommunityApi = {
       const response = await productsApi.getMyPurchases();
       const data = (response as any)?.data ?? response;
       const purchasesList = data?.products || data || [];
-      
+
       return Array.isArray(purchasesList)
         ? purchasesList.map(transformPurchase)
         : [];

@@ -41,13 +41,13 @@ export function CommunitiesGridClient({
   useEffect(() => {
     const fetchJoinedCommunities = async () => {
       try {
-        console.log("Fetching joined communities...")
+        if (process.env.NODE_ENV === 'development') console.log("Fetching joined communities...")
         const response = await communitiesApi.getMyJoined()
-        console.log("Joined communities response:", response)
+        if (process.env.NODE_ENV === 'development') console.log("Joined communities response:", response)
         if (response.success && Array.isArray(response.data)) {
           // Handle both id and _id
           const ids = new Set(response.data.map(c => c.id || (c as any)._id))
-          console.log("Joined community IDs:", Array.from(ids))
+          if (process.env.NODE_ENV === 'development') console.log("Joined community IDs:", Array.from(ids))
           setJoinedCommunityIds(ids)
         }
       } catch (error) {
@@ -61,7 +61,7 @@ export function CommunitiesGridClient({
 
   // Debug log for communities prop
   useEffect(() => {
-    if (communities.length > 0) {
+    if (process.env.NODE_ENV === 'development' && communities.length > 0) {
       console.log("First community in grid:", communities[0])
       console.log("First community ID:", communities[0].id, " _id:", (communities[0] as any)._id)
     }
@@ -147,7 +147,7 @@ export function CommunitiesGridClient({
                 : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 }`}
             >
-              <Grid className="w-3.5 h-3.5 mr-1.5" />
+              <Grid className="w-3.5 h-3.5 me-1.5" />
               Grid
             </Button>
             <Button
@@ -159,7 +159,7 @@ export function CommunitiesGridClient({
                 : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 }`}
             >
-              <List className="w-3.5 h-3.5 mr-1.5" />
+              <List className="w-3.5 h-3.5 me-1.5" />
               List
             </Button>
           </div>

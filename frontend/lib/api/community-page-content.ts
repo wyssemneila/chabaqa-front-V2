@@ -1,11 +1,9 @@
-import { apiClient, type ApiSuccessResponse } from "./client";
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 /**
  * Get published page content for a community (public - no auth required)
  */
-export async function getCommunityPageContent(slug: string, apiBaseUrl = API_BASE_URL) {
+export async function getCommunityPageContent(slug: string) {
   try {
     const response = await fetch(`${apiBaseUrl}/communities/${slug}/page-content`, {
       // A creator expects a successful publish to be visible immediately.

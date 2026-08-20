@@ -1,19 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
-import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
-import { emailCampaignsApi, type EmailCampaign } from '@/lib/api/email-campaigns.api'
-import { EmailTemplateCards } from '@/app/(creator)/creator/marketing/components/email-template-cards'
-import { ImportContactsDialog } from '@/app/(creator)/creator/marketing/contacts/components/import-contacts-dialog'
 import {
   Plus, Mail, Send, Clock, Users, MousePointerClick, Eye,
-  Trash2, X, Check, Calendar, AlertCircle, Inbox,
+  Trash2, Upload, X, Check, Calendar, AlertCircle, Inbox,
   Search, Zap, Monitor, Smartphone, BookOpen, Trophy,
   ShoppingBag, UserMinus, ToggleLeft, ToggleRight, Pencil,
-  ChevronDown, AtSign, Play, Pause, UserPlus,
+  ChevronDown, AtSign, Play, Pause,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -35,7 +31,71 @@ interface Automation {
   isActive: boolean; triggered: number; createdAt: string
 }
 
+interface CustomAudience {
+  id: string; name: string; emails: string[]; count: number; createdAt: string
+}
+
+// ─── Seed data ────────────────────────────────────────────────────────────────
+
+const CAMP_SEED: Campaign[] = [
+  {
+    id: 'c1', name: 'Welcome Series — Onboarding', subject: 'Welcome to Motion Masters! 🎉',
+    previewText: "Here's everything you need to get started", body: 'Hi there!\n\nWelcome to the Motion Masters community. We are thrilled to have you here.\n\nHere is what you can do right now:\n• Browse our course catalog\n• Join the community challenges\n• Connect with other members\n\nSee you inside!\nThe Motion Masters Team',
+    status: 'sent', audienceType: 'all', audienceLabel: 'All Members', audienceCount: 1240,
+    sentAt: '2026-03-28', createdAt: '2026-03-27',
+    stats: { sent: 1240, opened: 748, clicked: 312 },
+  },
+  {
+    id: 'c2', name: 'New Course Launch — Motion Pro', subject: 'Our most advanced course is here',
+    previewText: "Don't miss the early-bird discount",
+    body: 'Hey!\n\nExciting news — Motion Pro is finally live.\n\nThis is our most comprehensive course yet, covering advanced techniques from industry professionals.\n\nEarly-bird pricing ends Friday. Grab your spot now.',
+    status: 'sent', audienceType: 'community', audienceLabel: 'Paid Members', audienceCount: 384,
+    sentAt: '2026-03-20', createdAt: '2026-03-19',
+    stats: { sent: 384, opened: 291, clicked: 178 },
+  },
+  {
+    id: 'c3', name: 'Weekly Digest — April Week 1', subject: "What's new this week in the community",
+    previewText: 'Highlights, top posts and upcoming events',
+    body: 'Here is your weekly digest:\n\nTop posts this week...\nUpcoming events...\nNew courses added...',
+    status: 'scheduled', audienceType: 'all', audienceLabel: 'All Members', audienceCount: 1298,
+    scheduledAt: '2026-04-07 09:00', createdAt: '2026-04-03',
+    stats: { sent: 0, opened: 0, clicked: 0 },
+  },
+  {
+    id: 'c4', name: 'Re-engagement — Inactive Users', subject: "We miss you! Come back and see what's new",
+    previewText: 'A lot has changed since you last visited',
+    body: 'Hey! We noticed you have not been around lately.\n\nHere is what you have been missing...',
+    status: 'draft', audienceType: 'custom', audienceLabel: 'Inactive Upload', audienceCount: 210,
+    createdAt: '2026-04-02',
+    stats: { sent: 0, opened: 0, clicked: 0 },
+  },
+]
+
+const AUTO_SEED: Automation[] = [
+  {
+    id: 'a1', name: 'Welcome Email', trigger: 'new_member', triggerLabel: 'New member joins', triggerIcon: 'users',
+    delay: 0, subject: 'Welcome to Motion Masters!',
+    body: 'Hi {{first_name}},\n\nWelcome! We are so excited to have you here...',
+    isActive: true, triggered: 87, createdAt: '2026-03-01',
+  },
+  {
+    id: 'a2', name: 'Course Completion Congrats', trigger: 'course_completed', triggerLabel: 'Member completes a course', triggerIcon: 'book',
+    delay: 1, subject: 'Congratulations on finishing {{course_name}}!',
+    body: 'Hey {{first_name}},\n\nYou did it! You just completed {{course_name}}. Here is your certificate...',
+    isActive: true, triggered: 34, createdAt: '2026-03-05',
+  },
+  {
+    id: 'a3', name: '7-Day Re-engagement', trigger: 'inactive_7', triggerLabel: 'Member inactive 7 days', triggerIcon: 'clock',
+    delay: 0, subject: 'We miss you, {{first_name}}!',
+    body: 'Hi {{first_name}},\n\nIt has been a week since your last visit. Here is what you missed...',
+    isActive: false, triggered: 156, createdAt: '2026-03-10',
+  },
+]
+
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const BASE_COMMUNITIES = ['All Members', 'Paid Members', 'Free Members', 'VIP Members', 'Trial Members', 'Inactive Members']
+
 const TRIGGER_OPTIONS = [
   { id: 'new_member',       label: 'New member joins',          desc: 'When anyone joins your community',            icon: Users       },
   { id: 'purchase',         label: 'Purchase completed',        desc: 'When a member buys a product or course',      icon: ShoppingBag },
@@ -71,50 +131,6 @@ const getStatusMeta = (status: 'sent' | 'draft' | 'scheduled', lang: string) => 
 const STATUS_META = STATUS_META_RAW as Record<string, { bg: string; color: string; border: string }>
 
 const pct = (a: number, b: number) => b === 0 ? 0 : Math.round((a / b) * 100)
-
-const toUiStatus = (status?: EmailCampaign['status']): Campaign['status'] => {
-  if (status === 'sent') return 'sent'
-  if (status === 'scheduled' || status === 'sending') return 'scheduled'
-  return 'draft'
-}
-
-const toUiCampaign = (campaign: EmailCampaign): Campaign => ({
-  id: campaign._id,
-  name: campaign.title || campaign.subject || 'Untitled campaign',
-  subject: campaign.subject || 'No subject',
-  previewText: String(campaign.metadata?.previewText || campaign.metadata?.description || ''),
-  body: campaign.content || '',
-  status: toUiStatus(campaign.status),
-  audienceType: campaign.isInactiveUserCampaign ? 'custom' : 'community',
-  audienceLabel: campaign.isInactiveUserCampaign ? 'Inactive members' : 'Community members',
-  audienceCount: Number(campaign.totalRecipients || campaign.recipients?.length || 0),
-  sentAt: campaign.sentAt,
-  scheduledAt: campaign.scheduledAt,
-  createdAt: campaign.createdAt || new Date().toISOString(),
-  stats: {
-    sent: Number(campaign.sentCount || 0),
-    opened: Number(campaign.openCount || 0),
-    clicked: Number(campaign.clickCount || 0),
-  },
-})
-
-const toUiAutomation = (campaign: EmailCampaign): Automation => {
-  const inactiveDays = Number(campaign.targetDaysThreshold || campaign.metadata?.minInactiveDays || 7)
-  const isInactive = campaign.isInactiveUserCampaign || campaign.type === 'inactive_user_reactivation'
-  return {
-    id: campaign._id,
-    name: campaign.title || (campaign.type === 'welcome' ? 'Welcome Email' : 'Automation'),
-    trigger: campaign.eventTrigger || (isInactive ? `inactive_${inactiveDays}` : 'new_member'),
-    triggerLabel: isInactive ? `Member inactive ${inactiveDays} days` : 'New member joins',
-    triggerIcon: isInactive ? 'clock' : 'users',
-    delay: 0,
-    subject: campaign.subject || '',
-    body: campaign.content || '',
-    isActive: Boolean(campaign.automationActive ?? campaign.metadata?.automationActive ?? true),
-    triggered: Number(campaign.sentCount || 0),
-    createdAt: campaign.createdAt || new Date().toISOString(),
-  }
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -379,41 +395,85 @@ function AutomationCard({ a, onToggle, onDelete, lang = 'en' }: {
 
 // ─── Create Campaign Drawer ───────────────────────────────────────────────────
 
-function CreateCampaignDrawer({ open, onClose, onSave, lang = 'en' }: {
+function CreateCampaignDrawer({ open, onClose, onSave, customAudiences, onSaveAudience, lang = 'en' }: {
   open: boolean; onClose: () => void
   onSave: (c: Campaign) => void
+  customAudiences: CustomAudience[]
+  onSaveAudience: (a: CustomAudience) => void
   lang?: string
 }) {
   const [name,         setName]         = useState('')
   const [subject,      setSubject]      = useState('')
   const [preview,      setPreview]      = useState('')
   const [body,         setBody]         = useState('')
+  const [audMode,      setAudMode]      = useState<'community' | 'custom'>('community')
+  const [communities,  setCommunities]  = useState<string[]>(['All Members'])
+  const [customAudId,  setCustomAudId]  = useState<string>('')
+  const [newAudName,   setNewAudName]   = useState('')
+  const [newAudEmails, setNewAudEmails] = useState<string[]>([])
+  const [emailInput,   setEmailInput]   = useState('')
+  const [csvName,      setCsvName]      = useState('')
+  const [csvMode,      setCsvMode]      = useState<'type' | 'upload'>('type')
   const [schedMode,    setSchedMode]    = useState<'now' | 'later'>('now')
   const [schedDate,    setSchedDate]    = useState('')
   const [schedTime,    setSchedTime]    = useState('')
   const [saving,       setSaving]       = useState(false)
   const [previewOpen,  setPreviewOpen]  = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
-  const canSend = name.trim() && subject.trim() && body.trim()
+  const allCommunities = [...BASE_COMMUNITIES, ...customAudiences.map(a => a.name)]
+
+  const toggleCom = (c: string) =>
+    setCommunities(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])
+
+  const addEmail = () => {
+    const e = emailInput.trim()
+    if (e && /\S+@\S+\.\S+/.test(e) && !newAudEmails.includes(e)) {
+      setNewAudEmails(p => [...p, e])
+      setEmailInput('')
+    }
+  }
+
+  const saveCustomAudience = () => {
+    if (!newAudName.trim() || newAudEmails.length === 0) return
+    const a: CustomAudience = {
+      id: Math.random().toString(36).slice(2),
+      name: newAudName.trim(),
+      emails: newAudEmails,
+      count: newAudEmails.length,
+      createdAt: new Date().toISOString().slice(0, 10),
+    }
+    onSaveAudience(a)
+    setNewAudName(''); setNewAudEmails([]); setCsvName(''); setCsvMode('type')
+    setCustomAudId(a.id)
+    setAudMode('community')
+    setCommunities([a.name])
+  }
+
+  const canSend = name.trim() && subject.trim() && communities.length > 0
 
   const submit = async (status: Campaign['status']) => {
     if (!canSend) return
     setSaving(true)
+    await new Promise(r => setTimeout(r, 700))
+    const audLabel = communities.join(', ')
+    const audCount = communities.includes('All Members') ? 1298 : Math.floor(Math.random() * 600) + 100
     onSave({
-      id: '',
+      id: Math.random().toString(36).slice(2),
       name, subject, previewText: preview, body, status,
-      audienceType: 'all',
-      audienceLabel: 'All community members',
-      audienceCount: 0,
+      audienceType: communities.includes('All Members') ? 'all' : 'community',
+      audienceLabel: audLabel, audienceCount: audCount,
       sentAt:      status === 'sent'      ? new Date().toISOString().slice(0, 10) : undefined,
       scheduledAt: status === 'scheduled' ? `${schedDate} ${schedTime}`           : undefined,
       createdAt: new Date().toISOString().slice(0, 10),
-      stats: { sent: 0, opened: 0, clicked: 0 },
+      stats: status === 'sent'
+        ? { sent: audCount, opened: Math.floor(audCount * (0.4 + Math.random() * 0.3)), clicked: Math.floor(audCount * (0.1 + Math.random() * 0.2)) }
+        : { sent: 0, opened: 0, clicked: 0 },
     })
     setSaving(false)
     onClose()
     setName(''); setSubject(''); setPreview(''); setBody('')
-    setSchedMode('now'); setSchedDate(''); setSchedTime('')
+    setCommunities(['All Members']); setSchedMode('now'); setSchedDate(''); setSchedTime('')
   }
 
   const inp = "w-full h-10 px-3 rounded-xl text-[13px] outline-none transition-colors"
@@ -498,21 +558,126 @@ function CreateCampaignDrawer({ open, onClose, onSave, lang = 'en' }: {
           {/* Audience */}
           <section>
             <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--p)' }}>{lang === 'ar' ? 'الجمهور' : 'Audience'}</p>
-            <div className="rounded-xl border px-4 py-3" style={{ background: 'var(--p2)', borderColor: 'var(--bd)' }}>
-              <div className="flex items-start gap-3">
-                <Users className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--p)' }} strokeWidth={1.7} />
-                <div>
-                  <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
-                    {lang === 'ar' ? 'جميع أعضاء المجتمع' : 'All community members'}
-                  </p>
-                  <p className="text-[11px] mt-1 leading-5" style={{ color: 'var(--t3)' }}>
-                    {lang === 'ar'
-                      ? 'يحلّ الخادم قائمة المستلمين عند إنشاء الحملة أو إرسالها. استخدم قوالب الحملات المتقدمة أدناه للاستهداف حسب النشاط أو تقدم الدورة.'
-                      : 'The backend resolves recipients when the campaign is created or sent. Use advanced campaign templates below for inactivity or course-progress targeting.'}
-                  </p>
-                </div>
-              </div>
+
+            <div className="flex gap-2 mb-4">
+              {(['community', 'custom'] as const).map(m => (
+                <button key={m} onClick={() => setAudMode(m)}
+                  className="flex-1 h-9 rounded-xl text-[12px] font-semibold cursor-pointer transition-all"
+                  style={audMode === m
+                    ? { background: 'var(--p)', color: '#fff' }
+                    : { background: 'var(--bg)', color: 'var(--t2)', border: '1.5px solid var(--bd)' }}>
+                  {m === 'community' ? (lang === 'ar' ? 'تصفية المجتمع' : 'Community Filter') : (lang === 'ar' ? 'جمهور مخصص' : 'Custom Audience')}
+                </button>
+              ))}
             </div>
+
+            {audMode === 'community' ? (
+              <div className="space-y-2">
+                {allCommunities.map(c => {
+                  const sel = communities.includes(c)
+                  const isCustom = !BASE_COMMUNITIES.includes(c)
+                  return (
+                    <button key={c} onClick={() => toggleCom(c)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-left"
+                      style={sel
+                        ? { background: 'var(--p2)', border: '1.5px solid var(--p)' }
+                        : { background: 'var(--bg)', border: '1.5px solid var(--bd)' }}>
+                      <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0"
+                        style={{ background: sel ? 'var(--p)' : 'transparent', border: sel ? 'none' : '1.5px solid var(--bd)' }}>
+                        {sel && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                      </div>
+                      <p className="text-[13px] font-medium flex-1" style={{ color: sel ? 'var(--p)' : 'var(--t2)' }}>{c}</p>
+                      {isCustom && (
+                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'var(--p2)', color: 'var(--p)' }}>CUSTOM</span>
+                      )}
+                      <Users className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--t3)' }} strokeWidth={1.7} />
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <LBL text={lang === 'ar' ? 'اسم الجمهور' : 'Audience Name'} req />
+                  <input value={newAudName} onChange={e => setNewAudName(e.target.value)} placeholder={lang === 'ar' ? 'مثال: كبار المشترين' : 'e.g. VIP Buyers'}
+                    className={inp} style={fieldStyle} {...focusStyle} />
+                </div>
+
+                {/* CSV or manual */}
+                <div className="flex gap-2">
+                  {(['type', 'upload'] as const).map(m => (
+                    <button key={m} onClick={() => setCsvMode(m)}
+                      className="flex-1 h-8 rounded-xl text-[11px] font-semibold cursor-pointer transition-all"
+                      style={csvMode === m
+                        ? { background: 'var(--p2)', color: 'var(--p)', border: '1.5px solid var(--p)' }
+                        : { background: 'var(--bg)', color: 'var(--t3)', border: '1.5px solid var(--bd)' }}>
+                      {m === 'type' ? (lang === 'ar' ? 'إدخال يدوي' : 'Type manually') : (lang === 'ar' ? 'رفع CSV' : 'Upload CSV')}
+                    </button>
+                  ))}
+                </div>
+
+                {csvMode === 'type' ? (
+                  <div>
+                    <div className="flex gap-2">
+                      <input value={emailInput} onChange={e => setEmailInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addEmail())}
+                        placeholder="email@example.com" type="email"
+                        className="flex-1 h-10 px-3 rounded-xl text-[13px] outline-none"
+                        style={fieldStyle} {...focusStyle} />
+                      <button onClick={addEmail}
+                        className="h-10 px-3 rounded-xl text-[12px] font-bold cursor-pointer hover:opacity-80"
+                        style={{ background: 'var(--p)', color: '#fff' }}>
+                        Add
+                      </button>
+                    </div>
+                    {newAudEmails.length > 0 && (
+                      <div className="mt-2 rounded-xl p-2 max-h-[140px] overflow-y-auto space-y-1"
+                        style={{ background: 'var(--bg)', border: '1px solid var(--bd)' }}>
+                        {newAudEmails.map(e => (
+                          <div key={e} className="flex items-center justify-between px-2 py-1 rounded-lg"
+                            style={{ background: 'var(--white)' }}>
+                            <span className="text-[12px]" style={{ color: 'var(--t2)' }}>{e}</span>
+                            <button onClick={() => setNewAudEmails(p => p.filter(x => x !== e))}
+                              className="cursor-pointer" style={{ color: '#ef4444' }}>
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[11px] mt-1.5" style={{ color: 'var(--t3)' }}>
+                      {newAudEmails.length} email{newAudEmails.length !== 1 ? 's' : ''} added
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <input ref={fileRef} type="file" accept=".csv" className="hidden"
+                      onChange={e => {
+                        if (e.target.files?.[0]) {
+                          setCsvName(e.target.files[0].name)
+                          const count = Math.floor(Math.random() * 800) + 100
+                          setNewAudEmails(Array.from({ length: count }, (_, i) => `user${i + 1}@example.com`))
+                        }
+                      }} />
+                    <button onClick={() => fileRef.current?.click()}
+                      className="w-full rounded-xl py-6 flex flex-col items-center gap-2 cursor-pointer"
+                      style={{ border: `2px dashed ${csvName ? 'var(--p)' : 'var(--bd)'}`, background: csvName ? 'var(--p2)' : 'var(--bg)' }}>
+                      {csvName
+                        ? <><Check className="w-5 h-5" style={{ color: 'var(--p)' }} /><p className="text-[12px] font-semibold" style={{ color: 'var(--p)' }}>{csvName}</p><p className="text-[11px]" style={{ color: 'var(--t3)' }}>{newAudEmails.length} recipients</p></>
+                        : <><Upload className="w-5 h-5" style={{ color: 'var(--t3)' }} strokeWidth={1.7} /><p className="text-[12px]" style={{ color: 'var(--t2)' }}>Drop CSV or click to upload</p><p className="text-[11px]" style={{ color: 'var(--t3)' }}>Must have an "email" column</p></>
+                      }
+                    </button>
+                  </div>
+                )}
+
+                <button onClick={saveCustomAudience}
+                  disabled={!newAudName.trim() || newAudEmails.length === 0}
+                  className="w-full h-9 rounded-xl text-[12px] font-bold cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-40"
+                  style={{ background: 'var(--p)', color: '#fff' }}>
+                  Save &amp; Use This Audience
+                </button>
+              </div>
+            )}
           </section>
 
           <div style={{ borderTop: '1px solid var(--bd)' }} />
@@ -581,7 +746,7 @@ function CreateCampaignDrawer({ open, onClose, onSave, lang = 'en' }: {
 // ─── Create Automation Drawer ─────────────────────────────────────────────────
 
 function CreateAutomationDrawer({ open, onClose, onSave, lang = 'en' }: {
-  open: boolean; onClose: () => void; onSave: (a: Automation) => Promise<void> | void; lang?: string
+  open: boolean; onClose: () => void; onSave: (a: Automation) => void; lang?: string
 }) {
   const [name,    setName]    = useState('')
   const [trigger, setTrigger] = useState('')
@@ -596,19 +761,16 @@ function CreateAutomationDrawer({ open, onClose, onSave, lang = 'en' }: {
   const submit = async () => {
     if (!canSave) return
     setSaving(true)
-    try {
-      const tOpt = TRIGGER_OPTIONS.find(t => t.id === trigger)!
-      await onSave({
-      id: '',
+    await new Promise(r => setTimeout(r, 600))
+    const tOpt = TRIGGER_OPTIONS.find(t => t.id === trigger)!
+    onSave({
+      id: Math.random().toString(36).slice(2),
       name, trigger, triggerLabel: tOpt.label, triggerIcon: trigger,
       delay, subject, body, isActive: true, triggered: 0,
-        createdAt: new Date().toISOString().slice(0, 10),
-      })
-      onClose()
-      setName(''); setTrigger(''); setDelay(0); setSubject(''); setBody('')
-    } finally {
-      setSaving(false)
-    }
+      createdAt: new Date().toISOString().slice(0, 10),
+    })
+    setSaving(false); onClose()
+    setName(''); setTrigger(''); setDelay(0); setSubject(''); setBody('')
   }
 
   const inp = "w-full h-10 px-3 rounded-xl text-[13px] outline-none"
@@ -777,182 +939,29 @@ const CAMP_TABS = [
 
 export default function EmailMarketingPage() {
   const { lang } = useDashPrefs()
-  const { selectedCommunityId, isLoading: communityLoading } = useCreatorCommunity()
   const [campaigns,       setCampaigns]       = useState<Campaign[]>([])
   const [automations,     setAutomations]     = useState<Automation[]>([])
+  const [customAudiences, setCustomAudiences] = useState<CustomAudience[]>([])
   const [loading,         setLoading]         = useState(true)
-  const [loadError,       setLoadError]       = useState('')
   const [view,            setView]            = useState<'campaigns' | 'automations'>('campaigns')
   const [tab,             setTab]             = useState<typeof CAMP_TABS[number]['id']>('all')
   const [search,          setSearch]          = useState('')
   const [campDrawer,      setCampDrawer]      = useState(false)
   const [autoDrawer,      setAutoDrawer]      = useState(false)
   const [previewCamp,     setPreviewCamp]     = useState<Campaign | null>(null)
-  const [importOpen,      setImportOpen]      = useState(false)
-
-  const loadEmailData = async () => {
-    if (!selectedCommunityId) {
-      setCampaigns([])
-      setAutomations([])
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    setLoadError('')
-    try {
-      const [campaignsResult, welcomeResult, inactivityResult] = await Promise.allSettled([
-        emailCampaignsApi.getCommunityCampaigns(selectedCommunityId, { page: 1, limit: 100 }),
-        emailCampaignsApi.getWelcomeTemplate(selectedCommunityId),
-        emailCampaignsApi.getInactivityAutomations(selectedCommunityId),
-      ])
-
-      if (campaignsResult.status === 'fulfilled') {
-        const apiCampaigns = campaignsResult.value.campaigns || []
-        setCampaigns(
-          apiCampaigns
-            .filter(c => !c.isAutomationTemplate && c.type !== 'welcome')
-            .map(toUiCampaign),
-        )
-      } else {
-        setCampaigns([])
-      }
-
-      const nextAutomations: Automation[] = []
-      if (welcomeResult.status === 'fulfilled' && welcomeResult.value) {
-        nextAutomations.push(toUiAutomation(welcomeResult.value))
-      }
-      if (inactivityResult.status === 'fulfilled') {
-        nextAutomations.push(...(inactivityResult.value || []).map(toUiAutomation))
-      }
-      setAutomations(nextAutomations)
-
-      const errors = [campaignsResult, welcomeResult, inactivityResult]
-        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-        .map(r => r.reason?.message || 'Failed to load email data')
-      if (errors.length) setLoadError(errors.join(' · '))
-    } catch (error: any) {
-      setCampaigns([])
-      setAutomations([])
-      setLoadError(error?.message || 'Failed to load email data')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   useEffect(() => {
-    if (communityLoading) return
-    void loadEmailData()
-  }, [communityLoading, selectedCommunityId])
-
-  const saveCamps = (list: Campaign[]) => setCampaigns(list)
-  const saveAutos = (list: Automation[]) => setAutomations(list)
-
-  const handleSaveCampaign = async (campaign: Campaign) => {
-    if (!selectedCommunityId) {
-      setLoadError('Select a community before creating a campaign.')
-      return
-    }
-    setLoadError('')
     try {
-      const created = await emailCampaignsApi.createCampaign({
-        title: campaign.name,
-        subject: campaign.subject,
-        content: campaign.body,
-        communityId: selectedCommunityId,
-        type: 'announcement',
-        isHtml: false,
-        trackOpens: true,
-        trackClicks: true,
-        scheduledAt: campaign.status === 'scheduled' && campaign.scheduledAt
-          ? new Date(campaign.scheduledAt.replace(' ', 'T')).toISOString()
-          : undefined,
-        metadata: {
-          previewText: campaign.previewText,
-          audienceLabel: 'All community members',
-          audienceType: 'all',
-          audienceSource: 'backend_community_recipients',
-          audienceCountResolution: 'resolved_by_backend_campaign_recipients',
-        },
-      })
-      const uiCampaign = toUiCampaign(created)
-      setCampaigns(prev => [uiCampaign, ...prev])
-      if (campaign.status === 'sent') {
-        await emailCampaignsApi.sendCampaign(created._id)
-        void loadEmailData()
-      }
-    } catch (error: any) {
-      setLoadError(error?.message || 'Failed to save campaign')
-    }
-  }
+      setCampaigns(JSON.parse(localStorage.getItem('chabaqa_campaigns')   || 'null') ?? CAMP_SEED)
+      setAutomations(JSON.parse(localStorage.getItem('chabaqa_automations') || 'null') ?? AUTO_SEED)
+      setCustomAudiences(JSON.parse(localStorage.getItem('chabaqa_custom_audiences') || '[]'))
+    } catch { setCampaigns(CAMP_SEED); setAutomations(AUTO_SEED) }
+    finally { setLoading(false) }
+  }, [])
 
-  const handleDeleteCampaign = async (id: string) => {
-    setLoadError('')
-    try {
-      await emailCampaignsApi.deleteCampaign(id)
-      setCampaigns(prev => prev.filter(c => c.id !== id))
-    } catch (error: any) {
-      setLoadError(error?.message || 'Failed to delete campaign')
-    }
-  }
-
-  const handleSaveAutomation = async (automation: Automation) => {
-    if (!selectedCommunityId) {
-      setLoadError('Select a community before creating an automation.')
-      return
-    }
-    setLoadError('')
-    try {
-      const inactiveMatch = automation.trigger.match(/^inactive_(\d+)/)
-      const created = inactiveMatch
-        ? await emailCampaignsApi.createInactivityAutomation({
-            title: automation.name,
-            subject: automation.subject,
-            content: automation.body,
-            communityId: selectedCommunityId,
-            minInactiveDays: Number(inactiveMatch[1]),
-            isHtml: false,
-          })
-        : await emailCampaignsApi.createWelcomeTemplate(selectedCommunityId, {
-            subject: automation.subject,
-            content: automation.body,
-            isHtml: false,
-            automationActive: true,
-          })
-      await loadEmailData()
-    } catch (error: any) {
-      setLoadError(error?.message || 'Failed to save automation')
-    }
-  }
-
-  const handleToggleAutomation = async (automation: Automation) => {
-    if (!selectedCommunityId) return
-    const nextActive = !automation.isActive
-    setLoadError('')
-    try {
-      const updated = automation.trigger === 'new_member'
-        ? await emailCampaignsApi.toggleWelcomeTemplate(selectedCommunityId, nextActive)
-        : await emailCampaignsApi.toggleInactivityAutomation(automation.id, nextActive)
-      setAutomations(prev => prev.map(a => a.id === automation.id ? toUiAutomation(updated) : a))
-    } catch (error: any) {
-      setLoadError(error?.message || 'Failed to update automation')
-    }
-  }
-
-  const handleDeleteAutomation = async (automation: Automation) => {
-    if (!selectedCommunityId) return
-    setLoadError('')
-    try {
-      if (automation.trigger === 'new_member') {
-        await emailCampaignsApi.deleteWelcomeTemplate(selectedCommunityId)
-      } else {
-        await emailCampaignsApi.toggleInactivityAutomation(automation.id, false)
-      }
-      setAutomations(prev => prev.filter(a => a.id !== automation.id))
-    } catch (error: any) {
-      setLoadError(error?.message || 'Failed to delete automation')
-    }
-  }
+  const saveCamps = (list: Campaign[]) => { setCampaigns(list); localStorage.setItem('chabaqa_campaigns', JSON.stringify(list)) }
+  const saveAutos = (list: Automation[]) => { setAutomations(list); localStorage.setItem('chabaqa_automations', JSON.stringify(list)) }
+  const saveAuds  = (list: CustomAudience[]) => { setCustomAudiences(list); localStorage.setItem('chabaqa_custom_audiences', JSON.stringify(list)) }
 
   const filtered = campaigns
     .filter(c => tab === 'all' || c.status === tab)
@@ -982,19 +991,6 @@ export default function EmailMarketingPage() {
 
           <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
-            {loadError && (
-              <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl px-4 py-3"
-                style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.22)', color: '#ef4444' }}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <p className="text-[12px] font-semibold truncate">{loadError}</p>
-                </div>
-                <button onClick={() => void loadEmailData()} className="text-[12px] font-bold cursor-pointer hover:opacity-70">
-                  Retry
-                </button>
-              </div>
-            )}
-
             {/* KPIs */}
             <div className="grid grid-cols-4 gap-4 mb-7">
               <KpiCard icon={<Mail className="w-5 h-5" />}             label={lang === 'ar' ? 'إجمالي الحملات' : 'Total Campaigns'} value={String(campaigns.length)}      sub={`${campaigns.filter(c=>c.status==='sent').length} ${lang==='ar'?'مُرسَلة':'sent'} · ${campaigns.filter(c=>c.status==='draft').length} ${lang==='ar'?'مسودات':'drafts'}`} color="var(--p)" />
@@ -1002,12 +998,6 @@ export default function EmailMarketingPage() {
               <KpiCard icon={<Eye className="w-5 h-5" />}              label={lang === 'ar' ? 'متوسط معدل الفتح' : 'Avg Open Rate'}   value={`${pct(totalOpened, totalSent)}%`}  sub={`${totalOpened.toLocaleString()} ${lang==='ar'?'فتح':'opens'}`}  color="var(--orange)" />
               <KpiCard icon={<MousePointerClick className="w-5 h-5" />} label={lang === 'ar' ? 'متوسط معدل النقر' : 'Avg Click Rate'}  value={`${pct(totalClicked, totalSent)}%`} sub={`${totalClicked.toLocaleString()} ${lang==='ar'?'نقرة':'clicks'}`} color="var(--pink)" />
             </div>
-
-            {selectedCommunityId && (
-              <div className="mb-7">
-                <EmailTemplateCards onCampaignCreated={() => void loadEmailData()} />
-              </div>
-            )}
 
             {/* View toggle + actions */}
             <div className="flex items-center gap-3 mb-5 flex-wrap">
@@ -1054,16 +1044,6 @@ export default function EmailMarketingPage() {
                 </>
               )}
 
-              <button
-                type="button"
-                onClick={() => setImportOpen(true)}
-                disabled={!selectedCommunityId}
-                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold cursor-pointer hover:opacity-90 disabled:opacity-40"
-                style={{ background: 'var(--white)', color: 'var(--p)', border: '1px solid var(--bd)' }}>
-                <UserPlus className="w-4 h-4" strokeWidth={1.7} />
-                {lang === 'ar' ? 'استيراد جهات اتصال' : 'Import Contacts'}
-              </button>
-
               <button onClick={() => view === 'campaigns' ? setCampDrawer(true) : setAutoDrawer(true)}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white cursor-pointer hover:opacity-90 ml-auto"
                 style={{ background: 'var(--p)' }}>
@@ -1097,7 +1077,7 @@ export default function EmailMarketingPage() {
                 <div className="grid grid-cols-1 gap-4 max-w-4xl">
                   {filtered.map((c, i) => (
                     <div key={c.id} style={{ animation: `dashFadeUp .3s ${i * 50}ms ease both` }}>
-                      <CampaignCard c={c} onDelete={handleDeleteCampaign} onPreview={setPreviewCamp} lang={lang} />
+                      <CampaignCard c={c} onDelete={id => saveCamps(campaigns.filter(x => x.id !== id))} onPreview={setPreviewCamp} lang={lang} />
                     </div>
                   ))}
                 </div>
@@ -1136,8 +1116,8 @@ export default function EmailMarketingPage() {
                   {automations.map((a, i) => (
                     <div key={a.id} style={{ animation: `dashFadeUp .3s ${i * 50}ms ease both` }}>
                       <AutomationCard a={a}
-                        onToggle={() => void handleToggleAutomation(a)}
-                        onDelete={() => void handleDeleteAutomation(a)}
+                        onToggle={id => saveAutos(automations.map(x => x.id === id ? { ...x, isActive: !x.isActive } : x))}
+                        onDelete={id => saveAutos(automations.filter(x => x.id !== id))}
                         lang={lang} />
                     </div>
                   ))}
@@ -1151,21 +1131,14 @@ export default function EmailMarketingPage() {
 
       <CreateCampaignDrawer
         open={campDrawer} onClose={() => setCampDrawer(false)}
-        onSave={c => void handleSaveCampaign(c)}
+        onSave={c => saveCamps([c, ...campaigns])}
+        customAudiences={customAudiences}
+        onSaveAudience={a => saveAuds([...customAudiences, a])}
         lang={lang} />
-
-      {selectedCommunityId ? (
-        <ImportContactsDialog
-          open={importOpen}
-          onOpenChange={setImportOpen}
-          communityId={selectedCommunityId}
-          onSuccess={() => void loadEmailData()}
-        />
-      ) : null}
 
       <CreateAutomationDrawer
         open={autoDrawer} onClose={() => setAutoDrawer(false)}
-        onSave={a => void handleSaveAutomation(a)}
+        onSave={a => saveAutos([a, ...automations])}
         lang={lang} />
     </>
   )

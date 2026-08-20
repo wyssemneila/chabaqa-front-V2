@@ -4,12 +4,11 @@ import { BlogPost } from "../../components/blog-post"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { getBlogPostById, getAllBlogPosts } from "@/lib/blog-content"
-import { absoluteUrl, generateAlternateLanguages, generateBreadcrumbSchema } from "@/lib/seo-config"
 
 interface BlogPostPageProps {
-  params: Promise<{
+  params: {
     id: string
-  }>
+  }
 }
 
 // Generate static params for all blog posts
@@ -21,12 +20,11 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
-  const { id } = await params
-  const post = getBlogPostById(id)
-  
+  const post = getBlogPostById(params.id)
+
   if (!post) {
     return {
-      title: "Article Not Found"
+      title: "Post Not Found | Chabaqa Blog"
     }
   }
 
@@ -38,7 +36,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     openGraph: {
       title: post.title,
       description: post.excerpt,
-      url: absoluteUrl(`/blogs/${post.id}`),
+      url: `https://chabaqa.io/blogs/${post.id}`,
       siteName: "Chabaqa",
       type: "article",
       publishedTime: post.date,
@@ -47,7 +45,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       tags: post.tags,
       images: [
         {
-          url: absoluteUrl(post.seo.ogImage || post.image),
+          url: post.seo.ogImage || post.image,
           width: 1200,
           height: 630,
           alt: post.title
@@ -58,16 +56,21 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       card: "summary_large_image",
       title: post.title,
       description: post.excerpt,
-      images: [absoluteUrl(post.seo.ogImage || post.image)],
+      images: [post.seo.ogImage || post.image],
       creator: post.author.social?.twitter
     },
-    alternates: generateAlternateLanguages(`/blogs/${post.id}`),
+    alternates: {
+      canonical: `https://chabaqa.io/blogs/${post.id}`,
+      languages: {
+        "en": `https://chabaqa.io/blogs/${post.id}`,
+        "ar": `https://chabaqa.io/ar/blogs/${post.id}`,
+      }
+    }
   }
 }
 
-export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { id } = await params
-  const post = getBlogPostById(id)
+export default function BlogPostPage({ params }: BlogPostPageProps) {
+  const post = getBlogPostById(params.id)
 
   if (!post) {
     notFound()
@@ -78,15 +81,17 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <Header />
       <BlogPost post={post} />
       <Footer />
-      
+
       {/* JSON-LD Structured Data for Article */}
-      <script type="application/ld+json">
-        {JSON.stringify({
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "BlogPosting",
             "headline": post.title,
             "description": post.excerpt,
-            "image": absoluteUrl(post.seo.ogImage || post.image),
+            "image": post.seo.ogImage || post.image,
             "datePublished": post.date,
             "dateModified": post.lastModified || post.date,
             "author": {
@@ -100,30 +105,51 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               "name": "Chabaqa",
               "logo": {
                 "@type": "ImageObject",
-                "url": absoluteUrl("/logo_chabaqa.png")
+                "url": "https://chabaqa.io/logo.png"
               }
             },
             "mainEntityOfPage": {
               "@type": "WebPage",
-              "@id": absoluteUrl(`/blogs/${post.id}`)
+              "@id": `https://chabaqa.io/blogs/${post.id}`
             },
             "articleSection": post.category,
             "keywords": post.tags.join(", "),
             "wordCount": post.content.split(/\s+/).length,
             "timeRequired": post.readTime
-          })}
-      </script>
-      
+          })
+        }}
+      />
+
       {/* Breadcrumb Schema */}
-      <script type="application/ld+json">
-        {JSON.stringify(
-          generateBreadcrumbSchema([
-            { name: "Home", url: absoluteUrl("/") },
-            { name: "Blog", url: absoluteUrl("/blogs") },
-            { name: post.title, url: absoluteUrl(`/blogs/${post.id}`) },
-          ]),
-        )}
-      </script>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://chabaqa.io"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Blog",
+                "item": "https://chabaqa.io/blogs"
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "name": post.title,
+                "item": `https://chabaqa.io/blogs/${post.slug}`
+              }
+            ]
+          })
+        }}
+      />
     </main>
   )
 }

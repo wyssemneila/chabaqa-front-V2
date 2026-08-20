@@ -9,23 +9,19 @@ import { jwtVerify } from 'jose'
 const LOCAL_DEV_JWT_SECRET = 'local-dev-jwt-secret-change-me'
 let hasLoggedMissingSecret = false
 
-function resolveJwtSecret(): Uint8Array | null {
+function resolveJwtSecret(): Uint8Array {
   const rawSecret = process.env.JWT_SECRET?.trim()
 
   if (rawSecret) {
     return new TextEncoder().encode(rawSecret)
   }
 
-  if (process.env.NODE_ENV !== 'production') {
-    return new TextEncoder().encode(LOCAL_DEV_JWT_SECRET)
-  }
-
   if (!hasLoggedMissingSecret) {
-    console.error('[authMiddleware] JWT_SECRET is missing in production; protected routes will reject auth cookies until runtime env is fixed.')
+    console.warn('[authMiddleware] JWT_SECRET not set — falling back to local dev secret. Set JWT_SECRET in production env vars.')
     hasLoggedMissingSecret = true
   }
 
-  return null
+  return new TextEncoder().encode(LOCAL_DEV_JWT_SECRET)
 }
 
 // Prefix-protected routes require authentication for all descendants.
@@ -49,8 +45,6 @@ const PUBLIC_ROUTES = [
   '/about',
   '/contact',
 ]
-
-const HEALTH_ROUTES = new Set(['/health', '/ping'])
 
 // Admin only routes
 const ADMIN_ROUTES = [
@@ -332,11 +326,6 @@ function isProtectedRoute(path: string): boolean {
 }
 
 export async function authMiddleware(request: NextRequest) {
-  // #region agent log
-  if (request.nextUrl.pathname.includes('/creator') || request.nextUrl.pathname.includes('/signin')) {
-    fetch('http://127.0.0.1:7555/ingest/ce618bb9-320f-41a2-9d8d-85cf57061fcc',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'230092'},body:JSON.stringify({sessionId:'230092',runId:'pre-fix',hypothesisId:'H2,H3',location:'auth.middleware.ts:authMiddleware',message:'Middleware processing auth route',data:{pathname:request.nextUrl.pathname,hasAccessCookie:Boolean(readCookieValue(request,USER_ACCESS_COOKIE)),hasJwtSecret:Boolean(process.env.JWT_SECRET)},timestamp:Date.now()})}).catch(()=>{});
-  }
-  // #endregion
   const { pathname } = request.nextUrl
   const preferredLocale = readCookieValue(request, LOCALE_COOKIE)
   const isPreferredSupported =
@@ -347,7 +336,7 @@ export async function authMiddleware(request: NextRequest) {
   const locale = extractedLocale.hasLocalePrefix ? extractedLocale.locale : fallbackLocale
   const { normalizedPath, hasLocalePrefix } = extractedLocale
   const isInternalLocaleRewrite = request.headers.get(LOCALE_REWRITE_HEADER) === '1'
-  
+
   // Skip middleware for API routes, static files, and Next.js internals
   if (
     pathname.startsWith('/api/') ||
@@ -355,23 +344,23 @@ export async function authMiddleware(request: NextRequest) {
     pathname.startsWith('/favicon.ico') ||
     pathname.includes('.')
   ) {
-    return applySecurityHeaders(NextResponse.next(), pathname)
-  }
-
-  if (HEALTH_ROUTES.has(pathname)) {
-    return applySecurityHeaders(NextResponse.next(), pathname)
+    return NextResponse.next()
   }
 
   if (!hasLocalePrefix && !isInternalLocaleRewrite) {
     const localizedUrl = getExternalUrl(request)
     localizedUrl.pathname = withLocale(locale, pathname)
-    return redirect(localizedUrl)
+    return NextResponse.redirect(localizedUrl)
   }
 
   if (!hasLocalePrefix && isInternalLocaleRewrite) {
-    const response = applySecurityHeaders(NextResponse.next(), pathname)
+    const response = NextResponse.next()
     const rewrittenLocale = request.headers.get('x-app-locale') || DEFAULT_LOCALE
-    response.cookies.set(LOCALE_COOKIE, rewrittenLocale, localeCookieOptions)
+    response.cookies.set(LOCALE_COOKIE, rewrittenLocale, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+    })
     return response
   }
 
@@ -383,8 +372,12 @@ export async function authMiddleware(request: NextRequest) {
     requestHeaders.set('x-app-locale', locale)
     requestHeaders.set(LOCALE_REWRITE_HEADER, '1')
 
-    const response = applySecurityHeaders(NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } }), normalizedPath)
-    response.cookies.set(LOCALE_COOKIE, locale, localeCookieOptions)
+    const response = NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } })
+    response.cookies.set(LOCALE_COOKIE, locale, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+    })
     return response
   }
 
@@ -405,24 +398,11 @@ export async function authMiddleware(request: NextRequest) {
     }
 
     const secret = resolveJwtSecret()
-    if (!secret) {
-      logAuthFailure('missing_secret', {
-        path: normalizedPath,
-        cookieName,
-      })
-      return { user: null, isValidToken: false }
-    }
 
     try {
       const { payload } = await jwtVerify(token, secret)
-      // #region agent log
-      fetch('http://127.0.0.1:7555/ingest/ce618bb9-320f-41a2-9d8d-85cf57061fcc',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'230092'},body:JSON.stringify({sessionId:'230092',runId:'pre-fix',hypothesisId:'H2,H3',location:'auth.middleware.ts:verifyTokenSuccess',message:'Middleware JWT verification succeeded',data:{path:normalizedPath,role:String(payload?.role||''),cookieName},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       return { user: payload, isValidToken: true }
-    } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7555/ingest/ce618bb9-320f-41a2-9d8d-85cf57061fcc',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'230092'},body:JSON.stringify({sessionId:'230092',runId:'pre-fix',hypothesisId:'H2,H3',location:'auth.middleware.ts:verifyTokenFailure',message:'Middleware JWT verification failed',data:{path:normalizedPath,cookieName,errorName:error instanceof Error?error.name:'unknown'},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+    } catch {
       logAuthFailure('invalid_token', {
         path: normalizedPath,
         cookieName,
@@ -444,7 +424,7 @@ export async function authMiddleware(request: NextRequest) {
   // Handle admin auth pages first to avoid cross-routing with regular auth flows.
   if (isAdminAuthPage) {
     if (hasValidAdminSession) {
-      return redirect(new URL(withLocale(locale, '/admin/dashboard'), getExternalUrl(request)))
+      return NextResponse.redirect(new URL(withLocale(locale, '/admin/dashboard'), getExternalUrl(request)))
     }
     return continueWithHeaders()
   }
@@ -453,7 +433,7 @@ export async function authMiddleware(request: NextRequest) {
   // Skip redirect if they just logged out (message param)
   const logoutMessage = request.nextUrl.searchParams.get('message')
   const isPostLogout = logoutMessage?.toLowerCase().includes('logged out')
-  
+
   if (normalizedPath === '/signin' || normalizedPath === '/signup' || normalizedPath === '/verify-email') {
     if (isPostLogout) {
       // User just logged out - clear the stale cookie and let them stay on signin
@@ -464,13 +444,13 @@ export async function authMiddleware(request: NextRequest) {
       response.cookies.set('refreshToken', '', { path: '/', maxAge: 0, sameSite: 'strict', secure: true })
       return response
     }
-    
+
     if (isValidToken) {
       // User appears authenticated - redirect away from auth pages
       const normalizedRedirect = normalizeAuthRedirect(request.nextUrl.searchParams.get('redirect'), locale)
-      return redirect(new URL(normalizedRedirect, getExternalUrl(request)))
+      return NextResponse.redirect(new URL(normalizedRedirect, getExternalUrl(request)))
     }
-    
+
     // Not authenticated - let them access the auth page
     return continueWithHeaders()
   }
@@ -484,7 +464,7 @@ export async function authMiddleware(request: NextRequest) {
   if (isAdminRoute && !hasValidAdminSession) {
     const loginUrl = new URL(withLocale(locale, '/admin/login'), getExternalUrl(request))
     loginUrl.searchParams.set('redirect', pathname)
-    return redirect(loginUrl)
+    return NextResponse.redirect(loginUrl)
   }
 
   if (isAdminRoute && hasValidAdminSession && adminUser) {
@@ -504,7 +484,7 @@ export async function authMiddleware(request: NextRequest) {
     })
     const loginUrl = new URL(withLocale(locale, '/signin'), getExternalUrl(request))
     loginUrl.searchParams.set('redirect', pathname)
-    return redirect(loginUrl)
+    return NextResponse.redirect(loginUrl)
   }
 
   // Handle creator routes
@@ -517,26 +497,16 @@ export async function authMiddleware(request: NextRequest) {
       const loginUrl = new URL('/signin', getExternalUrl(request))
       loginUrl.pathname = withLocale(locale, '/signin')
       loginUrl.searchParams.set('redirect', pathname)
-      return redirect(loginUrl)
+      return NextResponse.redirect(loginUrl)
+    } else {
+      // User is authenticated but not creator/admin
+      logAuthFailure('role_mismatch', {
+        path: normalizedPath,
+        requiredRole: 'creator|admin',
+        actualRole: userRole || 'unknown',
+      })
+      return NextResponse.redirect(new URL(withLocale(locale, '/dashboard'), getExternalUrl(request)))
     }
-
-    // Allow authenticated non-creator users to access onboarding routes (e.g. create community)
-    const isOnboardingRoute = CREATOR_ONBOARDING_ROUTES.some(route => normalizedPath.startsWith(route))
-    if (isOnboardingRoute) {
-      const requestHeaders = new Headers(request.headers)
-      requestHeaders.set('x-user-id', user?.sub as string)
-      requestHeaders.set('x-user-email', user?.email as string)
-      requestHeaders.set('x-user-role', user?.role as string)
-      return continueWithHeaders(requestHeaders)
-    }
-
-    // User is authenticated but not creator/admin
-    logAuthFailure('role_mismatch', {
-      path: normalizedPath,
-      requiredRole: 'creator|admin',
-      actualRole: userRole || 'unknown',
-    })
-    return redirect(new URL(withLocale(locale, '/dashboard'), getExternalUrl(request)))
   }
 
   if (isValidToken && user) {
@@ -544,7 +514,7 @@ export async function authMiddleware(request: NextRequest) {
     requestHeaders.set('x-user-id', user.sub as string)
     requestHeaders.set('x-user-email', user.email as string)
     requestHeaders.set('x-user-role', user.role as string)
-    
+
     return continueWithHeaders(requestHeaders)
   }
 
@@ -558,9 +528,9 @@ export function getUserFromHeaders(headers: Headers) {
   const userId = headers.get('x-user-id')
   const userEmail = headers.get('x-user-email')
   const userRole = headers.get('x-user-role')
-  
+
   if (!userId) return null
-  
+
   return {
     id: userId,
     email: userEmail,

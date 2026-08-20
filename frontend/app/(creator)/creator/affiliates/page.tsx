@@ -3,13 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
-import { useCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
-import {
-  affiliateApi,
-  type AffiliateMarketingResponse,
-  type AffiliatePartner,
-  type AffiliateProgram,
-} from '@/lib/api/affiliate.api'
 import {
   Plus, Link2, Copy, Check, Users, TrendingUp, DollarSign,
   MousePointerClick, Trash2, X, Pause, Play, Search,
@@ -80,56 +73,6 @@ const STATUS_META: Record<Affiliate['status'], { label: string; bg: string; colo
 
 const pct = (a: number, b: number) => b === 0 ? '0%' : `${Math.round((a / b) * 100)}%`
 const initials = (name: string) => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-const getId = (value: any) => String(value?._id || value?.id || value || '')
-const getPartnerUser = (partner: AffiliatePartner): any =>
-  typeof partner.partnerUserId === 'object' ? partner.partnerUserId : partner.user
-const getPartnerName = (partner: AffiliatePartner): string => {
-  const user = getPartnerUser(partner)
-  return partner.displayName || user?.fullName || user?.name || partner.email || partner.inviteEmail || 'Affiliate'
-}
-const getPartnerEmail = (partner: AffiliatePartner): string => {
-  const user = getPartnerUser(partner)
-  return partner.email || partner.inviteEmail || user?.email || ''
-}
-const normalizeStatus = (status: AffiliatePartner['status']): Affiliate['status'] => {
-  if (status === 'approved') return 'active'
-  if (status === 'paused' || status === 'rejected') return 'paused'
-  return 'pending'
-}
-const mapAffiliate = (
-  partner: AffiliatePartner,
-  program?: AffiliateProgram,
-  marketing?: AffiliateMarketingResponse | null,
-): Affiliate => {
-  const partnerId = getId(partner._id || partner.id)
-  const userId = typeof partner.partnerUserId === 'object' ? getId(partner.partnerUserId) : String(partner.partnerUserId || '')
-  const perf = marketing?.leaderboards?.partners?.find(p =>
-    String(p.partnerUserId) === userId ||
-    String(p.partnerUserId) === partnerId ||
-    p.email === getPartnerEmail(partner)
-  )
-  const recentLink = marketing?.linkBuilder?.recentLinks?.find(link =>
-    String((link as any).partnerUserId || '') === userId ||
-    String((link as any).partnerId || '') === partnerId
-  )
-  const commission = Number(partner.customCommissionPercent || program?.commissionPercent || 0)
-  return {
-    id: partnerId,
-    name: getPartnerName(partner),
-    email: getPartnerEmail(partner),
-    slug: partner.couponCode || recentLink?.code || partnerId,
-    commissionType: 'percent',
-    commissionValue: commission,
-    status: normalizeStatus(partner.status),
-    createdAt: partner.createdAt || new Date().toISOString(),
-    stats: {
-      clicks: Number(perf?.clicks || 0),
-      conversions: Number(perf?.conversions || 0),
-      earned: Number(perf?.commissionDT || 0),
-      pendingPayout: 0,
-    },
-  }
-}
 
 // ─── Copy Hook ────────────────────────────────────────────────────────────────
 
@@ -260,7 +203,7 @@ function AffiliateCard({ aff, idx, onToggle, onDelete }: {
 // ─── Create Drawer ────────────────────────────────────────────────────────────
 
 function CreateDrawer({ open, onClose, onSave }: {
-  open: boolean; onClose: () => void; onSave: (a: Affiliate) => Promise<void> | void
+  open: boolean; onClose: () => void; onSave: (a: Affiliate) => void
 }) {
   const [name,      setName]      = useState('')
   const [email,     setEmail]     = useState('')
@@ -282,21 +225,18 @@ function CreateDrawer({ open, onClose, onSave }: {
   const submit = async () => {
     if (!canSave) return
     setSaving(true)
-    try {
-      await onSave({
-      id: '',
+    await new Promise(r => setTimeout(r, 600))
+    onSave({
+      id: Math.random().toString(36).slice(2),
       name, email, slug,
       commissionType: comType,
       commissionValue: Number(comVal),
       status: 'pending',
       createdAt: new Date().toISOString().slice(0, 10),
       stats: { clicks: 0, conversions: 0, earned: 0, pendingPayout: 0 },
-      })
-      onClose()
-      setName(''); setEmail(''); setSlug(''); setComVal('20')
-    } finally {
-      setSaving(false)
-    }
+    })
+    setSaving(false); onClose()
+    setName(''); setEmail(''); setSlug(''); setComVal('20')
   }
 
   const inp = "w-full h-10 px-3 rounded-xl text-[13px] outline-none transition-colors"
@@ -462,124 +402,28 @@ function KpiCard({ icon, label, value, sub, color }: {
 }
 
 export default function AffiliatesPage() {
-  const { selectedCommunityId, isLoading: communityLoading } = useCreatorCommunity()
   const [affiliates, setAffiliates] = useState<Affiliate[]>([])
-  const [programs,   setPrograms]   = useState<AffiliateProgram[]>([])
-  const [loadError,  setLoadError]  = useState('')
   const [loading,    setLoading]    = useState(true)
   const [tab,        setTab]        = useState<typeof TABS[number]>('all')
   const [search,     setSearch]     = useState('')
   const [drawer,     setDrawer]     = useState(false)
 
-  const loadAffiliates = async () => {
-    if (communityLoading) return
-    if (!selectedCommunityId) {
-      setAffiliates([])
-      setPrograms([])
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    setLoadError('')
+  useEffect(() => {
     try {
-      const [programList, marketing] = await Promise.all([
-        affiliateApi.creator.listPrograms(),
-        affiliateApi.creator.getMarketing({ communityId: selectedCommunityId, days: 30, limit: 100 }),
-      ])
-      const scopedPrograms = programList.filter(p => !p.communityId || String(p.communityId) === String(selectedCommunityId))
-      const activePrograms = scopedPrograms.length ? scopedPrograms : programList
-      setPrograms(activePrograms)
+      setAffiliates(JSON.parse(localStorage.getItem('chabaqa_affiliates') || 'null') ?? SEED)
+    } catch { setAffiliates(SEED) }
+    finally { setLoading(false) }
+  }, [])
 
-      const partnersById = new Map<string, AffiliatePartner>()
-      const partnerLists = await Promise.all(
-        activePrograms.length
-          ? activePrograms.map(p => affiliateApi.creator.listPartners(getId(p._id || p.id)).catch(() => []))
-          : [affiliateApi.creator.listPartners().catch(() => [])],
-      )
-      partnerLists.flat().forEach(partner => {
-        const id = getId(partner._id || partner.id)
-        if (id) partnersById.set(id, partner)
-      })
-
-      const partners = Array.from(partnersById.values())
-      setAffiliates(partners.map(partner => {
-        const program = activePrograms.find(p => getId(p._id || p.id) === String(partner.programId)) || activePrograms[0]
-        return mapAffiliate(partner, program, marketing)
-      }))
-    } catch (error: any) {
-      setAffiliates([])
-      setLoadError(error?.message || 'Failed to load affiliates')
-    } finally {
-      setLoading(false)
-    }
+  const save = (list: Affiliate[]) => {
+    setAffiliates(list)
+    localStorage.setItem('chabaqa_affiliates', JSON.stringify(list))
   }
 
-  useEffect(() => { void loadAffiliates() }, [communityLoading, selectedCommunityId])
-
-  const save = (list: Affiliate[]) => setAffiliates(list)
-
-  const toggle = async (id: string) => {
-    const current = affiliates.find(a => a.id === id)
-    if (!current) return
-    const nextStatus = current.status === 'active' ? 'paused' : 'approved'
-    setLoadError('')
-    try {
-      await affiliateApi.creator.updatePartnerStatus(id, nextStatus)
-      setAffiliates(prev => prev.map(a => a.id !== id ? a : {
-        ...a,
-        status: nextStatus === 'approved' ? 'active' : 'paused',
-      }))
-    } catch (error: any) {
-      setLoadError(error?.message || 'Failed to update affiliate')
-    }
-  }
-
-  const removeAffiliate = async (id: string) => {
-    setLoadError('')
-    try {
-      await affiliateApi.creator.updatePartnerStatus(id, 'rejected')
-      setAffiliates(prev => prev.filter(a => a.id !== id))
-    } catch (error: any) {
-      setLoadError(error?.message || 'Failed to remove affiliate')
-    }
-  }
-
-  const ensureProgram = async (commissionPercent: number) => {
-    const existing = programs.find(p => p.status === 'active') || programs[0]
-    if (existing) return existing
-    if (!selectedCommunityId) throw new Error('Select a community first')
-    const created = await affiliateApi.creator.createProgram({
-      communityId: selectedCommunityId,
-      name: 'Community Affiliate Program',
-      description: 'Default affiliate program for this community.',
-      scopeType: 'community',
-      commissionPercent,
-      cookieWindowDays: 30,
-      holdDays: 14,
-      attributionModel: 'last_click',
-      autoApprovePartners: false,
-    })
-    setPrograms(prev => [created, ...prev])
-    return created
-  }
-
-  const createAffiliate = async (affiliate: Affiliate) => {
-    setLoadError('')
-    try {
-      const program = await ensureProgram(affiliate.commissionType === 'percent' ? affiliate.commissionValue : 10)
-      const partner = await affiliateApi.creator.invitePartner(getId(program._id || program.id), {
-        email: affiliate.email,
-        displayName: affiliate.name,
-        customCommissionPercent: affiliate.commissionType === 'percent' ? affiliate.commissionValue : undefined,
-        couponCode: affiliate.slug,
-        source: 'creator_dashboard',
-      })
-      await loadAffiliates()
-    } catch (error: any) {
-      setLoadError(error?.message || 'Failed to create affiliate')
-    }
-  }
+  const toggle = (id: string) =>
+    save(affiliates.map(a => a.id !== id ? a : {
+      ...a, status: a.status === 'active' ? 'paused' : 'active',
+    }))
 
   const filtered = affiliates
     .filter(a => tab === 'all' || a.status === tab)
@@ -605,13 +449,6 @@ export default function AffiliatesPage() {
           <DashTopbar title="Affiliates" subtitle="Track referral links, conversions and commissions" />
 
           <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
-            {loadError && (
-              <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl px-4 py-3"
-                style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.22)', color: '#ef4444' }}>
-                <p className="text-[12px] font-semibold truncate">{loadError}</p>
-                <button onClick={() => void loadAffiliates()} className="text-[12px] font-bold cursor-pointer hover:opacity-70">Retry</button>
-              </div>
-            )}
 
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
@@ -679,7 +516,7 @@ export default function AffiliatesPage() {
                   <div key={a.id} style={{ animation: `dashFadeUp .3s ${i * 50}ms ease both` }}>
                     <AffiliateCard aff={a} idx={i}
                       onToggle={toggle}
-                      onDelete={removeAffiliate} />
+                      onDelete={id => save(affiliates.filter(x => x.id !== id))} />
                   </div>
                 ))}
               </div>
@@ -688,7 +525,7 @@ export default function AffiliatesPage() {
         </div>
       </div>
 
-      <CreateDrawer open={drawer} onClose={() => setDrawer(false)} onSave={a => void createAffiliate(a)} />
+      <CreateDrawer open={drawer} onClose={() => setDrawer(false)} onSave={a => save([a, ...affiliates])} />
     </>
   )
 }

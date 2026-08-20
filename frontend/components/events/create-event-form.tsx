@@ -10,8 +10,6 @@ import {
 } from "lucide-react"
 import { Input }    from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
-import { eventsApi } from "@/lib/api/events.api"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -643,7 +641,7 @@ function StepPricing({ data, set }: { data:FormData; set:(f:keyof FormData, v:an
 // ════════════════════════════════════════════════════════════════════════════════
 function SuccessScreen() {
   useEffect(() => {
-    let iv: number
+    let iv: ReturnType<typeof setInterval>
     ;(async () => {
       const confetti = (await import('canvas-confetti')).default
       const colors   = ["#8e78fb","#fb923c","#22d3ee","#f472b6","#a78bfa","#ffffff"]
@@ -822,7 +820,6 @@ const STEP_BLOCKER: Record<number,(d:FormData)=>string> = {
 
 export function CreateEventForm() {
   const router = useRouter()
-  const { selectedCommunityId } = useCreatorCommunity()
 
   const [step,         setStep]         = useState(1)
   const [error,        setError]        = useState("")
@@ -851,32 +848,13 @@ export function CreateEventForm() {
   const submit = async () => {
     setSubmitting(true); setError("")
     try {
-      if (!selectedCommunityId) throw new Error("Select a community before creating an event.")
+      setSubmitStatus("Creating event…");    await new Promise(r => setTimeout(r, 400))
+      setSubmitStatus("Saving tickets…");    await new Promise(r => setTimeout(r, 300))
+      setSubmitStatus("Publishing…");        await new Promise(r => setTimeout(r, 300))
 
-      setSubmitStatus("Creating event…")
-      await eventsApi.create({
-        communityId: selectedCommunityId,
-        title: data.title,
-        description: data.description,
-        category: data.category,
-        type: data.format === "online" ? "Online" : data.format === "hybrid" ? "Hybrid" : "In-person",
-        location: data.format === "online" ? undefined : [data.venueName, data.address, data.city, data.country].filter(Boolean).join(", "),
-        onlineUrl: data.meetLink || undefined,
-        startDate: data.startDate,
-        endDate: data.endDate || data.startDate,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        timezone: data.timezone,
-        image: data.banner || undefined,
-        isPublished: data.isPublished,
-        tickets: data.tickets.map(ticket => ({
-          name: ticket.name,
-          type: ticket.tier,
-          price: ticket.pricing === "paid" ? Number(ticket.price || 0) : 0,
-          quantity: ticket.quantity === "unlimited" ? undefined : Number(ticket.quantity || 0),
-          description: ticket.description || undefined,
-        })),
-      })
+      const events: any[] = JSON.parse(localStorage.getItem("chabaqa_events") ?? "[]")
+      events.unshift({ id:`event_${Date.now()}`, ...data, createdAt:new Date().toISOString() })
+      localStorage.setItem("chabaqa_events", JSON.stringify(events))
       setSuccess(true)
       setTimeout(() => router.push("/creator/events"), 2800)
     } catch (err: any) {

@@ -36,7 +36,7 @@ export function PermissionGuard({ hasPermission, requiredRole, featureName, chil
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
           <div className="flex items-start">
             <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-            <div className="ml-3">
+            <div className="ms-3">
               <h3 className="text-sm font-medium text-amber-800">Permission Required</h3>
               <p className="mt-1 text-sm text-amber-700">{infoText}</p>
             </div>

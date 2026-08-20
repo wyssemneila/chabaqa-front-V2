@@ -3,7 +3,7 @@ export const CREATOR_TERMS = {
     overview: "Overview", communities: "Communities", analytics: "Analytics",
     courses: "Courses", challenges: "Challenges", sessions: "Sessions",
     events: "Events", products: "Products", posts: "Posts",
-    subscriptions: "Subscriptions", payouts: "Payouts",
+    subscriptions: "Subscriptions", payouts: "Payouts", manualPayments: "Manual Payments",
     emailCampaigns: "Email Campaigns", affiliates: "Affiliates", contacts: "Contacts",
     messages: "Messages", whatsapp: "WhatsApp", team: "Team & Roles",
     notifications: "Notifications", integrations: "Integrations", customize: "Customize",
@@ -27,7 +27,7 @@ export const CREATOR_TERMS = {
     plan: "Plan", monthlyPrice: "Monthly Price", trial: "Free Trial", trialDays: "Trial Period",
     subscriber: "Subscriber", mrr: "Monthly Recurring Revenue", churnRate: "Cancellation Rate",
     lifetime: "Lifetime Value", refund: "Refund", requestPayout: "Request Payout",
-    payoutHistory: "Payout History",
+    payoutHistory: "Payout History", manualPayment: "Record Payment",
   },
   team: {
     owner: "Owner", admin: "Admin", moderator: "Moderator", editor: "Editor",

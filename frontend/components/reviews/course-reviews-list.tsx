@@ -1,8 +1,10 @@
+"use client"
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { StarRating } from "./star-rating"
-import { Feedback } from "@/lib/api/feedback.api"
+import { Feedback } from "@/lib/api/social/feedback.api"
 import { formatDistanceToNow } from "date-fns"
 
 interface CourseReviewsListProps {

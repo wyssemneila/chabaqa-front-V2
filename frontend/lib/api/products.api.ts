@@ -1,7 +1,6 @@
-import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from './client';
-import type { ApiGetOptions } from './client';
-import type { Product, ProductVariant, ProductFile } from './types';
-import { mediaApi } from './media.api';
+import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from '../core/client';
+import type { ApiGetOptions } from '../core/client';
+import type { Product, ProductVariant, ProductFile } from '../core/types';
 
 export interface CreateProductVariantData {
   name: string;
@@ -99,33 +98,7 @@ export const productsApi = {
 
   // Upload product file
   uploadFile: async (id: string, file: File): Promise<ApiSuccessResponse<ProductFile>> => {
-    const asset = await mediaApi.uploadSmart(file, {
-      purpose: 'product_file',
-      entityType: 'Product',
-      entityId: id,
-      visibility: 'private',
-    });
-    return apiClient.post<ApiSuccessResponse<ProductFile>>(`/products/${id}/files`, {
-      name: file.name,
-      url: asset.url,
-      type: file.type || asset.mediaType,
-      size: `${file.size}`,
-    });
-  },
-
-  // Add product file metadata
-  addFile: async (id: string, data: CreateProductFileData): Promise<ApiSuccessResponse<ProductFile>> => {
-    return apiClient.post<ApiSuccessResponse<ProductFile>>(`/products/${id}/files`, data);
-  },
-
-  // Remove product file
-  removeFile: async (id: string, fileId: string): Promise<ApiSuccessResponse<void>> => {
-    return apiClient.delete<ApiSuccessResponse<void>>(`/products/${id}/files/${fileId}`);
-  },
-
-  // Update product file active status
-  updateFileStatus: async (id: string, fileId: string, isActive: boolean): Promise<ApiSuccessResponse<void>> => {
-    return apiClient.patch<ApiSuccessResponse<void>>(`/products/${id}/files/${fileId}/status`, { isActive });
+    return apiClient.uploadFile<ApiSuccessResponse<ProductFile>>(`/products/${id}/files`, file);
   },
 
   // Purchase product
@@ -172,17 +145,14 @@ export const productsApi = {
 
   // Submit product review
   submitReview: async (productId: string, data: { rating: number; comment?: string }): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.post<ApiSuccessResponse<any>>(`/products/${productId}/reviews`, {
-      rating: data.rating,
-      message: data.comment,
-    });
+    return apiClient.post<ApiSuccessResponse<any>>(`/products/${productId}/reviews`, data);
   },
 
   // Initiate Stripe Link payment for product
-  initStripePayment: async (productId: string, promoCode?: string, idempotencyKey?: string): Promise<any> => {
+  initStripePayment: async (productId: string, promoCode?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/product?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/product`;
-    return apiClient.post(endpoint, { productId }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
+    return apiClient.post(endpoint, { productId });
   },
 };

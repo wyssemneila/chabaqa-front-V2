@@ -12,7 +12,7 @@ export function CommunitiesCTAClient() {
         onClick={() => window.open("#", "_blank")}
       >
         Create Your Community
-        <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+        <ArrowRight className="w-5 h-5 ms-2 group-hover:translate-x-1 transition-transform" />
       </Button>
       <Button
         size="lg"

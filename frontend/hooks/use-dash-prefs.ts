@@ -16,7 +16,7 @@ function applyLang(lang: DashLang) {
 
 function readLang(): DashLang {
   if (typeof localStorage === 'undefined') return 'en'
-  return localStorage.getItem(LANG_KEY) === 'ar' ? 'ar' : 'en'
+  return (localStorage.getItem(LANG_KEY) as DashLang) || 'en'
 }
 
 function emit() {
@@ -35,11 +35,7 @@ export function useDashPrefs() {
     }
     sync()
     window.addEventListener(EVENT, sync)
-    window.addEventListener('storage', sync)
-    return () => {
-      window.removeEventListener(EVENT, sync)
-      window.removeEventListener('storage', sync)
-    }
+    return () => window.removeEventListener(EVENT, sync)
   }, [])
 
   const toggleDark = useCallback(() => {

@@ -24,11 +24,11 @@ class SecureStorage {
    */
   private getOrCreateEncryptionKey(): string {
     if (typeof window === 'undefined') return '';
-    
+
     let key = localStorage.getItem(`${this.prefix}enc_key`);
     if (!key) {
       // Generate a simple key for basic obfuscation
-      key = btoa(Math.random().toString(36).substring(2, 15) + 
+      key = btoa(Math.random().toString(36).substring(2, 15) +
                  Math.random().toString(36).substring(2, 15));
       localStorage.setItem(`${this.prefix}enc_key`, key);
     }
@@ -40,7 +40,7 @@ class SecureStorage {
    */
   private encrypt(data: string): string {
     if (!this.encryptionKey) return data;
-    
+
     try {
       // Simple XOR encryption for basic obfuscation
       let encrypted = '';
@@ -60,7 +60,7 @@ class SecureStorage {
    */
   private decrypt(encryptedData: string): string {
     if (!this.encryptionKey) return encryptedData;
-    
+
     try {
       const data = atob(encryptedData);
       let decrypted = '';
@@ -88,7 +88,7 @@ class SecureStorage {
     };
 
     let serialized = JSON.stringify(data);
-    
+
     if (options.encrypt !== false) {
       serialized = this.encrypt(serialized);
     }
@@ -115,7 +115,7 @@ class SecureStorage {
       }
 
       const data = JSON.parse(stored);
-      
+
       // Check expiry
       if (data.expiry && Date.now() > data.expiry) {
         this.removeItem(key);
@@ -142,7 +142,7 @@ class SecureStorage {
    */
   clear(): void {
     if (typeof window === 'undefined') return;
-    
+
     const keys = Object.keys(localStorage);
     keys.forEach(key => {
       if (key.startsWith(this.prefix)) {
@@ -214,7 +214,7 @@ class SecureStorage {
    */
   isAvailable(): boolean {
     if (typeof window === 'undefined') return false;
-    
+
     try {
       const test = '__storage_test__';
       localStorage.setItem(test, 'test');

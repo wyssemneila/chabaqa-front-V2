@@ -7,9 +7,9 @@ import { getTranslations } from "next-intl/server"
 export const dynamic = 'force-dynamic'
 
 interface ResetPasswordPageProps {
-  searchParams?: Promise<{
+  searchParams: {
     email?: string
-  }>
+  }
 }
 
 export default async function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
@@ -20,13 +20,13 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
     redirect("/")
   }
 
-  const { email = "" } = (await searchParams) ?? {}
+  const email = searchParams.email || ""
 
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 gradient-fallback">
-        <Image src="/gradient-background.webp" alt={t("backgroundAlt")} fill sizes="100vw" className="object-cover" priority />
+        <Image src="/gradient-background.png" alt={t("backgroundAlt")} fill className="object-cover" priority />
       </div>
 
       {/* Logo - Top Left */}
@@ -36,7 +36,6 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
           alt={t("logoAlt")}
           width={140}
           height={56}
-          sizes="140px"
           className="drop-shadow-lg"
           priority
         />

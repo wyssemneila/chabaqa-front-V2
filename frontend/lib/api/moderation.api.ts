@@ -5,8 +5,8 @@
  * Some endpoints are placeholders waiting for backend alignment.
  */
 
-import { apiClient, ApiSuccessResponse, PaginationParams } from './client';
-import type { Post, PostComment } from './types';
+import { apiClient, ApiSuccessResponse, PaginationParams } from '../core/client';
+import type { Post, PostComment } from '../core/types';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -120,11 +120,24 @@ export const moderationApi = {
     communityId: string,
     filters?: ModerationQueueFilters,
   ): Promise<ModerationQueueResponse> => {
-    const response = await apiClient.get<any>(
-      `/communities/${communityId}/moderation/queue`,
-      filters,
-    );
-    return normalizeModerationQueueResponse(response, filters);
+    try {
+      const response = await apiClient.get<any>(
+        `/communities/${communityId}/moderation/queue`,
+        filters,
+      );
+      return normalizeModerationQueueResponse(response, filters);
+    } catch {
+      return {
+        items: [],
+        pagination: {
+          page: filters?.page ?? 1,
+          limit: filters?.limit ?? 10,
+          total: 0,
+          totalPages: 0,
+        },
+        stats: { pending: 0, approved: 0, hidden: 0, deleted: 0 },
+      };
+    }
   },
 
   moderatePost: async (
@@ -175,6 +188,7 @@ export const moderationApi = {
   ): Promise<{ success: boolean; message: string }> => {
     return apiClient.delete<{ success: boolean; message: string }>(
       `/posts/${postId}/comments/${commentId}`,
+      { data: { reason } },
     );
   },
 
@@ -182,25 +196,38 @@ export const moderationApi = {
     communityId: string,
     params?: PaginationParams,
   ): Promise<ModerationActivityLog[]> => {
-    const response = await apiClient.get<any>(
-      `/communities/${communityId}/moderation/activity`,
-      params,
-    );
-    const data = response?.data ?? response;
-    return data?.items ?? data ?? [];
-  },
-
-  getFlaggedUsers: async (communityId: string) => {
-    const response = await apiClient.get<any>(`/communities/${communityId}/moderation/flagged-users`);
-    const data = response?.data ?? response;
-    return data?.items ?? [];
+    try {
+      const response = await apiClient.get<ApiSuccessResponse<ModerationActivityLog[]>>(
+        `/communities/${communityId}/moderation/activity`,
+        params,
+      );
+      return (response as any)?.data ?? [];
+    } catch {
+      return [];
+    }
   },
 
   getStats: async (communityId: string): Promise<ModerationStats> => {
-    const response = await apiClient.get<any>(
-      `/communities/${communityId}/moderation/stats`,
-    );
-    return response?.data ?? response;
+    try {
+      const response = await apiClient.get<ApiSuccessResponse<ModerationStats>>(
+        `/communities/${communityId}/moderation/stats`,
+      );
+      return (response as any)?.data ?? {
+        totalPending: 0,
+        totalReviewed: 0,
+        avgResponseTime: 0,
+        escalations: 0,
+        pinnedPosts: 0,
+      };
+    } catch {
+      return {
+        totalPending: 0,
+        totalReviewed: 0,
+        avgResponseTime: 0,
+        escalations: 0,
+        pinnedPosts: 0,
+      };
+    }
   },
 
   reportContent: async (

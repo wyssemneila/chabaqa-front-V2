@@ -6,7 +6,7 @@ import { LogOut, User as UserIcon, Plus, LayoutDashboard } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LangToggle } from "@/components/lang-toggle"
 import { usePathname } from "next/navigation"
-import { SafeImage } from "@/components/media/safe-image"
+import Image from "next/image"
 import { useAuth } from "@/hooks/use-auth"
 import { getUserProfileHandle } from "@/lib/profile-handle"
 import { useTranslations } from "next-intl"
@@ -105,15 +105,7 @@ export function Header() {
       >
         {/* Logo */}
         <Link href={withLocale("/")} aria-label="Chabaqa — go to homepage" className="flex-shrink-0">
-          <SafeImage
-            src={logoSrc}
-            fallbackSrc="/logo_chabaqa.png"
-            alt="Chabaqa"
-            width={logoWidth}
-            height={logoHeight}
-            className={logoClassName}
-            priority
-          />
+          <Image src="/Logos/PNG/frensh1.png" alt="Chabaqa" width={140} height={44} className="h-11 w-auto" priority />
         </Link>
 
         {/* Desktop links */}

@@ -5,16 +5,16 @@ import { NextRequest, NextResponse } from 'next/server';
  * Gets called after user returns from Stripe checkout
  */
 export async function GET(req: NextRequest) {
-  const noCacheHeaders = { 'Cache-Control': 'private, no-cache' };
   try {
     const sessionId = req.nextUrl.searchParams.get('sessionId');
+    const paymentId = req.nextUrl.searchParams.get('paymentId');
     const authHeader = req.headers.get('authorization');
     const incomingCookies = req.headers.get('cookie') || '';
 
-    if (!sessionId) {
+    if (!sessionId && !paymentId) {
       return NextResponse.json(
-        { message: 'sessionId query parameter is required' },
-        { status: 400, headers: noCacheHeaders }
+        { message: 'sessionId or paymentId query parameter is required' },
+        { status: 400 }
       );
     }
 
@@ -31,13 +31,16 @@ export async function GET(req: NextRequest) {
     const backendUrl = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
     // Ensure URL is absolute for server-side fetch
-    const finalBackendUrl = backendUrl.startsWith('http') 
-      ? backendUrl 
+    const finalBackendUrl = backendUrl.startsWith('http')
+      ? backendUrl
       : `http://localhost:3000${backendUrl}`;
 
-    const verifyPath = `/payment/stripe-link/verify?sessionId=${encodeURIComponent(sessionId)}`;
+    const isStripeSession = Boolean(sessionId);
+    const verifyPath = isStripeSession
+      ? `/payment/stripe-link/verify?sessionId=${encodeURIComponent(sessionId as string)}`
+      : `/payment/verify?paymentId=${encodeURIComponent(paymentId as string)}`;
 
-    console.log(`[Payment Verify] Verifying stripe session at ${finalBackendUrl}${verifyPath}`);
+    console.log(`[Payment Verify] Verifying ${isStripeSession ? 'stripe session' : 'payment'} at ${finalBackendUrl}${verifyPath}`);
 
     // Call the backend verification endpoint
     const response = await fetch(
@@ -53,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     const data = await response.json();
 
-    return NextResponse.json(data, { status: response.status, headers: noCacheHeaders });
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('Payment verification error:', error);
 
@@ -63,7 +66,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(
       { message: errorMessage, status: 'error' },
-      { status: 500, headers: noCacheHeaders }
+      { status: 500 }
     );
   }
 }

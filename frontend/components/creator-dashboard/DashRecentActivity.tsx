@@ -1,6 +1,6 @@
 'use client'
 
-import { type ActivityItem } from '@/lib/dashboard-types'
+import { activityItems } from '@/lib/dashboard-data'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 
 const dotColor: Record<string, string> = {
@@ -20,7 +20,7 @@ const TYPE_LABEL_AR: Record<string, string> = {
   post:      'منشور جديد',
 }
 
-export default function DashRecentActivity({ items = [], loading = false }: { items?: ActivityItem[]; loading?: boolean }) {
+export default function DashRecentActivity() {
   const { lang } = useDashPrefs()
 
   const title   = lang === 'ar' ? 'النشاط الأخير'    : 'Recent Activity'
@@ -34,24 +34,9 @@ export default function DashRecentActivity({ items = [], loading = false }: { it
       </div>
 
       <div>
-        {loading ? (
-          [1, 2, 3].map(item => (
-            <div key={item} className="flex items-start gap-3 px-5 py-3 animate-pulse" style={{ borderBottom: '1px solid var(--bd)' }}>
-              <div className="w-2 h-2 rounded-full mt-[5px] shrink-0" style={{ background: 'var(--p3)' }} />
-              <div className="flex-1 space-y-2">
-                <div className="h-3 w-24 rounded" style={{ background: 'var(--bg)' }} />
-                <div className="h-4 w-3/4 rounded" style={{ background: 'var(--bg)' }} />
-                <div className="h-3 w-16 rounded" style={{ background: 'var(--bg)' }} />
-              </div>
-            </div>
-          ))
-        ) : items.length === 0 ? (
-          <div className="px-5 py-8 text-center text-[13px]" style={{ color: 'var(--t3)' }}>
-            {lang === 'ar' ? 'لا يوجد نشاط بعد' : 'No activity yet'}
-          </div>
-        ) : items.map((item, i) => (
+        {activityItems.map((item, i) => (
           <div key={i} className="flex items-start gap-3 px-5 py-3 transition-colors"
-            style={{ borderBottom: i < items.length - 1 ? '1px solid var(--bd)' : 'none' }}
+            style={{ borderBottom: i < activityItems.length - 1 ? '1px solid var(--bd)' : 'none' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--p2)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
             <div className="w-2 h-2 rounded-full mt-[5px] shrink-0"

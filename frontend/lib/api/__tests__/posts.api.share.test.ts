@@ -1,7 +1,7 @@
-import { postsApi } from "@/lib/api/posts.api"
-import { apiClient } from "@/lib/api/client"
+import { postsApi } from "@/lib/api/community/posts.api"
+import { apiClient } from "@/lib/api/core/client"
 
-jest.mock("@/lib/api/client", () => ({
+jest.mock("@/lib/api/core/client", () => ({
   apiClient: {
     post: jest.fn(),
     get: jest.fn(),

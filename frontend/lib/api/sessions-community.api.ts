@@ -1,8 +1,8 @@
-import { apiClient } from './client';
+import { apiClient } from '../core/client';
 import { sessionsApi } from './sessions.api';
-import { communitiesApi } from './communities.api';
-import { getMe } from './user.api';
-import type { Session, SessionBooking } from './types';
+import { communitiesApi } from '../community/communities.api';
+import { getMe } from '../user/user.api';
+import type { Session, SessionBooking } from '../core/types';
 
 export interface SessionWithMentor extends Session {
   mentor?: {
@@ -48,18 +48,18 @@ function transformSession(backendSession: any): SessionWithMentor {
   // Backend can return creator data in two ways:
   // 1. Populated: creatorId is an object with { name, email, photo_profil, profile_picture, avatar }
   // 2. DTO transformed: creatorId is a string, creatorName and creatorAvatar are separate fields
-  
+
   const isPopulated = typeof backendSession.creatorId === 'object' && backendSession.creatorId !== null;
-  
+
   let creatorAvatar: string | undefined;
   let creatorName: string;
-  
+
   if (isPopulated) {
     // Populated format - check all possible avatar fields
     const creatorData = backendSession.creatorId;
-    creatorAvatar = creatorData.photo_profil || 
-                    creatorData.profile_picture || 
-                    creatorData.avatar || 
+    creatorAvatar = creatorData.photo_profil ||
+                    creatorData.profile_picture ||
+                    creatorData.avatar ||
                     undefined;
     creatorName = creatorData.name || 'Unknown';
   } else {
@@ -67,7 +67,7 @@ function transformSession(backendSession: any): SessionWithMentor {
     creatorAvatar = backendSession.creatorAvatar || undefined;
     creatorName = backendSession.creatorName || 'Unknown';
   }
-  
+
   const averageRating = Number(backendSession.averageRating || 0);
   const ratingCount = Number(backendSession.ratingCount || 0);
 
@@ -108,8 +108,8 @@ function transformSession(backendSession: any): SessionWithMentor {
     communityId: String(backendSession.communityId || ''),
     communitySlug: backendSession.communitySlug || undefined,
     communityName: backendSession.communityName || undefined,
-    creatorId: isPopulated 
-      ? String(backendSession.creatorId?._id || backendSession.creatorId?.id || '') 
+    creatorId: isPopulated
+      ? String(backendSession.creatorId?._id || backendSession.creatorId?.id || '')
       : String(backendSession.creatorId || ''),
     isActive: backendSession.isActive !== false,
     availableSlots: backendSession.availableSlots || 0,
@@ -304,7 +304,7 @@ export const sessionsCommunityApi = {
     try {
       const user = await getMe();
       if (!user) return null;
-      
+
       return {
         id: String(user._id || user.id || ''),
         email: user.email || '',

@@ -1,5 +1,5 @@
-import { apiClient, ApiSuccessResponse } from './client';
-import type { Notification } from './types';
+import { apiClient, ApiSuccessResponse } from '../core/client';
+import type { Notification } from '../core/types';
 
 export interface PushPublicKeyResponse {
   enabled: boolean;

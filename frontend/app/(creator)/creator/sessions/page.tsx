@@ -5,9 +5,9 @@ import Link from 'next/link'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import {
-  Clock, Plus, RefreshCw, Globe, Lock, Calendar, Trash2,
+  Clock, Plus, RefreshCw, Globe, Lock, Calendar,
   Users, Video, BookOpen, Activity, ChevronRight,
-  Zap,
+  ExternalLink, Zap,
 } from 'lucide-react'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import { useCreatorSessionsPage } from '@/hooks/creator-dashboard/use-creator-dashboard-data'
@@ -54,7 +54,7 @@ const TR = {
 // ─── types ────────────────────────────────────────────────────────────────────
 interface SessionCard {
   _id: string; title: string; banner?: string; duration: number
-  priceType: 'free'|'paid'; price?: number; isActive: boolean
+  priceType: 'free'|'paid'; price?: number; isPublished: boolean
   availabilityDays: number; totalSlots: number
 }
 interface Booking {
@@ -109,12 +109,12 @@ function SessionCardUI({ session, t, onToggle, onDelete, pending, canActivate }:
         </span>
         <span className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold"
           style={{
-            background: session.isActive ? 'rgba(16,185,129,.15)' : 'rgba(0,0,0,.4)',
-            color: session.isActive ? '#10b981' : '#fff',
+            background: session.isPublished ? 'rgba(16,185,129,.15)' : 'rgba(0,0,0,.4)',
+            color: session.isPublished ? '#10b981' : '#fff',
             backdropFilter:'blur(4px)',
           }}>
-          {session.isActive ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-          {session.isActive ? t.live : t.draft}
+          {session.isPublished ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+          {session.isPublished ? t.live : t.draft}
         </span>
       </div>
       <div className="flex flex-col flex-1 p-5">
@@ -141,8 +141,56 @@ function SessionCardUI({ session, t, onToggle, onDelete, pending, canActivate }:
             style={{ background:'var(--p)', boxShadow:'0 2px 8px rgba(142,120,251,.3)' }}>
             {t.manage}
           </Link>
-          </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── integration button card ──────────────────────────────────────────────────
+function IntegrationCard({
+  icon: Icon, title, desc, connectedKey, accentColor,
+  labelConnect = 'Connect', labelDisconnect = 'Disconnect', labelOpen = 'Open', labelConnected = 'Connected',
+}: {
+  icon: any; title: string; desc: string; connectedKey: string; accentColor: string
+  labelConnect?: string; labelDisconnect?: string; labelOpen?: string; labelConnected?: string
+}) {
+  const [on, setOn] = useState(false)
+  useEffect(() => { setOn(localStorage.getItem(connectedKey) === 'true') }, [connectedKey])
+  const toggle = () => { const next = !on; localStorage.setItem(connectedKey, String(next)); setOn(next) }
+  return (
+    <div className="flex items-center gap-4 p-4 rounded-2xl"
+      style={{ background:'var(--white)', border: on ? `1.5px solid ${accentColor}40` : '1px solid var(--bd)' }}>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: on ? `${accentColor}15` : 'var(--bg)' }}>
+        <Icon className="w-5 h-5" style={{ color: on ? accentColor : 'var(--t3)' }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-[13px] font-bold" style={{ color:'var(--t1)' }}>{title}</p>
+          {on && (
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background:`${accentColor}15`, color: accentColor }}>{labelConnected}</span>
+          )}
+        </div>
+        <p className="text-[11px] mt-0.5" style={{ color:'var(--t3)' }}>{desc}</p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {on && (
+          <button onClick={() => window.open('#')}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:opacity-80"
+            style={{ background:'var(--bg)', border:'1.5px solid var(--bd)', color:'var(--t2)' }}>
+            <ExternalLink className="w-3 h-3" /> {labelOpen}
+          </button>
+        )}
+        <button onClick={toggle}
+          className="h-8 px-4 rounded-xl text-[11px] font-bold cursor-pointer transition-all hover:opacity-90"
+          style={on
+            ? { background:'var(--bg)', border:'1.5px solid var(--bd)', color:'var(--t3)' }
+            : { background: accentColor, color:'#fff', boxShadow:`0 3px 10px ${accentColor}45` }
+          }>
+          {on ? labelDisconnect : labelConnect}
+        </button>
       </div>
     </div>
   )
@@ -152,6 +200,9 @@ function SessionCardUI({ session, t, onToggle, onDelete, pending, canActivate }:
 export default function SessionsPage() {
   const { lang } = useDashPrefs()
   const t = TR[lang]
+  const [sessions, setSessions] = useState<SessionCard[]>([])
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [loading,  setLoading]  = useState(true)
   const [tab,      setTab]      = useState<'all'|'active'|'inactive'>('all')
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<SessionCard | null>(null)
@@ -232,7 +283,7 @@ export default function SessionsPage() {
                   style={{ background:'var(--white)', color:'var(--t1)', border:'1.5px solid var(--bd)' }}>
                   <Users className="w-4 h-4" /> {t.bookingList}
                 </Link>
-                <Link href="/creator/sessions/new"
+                <Link href="/creator/sessions/create"
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90"
                   style={{ background:'var(--p)', boxShadow:'0 4px 14px rgba(142,120,251,.4)' }}>
                   <Plus className="w-4 h-4" /> {t.createSession}
@@ -267,6 +318,23 @@ export default function SessionsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* ── INTEGRATIONS (above grid) ── */}
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-widest mb-3" style={{ color:'var(--t3)' }}>{t.integrations}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <IntegrationCard
+                  icon={Calendar} title={t.gcalTitle} desc={t.gcalDesc}
+                  connectedKey="chabaqa_gcal_connected" accentColor="#10b981"
+                  labelConnect={t.connect} labelDisconnect={t.disconnect} labelOpen={t.open} labelConnected={t.connected}
+                />
+                <IntegrationCard
+                  icon={Video} title={t.gmeetTitle} desc={t.gmeetDesc}
+                  connectedKey="chabaqa_gmeet_connected" accentColor="#4285F4"
+                  labelConnect={t.connect} labelDisconnect={t.disconnect} labelOpen={t.open} labelConnected={t.connected}
+                />
+              </div>
             </div>
 
             {/* ── SESSIONS GRID ── */}
@@ -306,7 +374,7 @@ export default function SessionsPage() {
                   </div>
                   <h3 className="text-[16px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>{t.noSessions}</h3>
                   <p className="text-[13px] mb-6 max-w-xs" style={{ color:'var(--t2)' }}>{t.noSessionsDesc}</p>
-                  <Link href="/creator/sessions/new"
+                  <Link href="/creator/sessions/create"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-bold text-white hover:opacity-90"
                     style={{ background:'var(--p)', boxShadow:'0 4px 14px rgba(142,120,251,.35)' }}>
                     <Plus className="w-4 h-4" /> {t.createFirst}
@@ -387,16 +455,6 @@ export default function SessionsPage() {
           </main>
         </div>
       </div>
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && pendingId === null && setDeleteTarget(null)}>
-        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete session</AlertDialogTitle><AlertDialogDescription>This permanently deletes {deleteTarget?.title}. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-          <div className="flex justify-end gap-2"><AlertDialogCancel disabled={pendingId !== null}>Cancel</AlertDialogCancel><AlertDialogAction disabled={pendingId !== null} className="bg-red-600 hover:bg-red-700" onClick={async (event) => {
-            event.preventDefault(); if (!deleteTarget) return; setPendingId(deleteTarget._id)
-            try { await sessionsApi.delete(deleteTarget._id); toast.success('Session deleted'); setDeleteTarget(null); load() }
-            catch (err: any) { toast.error(err?.message || 'Could not delete the session.') }
-            finally { setPendingId(null) }
-          }}>{pendingId ? 'Deleting...' : 'Delete'}</AlertDialogAction></div>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }

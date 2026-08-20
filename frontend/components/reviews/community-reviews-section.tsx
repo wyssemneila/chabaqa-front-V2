@@ -8,10 +8,10 @@ interface CommunityReviewsSectionProps {
   onRefresh?: () => Promise<void>
 }
 
-export function CommunityReviewsSection({ 
-  communityId, 
-  showForm = true, 
-  onRefresh 
+export function CommunityReviewsSection({
+  communityId,
+  showForm = true,
+  onRefresh
 }: CommunityReviewsSectionProps) {
   return (
     <ReviewsSection

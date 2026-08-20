@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient } from '../core/client';
 
 export type MediaType = 'image' | 'video' | 'document' | 'audio';
 export type MediaPurpose =
@@ -113,16 +113,6 @@ export const mediaApi = {
 
   getAsset: async (assetId: string): Promise<MediaAsset> => {
     const res = await apiClient.get<MediaApiResponse<MediaAsset>>(`/media/${assetId}`);
-    return res.data;
-  },
-
-  listAssets: async (opts?: { entityType?: string; entityId?: string; limit?: number }): Promise<MediaAsset[]> => {
-    const params = new URLSearchParams();
-    if (opts?.entityType) params.set('entityType', opts.entityType);
-    if (opts?.entityId) params.set('entityId', opts.entityId);
-    if (opts?.limit) params.set('limit', String(opts.limit));
-    const suffix = params.toString() ? `?${params.toString()}` : '';
-    const res = await apiClient.get<MediaApiResponse<MediaAsset[]>>(`/media${suffix}`);
     return res.data;
   },
 

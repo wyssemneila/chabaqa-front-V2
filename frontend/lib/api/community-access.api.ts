@@ -1,4 +1,4 @@
-import { apiClient, ApiSuccessResponse } from './client';
+import { apiClient, ApiSuccessResponse } from '../core/client';
 import type { CommunityRole, CommunityPermissionValue, CommunityStaffRole } from '../permissions';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -21,14 +21,11 @@ export interface CommunityStaffMember {
     _id: string;
     firstName?: string;
     lastName?: string;
-	    email?: string;
-	    username?: string;
-	    avatar?: string | null;
-	    photo_profil?: string | null;
-	    profile_picture?: string | null;
-	    profileImage?: string;
-	  };
-	}
+    email?: string;
+    username?: string;
+    profileImage?: string;
+  };
+}
 
 // ── API ────────────────────────────────────────────────────────────────────
 

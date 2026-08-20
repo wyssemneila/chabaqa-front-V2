@@ -1,5 +1,5 @@
-import { apiClient } from './client'
-import type { LearningPathResponse } from './types'
+import { apiClient } from '../core/client'
+import type { LearningPathResponse } from '../core/types'
 
 export const learningPathApi = {
   getRecommendations: async (params: {

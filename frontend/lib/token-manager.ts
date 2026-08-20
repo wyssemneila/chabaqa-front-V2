@@ -1,8 +1,5 @@
 "use client"
 
-import { syncAccessTokenCookie } from '@/lib/cookie-sync'
-import { refreshBrowserAccessToken } from '@/lib/auth-refresh'
-
 /**
  * Enhanced Token Management Utility
  * Handles automatic token refresh, storage, and cleanup
@@ -24,13 +21,13 @@ class TokenManager {
    */
   initialize() {
     if (typeof window === 'undefined') return;
-    
+
     // Set up automatic token refresh check
     this.setupRefreshTimer();
-    
+
     // Listen for storage events (for multi-tab sync)
     window.addEventListener('storage', this.handleStorageChange.bind(this));
-    
+
     // Clean up on page unload
     window.addEventListener('beforeunload', this.cleanup.bind(this));
   }
@@ -42,7 +39,7 @@ class TokenManager {
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
     }
-    
+
     // Check every minute
     this.refreshTimer = setInterval(() => {
       this.checkTokenExpiration();
@@ -54,14 +51,14 @@ class TokenManager {
    */
   private async checkTokenExpiration() {
     if (!this.accessToken) return;
-    
+
     try {
       const payload = this.parseJWT(this.accessToken);
       if (!payload || !payload.exp) return;
-      
+
       const expiresAt = payload.exp * 1000;
       const now = Date.now();
-      
+
       // If token expires within threshold, refresh it
       if (expiresAt - now <= this.REFRESH_THRESHOLD) {
         await this.refreshToken();
@@ -95,10 +92,22 @@ class TokenManager {
    */
   private async refreshToken(): Promise<boolean> {
     try {
-      const accessToken = await refreshBrowserAccessToken(this.API_BASE)
-      if (accessToken) {
-        this.accessToken = accessToken
-        return true
+      const response = await fetch(`${this.API_BASE}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const payload = data?.data || data || {};
+        const accessToken = payload.access_token || payload.accessToken;
+        if (accessToken) {
+          this.setAccessToken(accessToken);
+          return true;
+        }
       }
 
       // If refresh fails, redirect to login
@@ -115,22 +124,19 @@ class TokenManager {
    * Handle authentication failure
    */
   private handleAuthFailure() {
-    this.clearTokens()
+    this.clearTokens();
     if (typeof window !== 'undefined') {
-      // Preserve the locale prefix (en/ar) from the current URL
-      const locale = window.location.pathname.startsWith('/ar') ? 'ar' : 'en'
-      window.location.href = `/${locale}/signin`
+      window.location.href = '/signin';
     }
   }
 
   /**
-   * Set access token, update storage, and sync middleware cookie
+   * Set access token and update storage
    */
   setAccessToken(token: string) {
-    this.accessToken = token
+    this.accessToken = token;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('accessToken', token)
-      syncAccessTokenCookie(token)
+      localStorage.setItem('accessToken', token);
     }
   }
 
@@ -138,23 +144,19 @@ class TokenManager {
    * Get current access token
    */
   getAccessToken(): string | null {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('accessToken');
-      if (stored !== this.accessToken) {
-        this.accessToken = stored;
-      }
+    if (!this.accessToken && typeof window !== 'undefined') {
+      this.accessToken = localStorage.getItem('accessToken');
     }
     return this.accessToken;
   }
 
   /**
-   * Clear all tokens and sync cookie
+   * Clear all tokens
    */
   clearTokens() {
-    this.accessToken = null
+    this.accessToken = null;
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('accessToken')
-      syncAccessTokenCookie(null)
+      localStorage.removeItem('accessToken');
     }
   }
 
@@ -173,10 +175,10 @@ class TokenManager {
   isAuthenticated(): boolean {
     const token = this.getAccessToken();
     if (!token) return false;
-    
+
     const payload = this.parseJWT(token);
     if (!payload || !payload.exp) return false;
-    
+
     // Check if token is expired
     return payload.exp * 1000 > Date.now();
   }
@@ -187,7 +189,7 @@ class TokenManager {
   getUserInfo(): any {
     const token = this.getAccessToken();
     if (!token) return null;
-    
+
     return this.parseJWT(token);
   }
 
@@ -199,7 +201,7 @@ class TokenManager {
       clearInterval(this.refreshTimer);
       this.refreshTimer = null;
     }
-    
+
     if (typeof window !== 'undefined') {
       window.removeEventListener('storage', this.handleStorageChange.bind(this));
       window.removeEventListener('beforeunload', this.cleanup.bind(this));

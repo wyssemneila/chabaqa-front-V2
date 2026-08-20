@@ -35,6 +35,35 @@ const asNumber = (value: unknown, fallback = 0): number => {
   return fallback;
 };
 
+const getClientApiBase = () =>
+  (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api').replace(/\/$/, '');
+
+const getBrowserAuthHeader = (): string | null => {
+  if (typeof window === 'undefined') return null;
+
+  const rawLocalToken =
+    localStorage.getItem('accessToken') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('jwt') ||
+    localStorage.getItem('authToken') ||
+    localStorage.getItem('access_token');
+
+  if (!rawLocalToken) return null;
+  return rawLocalToken.toLowerCase().startsWith('bearer ')
+    ? rawLocalToken
+    : `Bearer ${rawLocalToken}`;
+};
+
+const parseJsonSafely = async (response: Response) => {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await response.text().catch(() => '');
+    return text ? { message: text } : null;
+  }
+
+  return response.json().catch(() => null);
+};
+
 const normalizeCommunityMetrics = (community: any) => {
   if (!community || typeof community !== "object") {
     return community;
@@ -133,6 +162,13 @@ export interface JoinCommunityInput {
   message?: string;
 }
 
+export interface CommunityManualPaymentInput {
+  communityId: string;
+  proof: File;
+  inviteCode?: string;
+  promoCode?: string;
+}
+
 export interface CreateCommunityResponse extends ApiSuccessResponse<Community> {
   accessToken?: string;
   user?: {
@@ -145,7 +181,7 @@ export interface CreateCommunityResponse extends ApiSuccessResponse<Community> {
 
 
 export const communitiesApi = {
-  
+
   getAll: async (
     params?: GetCommunitiesParams,
     options?: ApiGetOptions,
@@ -421,6 +457,41 @@ export const communitiesApi = {
     );
   },
 
+  initManualPayment: async (
+    input: CommunityManualPaymentInput,
+  ): Promise<ApiSuccessResponse<any>> => {
+    const communityId = String(input?.communityId || '').trim();
+    const inviteCode = String(input?.inviteCode || '').trim();
+    const promoCode = String(input?.promoCode || '').trim();
+
+    if (!communityId) {
+      throw new Error('communityId is required');
+    }
+
+    const formData = new FormData();
+    formData.append('communityId', communityId);
+    formData.append('proof', input.proof);
+    if (inviteCode) {
+      formData.append('inviteCode', inviteCode);
+    }
+
+    const endpoint = `${getClientApiBase()}/payment/manual/init/community${promoCode ? `?promoCode=${encodeURIComponent(promoCode)}` : ''}`;
+    const authHeader = getBrowserAuthHeader();
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: authHeader ? { Authorization: authHeader } : undefined,
+      credentials: 'include',
+      body: formData,
+    });
+
+    const data = await parseJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(data?.message || 'Failed to initiate payment');
+    }
+
+    return data as ApiSuccessResponse<any>;
+  },
+
   /**
    * Initialize Stripe Link payment for community membership
    * Uses apiClient for proper auth token handling and automatic refresh
@@ -429,7 +500,6 @@ export const communitiesApi = {
     communityId: string,
     promoCode?: string,
     inviteCode?: string,
-    idempotencyKey?: string,
   ): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/community?promoCode=${encodeURIComponent(promoCode)}`
@@ -438,6 +508,6 @@ export const communitiesApi = {
     return apiClient.post<any>(endpoint, {
       communityId,
       ...(inviteCode ? { inviteCode } : {}),
-    }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
+    });
   },
 };

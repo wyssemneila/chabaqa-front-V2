@@ -34,12 +34,12 @@ export function MetricCard({ title, value, trend, trendLabel, description, isLoa
       {trend !== undefined && (
         <div className="mt-4 flex items-center text-sm">
           <div className={`flex items-center font-medium ${isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-gray-500'}`}>
-            {isPositive && <ArrowUpIcon className="mr-1 h-4 w-4" />}
-            {isNegative && <ArrowDownIcon className="mr-1 h-4 w-4" />}
-            {isNeutral && <MinusIcon className="mr-1 h-4 w-4" />}
+            {isPositive && <ArrowUpIcon className="me-1 h-4 w-4" />}
+            {isNegative && <ArrowDownIcon className="me-1 h-4 w-4" />}
+            {isNeutral && <MinusIcon className="me-1 h-4 w-4" />}
             {Math.abs(trend)}%
           </div>
-          {trendLabel && <span className="ml-2 text-gray-500">{trendLabel}</span>}
+          {trendLabel && <span className="ms-2 text-gray-500">{trendLabel}</span>}
         </div>
       )}
       {description && !trend && <p className="mt-4 text-sm text-gray-500">{description}</p>}

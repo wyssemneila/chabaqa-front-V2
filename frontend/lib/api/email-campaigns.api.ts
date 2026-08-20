@@ -1,4 +1,4 @@
-import { apiClient, PaginationParams } from './client';
+import { apiClient, PaginationParams } from '../core/client';
 
 // ============================================================================
 // Type Definitions
@@ -51,7 +51,6 @@ export interface EmailRecipient {
     clickedAt?: string[];
     personalizedContent?: string;
     personalizedSubject?: string;
-    mergeData?: Record<string, any>;
 }
 
 export interface EmailCampaign {
@@ -155,7 +154,6 @@ export interface CreateEmailCampaignDto {
     trackClicks?: boolean;
     scheduledAt?: string;
     metadata?: Record<string, any>;
-    templateData?: Record<string, any>;
 }
 
 export interface CreateInactiveUserCampaignDto {
@@ -171,7 +169,6 @@ export interface CreateInactiveUserCampaignDto {
     trackClicks?: boolean;
     scheduledAt?: string;
     metadata?: Record<string, any>;
-    templateData?: Record<string, any>;
 }
 
 export interface CreateContentReminderDto {
@@ -186,7 +183,6 @@ export interface CreateContentReminderDto {
     trackOpens?: boolean;
     trackClicks?: boolean;
     metadata?: Record<string, any>;
-    templateData?: Record<string, any>;
 }
 
 export interface CreateCourseProgressCampaignDto {
@@ -202,8 +198,6 @@ export interface CreateCourseProgressCampaignDto {
     trackOpens?: boolean;
     trackClicks?: boolean;
     maxRecipients?: number;
-    metadata?: Record<string, any>;
-    templateData?: Record<string, any>;
 }
 
 export interface CreateWelcomeTemplateDto {
@@ -255,142 +249,6 @@ export interface UpdateEmailCampaignDto {
     trackOpens?: boolean;
     trackClicks?: boolean;
     metadata?: Record<string, any>;
-    templateData?: Record<string, any>;
-}
-
-export type MarketingMergeFieldType = 'string' | 'number' | 'date' | 'url' | 'boolean';
-
-export type MarketingMergeFieldSource =
-    | 'user'
-    | 'community'
-    | 'content'
-    | 'engagement'
-    | 'course'
-    | 'system';
-
-export interface MarketingMergeField {
-    key: string;
-    token: string;
-    label: string;
-    group: string;
-    type: MarketingMergeFieldType;
-    description: string;
-    source: MarketingMergeFieldSource;
-    availability: string[];
-    example?: string | number | boolean | null;
-}
-
-export interface MarketingMergeFieldGroup {
-    key: string;
-    label: string;
-    fields: MarketingMergeField[];
-}
-
-export interface MarketingMergeFieldsQuery {
-    campaignType?: EmailCampaignType;
-    contentType?: ContentType;
-    contentId?: string;
-    targetCourseId?: string;
-    inactivityPeriod?: InactivityPeriod;
-}
-
-export interface MarketingMergeFieldsResponse {
-    communityId: string;
-    syntax: {
-        tokenExample: string;
-        description: string;
-    };
-    groups: MarketingMergeFieldGroup[];
-    fields: MarketingMergeField[];
-    sampleData: Record<string, any>;
-    dataSummary: {
-        members?: number;
-        courses?: number;
-        challenges?: number;
-        events?: number;
-        products?: number;
-        sessions?: number;
-        campaigns?: number;
-        inactiveMembers?: number;
-        [key: string]: any;
-    };
-}
-
-export type MarketingTemplateTone =
-    | 'announcement'
-    | 'editorial'
-    | 'urgent'
-    | 'supportive'
-    | 'premium'
-    | 'conversion';
-
-export type MarketingTemplateChannel = 'email' | 'message';
-
-export interface MarketingEmailTemplate {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    type: EmailCampaignType;
-    contentType?: ContentType;
-    tone: MarketingTemplateTone;
-    channelCompatibility: MarketingTemplateChannel[];
-    subject: string;
-    content: string;
-    isHtml: boolean;
-    recommendedVariables: string[];
-    audienceHint: string;
-    bestFor: string[];
-    variables: string[];
-    renderedPreview: {
-        subject: string;
-        content: string;
-    };
-}
-
-export interface MarketingTemplatesQuery {
-    type?: EmailCampaignType;
-    contentType?: ContentType;
-    category?: string;
-}
-
-export interface MarketingTemplatesResponse {
-    communityId: string;
-    templates: MarketingEmailTemplate[];
-    categories: string[];
-    total: number;
-}
-
-export interface RenderMarketingPreviewDto {
-    communityId: string;
-    subject?: string;
-    content: string;
-    isHtml?: boolean;
-    campaignType?: EmailCampaignType;
-    contentType?: ContentType;
-    contentId?: string;
-    inactivityPeriod?: InactivityPeriod;
-    sampleUserId?: string;
-    targetCourseId?: string;
-    targetMaxProgressPct?: number;
-    targetMinEnrolledDays?: number;
-    metadata?: Record<string, any>;
-    templateData?: Record<string, any>;
-}
-
-export interface MarketingPreviewResponse {
-    subject: string;
-    content: string;
-    isHtml: boolean;
-    variables: Record<string, any>;
-    usedVariables: string[];
-    missingVariables: string[];
-    recipient?: {
-        userId: string;
-        email: string;
-        name: string;
-    };
-    contentData: Record<string, any>;
 }
 
 export interface EmailCampaignQueryParams extends PaginationParams {
@@ -498,45 +356,6 @@ export const emailCampaignsApi = {
             `/email-campaigns/community/${communityId}/stats`
         );
         return this.unwrapData<CampaignStats>(response);
-    },
-
-    /**
-     * Get rich merge fields, examples, grouped variables and data availability for the composer
-     */
-    async getMarketingMergeFields(
-        communityId: string,
-        params?: MarketingMergeFieldsQuery
-    ): Promise<MarketingMergeFieldsResponse> {
-        const response = await apiClient.get<any>(
-            `/email-campaigns/community/${communityId}/merge-fields`,
-            params
-        );
-        return this.unwrapData<MarketingMergeFieldsResponse>(response);
-    },
-
-    /**
-     * Get backend-maintained marketing templates for email/message composition
-     */
-    async getMarketingTemplates(
-        communityId: string,
-        params?: MarketingTemplatesQuery
-    ): Promise<MarketingTemplatesResponse> {
-        const response = await apiClient.get<any>(
-            `/email-campaigns/community/${communityId}/templates`,
-            params
-        );
-        return this.unwrapData<MarketingTemplatesResponse>(response);
-    },
-
-    /**
-     * Render a subject/content preview with real community, recipient, activity and content data
-     */
-    async renderMarketingPreview(data: RenderMarketingPreviewDto): Promise<MarketingPreviewResponse> {
-        const response = await apiClient.post<any>(
-            '/email-campaigns/render-preview',
-            data
-        );
-        return this.unwrapData<MarketingPreviewResponse>(response);
     },
 
     /**

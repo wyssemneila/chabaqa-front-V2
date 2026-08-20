@@ -1,5 +1,5 @@
-import { apiClient, ApiSuccessResponse } from './client';
-import type { User } from './types';
+import { apiClient, ApiSuccessResponse } from './core/client';
+import type { User } from './core/types';
 
 export interface RegisterData {
   name: string;

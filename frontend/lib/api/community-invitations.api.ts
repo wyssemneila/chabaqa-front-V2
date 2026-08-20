@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient } from '../core/client';
 
 // ============================================================================
 // Type Definitions

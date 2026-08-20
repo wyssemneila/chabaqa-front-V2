@@ -1,13 +1,13 @@
 "use client"
 
-import { memo, useState, useMemo } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
-import { useTranslations, useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
+import { useLocale } from "next-intl"
 import { usePathname } from "next/navigation"
 import { getAllBlogPosts } from "@/lib/blog-content"
 import { localizeHref } from "@/lib/i18n/client"
 import type { BlogPost } from "@/lib/blog-content"
-import { BlogDisclaimer } from "./blog-disclaimer"
 
 const POSTS_PER_PAGE = 6
 
@@ -140,7 +140,7 @@ function BlogCardThumbnail({ category }: { category: string }) {
   )
 }
 
-const BlogCard = memo(function BlogCard({ post, t, locale, pathname }: { post: BlogPost; t: ReturnType<typeof useTranslations<"landing.blogs">>; locale: string; pathname: string }) {
+function BlogCard({ post, t, locale, pathname }: { post: BlogPost; t: ReturnType<typeof useTranslations<"landing.blogs">>; locale: string; pathname: string }) {
   const catColor = getCategoryColor(post.category)
   const isAr = locale === "ar"
   const title = isAr ? (post.arTitle ?? post.title) : post.title
@@ -286,7 +286,7 @@ const BlogCard = memo(function BlogCard({ post, t, locale, pathname }: { post: B
       </div>
     </article>
   )
-})
+}
 
 export function BlogList() {
   const t = useTranslations("landing.blogs")
@@ -322,7 +322,7 @@ export function BlogList() {
   }
 
   return (
-    <div style={{ background: "#ffffff" }}>
+    <div style={{ background: "var(--bg,#fafafe)" }}>
       {/* ── Hero Section ── */}
       <section
         aria-label="Blog hero"
@@ -357,12 +357,14 @@ export function BlogList() {
               color: "var(--p,#8e78fb)",
               letterSpacing: ".06em", textTransform: "uppercase",
               marginBottom: "20px",
+              animation: "badgeShimmer 3s ease infinite",
+              backgroundSize: "200% 100%",
             }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
             </svg>
-            CHABAQA BLOG
+            {t("heroEyebrow")}
           </div>
 
           <h1
@@ -375,25 +377,18 @@ export function BlogList() {
               letterSpacing: "-0.02em",
             }}
           >
-            Grow Your Education Business{" "}
-            <span style={{ color: "var(--p,#8e78fb)" }}>With Expert Insights</span>
+            {t("heroTitle")}{" "}
+            <span style={{ color: "var(--p,#8e78fb)" }}>{t("heroTitleAccent")}</span>
           </h1>
 
           <p style={{ fontSize: "18px", color: "var(--t2,#6b7280)", lineHeight: 1.6, maxWidth: "520px", margin: "0 auto" }}>
-            Practical guides on building communities, creating high-converting courses, and monetizing your expertise.
+            {t("heroSub")}
           </p>
         </div>
       </section>
 
-      <div className="mx-auto max-w-3xl px-6 pb-4">
-        <BlogDisclaimer />
-      </div>
-
       {/* ── Category Filter ── */}
-      <nav
-        aria-label="Blog category filter"
-        style={{ padding: "0 24px 32px", display: "flex", justifyContent: "center" }}
-      >
+      <nav aria-label="Blog category filter" style={{ padding: "0 24px 32px", display: "flex", justifyContent: "center" }}>
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px", maxWidth: "720px" }}>
           {categories.map((cat) => {
             const isActive = selectedCategory === cat.key
@@ -437,7 +432,6 @@ export function BlogList() {
         ) : (
           <>
             <div
-              key={selectedCategory}
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))",
@@ -445,9 +439,7 @@ export function BlogList() {
               }}
             >
               {displayedPosts.map((post) => (
-                <div key={post.id}>
-                  <BlogCard post={post} t={t} locale={locale} pathname={pathname} />
-                </div>
+                <BlogCard key={post.id} post={post} t={t} locale={locale} pathname={pathname} />
               ))}
             </div>
 

@@ -1,15 +1,14 @@
 import { Badge } from "@/components/ui/badge"
 import { Users, Star, CheckCircle, Crown, Heart, ArrowRight, Sparkles, Award } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Community } from "@/lib/models"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import type { Explore } from "@/lib/explore-types"
+import { Explore } from "@/lib/data-communities"
 import { resolveExploreCardRouting } from "@/app/(landing)/(communities)/components/explore-card-routing"
 import { useTranslations } from "next-intl"
 import { getUserProfileHref } from "@/lib/profile-handle"
-import { getExploreAvatarFallback, getExploreImageFallback } from "@/lib/explore-image-fallbacks"
-import { ExploreSafeImage } from "@/app/(landing)/(communities)/components/explore-safe-image"
 
 type ItemType = "community" | "course" | "challenge" | "product" | "oneToOne" | "event"
 
@@ -104,25 +103,14 @@ export function FeaturedCommunityCard({ community, index, slug, accessAware = fa
   })
   const ctaHref = accessAware ? accessAwareRouting.href : defaultRouting.href
   const ctaLabel = accessAware ? accessAwareRouting.ctaLabel : defaultRouting.label
-  const imageFallback = getExploreImageFallback({
-    category: community.category,
-    title: community.name,
-    type: itemType as any,
-  })
-  const avatarFallback = getExploreAvatarFallback({
-    creator: community.creator,
-    creatorInitials: (community as any).creatorInitials,
-  })
-  const imageSrc = (community.image as string) || (community as any).coverImage || (community as any).banner || (community as any).logo || community.creatorAvatar
 
   return (
     <div className="group hover:shadow-lg transition-all duration-300 border border-gray-200/60 rounded-2xl shadow-sm overflow-hidden bg-gradient-to-br from-white to-gray-50/30 hover:scale-[1.01]">
 
       {/* Compact Image Section */}
       <div className="relative w-full aspect-[16/9] mb-1 overflow-hidden rounded-2xl bg-gray-100">
-        <ExploreSafeImage
-          src={imageSrc}
-          fallbackSrc={imageFallback}
+        <Image
+          src={(community.image as string) || (community as any).coverImage || (community as any).banner || (community as any).logo || community.creatorAvatar || "/placeholder.svg"}
           alt={community.name}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -156,9 +144,8 @@ export function FeaturedCommunityCard({ community, index, slug, accessAware = fa
         {/* Simple Creator Section */}
         <Link href={creatorProfileHref} className="flex items-center gap-2 min-w-0 hover:opacity-90 transition-opacity">
           <div className="relative">
-            <ExploreSafeImage
-              src={community.creatorAvatar}
-              fallbackSrc={avatarFallback}
+            <Image
+              src={community.creatorAvatar || "/placeholder.svg"}
               alt={community.creator}
               width={20}
               height={20}
@@ -183,11 +170,11 @@ export function FeaturedCommunityCard({ community, index, slug, accessAware = fa
         {/* Compact Stats */}
         <div className="flex gap-2">
           <div className="flex items-center text-[11px] bg-chabaqa-primary/10 px-2 py-0.5 rounded-full font-medium text-chabaqa-primary">
-            <Users className="w-3 h-3 mr-1 text-chabaqa-primary" />
+            <Users className="w-3 h-3 me-1 text-chabaqa-primary" />
             {formatMembers(community.members)}
           </div>
           <div className="flex items-center text-[11px] bg-chabaqa-primary/10 px-2 py-0.5 rounded-full font-medium text-chabaqa-primary">
-            <Award className="w-3 h-3 mr-1 text-yellow-500" />
+            <Award className="w-3 h-3 me-1 text-yellow-500" />
             {community.rating.toFixed(1)}
           </div>
           {/* Simple Type badge */}

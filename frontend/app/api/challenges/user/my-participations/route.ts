@@ -4,7 +4,6 @@ import { cookies } from 'next/headers';
 const BACKEND_URL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 export async function GET(request: Request) {
-    const noCacheHeaders = { 'Cache-Control': 'private, no-cache' };
     try {
         const { searchParams } = new URL(request.url);
         const communitySlug = searchParams.get('communitySlug');
@@ -20,7 +19,7 @@ export async function GET(request: Request) {
 
         if (!token) {
             console.log('[Participations Route] No token, returning empty participations');
-            return NextResponse.json({ participations: [] }, { status: 200, headers: noCacheHeaders });
+            return NextResponse.json({ participations: [] }, { status: 200 });
         }
 
         const apiBaseUrl = BACKEND_URL.replace(/\/$/, '');
@@ -31,7 +30,7 @@ export async function GET(request: Request) {
 
         const backendResponse = await fetch(backendUrl, {
             method: 'GET',
-            headers: { 
+            headers: {
                 'Authorization': token,
                 'Content-Type': 'application/json',
             },
@@ -43,14 +42,14 @@ export async function GET(request: Request) {
             const errorText = await backendResponse.text();
             console.log('[Participations Route] Backend error:', errorText);
             // Return empty participations on error (user not logged in, etc.)
-            return NextResponse.json({ participations: [] }, { status: 200, headers: noCacheHeaders });
+            return NextResponse.json({ participations: [] }, { status: 200 });
         }
 
         const data = await backendResponse.json();
         console.log('[Participations Route] Success, participations count:', data?.participations?.length || 0);
-        return NextResponse.json(data, { headers: noCacheHeaders });
+        return NextResponse.json(data);
     } catch (error: any) {
         console.error('[Participations Route] Error:', error);
-        return NextResponse.json({ participations: [] }, { status: 200, headers: noCacheHeaders });
+        return NextResponse.json({ participations: [] }, { status: 200 });
     }
 }

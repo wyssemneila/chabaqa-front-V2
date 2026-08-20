@@ -6,12 +6,7 @@ import { PageState } from "@/components/creator-dashboard/page-state"
 
 export function useCommunityGuard() {
   const ctx = useCreatorCommunity()
-  const { isLoading, error, selectedCommunityId, refreshCommunities } = ctx
-  const communities = Array.isArray(ctx.communities)
-    ? ctx.communities
-    : selectedCommunityId
-      ? [{ id: selectedCommunityId }]
-      : []
+  const { isLoading, error, selectedCommunityId, communities, refreshCommunities } = ctx
 
   let guard: ReactElement | null = null
 

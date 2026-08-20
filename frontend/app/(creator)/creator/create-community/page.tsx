@@ -2,10 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { communitiesApi, type CreateCommunityData } from '@/lib/api/community/communities.api'
-import { mediaApi } from '@/lib/api/media.api'
-import { useAuthContext } from '@/app/providers/auth-provider'
-import { useOptionalCreatorCommunity } from '@/app/(creator)/creator/context/creator-community-context'
 import {
   ArrowLeft, ArrowRight, Check, X, Upload, Sparkles,
   FileText, Palette, Tag, AtSign,
@@ -67,14 +63,14 @@ const STEPS = [
 
 // ─── Image picker hook ────────────────────────────────────────────────────────
 
-function useFilePick(cb: (url:string, file: File)=>void) {
+function useFilePick(cb: (url:string)=>void) {
   const ref = useRef<HTMLInputElement>(null)
   return {
     open: () => ref.current?.click(),
     node: <input ref={ref} type="file" accept="image/*" className="hidden"
       onChange={e => {
         const f = e.target.files?.[0]; if (!f) return
-        const r = new FileReader(); r.onload = ev => cb(ev.target?.result as string, f); r.readAsDataURL(f)
+        const r = new FileReader(); r.onload = ev => cb(ev.target?.result as string); r.readAsDataURL(f)
         e.target.value=''
       }} />,
   }
@@ -84,7 +80,7 @@ function useFilePick(cb: (url:string, file: File)=>void) {
 
 function CelebrationPopup({ name, onOk }: { name:string; onOk:()=>void }) {
   useEffect(() => {
-    let iv: number
+    let iv: ReturnType<typeof setInterval>
     ;(async () => {
       const confetti = (await import('canvas-confetti')).default
       const colors = ['#8e78fb','#fb923c','#22d3ee','#f472b6','#a78bfa','#fff','#fbbf24']
@@ -167,27 +163,21 @@ const onBlur  = (e:React.FocusEvent<any>) => (e.target.style.borderColor='var(--
 
 export default function CreateCommunityPage() {
   const router = useRouter()
-  const { updateAuth } = useAuthContext()
-  const creatorCommunity = useOptionalCreatorCommunity()
   const [step,       setStep]       = useState(1)
   const [dir,        setDir]        = useState<1|-1>(1)   // animation direction
   const [animKey,    setAnimKey]    = useState(0)         // triggers re-mount for animation
   const [submitting, setSubmitting] = useState(false)
   const [celebrate,  setCelebrate]  = useState(false)
-  const [error,      setError]      = useState('')
   const [data,       setData]       = useState<CForm>(INIT)
   const set = (k:keyof CForm, v:string) => setData(p=>({...p,[k]:v}))
 
   // right panel image
   const [panelImg, setPanelImg] = useState('')
-  const [panelFile, setPanelFile] = useState<File | null>(null)
-  const { open: openPanel, node: panelNode } = useFilePick((url, file) => { setPanelImg(url); setPanelFile(file) })
+  const { open: openPanel, node: panelNode } = useFilePick(setPanelImg)
 
   // branding pickers
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [thumbFile, setThumbFile] = useState<File | null>(null)
-  const { open: openLogo,  node: logoNode  } = useFilePick((url, file) => { set('logo', url); setLogoFile(file) })
-  const { open: openThumb, node: thumbNode } = useFilePick((url, file) => { set('thumbnail', url); setThumbFile(file) })
+  const { open: openLogo,  node: logoNode  } = useFilePick(v=>set('logo',v))
+  const { open: openThumb, node: thumbNode } = useFilePick(v=>set('thumbnail',v))
 
   const canNext = () => {
     if (step===1) return !!(data.name.trim() && data.country && data.description.trim())
@@ -201,64 +191,10 @@ export default function CreateCommunityPage() {
     setAnimKey(k=>k+1)
   }
 
-  const uploadImage = async (file: File | null, fallback: string, purpose: 'community_logo' | 'community_cover') => {
-    if (!file) return fallback || undefined
-    const asset = await mediaApi.uploadSmart(file, { purpose, visibility: 'public' })
-    return asset.url
-  }
-
-  const submitCommunity = async () => {
-    setSubmitting(true)
-    setError('')
-    try {
-      const [logoUrl, thumbnailUrl, panelUrl] = await Promise.all([
-        uploadImage(logoFile, data.logo, 'community_logo'),
-        uploadImage(thumbFile, data.thumbnail, 'community_cover'),
-        uploadImage(panelFile, panelImg, 'community_cover'),
-      ])
-
-      const coverImage = thumbnailUrl || panelUrl
-      const payload: CreateCommunityData = {
-        name: data.name.trim(),
-        country: data.country,
-        status: 'public',
-        joinFee: data.pricingType === 'paid' ? 'paid' : 'free',
-        feeAmount: data.pricingType === 'paid' ? data.price : '0',
-        currency: 'TND',
-        socialLinks: {
-          instagram: data.instagram || undefined,
-          facebook: data.facebook || undefined,
-          youtube: data.youtube || undefined,
-          tiktok: data.tiktok || undefined,
-          twitter: data.twitter || undefined,
-          linkedin: data.linkedin || undefined,
-          website: data.website || undefined,
-        },
-        bio: data.description.trim(),
-        longDescription: data.description.trim(),
-        category: 'General',
-        tags: [],
-        logo: logoUrl,
-        image: coverImage,
-        coverImage,
-      }
-
-      const response = await communitiesApi.create(payload)
-      if (response.accessToken && response.user) {
-        updateAuth(response.accessToken, response.user)
-      }
-      await creatorCommunity?.refreshCommunities().catch(() => undefined)
-      setCelebrate(true)
-    } catch (err: any) {
-      setError(err?.message || 'Failed to create community. Please try again.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   const handleNext = () => {
     if (step<4) { go(step+1); return }
-    void submitCommunity()
+    setSubmitting(true)
+    setTimeout(()=>{ setSubmitting(false); setCelebrate(true) }, 1100)
   }
 
   return (
@@ -339,12 +275,6 @@ export default function CreateCommunityPage() {
               {step===4 && 'Connect your social media. All optional.'}
             </p>
           </div>
-          {error && (
-            <div className="mb-4 rounded-xl px-3 py-2 text-[12px] font-semibold"
-              style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.25)', color: '#ef4444' }}>
-              {error}
-            </div>
-          )}
         </div>
 
         {/* Form content — animated */}
@@ -398,8 +328,8 @@ export default function CreateCommunityPage() {
                       style={{background:'var(--p2)',color:'var(--p)',border:'1.5px solid var(--bd)'}}>
                       <Upload className="w-3.5 h-3.5" strokeWidth={2}/> Upload Logo
                     </button>
-                {data.logo && (
-                  <button onClick={()=>{ set('logo',''); setLogoFile(null) }}
+                    {data.logo && (
+                      <button onClick={()=>set('logo','')}
                         className="h-9 px-3 rounded-xl text-[12px] cursor-pointer hover:opacity-70 transition-opacity"
                         style={{border:'1.5px solid #fca5a5',background:'#fff1f2',color:'#dc2626'}}>
                         Remove
@@ -428,7 +358,7 @@ export default function CreateCommunityPage() {
                   }
                 </button>
                 {data.thumbnail && (
-                  <button onClick={()=>{ set('thumbnail',''); setThumbFile(null) }} className="mt-1.5 text-[11px] cursor-pointer hover:opacity-70 transition-opacity" style={{color:'#dc2626'}}>Remove</button>
+                  <button onClick={()=>set('thumbnail','')} className="mt-1.5 text-[11px] cursor-pointer hover:opacity-70 transition-opacity" style={{color:'#dc2626'}}>Remove</button>
                 )}
                 {thumbNode}
               </div>
@@ -569,11 +499,6 @@ export default function CreateCommunityPage() {
                 style={{background:'rgba(0,0,0,.55)',color:'#fff',backdropFilter:'blur(6px)'}}>
                 <ImageIcon className="w-3.5 h-3.5" strokeWidth={1.8}/> Change Image
               </button>
-              <button onClick={() => { setPanelImg(''); setPanelFile(null) }}
-                className="absolute bottom-6 left-6 flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-80 z-10"
-                style={{background:'rgba(0,0,0,.55)',color:'#fff',backdropFilter:'blur(6px)'}}>
-                <X className="w-3.5 h-3.5" strokeWidth={1.8}/> Remove
-              </button>
             </>
           : /* placeholder */
             <div className="flex flex-col items-center gap-4 text-center px-10">
@@ -600,7 +525,7 @@ export default function CreateCommunityPage() {
         {panelNode}
       </div>
 
-      {celebrate && <CelebrationPopup name={data.name} onOk={()=>router.push('/creator/communities')}/>}
+      {celebrate && <CelebrationPopup name={data.name} onOk={()=>router.push('/creator')}/>}
     </div>
   )
 }

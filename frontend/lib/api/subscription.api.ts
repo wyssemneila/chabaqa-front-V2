@@ -1,5 +1,5 @@
-import { apiClient, ApiSuccessResponse, PaginatedResponse } from './client';
-import type { User } from './types';
+import { apiClient, ApiSuccessResponse, PaginatedResponse } from '../core/client';
+import type { User } from '../core/types';
 
 // ============ ENUMS ============
 
@@ -18,8 +18,6 @@ export enum SubscriptionStatus {
   INCOMPLETE = 'incomplete',
 }
 
-export type BillingInterval = 'month' | 'year';
-
 export enum InvoiceStatus {
   DRAFT = 'draft',
   OPEN = 'open',
@@ -36,13 +34,7 @@ export enum UsageMetricType {
   ADMINS_ADDED = 'admins_added',
   API_REQUESTS = 'api_requests',
   EMAIL_SENT = 'email_sent',
-  WHATSAPP_SENT = 'whatsapp_sent',
   AUTOMATION_TRIGGERED = 'automation_triggered',
-}
-
-export enum SubscriptionAddonType {
-  STORAGE_50GB = 'storage_50gb',
-  ADMIN_SEAT = 'admin_seat',
 }
 
 // ============ INTERFACES & TYPES ============
@@ -53,10 +45,6 @@ export interface PlanLimits {
   coursesActivationMax: number;
   storageGB: number;
   adminsMax: number;
-  emailCampaignRecipientsPerMonth: number;
-  whatsappMessagesPerMonth: number;
-  analyticsLookbackDays: number;
-  sessionBookingsPerMonth: number;
 }
 
 export interface PlanFeatures {
@@ -76,8 +64,6 @@ export interface SubscriptionPlan {
   tier: PlanTier;
   name: string;
   priceDTPerMonth: number;
-  yearlyPriceDTPerMonth?: number;
-  yearlyTotalDT?: number;
   trialDays: number;
   limits: PlanLimits;
   features: PlanFeatures;
@@ -92,30 +78,15 @@ export interface CreatorSubscription {
   plan: PlanTier;
   status: SubscriptionStatus;
   cancelAtPeriodEnd: boolean;
-  billingInterval?: BillingInterval;
   currentPeriodStart: string;
   currentPeriodEnd: string;
-  nextBillingAt?: string;
   trialEndsAt?: string;
-  amount?: number;
-  currency?: string;
   hasPaymentMethod: boolean;
   paymentBrand?: string;
   paymentLast4?: string;
   provider?: string;
   providerCustomerId?: string;
   providerSubscriptionId?: string;
-  providerCheckoutSessionId?: string;
-  providerPriceId?: string;
-  communitiesMax?: number;
-  membersMax?: number;
-  coursesActivationMax?: number;
-  storageGB?: number;
-  adminsMax?: number;
-  emailCampaignRecipientsPerMonth?: number;
-  whatsappMessagesPerMonth?: number;
-  analyticsLookbackDays?: number;
-  sessionBookingsPerMonth?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -193,7 +164,6 @@ export interface UsageSummary {
   adminsAdded: number;
   apiRequests?: number;
   emailsSent?: number;
-  whatsappMessagesSent?: number;
   automationsTriggered?: number;
   planLimits: PlanLimits;
   usagePercentages: {
@@ -203,20 +173,6 @@ export interface UsageSummary {
     storage: number;
     admins: number;
   };
-}
-
-export interface SubscriptionAddon {
-  _id?: string;
-  id?: string;
-  type: SubscriptionAddonType;
-  label: string;
-  quantity: number;
-  unitAmount: number;
-  currency: string;
-  billingInterval: BillingInterval;
-  status?: 'active' | 'canceled';
-  storageGBDelta?: number;
-  adminsDelta?: number;
 }
 
 // ============ API METHOD PAYLOADS ============
@@ -256,39 +212,6 @@ export interface ExportSubscriptionsParams {
   startDate?: string;
   endDate?: string;
 }
-
-const unwrapPayload = <T,>(response: any, fallback: T): T => (
-  response?.data?.data ?? response?.data ?? response ?? fallback
-) as T;
-
-export const normalizeInvoiceList = (response: any): PaginatedResponse<Invoice> => {
-  const payload = unwrapPayload<any>(response, {});
-  const invoices = Array.isArray(payload?.invoices)
-    ? payload.invoices
-    : Array.isArray(payload?.data)
-      ? payload.data
-      : Array.isArray(payload)
-        ? payload
-        : [];
-
-  return {
-    success: true,
-    data: invoices,
-    pagination: {
-      total: Number(payload?.total ?? payload?.pagination?.total ?? invoices.length),
-      page: Number(payload?.page ?? payload?.pagination?.page ?? 1),
-      limit: Number(payload?.limit ?? payload?.pagination?.limit ?? invoices.length),
-      totalPages: Number(payload?.totalPages ?? payload?.pagination?.totalPages ?? payload?.pages ?? 1),
-    },
-  } as PaginatedResponse<Invoice>;
-};
-
-export const createSubscriptionIdempotencyKey = (provider: string, tier: PlanTier, interval: BillingInterval) => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `subscription:${provider}:${tier}:${interval}:${crypto.randomUUID()}`;
-  }
-  return `subscription:${provider}:${tier}:${interval}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
-};
 
 // ============ API CLIENT ============
 
@@ -380,7 +303,7 @@ export const subscriptionApi = {
   async getInvoices(
     params: { page?: number; limit?: number } = {}
   ): Promise<PaginatedResponse<Invoice>> {
-    return normalizeInvoiceList(await apiClient.get('/subscriptions/invoices', params));
+    return apiClient.get('/subscriptions/invoices', params);
   },
 
   async getInvoiceById(invoiceId: string): Promise<ApiSuccessResponse<Invoice>> {
@@ -394,30 +317,6 @@ export const subscriptionApi = {
 
   async getUsageSummary(params: { startDate?: string; endDate?: string } = {}): Promise<ApiSuccessResponse<UsageSummary>> {
     return apiClient.get('/subscriptions/usage', params);
-  },
-
-  async getAvailableAddons(): Promise<ApiSuccessResponse<SubscriptionAddon[]> | SubscriptionAddon[]> {
-    return apiClient.get('/subscriptions/add-ons/available');
-  },
-
-  async getMyAddons(): Promise<ApiSuccessResponse<SubscriptionAddon[]> | SubscriptionAddon[]> {
-    return apiClient.get('/subscriptions/add-ons');
-  },
-
-  async purchaseAddon(_data: { type: SubscriptionAddonType; quantity?: number; billingInterval?: BillingInterval }): Promise<ApiSuccessResponse<SubscriptionAddon> | SubscriptionAddon> {
-    throw new Error('Add-on checkout is not available yet. Contact support for admin-reviewed add-ons.');
-  },
-
-  async cancelAddon(addonId: string): Promise<ApiSuccessResponse<SubscriptionAddon> | SubscriptionAddon> {
-    return apiClient.delete(`/subscriptions/add-ons/${addonId}`);
-  },
-
-  async getMemberRevenueSubscriptions(params: GetAllSubscriptionsParams = {}): Promise<PaginatedResponse<CreatorSubscription>> {
-    return apiClient.get('/subscriptions/member-revenue', params);
-  },
-
-  async getMemberRevenueStats(params: GetAllSubscriptionsParams = {}): Promise<ApiSuccessResponse<SubscriptionStats> | SubscriptionStats> {
-    return apiClient.get('/subscriptions/member-revenue/stats', params);
   },
 
   /**
@@ -499,15 +398,7 @@ export const subscriptionApi = {
   /**
    * Initiate Stripe Link payment for subscription
    */
-  initStripePayment: async (tier: PlanTier, interval: 'month' | 'year' = 'month', idempotencyKey?: string): Promise<any> => {
-    return apiClient.post('/payment/stripe-link/init/subscription', {
-      tier,
-      interval,
-      idempotencyKey: createSubscriptionIdempotencyKey('stripe', tier, interval),
-    }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
-  },
-
-  createStripeCustomerPortal: async (): Promise<ApiSuccessResponse<{ portalUrl: string }> | { portalUrl: string }> => {
-    return apiClient.post('/payment/stripe-link/customer-portal');
+  initStripePayment: async (tier: PlanTier, interval: 'month' | 'year' = 'month'): Promise<any> => {
+    return apiClient.post('/payment/stripe-link/init/subscription', { tier, interval });
   },
 };

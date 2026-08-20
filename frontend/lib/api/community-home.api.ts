@@ -1,11 +1,11 @@
-import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from './client';
+import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from '../core/client';
 import { communitiesApi } from './communities.api';
 import { postsApi } from './posts.api';
-import { challengesApi } from './challenges.api';
-import { coursesApi } from './courses.api';
-import { getMe } from './user.api';
-import { normalizeUser } from '@/lib/hooks/useUser';
-import type { Community, Post, Challenge, Course, User } from './types';
+import { challengesApi } from '../learning/challenges.api';
+import { coursesApi } from '../learning/courses.api';
+import { getMe } from '../user/user.api';
+import { normalizeUser } from '@/hooks/use-user';
+import type { Community, Post, Challenge, Course, User } from '../core/types';
 import { resolveImageUrl } from '@/lib/resolve-image-url';
 
 export interface CommunityHomeData {
@@ -265,7 +265,7 @@ async function calculateStats(
     const postDate = new Date(post.createdAt);
     return postDate >= oneDayAgo;
   });
-  
+
   const uniqueActiveAuthors = new Set(recentPosts.map(post => post.authorId)).size;
   // Active today should be at least the number of people who posted, or estimate 5% of members minimum
   const activeToday = Math.max(uniqueActiveAuthors, Math.ceil(community.members * 0.05));
@@ -328,9 +328,9 @@ export const communityHomeApi = {
 
       try {
         const postsResult = await postsApi.getByCommunity(community.id, {
-          page: postsPage, 
+          page: postsPage,
           limit: postsLimit,
-          userId 
+          userId
         });
         posts = postsResult.posts.map(transformPost);
         pagination = postsResult.pagination || { page: postsPage, limit: postsLimit, total: postsResult.posts.length, totalPages: 1 };

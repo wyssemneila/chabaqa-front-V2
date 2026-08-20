@@ -1,7 +1,6 @@
 "use client"
 
-import React from "react"
-import type { ComponentType } from "react"
+import type React from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,12 +14,11 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Search } from "lucide-react"
+import { Search, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 
 interface BreadcrumbSegment { label: string; href?: string }
-type PageFrameworkIcon = ComponentType<{ className?: string }>
-interface PageHeaderAction { label: string; href?: string; onClick?: () => void; icon?: PageFrameworkIcon; variant?: "default" | "outline" | "ghost" | "secondary" | "destructive" }
+interface PageHeaderAction { label: string; href?: string; onClick?: () => void; icon?: LucideIcon; variant?: "default" | "outline" | "ghost" | "secondary" | "destructive" }
 
 interface PageHeaderProps {
   title: string
@@ -59,18 +57,8 @@ export function PageHeader({ title, description, breadcrumbs, badge, actions, cl
           <div className="flex items-center gap-2 flex-shrink-0">
             {actions.map((action, i) => {
               const ActionIcon = action.icon
-              const variant = action.variant || (i === 0 ? "default" : "outline")
-              if (action.href) {
-                return (
-                  <Button key={i} variant={variant} size="sm" asChild>
-                    <Link href={action.href}>
-                      {ActionIcon && <ActionIcon className="h-4 w-4 mr-2" />}
-                      {action.label}
-                    </Link>
-                  </Button>
-                )
-              }
-              return <Button key={i} variant={variant} size="sm" onClick={action.onClick}>{ActionIcon && <ActionIcon className="h-4 w-4 mr-2" />}{action.label}</Button>
+              const btn = <Button key={i} variant={action.variant || (i === 0 ? "default" : "outline")} size="sm" onClick={action.onClick}>{ActionIcon && <ActionIcon className="h-4 w-4 me-2" />}{action.label}</Button>
+              return action.href ? <Link key={i} href={action.href}>{btn}</Link> : btn
             })}
           </div>
         )}
@@ -106,7 +94,7 @@ export function ActionBar({ searchValue, onSearchChange, searchPlaceholder = "Se
             {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5">
                 {tab.label}
-                {tab.count !== undefined && tab.count > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{tab.count}</Badge>}
+                {tab.count !== undefined && tab.count > 0 && <Badge variant="secondary" className="text-[11px] px-1.5 py-0">{tab.count}</Badge>}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -116,7 +104,7 @@ export function ActionBar({ searchValue, onSearchChange, searchPlaceholder = "Se
         {onSearchChange && (
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={searchValue} onChange={(e) => onSearchChange(e.target.value)} placeholder={searchPlaceholder} className="pl-9 h-9" />
+            <Input value={searchValue} onChange={(e) => onSearchChange(e.target.value)} placeholder={searchPlaceholder} className="ps-9 h-9" />
           </div>
         )}
         {children}
@@ -157,18 +145,8 @@ export function Section({ title, description, actions, children, className }: Se
             <div className="flex items-center gap-2">
               {actions.map((action, i) => {
                 const ActionIcon = action.icon
-                const variant = action.variant || "outline"
-                if (action.href) {
-                  return (
-                    <Button key={i} variant={variant} size="sm" asChild>
-                      <Link href={action.href}>
-                        {ActionIcon && <ActionIcon className="h-4 w-4 mr-2" />}
-                        {action.label}
-                      </Link>
-                    </Button>
-                  )
-                }
-                return <Button key={i} variant={variant} size="sm" onClick={action.onClick}>{ActionIcon && <ActionIcon className="h-4 w-4 mr-2" />}{action.label}</Button>
+                const btn = <Button key={i} variant={action.variant || "outline"} size="sm" onClick={action.onClick}>{ActionIcon && <ActionIcon className="h-4 w-4 me-2" />}{action.label}</Button>
+                return action.href ? <Link key={i} href={action.href}>{btn}</Link> : btn
               })}
             </div>
           )}

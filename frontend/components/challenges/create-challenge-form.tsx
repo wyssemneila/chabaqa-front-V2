@@ -11,8 +11,6 @@ import {
 } from "lucide-react"
 import { Input }    from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useCreatorCommunity } from "@/app/(creator)/creator/context/creator-community-context"
-import { challengesApi, normalizeChallengeResponse } from "@/lib/api/challenges.api"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -20,7 +18,6 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 // ─── types ────────────────────────────────────────────────────────────────────
 type ResourceType = "video" | "file" | "link" | "meeting"
 type DifficultyLevel = "beginner" | "intermediate" | "advanced" | "expert"
-type BackendDifficultyLevel = "beginner" | "intermediate" | "advanced"
 
 interface Resource {
   id: string
@@ -951,7 +948,7 @@ function StepPricing({ data, set }: { data: FormData; set: (f: keyof FormData, v
 // ════════════════════════════════════════════════════════════════════════════════
 function SuccessScreen() {
   useEffect(() => {
-    let iv: number
+    let iv: ReturnType<typeof setInterval>
     ;(async () => {
       const confetti = (await import('canvas-confetti')).default
       const colors   = ["#8e78fb","#fb923c","#22d3ee","#f472b6","#a78bfa","#ffffff"]
@@ -998,7 +995,6 @@ function buildSteps(count: number, existing: ChallengeStep[]): ChallengeStep[] {
 
 export function CreateChallengeForm() {
   const router = useRouter()
-  const { selectedCommunity } = useCreatorCommunity()
 
   const [wizardStep,   setWizardStep]   = useState(1)
   const [error,        setError]        = useState("")
@@ -1061,56 +1057,13 @@ export function CreateChallengeForm() {
   const submit = async () => {
     setSubmitting(true); setError("")
     try {
-      const communitySlug = selectedCommunity?.slug
-      if (!communitySlug) throw new Error("Select a community before creating a challenge.")
+      setSubmitStatus("Creating challenge…"); await new Promise(r => setTimeout(r, 400))
+      setSubmitStatus("Saving steps…");       await new Promise(r => setTimeout(r, 400))
+      setSubmitStatus("Publishing…");         await new Promise(r => setTimeout(r, 300))
 
-      const start = new Date(data.startDate)
-      const end = new Date(start)
-      end.setDate(start.getDate() + Math.max(1, data.durationDays) - 1)
-      const difficulty: BackendDifficultyLevel = data.difficulty === "expert" ? "advanced" : (data.difficulty || "beginner")
-
-      setSubmitStatus("Creating challenge…")
-      const created = await challengesApi.create({
-        title: data.title,
-        description: data.description,
-        communitySlug,
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
-        category: data.category,
-        difficulty,
-        duration: `${data.durationDays} days`,
-        thumbnail: data.banner || undefined,
-        maxParticipants: data.maxParticipants === "unlimited" ? undefined : Number(data.maxParticipants),
-        sequentialProgression: data.sequential,
-        participationFee: data.priceType === "paid" ? Number(data.price || 0) : 0,
-        currency: "TND",
-        isActive: false,
-        resources: [],
-        tasks: data.steps.map((step, index) => ({
-          day: index + 1,
-          title: step.title,
-          description: step.description,
-          deliverable: step.deliverable || step.description,
-          points: Number(step.pointReward || 0),
-          instructions: step.instructions || undefined,
-          resources: step.resources
-            .filter(resource => resource.url.trim())
-            .map((resource, resourceIndex) => ({
-              title: resource.title,
-              type: resource.type === "meeting" ? "tool" : resource.type === "file" ? "article" : resource.type === "link" ? "article" : resource.type,
-              url: resource.url,
-              description: undefined,
-              order: resourceIndex,
-            })),
-        })),
-      })
-
-      const challenge = normalizeChallengeResponse(created)
-      const challengeId = challenge?._id || challenge?.id
-      if (data.isPublished && challengeId) {
-        setSubmitStatus("Publishing…")
-        await challengesApi.publish(challengeId)
-      }
+      const challenges: any[] = JSON.parse(localStorage.getItem("chabaqa_challenges") ?? "[]")
+      challenges.unshift({ id: `chl_${Date.now()}`, ...data, createdAt: new Date().toISOString() })
+      localStorage.setItem("chabaqa_challenges", JSON.stringify(challenges))
 
       setSuccess(true)
       setTimeout(() => router.push("/creator/challenges"), 2800)

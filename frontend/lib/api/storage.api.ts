@@ -1,4 +1,4 @@
-import type { UploadedFile } from './types';
+import type { UploadedFile } from '../core/types';
 import { mediaApi } from './media.api';
 
 // Storage API

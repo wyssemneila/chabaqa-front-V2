@@ -91,21 +91,6 @@ export function parseYouTubeVideoId(value: unknown): string | null {
   );
 }
 
-export function getYouTubeEmbedUrl(value: unknown): string | null {
-  const videoId = parseYouTubeVideoId(value);
-  return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : null;
-}
-
-export function getEmbeddableVideoUrl(value: unknown): string | null {
-  const youtubeUrl = getYouTubeEmbedUrl(value);
-  if (youtubeUrl) return youtubeUrl;
-
-  const vimeoId = parseVimeoVideoId(value);
-  if (vimeoId) return `https://player.vimeo.com/video/${vimeoId}`;
-
-  return isUploadVideoUrl(value) ? normalizeVideoUrl(value) : null;
-}
-
 export function parseVimeoVideoId(value: unknown): string | null {
   const url = normalizeVideoUrl(value);
   if (!url) return null;
@@ -149,7 +134,7 @@ export function isSupportedCreatorVideoUrl(value: unknown): boolean {
 export function getCreatorVideoUrlError(value: unknown): string | null {
   const source = getCreatorVideoSource(value);
   if (source === "unsupported") {
-    return "Enter a valid public YouTube watch, share, Shorts, live, or embed link, or use an uploaded /uploads/... video URL.";
+    return "Use a YouTube link or an uploaded /uploads/... video URL.";
   }
   return null;
 }

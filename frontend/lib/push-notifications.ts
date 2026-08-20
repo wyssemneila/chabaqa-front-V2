@@ -1,6 +1,6 @@
 "use client";
 
-import { notificationsApi, type PushSubscriptionPayload } from "@/lib/api/notifications.api";
+import { notificationsApi, type PushSubscriptionPayload } from "@/lib/api/social/notifications.api";
 
 const PUSH_PERMISSION_REQUESTED_KEY = "chabaqa_push_permission_requested_v1";
 const getPushPermissionRequestedKey = (userId?: string): string => {

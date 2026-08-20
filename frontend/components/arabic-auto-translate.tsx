@@ -44,11 +44,7 @@ export function ArabicAutoTranslate() {
 
   useEffect(() => {
     if (locale !== "ar") return
-    // This feature mutates text nodes across the live React tree.
-    // That can desynchronize React's DOM ownership and trigger runtime
-    // errors like "Failed to execute 'removeChild' on 'Node'" during unmount.
-    // Keep it opt-in only until a safer translation approach is implemented.
-    const enabled = process.env.NEXT_PUBLIC_ENABLE_ARABIC_AUTO_TRANSLATE === "true"
+    const enabled = process.env.NEXT_PUBLIC_ENABLE_ARABIC_AUTO_TRANSLATE !== "false"
     if (!enabled) return
 
     const translatedNodes = new WeakSet<Text>()

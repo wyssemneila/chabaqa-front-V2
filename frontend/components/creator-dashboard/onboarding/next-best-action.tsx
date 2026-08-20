@@ -59,9 +59,9 @@ export function NextBestAction({ action, onDismiss, variant = 'card' }: NextBest
 
   if (variant === 'banner') {
     return (
-      <div className={`rounded-lg border p-4 ${styles.bg} flex items-center justify-between gap-4`}>
+      <div className={`rounded-lg border p-4 \${styles.bg} flex items-center justify-between gap-4`}>
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-full bg-white ${styles.icon}`}>
+          <div className={`p-2 rounded-full bg-white \${styles.icon}`}>
             <CategoryIcon className="h-5 w-5" />
           </div>
           <div>
@@ -78,7 +78,7 @@ export function NextBestAction({ action, onDismiss, variant = 'card' }: NextBest
           <Link href={action.actionUrl}>
             <Button size="sm">
               {action.actionLabel}
-              <ArrowRight className="h-4 w-4 ml-1" />
+              <ArrowRight className="h-4 w-4 ms-1" />
             </Button>
           </Link>
         </div>
@@ -89,7 +89,7 @@ export function NextBestAction({ action, onDismiss, variant = 'card' }: NextBest
   if (variant === 'inline') {
     return (
       <div className="flex items-center gap-3 py-2">
-        <Lightbulb className={`h-4 w-4 ${styles.icon}`} />
+        <Lightbulb className={`h-4 w-4 \${styles.icon}`} />
         <span className="text-sm text-gray-600">{action.title}</span>
         <Link href={action.actionUrl} className="text-sm font-medium text-primary hover:underline">
           {action.actionLabel} →
@@ -99,16 +99,16 @@ export function NextBestAction({ action, onDismiss, variant = 'card' }: NextBest
   }
 
   return (
-    <div className={`rounded-xl border ${styles.bg} overflow-hidden`}>
+    <div className={`rounded-xl border \${styles.bg} overflow-hidden`}>
       <div className="p-5">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-lg bg-white shadow-sm ${styles.icon}`}>
+            <div className={`p-2.5 rounded-lg bg-white shadow-sm \${styles.icon}`}>
               <CategoryIcon className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${styles.badge} capitalize`}>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full \${styles.badge} capitalize`}>
                   {action.priority}
                 </span>
                 <span className="text-xs text-gray-400 capitalize">{action.category}</span>
@@ -123,7 +123,7 @@ export function NextBestAction({ action, onDismiss, variant = 'card' }: NextBest
         <Link href={action.actionUrl} className="w-full">
           <Button className="w-full" variant={action.priority === 'urgent' ? 'default' : 'outline'}>
             {action.actionLabel}
-            <ArrowRight className="h-4 w-4 ml-2" />
+            <ArrowRight className="h-4 w-4 ms-2" />
           </Button>
         </Link>
       </div>
@@ -146,7 +146,7 @@ export function getSmartSuggestions(context: {
       priority: 'urgent',
       category: 'setup',
       actionLabel: 'Create Community',
-      actionUrl: '/creator/communities/create',
+      actionUrl: '/creator/communities/new',
     });
   }
   if (context.pendingPayout && context.pendingPayout > 0) {
@@ -158,7 +158,7 @@ export function getSmartSuggestions(context: {
       category: 'revenue',
       actionLabel: 'Request Payout',
       actionUrl: '/creator/monetization/payouts',
-      metric: `$${(context.pendingPayout / 100).toFixed(2)}`,
+      metric: `\$\${(context.pendingPayout / 100).toFixed(2)}`,
       metricLabel: 'available',
     });
   }

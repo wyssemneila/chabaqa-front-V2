@@ -6,14 +6,11 @@ import Script from "next/script"
 import { cookies, headers } from "next/headers"
 import { NextIntlClientProvider } from "next-intl"
 import "./globals.css"
-import "./styles/animations.css"
 import { ReactQueryProvider } from "@/app/providers/react-query-provider"
-import { ExtensionErrorGuard } from "@/app/(auth)/components/extension-error-guard"
 import { Ga4ScriptGate } from "@/components/ga4-script-gate"
 import { CookieConsentProvider } from "@/components/cookie-consent-provider"
 import { ArabicAutoTranslate } from "@/components/arabic-auto-translate"
 import { PwaServiceWorker } from "@/components/pwa-service-worker"
-import { GlobalImageErrorHandler } from "@/components/media/global-image-error-handler"
 import LoadingScreen from "@/components/ui/LoadingScreen"
 import { ThemeProvider } from "@/components/theme-provider"
 import { DEFAULT_LOCALE, getLocaleDirection, isAppLocale, LOCALE_COOKIE } from "@/lib/i18n/config"
@@ -24,7 +21,6 @@ import {
   generateRobotsMetadata,
   generateTwitterMetadata,
   generateWebSiteSchema,
-  getSiteUrl,
   seoConfig,
 } from "@/lib/seo-config"
 
@@ -46,7 +42,10 @@ const tajawal = Tajawal({
   variable: "--font-arabic",
   weight: ["400", "500", "700", "800"],
 })
-const appBaseUrl = getSiteUrl()
+const appBaseUrl =
+  process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith("http")
+    ? process.env.NEXT_PUBLIC_APP_URL
+    : "https://chabaqa.io"
 
 export const metadata: Metadata = {
   metadataBase: new URL(appBaseUrl),
@@ -56,7 +55,7 @@ export const metadata: Metadata = {
   },
   description: seoConfig.defaultDescription,
   keywords: generateKeywords(),
-  authors: [{ name: "Chabaqa", url: appBaseUrl }],
+  authors: [{ name: "Chabaqa", url: "https://chabaqa.io" }],
   creator: "Chabaqa",
   publisher: "Chabaqa",
   formatDetection: {
@@ -109,10 +108,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const headersList = await headers()
-  const cookieStore = await cookies()
-  const localeHeader = headersList.get("x-app-locale")
-  const localeCookie = cookieStore.get(LOCALE_COOKIE)?.value
+  const localeHeader = (await headers()).get("x-app-locale")
+  const localeCookie = (await cookies()).get(LOCALE_COOKIE)?.value
   const locale = isAppLocale(localeHeader)
     ? localeHeader
     : isAppLocale(localeCookie)
@@ -124,9 +121,13 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
+        {/* Preconnect to external domains for performance */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+
         {/* Language alternates */}
-        <link rel="alternate" hrefLang="x-default" href={appBaseUrl} />
-        
+        <link rel="alternate" hrefLang="x-default" href="https://chabaqa.io" />
+
         {/* Additional meta tags for better SEO */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -138,14 +139,14 @@ export default async function RootLayout({
         className={`${sfProDisplay.variable} ${tajawal.variable} ${locale === "ar" ? "font-arabic" : "font-latin"}`}
         suppressHydrationWarning
       >
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <a href="#main-content" className="skip-to-content">Skip to content</a>
-          <LoadingScreen />
-          <NextIntlClientProvider locale={locale} messages={messages}>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-[var(--p)] focus:text-white focus:rounded-lg focus:text-sm focus:font-semibold">
+          Skip to main content
+        </a>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <ReactQueryProvider>
-            <ExtensionErrorGuard />
-            <GlobalImageErrorHandler />
-            <div id="main-content" tabIndex={-1} className="outline-none">{children}</div>
+            <LoadingScreen />
+            {children}
             <PwaServiceWorker />
             <ArabicAutoTranslate />
             <Ga4ScriptGate />
@@ -157,8 +158,8 @@ export default async function RootLayout({
               {JSON.stringify(generateWebSiteSchema())}
             </Script>
           </ReactQueryProvider>
-          </NextIntlClientProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

@@ -1,8 +1,8 @@
-import { apiClient, ApiSuccessResponse } from './client';
+import { apiClient, ApiSuccessResponse } from '../core/client';
 import { challengesApi } from './challenges.api';
-import { communitiesApi } from './communities.api';
-import { getMe } from './user.api';
-import type { Challenge, ChallengeParticipant } from './types';
+import { communitiesApi } from '../community/communities.api';
+import { getMe } from '../user/user.api';
+import type { Challenge, ChallengeParticipant } from '../core/types';
 
 export interface ChallengeWithProgress extends Challenge {
   mongoId?: string;

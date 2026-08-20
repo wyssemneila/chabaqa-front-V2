@@ -9,14 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Mail, Lock } from "lucide-react"
-import { useAuthContext } from "@/app/providers/auth-provider"
+import { mockCredentials } from "@/lib/data-communities"
 
 interface LoginFormProps {
   onLogin: (success: boolean) => void
 }
 
 export function LoginForm({ onLogin }: LoginFormProps) {
-  const { login } = useAuthContext()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -28,15 +27,17 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     setIsLoading(true)
     setError("")
 
-    try {
-      await login({ email, password })
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    if (email === mockCredentials.email && password === mockCredentials.password) {
       onLogin(true)
-    } catch (err: any) {
-      setError(err?.message || "Invalid email or password")
+    } else {
+      setError("Invalid email or password")
       onLogin(false)
-    } finally {
-      setIsLoading(false)
     }
+
+    setIsLoading(false)
   }
 
   return (
@@ -58,10 +59,10 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="creator@chabqa.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="ps-10"
                   required
                 />
               </div>
@@ -74,10 +75,10 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder="password123"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="ps-10 pe-10"
                   required
                 />
                 <button
@@ -95,6 +96,12 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 <AlertDescription className="text-red-700">{error}</AlertDescription>
               </Alert>
             )}
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800 font-medium mb-2">Demo Credentials:</p>
+              <p className="text-xs text-blue-600">Email: creator@chabqa.com</p>
+              <p className="text-xs text-blue-600">Password: password123</p>
+            </div>
 
             <Button
               type="submit"

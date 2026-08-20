@@ -1,6 +1,6 @@
-import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from './client';
-import type { ApiGetOptions } from './client';
-import type { Session, SessionBooking } from './types';
+import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from '../core/client';
+import type { ApiGetOptions } from '../core/client';
+import type { Session, SessionBooking } from '../core/types';
 
 export interface CreateSessionResourceData {
   title: string;
@@ -127,26 +127,6 @@ const normalizeCreatorBookingsResponse = (raw: any): CreatorBookingsResponse => 
   };
 };
 
-export const normalizeSessionResponse = (response: any): any => {
-  if (!response) return response;
-  if (response?.session) return response.session;
-  if (response?.data?.session) return response.data.session;
-  if (response?.data?.data?.session) return response.data.data.session;
-  if (response?.data?.data) return response.data.data;
-  if (response?.data) return response.data;
-  return response;
-};
-
-export const normalizeSessionListResponse = (response: any): any[] => {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.sessions)) return response.sessions;
-  if (Array.isArray(response?.data)) return response.data;
-  if (Array.isArray(response?.data?.sessions)) return response.data.sessions;
-  if (Array.isArray(response?.data?.data)) return response.data.data;
-  if (Array.isArray(response?.data?.data?.sessions)) return response.data.data.sessions;
-  return [];
-};
-
 // Sessions API
 export const sessionsApi = {
   // Get all sessions
@@ -158,18 +138,18 @@ export const sessionsApi = {
   },
 
   // Create session
-  create: async (data: CreateSessionData): Promise<any> => {
-    return apiClient.post<any>('/sessions', data);
+  create: async (data: CreateSessionData): Promise<ApiSuccessResponse<Session>> => {
+    return apiClient.post<ApiSuccessResponse<Session>>('/sessions', data);
   },
 
   // Get session by ID
-  getById: async (id: string): Promise<any> => {
-    return apiClient.get<any>(`/sessions/${id}`);
+  getById: async (id: string): Promise<ApiSuccessResponse<Session>> => {
+    return apiClient.get<ApiSuccessResponse<Session>>(`/sessions/${id}`);
   },
 
   // Update session
-  update: async (id: string, data: UpdateSessionData): Promise<any> => {
-    return apiClient.patch<any>(`/sessions/${id}`, data);
+  update: async (id: string, data: UpdateSessionData): Promise<ApiSuccessResponse<Session>> => {
+    return apiClient.patch<ApiSuccessResponse<Session>>(`/sessions/${id}`, data);
   },
 
   // Delete session
@@ -290,11 +270,11 @@ export const sessionsApi = {
   },
 
   // Initiate Stripe Link payment for session
-  initStripePayment: async (sessionId: string, bookingDto: BookSessionData, promoCode?: string, idempotencyKey?: string): Promise<any> => {
+  initStripePayment: async (sessionId: string, bookingDto: BookSessionData, promoCode?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/session?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/session`;
-    return apiClient.post<any>(endpoint, { sessionId, bookingDto }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
+    return apiClient.post<any>(endpoint, { sessionId, bookingDto });
   },
 
 };

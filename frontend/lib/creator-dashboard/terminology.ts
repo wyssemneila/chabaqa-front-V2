@@ -1,6 +1,6 @@
 /**
  * Creator Dashboard Terminology Dictionary (Section 17)
- * 
+ *
  * Standardized language across all creator dashboard modules.
  */
 
@@ -17,6 +17,7 @@ export const MODULE_NAMES = {
   monetization: 'Monetization',
   subscriptions: 'Subscriptions',
   payouts: 'Payouts',
+  manualPayments: 'Manual Payments',
   marketing: 'Marketing',
   emails: 'Emails',
   affiliates: 'Affiliates',
@@ -132,6 +133,7 @@ export const MONETIZATION_TERMS = {
   churnRate: 'Churn Rate',
   oneTimePayment: 'One-Time Payment',
   recurringPayment: 'Recurring Payment',
+  manualPayment: 'Manual Payment',
   platformFee: 'Platform Fee',
   processingFee: 'Processing Fee',
   netRevenue: 'Net Revenue',

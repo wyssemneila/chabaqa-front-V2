@@ -42,12 +42,12 @@ export const useEnhancedAuth = (): AuthState & AuthActions => {
     try {
       setLocalError(null)
       await ctx.login(credentials)
-      
+
       // Store auth preferences
       if (credentials.rememberMe) {
         secureStorage.setAuthPreferences({ rememberMe: true })
       }
-      
+
       // Get user info and store session
       const userInfo = tokenManager.getUserInfo()
       if (userInfo) {
@@ -63,7 +63,7 @@ export const useEnhancedAuth = (): AuthState & AuthActions => {
     try {
       setLocalError(null)
       await ctx.register(data)
-      
+
       // Store user session after successful registration
       const userInfo = tokenManager.getUserInfo()
       if (userInfo) {
@@ -78,11 +78,11 @@ export const useEnhancedAuth = (): AuthState & AuthActions => {
   const logout = useCallback(async () => {
     try {
       await ctx.logout()
-      
+
       // Clear all local storage
       tokenManager.clearTokens()
       secureStorage.clear()
-      
+
       // Redirect to login
       router.push('/signin')
     } catch (error) {
@@ -106,17 +106,17 @@ export const useEnhancedAuth = (): AuthState & AuthActions => {
 
   const requireAuth = useCallback((redirectTo: string = "/signin") => {
     const { loading } = ctx
-    
+
     useEffect(() => {
       if (loading) return
-      
+
       if (!isAuthenticated) {
         const currentPath = window.location.pathname
         const redirectUrl = `${redirectTo}?redirect=${encodeURIComponent(currentPath)}`
         router.replace(redirectUrl)
       }
     }, [loading, isAuthenticated, redirectTo, router])
-    
+
     return { isLoading: loading, isAuthenticated }
   }, [ctx, isAuthenticated, router])
 
@@ -167,7 +167,7 @@ export const useEnhancedAuth = (): AuthState & AuthActions => {
     isAuthenticated,
     user: ctx.user,
     error: localError || ctx.error,
-    
+
     // Actions
     login,
     logout,

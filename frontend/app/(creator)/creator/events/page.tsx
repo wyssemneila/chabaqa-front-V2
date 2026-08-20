@@ -1,21 +1,19 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar  from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
-import { useCreatorEventsPage } from '@/hooks/creator-dashboard/use-creator-dashboard-data'
-import { eventsApi } from '@/lib/api'
-import { toast } from 'sonner'
-import { useState } from 'react'
 import {
   Plus, Calendar, Globe, MapPin, Layers2,
-  Ticket, Users, Tag, Pencil, Trash2,
+  Ticket, Users, Clock, Tag, Pencil, Trash2,
+  Inbox,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Event {
-  id: string; mongoId?: string; publicId?: string; title: string; description: string; category: string
+  id: string; title: string; description: string; category: string
   format: 'online' | 'offline' | 'hybrid'
   startDate: string; startTime: string; endDate: string; endTime: string
   coverPreview: string; status: 'draft' | 'published'
@@ -39,21 +37,21 @@ export default function EventsPage() {
   const router  = useRouter()
   const { lang } = useDashPrefs()
 
-  const { data: events, loading, error, refetch } = useCreatorEventsPage()
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [events,  setEvents]  = useState<Event[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const deleteEvent = async (id: string) => {
-    if (!window.confirm('Delete this event?')) return
-    setDeletingId(id)
+  useEffect(() => {
     try {
-      await eventsApi.delete(id)
-      toast.success('Event deleted')
-      refetch()
-    } catch (err: any) {
-      toast.error(err?.message || 'Could not delete the event.')
-    } finally {
-      setDeletingId(null)
-    }
+      const raw = localStorage.getItem('chabaqa_events')
+      setEvents(raw ? JSON.parse(raw) : [])
+    } catch { setEvents([]) }
+    finally   { setLoading(false) }
+  }, [])
+
+  const deleteEvent = (id: string) => {
+    const next = events.filter(e => e.id !== id)
+    setEvents(next)
+    localStorage.setItem('chabaqa_events', JSON.stringify(next))
   }
 
   const T = {
@@ -97,7 +95,7 @@ export default function EventsPage() {
               <p className="text-[13px] font-semibold" style={{ color:'var(--t3)' }}>
                 {events.length} {lang==='ar'?'فعالية':'event'}{events.length!==1&&lang==='en'?'s':''}
               </p>
-              <button onClick={() => router.push('/creator/events/new')}
+              <button onClick={() => router.push('/creator/events/create')}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-[13px] font-bold text-white
                            cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ background:'var(--p)' }}>
@@ -105,19 +103,12 @@ export default function EventsPage() {
               </button>
             </div>
 
-            {error && !loading && (
-              <div className="mb-4 px-4 py-3 rounded-xl text-sm"
-                style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412' }}>
-                Could not load the live event list. <button onClick={refetch} className="font-bold underline">Retry</button>
-              </div>
-            )}
-
             {/* Loading */}
             {loading ? (
               <div className="flex items-center justify-center py-32">
                 <div className="w-8 h-8 rounded-full border-2 border-[var(--p3)] border-t-[var(--p)] animate-spin" />
               </div>
-            ) : error ? null : events.length === 0 ? (
+            ) : events.length === 0 ? (
               /* Empty state */
               <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
                 style={{ borderColor:'var(--bd)', background:'var(--white)' }}>
@@ -127,7 +118,7 @@ export default function EventsPage() {
                 </div>
                 <p className="text-[15px] font-bold mb-1.5" style={{ color:'var(--t1)' }}>{T.empty}</p>
                 <p className="text-[13px] mb-6" style={{ color:'var(--t3)' }}>{T.emptyDesc}</p>
-                <button onClick={() => router.push('/creator/events/new')}
+                <button onClick={() => router.push('/creator/events/create')}
                   className="flex items-center gap-2 h-10 px-5 rounded-xl text-[13px] font-bold text-white
                              cursor-pointer hover:opacity-90 transition-opacity"
                   style={{ background:'var(--p)' }}>
@@ -138,7 +129,6 @@ export default function EventsPage() {
               /* Events grid */
               <div className="grid grid-cols-1 gap-4 max-w-4xl">
                 {events.map((ev, i) => {
-                  const eventId = ev.mongoId || ev.id
                   const FormatIcon = FORMAT_ICON[ev.format]
                   const fmtColor   = FORMAT_COLOR[ev.format]
                   const stStatus   = STATUS_STYLE[ev.status]
@@ -183,14 +173,13 @@ export default function EventsPage() {
 
                           {/* Actions */}
                           <div className="flex gap-1 shrink-0">
-                            <button onClick={() => router.push(`/creator/events/${eventId}`)}
+                            <button onClick={() => router.push(`/creator/events/${ev.id}/edit`)}
                               aria-label="Edit event"
                               className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity"
                               style={{ background:'var(--bg)', color:'var(--t3)' }}>
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
-                             <button onClick={() => deleteEvent(eventId)}
-                               disabled={deletingId === eventId}
+                            <button onClick={() => deleteEvent(ev.id)}
                               aria-label="Delete event"
                               className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity"
                               style={{ background:'rgba(239,68,68,.08)', color:'#ef4444' }}>

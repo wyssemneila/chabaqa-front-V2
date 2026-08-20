@@ -31,24 +31,14 @@ class ApiClient {
 
   private getToken(isAdmin: boolean = false): string | null {
     if (typeof window === 'undefined') return null
-    if (isAdmin) return null
-    
-    return localStorage.getItem('accessToken')
-  }
 
-  private getCookie(name: string): string {
-    if (typeof document === 'undefined') return ''
-    const prefix = `${encodeURIComponent(name)}=`
-    const cookie = document.cookie
-      .split(';')
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(prefix))
-    return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : ''
+    const tokenKey = isAdmin ? 'admin_access_token' : 'accessToken'
+    return localStorage.getItem(tokenKey)
   }
 
   private buildURL(endpoint: string, params?: Record<string, any>): string {
     const url = new URL(`${this.baseURL}${endpoint}`)
-    
+
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value === undefined || value === null) return
@@ -69,7 +59,7 @@ class ApiClient {
         url.searchParams.append(key, String(value))
       })
     }
-    
+
     return url.toString()
   }
 
@@ -78,39 +68,35 @@ class ApiClient {
     config: RequestConfig = {}
   ): Promise<ApiResponse<T>> {
     const { params, headers, ...restConfig } = config
-    
+
     // Determine if this is an admin request
     const isAdminRequest =
       endpoint.startsWith('/admin') ||
       endpoint.startsWith('/live-support/admin')
     // Logout needs the token to blacklist it, so we don't treat it as an auth endpoint (which are public)
     const isAuthEndpoint = endpoint.startsWith('/admin/login') || endpoint.startsWith('/admin/verify-2fa') || endpoint.startsWith('/admin/refresh') || endpoint.startsWith('/admin/forgot-password') || endpoint.startsWith('/admin/reset-password')
-    
+
     // Get appropriate token
     const token = !isAuthEndpoint ? this.getToken(isAdminRequest) : null
-    
+
     const url = this.buildURL(endpoint, params)
-    
+
     const requestHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(headers as Record<string, string>),
     }
-    const csrfToken = this.getCookie('chabaqa_csrf')
-    if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(String(restConfig.method || 'GET').toUpperCase())) {
-      requestHeaders['X-CSRF-Token'] = csrfToken
-    }
-    
+
     if (token) {
       requestHeaders['Authorization'] = `Bearer ${token}`
     }
-    
+
     try {
       const response = await fetch(url, {
         ...restConfig,
         headers: requestHeaders,
         credentials: 'include',
       })
-      
+
       // Handle non-JSON responses
       const contentType = response.headers.get('content-type')
       if (!contentType?.includes('application/json')) {
@@ -121,9 +107,9 @@ class ApiClient {
         }
         return { data: null as T }
       }
-      
+
       const data = await response.json()
-      
+
       if (!response.ok) {
         // Handle unauthorized or forbidden errors for admin routes
         if ((response.status === 401 || response.status === 403) && isAdminRequest && !isAuthEndpoint) {
@@ -133,7 +119,7 @@ class ApiClient {
             localStorage.removeItem('admin_refresh_token');
             localStorage.removeItem('admin_user');
             localStorage.removeItem('admin_session');
-            
+
             // Avoid redirect loops if already on login page
             const pathname = window.location.pathname;
             if (!pathname.includes('/admin/login') && !pathname.includes('/admin/verify-2fa')) {
@@ -146,7 +132,7 @@ class ApiClient {
         error.status = response.status
         throw error
       }
-      
+
       return data
     } catch (error) {
       const status = (error as ApiClientError)?.status

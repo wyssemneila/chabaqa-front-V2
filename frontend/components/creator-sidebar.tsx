@@ -124,7 +124,6 @@ export function CreatorSidebar() {
   const [communities, setCommunities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [currentUser, setCurrentUser] = useState<{ name?: string; email?: string; photo_profil?: string; profile_picture?: string } | null>(null)
   const [counts, setCounts] = useState<Record<string, string>>({
     courses: "0",
     challenges: "0",
@@ -142,12 +141,11 @@ export function CreatorSidebar() {
       const userId = user?._id || user?.id
 
       if (!userId) return
-      setCurrentUser(user)
 
       // Fetch all counts in parallel
       const [coursesRes, challengesRes, sessionsRes, postsRes] = await Promise.all([
         api.courses.getByCreator(userId, { limit: 1 }).catch(() => ({ data: { courses: [], pagination: { total: 0, page: 1, limit: 1, totalPages: 0 } } })),
-        api.challenges.getByCreator(userId, { limit: 1, status: 'active' } as any).catch(() => ({ data: { courses: [], pagination: { total: 0, page: 1, limit: 1, totalPages: 0 } } })),
+        api.challenges.getByCreator(userId, { limit: 1, status: 'active' }).catch(() => ({ data: { courses: [], pagination: { total: 0, page: 1, limit: 1, totalPages: 0 } } })),
         api.sessions.getByCreator(userId, { limit: 1 }).catch(() => ({ data: { courses: [], pagination: { total: 0, page: 1, limit: 1, totalPages: 0 } } })),
         api.posts.getByCreator(userId, { page: 1, limit: 1 }).catch(() => ({ posts: [], pagination: { total: 0, page: 1, limit: 1, totalPages: 0 } } as any)),
       ])
@@ -197,14 +195,14 @@ export function CreatorSidebar() {
         const communitiesData = communitiesResponse?.data || []
 
         setCommunities(communitiesData)
-        
+
         // Set first community as default, or try to restore from localStorage
         if (communitiesData.length > 0) {
           const savedCommunityId = localStorage.getItem('creator_selected_community_id')
           const defaultCommunity = savedCommunityId
             ? communitiesData.find((c: any) => c._id === savedCommunityId) || communitiesData[0]
             : communitiesData[0]
-          
+
           setSelectedCommunity(defaultCommunity)
         }
       } catch (err) {
@@ -222,7 +220,7 @@ export function CreatorSidebar() {
   const handleSelectCommunity = (community: any) => {
     setSelectedCommunity(community)
     localStorage.setItem('creator_selected_community_id', community._id || community.id)
-    
+
     // Optionally redirect to community dashboard
     // router.push(`/creator/community/${community._id || community.id}/dashboard`)
   }
@@ -395,11 +393,11 @@ export function CreatorSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={currentUser?.photo_profil || currentUser?.profile_picture || undefined} alt={currentUser?.name || "User"} />
-                    <AvatarFallback className="rounded-lg">{(currentUser?.name || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src="/placeholder.svg?height=32&width=32" alt="Sarah Johnson" />
+                    <AvatarFallback className="rounded-lg">SJ</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-start text-sm leading-tight">
-                    <span className="truncate font-semibold">{currentUser?.name || "User"}</span>
+                    <span className="truncate font-semibold">Sarah Johnson</span>
                     <span className="truncate text-xs text-muted-foreground">Creator</span>
                   </div>
                   <ChevronDown className="ms-auto size-4" />
@@ -411,24 +409,18 @@ export function CreatorSidebar() {
                 align="end"
                 sideOffset={4}
               >
-                <DropdownMenuItem asChild>
-                  <Link href="/creator/profile">
-                    <User className="me-2 h-4 w-4" />
-                    Profile
-                  </Link>
+                <DropdownMenuItem>
+                  <User className="me-2 h-4 w-4" />
+                  Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/creator/settings">
-                    <Settings className="me-2 h-4 w-4" />
-                    Settings
-                  </Link>
+                <DropdownMenuItem>
+                  <Settings className="me-2 h-4 w-4" />
+                  Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/signin">
-                    <LogOut className="me-2 h-4 w-4" />
-                    Log out
-                  </Link>
+                <DropdownMenuItem>
+                  <LogOut className="me-2 h-4 w-4" />
+                  Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

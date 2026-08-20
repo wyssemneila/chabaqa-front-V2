@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { BookOpen, Zap, Calendar, FileText, Pencil } from 'lucide-react'
-import { type ContentItem } from '@/lib/dashboard-types'
+import { contentItems, type ContentItem } from '@/lib/dashboard-data'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 
 const TYPE_ICON: Record<ContentItem['type'], any> = {
@@ -52,14 +52,14 @@ const TAB_TYPE_MAP: Record<Tab, ContentItem['type'] | null> = {
   All: null, Courses: 'Course', Challenges: 'Challenge', Sessions: 'Session', Posts: 'Post',
 }
 
-export default function DashYourContent({ items = [], loading = false }: { items?: ContentItem[]; loading?: boolean }) {
+export default function DashYourContent() {
   const { lang } = useDashPrefs()
   const t = TR[lang]
   const [activeTab, setActiveTab] = useState<Tab>('All')
 
   const filtered = activeTab === 'All'
-    ? items
-    : items.filter(i => i.type === TAB_TYPE_MAP[activeTab])
+    ? contentItems
+    : contentItems.filter(i => i.type === TAB_TYPE_MAP[activeTab])
 
   return (
     <div className="rounded-[14px] overflow-hidden" style={{ background: 'var(--white)', border: '1px solid var(--bd)' }}>
@@ -87,17 +87,7 @@ export default function DashYourContent({ items = [], loading = false }: { items
 
       {/* list */}
       <div>
-        {loading ? (
-          [1, 2, 3].map(item => (
-            <div key={item} className="flex items-center gap-3 px-5 py-3 animate-pulse" style={{ borderBottom: '1px solid var(--bd)' }}>
-              <div className="w-10 h-10 rounded-[10px]" style={{ background: 'var(--bg)' }} />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 w-2/3 rounded" style={{ background: 'var(--bg)' }} />
-                <div className="h-3 w-1/2 rounded" style={{ background: 'var(--bg)' }} />
-              </div>
-            </div>
-          ))
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="px-5 py-8 text-center text-[13px]" style={{ color: 'var(--t3)' }}>
             {t.noItems(t.tabs[activeTab])}
           </div>

@@ -370,7 +370,7 @@ export default function RadialOrbitalTimeline({
                           />
                         </div>
                       )}
-                      <div className="max-h-[40vh] overflow-y-auto overscroll-contain pr-1">
+                      <div className="max-h-[40vh] overflow-y-auto overscroll-contain pe-1">
                         <p className="text-xs sm:text-sm leading-relaxed text-gray-700">{item.content}</p>
                       </div>
                     </CardContent>

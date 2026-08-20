@@ -35,14 +35,14 @@ export function ContextualNudge({ id, type, title, message, actionLabel, actionU
 
   if (variant === 'banner') {
     return (
-      <div className={`rounded-lg border ${styles.bg} p-4`}>
+      <div className={`rounded-lg border \${styles.bg} p-4`}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-full ${styles.iconBg}`}><Lightbulb className={`h-5 w-5 ${styles.icon}`} /></div>
+            <div className={`p-2 rounded-full \${styles.iconBg}`}><Lightbulb className={`h-5 w-5 \${styles.icon}`} /></div>
             <div><p className="text-sm font-medium text-gray-900">{title}</p><p className="text-sm text-gray-600">{message}</p></div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {actionUrl && <Link href={actionUrl}><Button size="sm">{actionLabel}<ArrowRight className="h-4 w-4 ml-1" /></Button></Link>}
+            {actionUrl && <Link href={actionUrl}><Button size="sm">{actionLabel}<ArrowRight className="h-4 w-4 ms-1" /></Button></Link>}
             {dismissable && <button onClick={handleDismiss} className="text-gray-400 hover:text-gray-600 p-1"><X className="h-5 w-5" /></button>}
           </div>
         </div>
@@ -51,9 +51,9 @@ export function ContextualNudge({ id, type, title, message, actionLabel, actionU
   }
 
   return (
-    <div className={`rounded-lg border ${styles.bg} p-4`}>
+    <div className={`rounded-lg border \${styles.bg} p-4`}>
       <div className="flex items-start gap-3">
-        <div className={`p-1.5 rounded-full ${styles.iconBg} shrink-0`}><Info className={`h-4 w-4 ${styles.icon}`} /></div>
+        <div className={`p-1.5 rounded-full \${styles.iconBg} shrink-0`}><Info className={`h-4 w-4 \${styles.icon}`} /></div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900">{title}</p>
           <p className="text-sm text-gray-600 mt-1">{message}</p>
@@ -78,8 +78,8 @@ const healthStyles = {
 
 export function WorkspaceHealthIndicator({ health, message, actionUrl, actionLabel }: WorkspaceHealthIndicatorProps) {
   return (
-    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border ${healthStyles[health]}`}>
-      <span className={`w-2 h-2 rounded-full ${health === 'healthy' ? 'bg-green-500' : health === 'incomplete' ? 'bg-amber-500' : health === 'blocked' ? 'bg-red-500' : 'bg-blue-500'}`} />
+    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border \${healthStyles[health]}`}>
+      <span className={`w-2 h-2 rounded-full \${health === 'healthy' ? 'bg-green-500' : health === 'incomplete' ? 'bg-amber-500' : health === 'blocked' ? 'bg-red-500' : 'bg-blue-500'}`} />
       <span>{message}</span>
       {actionUrl && <Link href={actionUrl} className="underline hover:no-underline">{actionLabel || 'Fix'}</Link>}
     </div>

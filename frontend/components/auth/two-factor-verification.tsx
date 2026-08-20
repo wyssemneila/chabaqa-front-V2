@@ -165,7 +165,7 @@ export function TwoFactorVerification({ userId, onVerify, onResend, error, succe
         >
           {isVerifying ? (
             <>
-              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin mr-2" />
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin me-2" />
               <span>Verifying...</span>
             </>
           ) : (

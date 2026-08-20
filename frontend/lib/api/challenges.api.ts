@@ -1,6 +1,6 @@
-import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from './client';
-import type { ApiGetOptions } from './client';
-import type { Challenge, ChallengeParticipant, ChallengeUnlockedTasksResponse } from './types';
+import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from '../core/client';
+import type { ApiGetOptions } from '../core/client';
+import type { Challenge, ChallengeParticipant, ChallengeUnlockedTasksResponse } from '../core/types';
 import { getDeviceInfo } from '@/lib/utils/device';
 
 // ==========================================
@@ -145,26 +145,6 @@ export interface UpdateChallengeSequentialProgressionDto {
   unlockMessage?: string;
 }
 
-export const normalizeChallengeResponse = (response: any): any => {
-  if (!response) return response;
-  if (response?.challenge) return response.challenge;
-  if (response?.data?.challenge) return response.data.challenge;
-  if (response?.data?.data?.challenge) return response.data.data.challenge;
-  if (response?.data?.data) return response.data.data;
-  if (response?.data) return response.data;
-  return response;
-};
-
-export const normalizeChallengeListResponse = (response: any): any[] => {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.challenges)) return response.challenges;
-  if (Array.isArray(response?.data)) return response.data;
-  if (Array.isArray(response?.data?.challenges)) return response.data.challenges;
-  if (Array.isArray(response?.data?.data)) return response.data.data;
-  if (Array.isArray(response?.data?.data?.challenges)) return response.data.data.challenges;
-  return [];
-};
-
 // ==========================================
 // Challenges API
 // ==========================================
@@ -183,18 +163,18 @@ export const challengesApi = {
   },
 
   // Create challenge
-  create: async (data: CreateChallengeData): Promise<any> => {
-    return apiClient.post<any>('/challenges', data);
+  create: async (data: CreateChallengeData): Promise<ApiSuccessResponse<Challenge>> => {
+    return apiClient.post<ApiSuccessResponse<Challenge>>('/challenges', data);
   },
 
   // Get challenge by ID
-  getById: async (id: string): Promise<any> => {
-    return apiClient.get<any>(`/challenges/${id}`);
+  getById: async (id: string): Promise<ApiSuccessResponse<Challenge>> => {
+    return apiClient.get<ApiSuccessResponse<Challenge>>(`/challenges/${id}`);
   },
 
   // Update challenge
-  update: async (id: string, data: UpdateChallengeData): Promise<any> => {
-    return apiClient.patch<any>(`/challenges/${id}`, data);
+  update: async (id: string, data: UpdateChallengeData): Promise<ApiSuccessResponse<Challenge>> => {
+    return apiClient.patch<ApiSuccessResponse<Challenge>>(`/challenges/${id}`, data);
   },
 
   updateTasks: async (id: string, tasks: CreateChallengeTaskData[]): Promise<ApiSuccessResponse<Challenge>> => {
@@ -243,12 +223,12 @@ export const challengesApi = {
     return apiClient.post<ApiSuccessResponse<Challenge>>('/challenges/join', { challengeId });
   },
 
-  initStripePayment: async (challengeId: string, promoCode?: string, idempotencyKey?: string): Promise<any> => {
+  initStripePayment: async (challengeId: string, promoCode?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/challenge?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/challenge`;
 
-    return apiClient.post<any>(endpoint, { challengeId }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
+    return apiClient.post<any>(endpoint, { challengeId });
   },
 
   // Leave challenge
@@ -396,19 +376,5 @@ export const challengesApi = {
     data: { idempotencyKey: string; payouts?: Array<{ userId: string; rewardType: 'completion' | 'top_performer' | 'streak'; amount: number }> },
   ): Promise<ApiSuccessResponse<any>> => {
     return apiClient.post<ApiSuccessResponse<any>>(`/challenges/${id}/rewards/distribute`, data);
-  },
-
-  // -------------------------------------------------------------------------
-  // AI Coach
-  // -------------------------------------------------------------------------
-
-  getAiHint: async (challengeId: string, taskId: string): Promise<{ hint: string }> => {
-    const res = await apiClient.get<any>(`/challenges/${challengeId}/tasks/${taskId}/ai-hint`);
-    return (res?.data?.data ?? res?.data ?? res) as { hint: string };
-  },
-
-  getAiSubmissionFeedback: async (submissionId: string): Promise<{ aiFeedback: string | null }> => {
-    const res = await apiClient.post<any>(`/challenges/submissions/${submissionId}/ai-feedback`, {});
-    return (res?.data?.data ?? res?.data ?? res) as { aiFeedback: string | null };
   },
 };

@@ -1,3 +1,5 @@
+"use client"
+
 import { CommunityCard } from "@/app/(landing)/(communities)/components/community-card"
 
 interface CreatorOfferingsProps {

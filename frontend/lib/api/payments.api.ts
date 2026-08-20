@@ -1,5 +1,5 @@
-import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from './client';
-import type { PaymentIntent, Subscription } from './types';
+import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from '../core/client';
+import type { PaymentIntent, Subscription } from '../core/types';
 
 export interface CreatePaymentIntentData {
   amount: number;
@@ -17,22 +17,9 @@ export interface CreateSubscriptionData {
   priceId: string;
 }
 
-export type PayoutMethod = 'bank_transfer' | 'paypal' | 'stripe';
-
 export interface RequestPayoutData {
   amount: number;
-  method: PayoutMethod;
-  communityId: string;
-  description?: string;
-  itemsCount?: number;
-}
-
-export interface PayoutQueryParams extends PaginationParams {
-  communityId?: string;
-  status?: string;
-  method?: PayoutMethod;
-  startDate?: string;
-  endDate?: string;
+  method?: string;
 }
 
 // Payments API
@@ -63,7 +50,7 @@ export const paymentsApi = {
   },
 
   // Get payouts
-  getPayouts: async (params?: PayoutQueryParams): Promise<PaginatedResponse<any>> => {
+  getPayouts: async (params?: PaginationParams): Promise<PaginatedResponse<any>> => {
     return apiClient.get<PaginatedResponse<any>>('/payouts', params);
   },
 
@@ -78,13 +65,13 @@ export const paymentsApi = {
   },
 
   // Get payout stats
-  getPayoutStats: async (params?: Pick<PayoutQueryParams, 'communityId'>): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.get<ApiSuccessResponse<any>>('/payouts/stats', params);
+  getPayoutStats: async (): Promise<ApiSuccessResponse<any>> => {
+    return apiClient.get<ApiSuccessResponse<any>>('/payouts/stats');
   },
 
   // Get available balance
-  getAvailableBalance: async (params?: Pick<PayoutQueryParams, 'communityId'>): Promise<ApiSuccessResponse<{ availableBalance: number; minimumPayoutAmount?: number }>> => {
-    return apiClient.get<ApiSuccessResponse<{ availableBalance: number; minimumPayoutAmount?: number }>>('/payouts/available-balance', params);
+  getAvailableBalance: async (): Promise<ApiSuccessResponse<{ availableBalance: number }>> => {
+    return apiClient.get<ApiSuccessResponse<{ availableBalance: number }>>('/payouts/available-balance');
   },
 
   // Process payout (admin)
@@ -95,13 +82,5 @@ export const paymentsApi = {
   // Cancel payout
   cancelPayout: async (id: string, reason?: string): Promise<ApiSuccessResponse<any>> => {
     return apiClient.post<ApiSuccessResponse<any>>(`/payouts/${id}/cancel`, { reason });
-  },
-
-  // Refund a paid Stripe order (admin/creator with permission)
-  refundOrder: async (orderId: string, reason?: string): Promise<ApiSuccessResponse<{ orderId: string; status: string }>> => {
-    return apiClient.post<ApiSuccessResponse<{ orderId: string; status: string }>>(
-      `/payment/order/${orderId}/refund`,
-      { reason },
-    );
   },
 };

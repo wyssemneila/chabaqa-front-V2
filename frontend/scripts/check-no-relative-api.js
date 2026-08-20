@@ -8,7 +8,6 @@ const scanRoots = ["app", "components", "lib"]
 const skipSegments = [
   `${path.sep}node_modules${path.sep}`,
   `${path.sep}.next${path.sep}`,
-  `${path.sep}.next-dev${path.sep}`,
   `${path.sep}app${path.sep}api${path.sep}`,
 ]
 

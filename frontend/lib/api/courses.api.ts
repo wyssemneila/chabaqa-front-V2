@@ -1,31 +1,18 @@
-import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from './client';
-import type { ApiGetOptions } from './client';
-import type { Course, CourseSection, CourseChapter, CourseEnrollment } from './types';
+import { apiClient, ApiSuccessResponse, PaginatedResponse, PaginationParams } from '../core/client';
+import type { ApiGetOptions } from '../core/client';
+import type { Course, CourseSection, CourseChapter, CourseEnrollment } from '../core/types';
 import { getDeviceInfo } from '@/lib/utils/device';
 
 export interface CreateCourseData {
-  title?: string;
-  slug?: string;
-  titre?: string;
+  title: string;
+  slug: string;
   description: string;
-  communityId?: string;
-  communitySlug?: string;
+  communityId: string;
   thumbnail?: string;
-  price?: number;
-  prix?: number;
-  priceType?: 'free' | 'paid';
-  level?: 'beginner' | 'intermediate' | 'advanced';
-  niveau?: string;
-  duration?: number;
-  duree?: string;
-  isPaid?: boolean;
-  devise?: string;
-  currency?: string;
-  category?: string;
-  isPublished?: boolean;
-  learningObjectives?: string[];
-  requirements?: string[];
-  sections?: any[];
+  price: number;
+  priceType: 'free' | 'paid';
+  level: 'beginner' | 'intermediate' | 'advanced';
+  duration: number;
 }
 
 export interface UpdateCourseData extends Partial<CreateCourseData> {
@@ -61,38 +48,6 @@ export interface CreateChapterData {
   notes?: string;
 }
 
-export interface TranscriptSegment {
-  text: string;
-  startMs: number;
-  endMs: number;
-}
-
-export const normalizeCourseResponse = (response: any): any => {
-  if (!response) return response;
-  if (response?.cours) return response.cours;
-  if (response?.data?.cours) return response.data.cours;
-  if (response?.data?.data?.cours) return response.data.data.cours;
-  if (response?.course) return response.course;
-  if (response?.data?.course) return response.data.course;
-  if (response?.data?.data?.course) return response.data.data.course;
-  if (response?.data?.data) return response.data.data;
-  if (response?.data) return response.data;
-  return response;
-};
-
-export const normalizeCourseListResponse = (response: any): any[] => {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.cours)) return response.cours;
-  if (Array.isArray(response?.courses)) return response.courses;
-  if (Array.isArray(response?.data)) return response.data;
-  if (Array.isArray(response?.data?.cours)) return response.data.cours;
-  if (Array.isArray(response?.data?.courses)) return response.data.courses;
-  if (Array.isArray(response?.data?.data)) return response.data.data;
-  if (Array.isArray(response?.data?.data?.cours)) return response.data.data.cours;
-  if (Array.isArray(response?.data?.data?.courses)) return response.data.data.courses;
-  return [];
-};
-
 // Courses API
 export const coursesApi = {
   // Get all courses
@@ -104,8 +59,8 @@ export const coursesApi = {
   },
 
   // Create course
-  create: async (data: CreateCourseData): Promise<any> => {
-    return apiClient.post<any>('/cours/create-cours', data);
+  create: async (data: CreateCourseData): Promise<ApiSuccessResponse<Course>> => {
+    return apiClient.post<ApiSuccessResponse<Course>>('/cours/create-cours', data);
   },
 
   // Get course by ID
@@ -151,11 +106,10 @@ export const coursesApi = {
     return apiClient.put(`/course-enrollment/${courseId}/chapters/${chapterId}/complete`);
   },
 
-  updateChapterWatchTime: async (courseId: string, chapterId: string, watchTime: number, videoDuration?: number, isFinal?: boolean): Promise<any> => {
+  updateChapterWatchTime: async (courseId: string, chapterId: string, watchTime: number, videoDuration?: number): Promise<any> => {
     return apiClient.put(`/course-enrollment/${courseId}/chapters/${chapterId}/watch-time`, {
       watchTime,
       videoDuration,
-      isFinal,
     });
   },
 
@@ -197,11 +151,6 @@ export const coursesApi = {
   // Get user enrolled courses
   getMyCourses: async (params?: PaginationParams): Promise<any> => {
     return apiClient.get('/cours/user/mes-cours', params);
-  },
-
-  // Get courses created by the authenticated creator
-  getCreated: async (params?: PaginationParams & { communityId?: string }): Promise<any> => {
-    return apiClient.get('/cours/user/created', params);
   },
 
   // Get user progress for all courses
@@ -277,17 +226,6 @@ export const coursesApi = {
     return apiClient.uploadFile(`/cours/${courseId}/sections/${sectionId}/chapitres/${chapterId}/upload-video`, file, 'file');
   },
 
-  // Generate (or fetch cached) AI transcript for a chapter video
-  generateChapterTranscript: async (
-    courseId: string,
-    sectionId: string,
-    chapterId: string,
-    options: { force?: boolean } = {},
-  ): Promise<{ transcript: TranscriptSegment[]; skipped: boolean; enabled: boolean }> => {
-    const query = options.force ? '?force=1' : '';
-    return apiClient.post(`/cours/${courseId}/sections/${sectionId}/chapters/${chapterId}/transcribe${query}`, {});
-  },
-
   // Delete chapter
   deleteChapter: async (courseId: string, sectionId: string, chapterId: string): Promise<any> => {
     return apiClient.delete(`/cours/${courseId}/sections/${sectionId}/chapitres/${chapterId}`);
@@ -299,25 +237,24 @@ export const coursesApi = {
     return apiClient.post<{ message: string; enrollment: CourseEnrollment }>(`/cours/${id}/enroll${query}`);
   },
 
-  initStripePayment: async (courseId: string, promoCode?: string, idempotencyKey?: string): Promise<any> => {
+  initStripePayment: async (courseId: string, promoCode?: string): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/course?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/course`;
 
-    return apiClient.post<any>(endpoint, { courseId }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
+    return apiClient.post<any>(endpoint, { courseId });
   },
 
   initChapterStripePayment: async (
     courseId: string,
     chapterId: string,
     promoCode?: string,
-    idempotencyKey?: string,
   ): Promise<any> => {
     const endpoint = promoCode
       ? `/payment/stripe-link/init/chapter?promoCode=${encodeURIComponent(promoCode)}`
       : `/payment/stripe-link/init/chapter`;
 
-    return apiClient.post<any>(endpoint, { courseId, chapterId }, { headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined });
+    return apiClient.post<any>(endpoint, { courseId, chapterId });
   },
 
   // Get course progress
@@ -337,7 +274,7 @@ export const coursesApi = {
 
   // Get courses by user (creator)
   getByCreator: async (userId: string, params?: { page?: number; limit?: number; published?: boolean }): Promise<any> => {
-    return apiClient.get(`/cours/by-user/${userId}`, { ...(params || {}), type: 'created' });
+    return apiClient.get(`/cours/by-user/${userId}`, params);
   },
 
   // =========================================================================
@@ -416,11 +353,7 @@ export const coursesApi = {
   },
 
   // Update thumbnail (file upload)
-  updateThumbnailUrl: async (courseId: string, thumbnailUrl: string): Promise<any> => {
-    return apiClient.put(`/cours/${courseId}/thumbnail`, { thumbnailUrl });
-  },
-
-  updateThumbnail: async (courseId: string, thumbnailUrl: string): Promise<any> => {
-    return apiClient.put(`/cours/${courseId}/thumbnail`, { thumbnailUrl });
+  updateThumbnail: async (courseId: string, file: File): Promise<any> => {
+    return apiClient.put(`/cours/${courseId}/thumbnail`, { thumbnailUrl: 'TEMP_URL_NEED_UPLOAD_SERVICE' }); // TODO: Fix upload integration
   },
 };

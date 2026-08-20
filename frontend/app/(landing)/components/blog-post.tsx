@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import DOMPurify from "isomorphic-dompurify"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { useLocale } from "next-intl"
@@ -8,8 +9,6 @@ import { usePathname } from "next/navigation"
 import type { BlogPost as BlogPostType } from "@/lib/blog-content"
 import { getRelatedBlogPosts } from "@/lib/blog-content"
 import { localizeHref } from "@/lib/i18n/client"
-import { SafeHtml } from "@/components/security/safe-html"
-import { BlogDisclaimer } from "./blog-disclaimer"
 import "../blogs/blog-styles.css"
 
 interface TocItem {
@@ -260,13 +259,12 @@ export function BlogPost({ post }: BlogPostProps) {
 
         {/* Main content */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <BlogDisclaimer className="mb-6 max-w-[680px]" />
           {/* Article */}
-          <SafeHtml
+          <div
             ref={contentRef}
             className="blog-content"
             style={{ maxWidth: "680px" }}
-            html={content}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
           />
 
           {/* Divider */}

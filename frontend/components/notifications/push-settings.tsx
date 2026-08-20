@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Bell, BellOff, Send, Loader2, Monitor, AlertTriangle } from "lucide-react";
-import { notificationsApi, type PushStatusResponse } from "@/lib/api/notifications.api";
+import { notificationsApi, type PushStatusResponse } from "@/lib/api/social/notifications.api";
 import { registerBrowserPushForCurrentUser } from "@/lib/push-notifications";
 
 interface PushSettingsProps {

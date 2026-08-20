@@ -21,7 +21,7 @@ export function CommunitiesHeroClient() {
         onClick={() => document.getElementById("communities-search")?.scrollIntoView({ behavior: "smooth" })}
       >
         {t("hero.exploreCommunities")}
-        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+        <ArrowRight className="w-4 h-4 ms-2 group-hover:translate-x-1 transition-transform" />
       </Button>
       <Button
         size="lg"

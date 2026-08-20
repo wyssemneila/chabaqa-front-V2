@@ -17,7 +17,7 @@ export function resolveSocketBaseUrl(apiUrl?: string): string {
   const browserFallback = FALLBACK_SOCKET_ORIGIN
 
   const raw = (apiUrl || "").trim()
-  if (!raw || raw.startsWith('/')) return browserFallback
+  if (!raw) return browserFallback
 
   const withoutApiSuffix = raw.replace(/\/api\/?$/, "")
   if (!withoutApiSuffix || withoutApiSuffix === "http" || withoutApiSuffix === "https") {

@@ -1,5 +1,5 @@
-import { apiClient } from './client';
-import type { AchievementResponse, UserAchievementResponse, AchievementWithProgress } from './types';
+import { apiClient } from '../core/client';
+import type { AchievementResponse, UserAchievementResponse, AchievementWithProgress } from '../core/types';
 
 export interface GetAchievementsParams {
   communitySlug?: string;

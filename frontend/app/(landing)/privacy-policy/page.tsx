@@ -3,7 +3,6 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { LegalDocumentLayout } from "@/app/(landing)/components/legal-document-layout"
 import { getTranslations } from "next-intl/server"
-import { generateAlternateLanguages, generateOGMetadata, generateRobotsMetadata } from "@/lib/seo-config"
 
 const PRIVACY_SECTIONS = [
   {
@@ -104,17 +103,21 @@ const PRIVACY_SECTIONS = [
   },
 ] as const
 
-export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description:
-    "Read Chabaqa's Privacy Policy to understand how we collect, use, protect, and process personal data across our platform.",
-  alternates: generateAlternateLanguages("/privacy-policy"),
-  openGraph: generateOGMetadata(
-    "Privacy Policy | Chabaqa",
-    "Learn how Chabaqa handles personal data, platform security, retention, and user privacy rights.",
-    "/privacy-policy",
-  ),
-  robots: generateRobotsMetadata(true, true),
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("landing.privacyPolicy")
+  return {
+    title: t("metaTitle"),
+    description: t("metaDesc"),
+    alternates: { canonical: "https://chabaqa.io/privacy-policy" },
+    openGraph: {
+      title: t("metaTitle"),
+      description: t("metaDesc"),
+      url: "https://chabaqa.io/privacy-policy",
+      siteName: "Chabaqa",
+      type: "website",
+    },
+    robots: { index: true, follow: true },
+  }
 }
 
 export default function PrivacyPolicyPage() {
@@ -139,7 +142,7 @@ async function PrivacyPolicyContent() {
           onThisPage: t("legal.onThisPage"),
           relatedDocument: t("legal.relatedDocument"),
         }}
-        sections={PRIVACY_SECTIONS as any}
+        sections={[...PRIVACY_SECTIONS]}
         relatedLink={{
           href: "/terms-of-service",
           label: t("privacyPolicy.relatedLabel"),

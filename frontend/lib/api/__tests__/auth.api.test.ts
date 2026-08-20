@@ -1,7 +1,7 @@
 import { authApi, AuthApiError } from '@/lib/api/auth.api';
-import { apiClient } from '@/lib/api/client';
+import { apiClient } from '@/lib/api/core/client';
 
-jest.mock('@/lib/api/client', () => ({
+jest.mock('@/lib/api/core/client', () => ({
   apiClient: {
     post: jest.fn(),
   },

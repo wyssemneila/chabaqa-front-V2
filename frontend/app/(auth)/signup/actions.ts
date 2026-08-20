@@ -10,7 +10,7 @@ interface SignupResult {
   expiresInMinutes?: number
 }
 
-export async function signupAction(data: { 
+export async function signupAction(data: {
   name: string
   email: string
   password: string
@@ -53,23 +53,23 @@ export async function signupAction(data: {
     return { success: false, error: payload?.error || payload?.message || response?.message || "Registration failed" }
   } catch (error: any) {
     console.error("Signup error:", error)
-    
+
     // Handle AuthApiError with custom messages
     if (error?.statusCode === 409) {
       return { success: false, error: "This email is already registered. Please use another email or sign in." }
     }
-    
+
     if (error?.statusCode === 400) {
       return { success: false, error: "Invalid registration information. Please check your details." }
     }
-    
+
     if (error?.statusCode === 500) {
       return { success: false, error: "Server error. Please try again later." }
     }
-    
+
     // Extract validation errors from backend
     let errorMessage = "Connection error. Please try again."
-    
+
     // Try to extract message from error object
     if (error?.message && typeof error.message === 'object') {
       // Handle nested error message object
@@ -86,7 +86,7 @@ export async function signupAction(data: {
     } else if (typeof error?.error === 'string') {
       errorMessage = error.error
     }
-    
+
     // Clean up validation error messages
     if (errorMessage.includes('Validation failed')) {
       // Extract field-specific validation errors
@@ -101,20 +101,20 @@ export async function signupAction(data: {
       }
       return { success: false, error: "Please check your information and try again." }
     }
-    
+
     // Check for specific error patterns in the message
     if (errorMessage.toLowerCase().includes("already exists") || errorMessage.toLowerCase().includes("already registered")) {
       return { success: false, error: "This email is already registered. Please use another email or sign in." }
     }
-    
+
     if (errorMessage.toLowerCase().includes("invalid")) {
       return { success: false, error: "Invalid registration information. Please check your details." }
     }
-    
+
     if (errorMessage.toLowerCase().includes("network") || errorMessage.toLowerCase().includes("fetch")) {
       return { success: false, error: "Network error. Please check your connection and try again." }
     }
-    
+
     return { success: false, error: errorMessage }
   }
 }

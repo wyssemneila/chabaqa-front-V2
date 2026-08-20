@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient } from '../core/client';
 
 export interface GoogleCalendarStatus {
   connected: boolean;
@@ -14,16 +14,11 @@ export interface GoogleCalendarResponse {
   message: string;
 }
 
-const asRecord = (value: unknown): Record<string, unknown> =>
-  value && typeof value === 'object' ? value as Record<string, unknown> : {};
-
-const unwrapPayload = <T>(raw: unknown): T => {
-  const root = asRecord(raw);
-  const data = asRecord(root.data);
-  if (data.data !== undefined) return data.data as T;
-  if (root.data !== undefined && root.success !== undefined) return root.data as T;
-  if (root.data !== undefined && root.authUrl === undefined && root.connected === undefined && root.message === undefined) {
-    return root.data as T;
+const unwrapPayload = <T>(raw: any): T => {
+  if (raw?.data?.data !== undefined) return raw.data.data as T;
+  if (raw?.data !== undefined && raw?.success !== undefined) return raw.data as T;
+  if (raw?.data !== undefined && raw?.authUrl === undefined && raw?.connected === undefined && raw?.message === undefined) {
+    return raw.data as T;
   }
   return raw as T;
 };
@@ -37,7 +32,7 @@ export const googleCalendarApi = {
    * Get Google OAuth authorization URL
    */
   getAuthUrl: async (): Promise<{ data: GoogleAuthUrl }> => {
-    const response = await apiClient.get<unknown>('/google-calendar/auth-url');
+    const response = await apiClient.get<any>('/google-calendar/auth-url');
     const payload = unwrapPayload<GoogleAuthUrl>(response);
     return { data: payload };
   },
@@ -46,7 +41,7 @@ export const googleCalendarApi = {
    * Handle OAuth callback (exchange code for tokens)
    */
   handleCallback: async (code: string): Promise<{ data: GoogleCalendarResponse }> => {
-    const response = await apiClient.post<unknown>('/google-calendar/callback', { code });
+    const response = await apiClient.post<any>('/google-calendar/callback', { code });
     const payload = unwrapPayload<GoogleCalendarResponse>(response);
     return { data: payload };
   },
@@ -55,7 +50,7 @@ export const googleCalendarApi = {
    * Get Google Calendar connection status
    */
   getConnectionStatus: async (): Promise<{ data: GoogleCalendarStatus }> => {
-    const response = await apiClient.get<unknown>('/google-calendar/status');
+    const response = await apiClient.get<any>('/google-calendar/status');
     const payload = unwrapPayload<GoogleCalendarStatus>(response);
     return { data: payload };
   },
@@ -64,7 +59,7 @@ export const googleCalendarApi = {
    * Disconnect Google Calendar
    */
   disconnect: async (): Promise<{ data: GoogleCalendarResponse }> => {
-    const response = await apiClient.post<unknown>('/google-calendar/disconnect');
+    const response = await apiClient.post<any>('/google-calendar/disconnect');
     const payload = unwrapPayload<GoogleCalendarResponse>(response);
     return { data: payload };
   },

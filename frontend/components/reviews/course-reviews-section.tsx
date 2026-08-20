@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress"
 import { StarRating } from "./star-rating"
 import { CourseReviewForm } from "./course-review-form"
 import { CourseReviewsList } from "./course-reviews-list"
-import { feedbackApi, Feedback, FeedbackStats } from "@/lib/api/feedback.api"
+import { feedbackApi, Feedback, FeedbackStats } from "@/lib/api/social/feedback.api"
 import { Star } from "lucide-react"
 
 interface CourseReviewsSectionProps {
@@ -65,12 +65,12 @@ export function CourseReviewsSection({ courseId, showForm = true, onRefreshCours
   const handleReviewSubmitted = async (review: Feedback) => {
     console.log('Review submitted:', review)
     setMyReview(review)
-    
+
     // Small delay to ensure backend has processed everything
     await new Promise(resolve => setTimeout(resolve, 500))
-    
+
     await fetchData() // Refresh all data
-    
+
     if (onRefreshCourse) {
       await onRefreshCourse() // Refresh course data to update ratings everywhere
     }
@@ -83,7 +83,7 @@ export function CourseReviewsSection({ courseId, showForm = true, onRefreshCours
         <Card>
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-6">
-              <div className="text-center md:text-left">
+              <div className="text-center md:text-start">
                 <div className="text-4xl font-bold">{stats.averageRating.toFixed(1)}</div>
                 <StarRating rating={stats.averageRating} size="md" className="justify-center md:justify-start mt-1" />
                 <p className="text-sm text-muted-foreground mt-1">{stats.ratingCount} reviews</p>
@@ -134,8 +134,8 @@ export function CourseReviewsSection({ courseId, showForm = true, onRefreshCours
           <CardDescription>What others are saying about this course</CardDescription>
         </CardHeader>
         <CardContent>
-          <CourseReviewsList 
-            reviews={reviews} 
+          <CourseReviewsList
+            reviews={reviews}
             isLoading={isLoading}
             currentUserId={myReview?.user?._id}
           />

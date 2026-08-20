@@ -20,7 +20,6 @@ export function CreatorHero({ creator, totalMembers, totalCommunities }: Creator
             alt="Chabaqa Logo"
             width={40}
             height={10}
-            sizes="40px"
             style={{ objectFit: "contain" }}
             priority
           />
@@ -31,7 +30,6 @@ export function CreatorHero({ creator, totalMembers, totalCommunities }: Creator
             alt="Chabaqa Logo"
             width={120}
             height={30}
-            sizes="120px"
             style={{ objectFit: "contain" }}
             priority
           />
@@ -40,7 +38,7 @@ export function CreatorHero({ creator, totalMembers, totalCommunities }: Creator
 
       <div className="container relative mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:py-12">
         <div className="mx-auto max-w-5xl">
-          <div className="flex flex-col items-center gap-4 sm:gap-6 text-center md:flex-row md:text-left">
+          <div className="flex flex-col items-center gap-4 sm:gap-6 text-center md:flex-row md:text-start">
             {/* Creator Avatar */}
             <div className="relative flex-shrink-0">
               <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-[#8e78fb] via-[#47c7ea] to-[#f65887] opacity-60 blur-lg" />
@@ -130,7 +128,7 @@ export function CreatorHero({ creator, totalMembers, totalCommunities }: Creator
                   variant="secondary"
                   className="bg-[#8e78fb]/10 text-[#8e78fb] hover:bg-[#8e78fb]/20 border-[#8e78fb]/20 text-[11px] px-2.5 py-0.5"
                 >
-                  <svg className="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="me-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                   Verified Creator
@@ -143,6 +141,3 @@ export function CreatorHero({ creator, totalMembers, totalCommunities }: Creator
     </section>
   )
 }
-
-
-

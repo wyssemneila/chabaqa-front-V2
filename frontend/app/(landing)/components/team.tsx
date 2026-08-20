@@ -1,3 +1,5 @@
+"use client"
+
 import { teamData } from "@/lib/team"
 import Image from "next/image"
 import { Github, Linkedin, Twitter, Dribbble, Globe } from "lucide-react"
