@@ -1,7 +1,7 @@
 import React from "react"
 import { render, screen } from "@testing-library/react"
 import { CommunityCard } from "@/app/(landing)/(communities)/components/community-card"
-import type { Explore } from "@/lib/data-communities"
+import type { Explore } from "@/lib/explore-types"
 
 jest.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,

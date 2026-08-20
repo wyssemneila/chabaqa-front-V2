@@ -1,10 +1,12 @@
 import { Suspense } from 'react';
 import PaymentSuccessContent from './payment-success-content';
 import type { Metadata } from "next";
+import { noIndexRobots } from "@/lib/seo-config";
 
 export const metadata: Metadata = {
-  title: "Payment Status",
-  description: "Payment confirmation and enrollment status.",
+  title: "Payment Confirmation",
+  description: "Review the status of your Chabaqa payment and access confirmation.",
+  robots: noIndexRobots,
 };
 
 export default function PaymentSuccess() {

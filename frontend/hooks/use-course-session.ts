@@ -12,6 +12,7 @@ export interface ChapterAccess {
   needsPayment?: boolean
   chapterPrice?: number
   requiredChapterId?: string
+  accessSource?: "preview" | "course_purchase" | "chapter_purchase" | "staff"
 }
 
 export interface SessionChapter {
@@ -61,7 +62,9 @@ export interface CourseSessionState {
   nextChapterAction: NextChapterAction | null
 }
 
-type SelectChapterResult = { success: true } | { success: false; reason: string; lockCode?: string; needsPayment?: boolean }
+type SelectChapterResult =
+  | { success: true; chapterId?: string }
+  | { success: false; reason: string; lockCode?: string; needsPayment?: boolean; chapterId?: string }
 
 export interface CourseSession extends CourseSessionState {
   // ── Derived state ─────────────────────────────────────────────────────────
@@ -80,8 +83,8 @@ export interface CourseSession extends CourseSessionState {
   reportWatchTime: (chapterId: string, seconds: number, duration?: number) => void
   /** Notify that the video player marked a chapter as completed. */
   reportChapterComplete: (chapterId: string) => void
-  /** Force-refresh session state from the backend. */
-  refreshSession: () => Promise<void>
+  /** Refresh session state from the backend. Security-sensitive callers can bypass throttling. */
+  refreshSession: (options?: { force?: boolean; currentChapterId?: string }) => Promise<void>
   /** Check if a chapter is accessible (synchronous, from cached session). */
   isChapterAccessible: (chapterId: string) => boolean
 
@@ -155,6 +158,7 @@ export function useCourseSession(
                 needsPayment: c.needsPayment ? Boolean(c.needsPayment) : undefined,
                 chapterPrice: c.chapterPrice != null ? Number(c.chapterPrice) : undefined,
                 requiredChapterId: c.requiredChapterId ? String(c.requiredChapterId) : undefined,
+                accessSource: c.accessSource,
               },
             }))
           : []
@@ -192,12 +196,12 @@ export function useCourseSession(
     [],
   )
 
-  const refreshSession = useCallback(async () => {
+  const refreshSession = useCallback(async (refreshOptions?: { force?: boolean; currentChapterId?: string }) => {
     const now = Date.now()
-    if (now - lastRefreshRef.current < REFRESH_THROTTLE_MS) return
+    if (!refreshOptions?.force && now - lastRefreshRef.current < REFRESH_THROTTLE_MS) return
     lastRefreshRef.current = now
 
-    const currentId = stateRef.current.currentChapterId
+    const currentId = refreshOptions?.currentChapterId ?? stateRef.current.currentChapterId
     const sessionState = await fetchSession(currentId || undefined)
     if (sessionState) {
       setState((prev) => ({
@@ -275,7 +279,15 @@ export function useCourseSession(
 
   const selectChapter = useCallback(
     async (chapterId: string): Promise<SelectChapterResult> => {
-      const chapter = stateRef.current.chapters.find((c) => c.chapterId === chapterId)
+      // Navigation is authorization-sensitive. Always use a fresh server decision
+      // instead of trusting a cached session that may predate a completion or payment.
+      const freshSession = await fetchSession(chapterId)
+      if (!freshSession) {
+        return { success: false, reason: "We couldn't confirm access to this chapter. Please try again." }
+      }
+      setState((prev) => ({ ...freshSession, currentChapterId: prev.currentChapterId }))
+
+      const chapter = freshSession.chapters.find((c) => c.chapterId === chapterId)
       if (!chapter) return { success: false, reason: "Chapter not found." }
 
       if (!chapter.access.canAccess) {
@@ -289,15 +301,6 @@ export function useCourseSession(
 
       setState((prev) => ({ ...prev, currentChapterId: chapterId }))
 
-      // Fetch fresh session with new current chapter for next-action
-      const sessionState = await fetchSession(chapterId)
-      if (sessionState) {
-        setState((prev) => ({
-          ...sessionState,
-          currentChapterId: chapterId,
-        }))
-      }
-
       // Start chapter on backend (best-effort)
       try {
         const sectionId = chapter.sectionId
@@ -308,7 +311,7 @@ export function useCourseSession(
         console.warn("[useCourseSession] Failed to start chapter on backend:", err)
       }
 
-      return { success: true }
+      return { success: true, chapterId }
     },
     [fetchSession],
   )
@@ -317,7 +320,14 @@ export function useCourseSession(
 
   const goToNextChapter = useCallback(async (): Promise<SelectChapterResult> => {
     const currentState = stateRef.current
-    const action = currentState.nextChapterAction
+    // A next action may be stale after a completion or checkout. Re-read the
+    // backend decision before navigating or opening a payment flow.
+    const freshSession = await fetchSession(currentState.currentChapterId || undefined)
+    if (!freshSession) {
+      return { success: false, reason: "We couldn't confirm access to the next chapter. Please try again." }
+    }
+    setState((prev) => ({ ...freshSession, currentChapterId: prev.currentChapterId }))
+    const action = freshSession.nextChapterAction
 
     if (!action) {
       return { success: false, reason: "No next chapter information available." }
@@ -328,22 +338,12 @@ export function useCourseSession(
     }
 
     if (action.action === "blocked") {
-      // The current chapter might just have been completed on the frontend side.
-      // Try a fresh session fetch to get updated access decisions.
-      const freshSession = await fetchSession(currentState.currentChapterId || undefined)
-      if (freshSession) {
-        setState((prev) => ({ ...freshSession, currentChapterId: prev.currentChapterId }))
-        const freshAction = freshSession.nextChapterAction
-        if (freshAction?.action === "navigate" && freshAction.chapterId) {
-          return selectChapter(freshAction.chapterId)
-        }
-      }
-
       return {
         success: false,
         reason: action.reason || "Next chapter is locked.",
         lockCode: action.lockCode,
         needsPayment: action.needsPayment,
+        chapterId: action.chapterId,
       }
     }
 
@@ -388,13 +388,13 @@ export function useCourseSession(
         })
       }
 
-      // Schedule a session refresh when the 90% threshold is crossed
-      if (duration && duration > 0 && seconds >= duration * 0.9) {
+      // Schedule a session refresh when the 99% threshold is crossed
+      if (duration && duration > 0 && seconds >= duration * 0.99) {
         if (!completionRefreshScheduledRef.current.has(chapterId)) {
           completionRefreshScheduledRef.current.add(chapterId)
           // Small delay to let the backend process the auto-completion
           setTimeout(() => {
-            void refreshSession()
+            void refreshSession({ force: true, currentChapterId: chapterId })
           }, 1500)
         }
       }
@@ -407,44 +407,24 @@ export function useCourseSession(
   const reportChapterComplete = useCallback(
     (chapterId: string) => {
       localCompletionRef.current.add(chapterId)
-      // Optimistically mark as completed and unlock the immediately next chapter
-      // so sequential progression works without waiting for a backend round-trip.
+      // Mark completion locally for the current chapter only. Access decisions for
+      // the next chapter stay backend-authoritative after the refresh below.
       setState((prev) => {
         const chapters = prev.chapters.map((c) => {
           if (c.chapterId === chapterId) {
             return { ...c, isCompleted: true }
           }
-          // Unlock the immediately next chapter after the one just completed
-          if (completedIdx !== -1 && idx === completedIdx + 1 && !c.access.canAccess && c.access.lockCode === 'previous_chapter_incomplete') {
-            return { ...c, access: { ...c.access, canAccess: true, lockCode: 'allowed' as const, lockReason: undefined } }
-          }
           return c
         })
         const completedChapters = chapters.filter((c) => c.isCompleted).length
-        // Also update nextChapterAction optimistically so "Next Chapter" works immediately
-        let nextChapterAction = prev.nextChapterAction
-        if (completedIdx !== -1 && completedIdx + 1 < chapters.length) {
-          const nextCh = chapters[completedIdx + 1]
-          if (nextCh.access.canAccess) {
-            nextChapterAction = {
-              action: 'navigate' as const,
-              chapterId: nextCh.chapterId,
-              chapterTitle: nextCh.chapterTitle,
-              sectionId: nextCh.sectionId,
-            }
-          }
-        }
         return {
           ...prev,
           chapters,
           completedChapters,
           progressPercent: chapters.length > 0 ? Math.round((completedChapters / chapters.length) * 100) : 0,
-          nextChapterAction,
         }
       })
-      // Bypass the throttle so next-chapter access is refreshed immediately after completion.
-      lastRefreshRef.current = 0
-      void refreshSession()
+      void refreshSession({ force: true, currentChapterId: chapterId })
     },
     [refreshSession],
   )

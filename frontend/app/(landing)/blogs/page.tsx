@@ -4,7 +4,7 @@ import { BlogList } from "../components/blog-list"
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 import { getLocale } from "next-intl/server"
-import { generateAlternateLanguages } from "@/lib/seo-config"
+import { absoluteUrl, generateAlternateLanguages, generateBreadcrumbSchema, generateOGMetadata, generateTwitterMetadata } from "@/lib/seo-config"
 import { getAllBlogPosts } from "@/lib/blog-content"
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,25 +13,14 @@ export async function generateMetadata(): Promise<Metadata> {
     title: t("metaTitle"),
     description: t("metaDesc"),
     alternates: generateAlternateLanguages("/blogs"),
-    openGraph: {
-      title: t("metaTitle"),
-      description: t("metaDesc"),
-      url: "https://chabaqa.io/blogs",
-      siteName: "Chabaqa",
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: t("metaTitle"),
-      description: t("metaDesc"),
-    },
+    openGraph: generateOGMetadata(t("metaTitle"), t("metaDesc"), "/blogs"),
+    twitter: generateTwitterMetadata(t("metaTitle"), t("metaDesc")),
   }
 }
 
 export default async function BlogsPage() {
   const posts = getAllBlogPosts()
   const locale = await getLocale()
-  const baseUrl = "https://chabaqa.io"
 
   return (
     <main className="min-h-screen" style={{ background: "var(--bg)" }}>
@@ -48,16 +37,16 @@ export default async function BlogsPage() {
             "@type": "Blog",
             "name": "Chabaqa Blog",
             "description": "Expert insights on community building, online courses, and creator monetization",
-            "url": `${baseUrl}${locale === "ar" ? "/ar" : ""}/blogs`,
+            "url": absoluteUrl(`${locale === "ar" ? "/ar" : ""}/blogs`),
             "publisher": {
               "@type": "Organization",
               "name": "Chabaqa",
-              "logo": { "@type": "ImageObject", "url": `${baseUrl}/logo.png` }
+              "logo": { "@type": "ImageObject", "url": absoluteUrl("/logo_chabaqa.png") }
             },
             "blogPost": posts.map((post) => ({
               "@type": "BlogPosting",
               "headline": post.title,
-              "url": `${baseUrl}/blogs/${post.id}`,
+              "url": absoluteUrl(`/blogs/${post.id}`),
               "datePublished": post.date,
               "author": { "@type": "Person", "name": post.author.name }
             }))
@@ -69,14 +58,12 @@ export default async function BlogsPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
-              { "@type": "ListItem", "position": 2, "name": "Blog", "item": `${baseUrl}/blogs` },
-            ]
-          })
+          __html: JSON.stringify(
+            generateBreadcrumbSchema([
+              { name: "Home", url: absoluteUrl("/") },
+              { name: "Blog", url: absoluteUrl("/blogs") },
+            ]),
+          )
         }}
       />
     </main>

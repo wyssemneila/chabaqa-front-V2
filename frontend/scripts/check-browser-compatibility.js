@@ -110,8 +110,8 @@ function scanDirectory(dir, checks, fileExtensions) {
       const stat = fs.statSync(filePath)
 
       if (stat.isDirectory()) {
-        // Skip node_modules and .next
-        if (file !== 'node_modules' && file !== '.next' && file !== 'dist') {
+        // Skip dependencies and generated build outputs.
+        if (file !== 'node_modules' && file !== '.next' && file !== '.next-dev' && file !== 'dist') {
           scan(filePath)
         }
       } else if (fileExtensions.some(ext => file.endsWith(ext))) {

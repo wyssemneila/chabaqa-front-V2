@@ -622,26 +622,35 @@ export interface AdminListQuery {
 export interface ContentModerationFilters {
   page?: number;
   limit?: number;
-  status?: 'pending' | 'approved' | 'rejected' | 'flagged';
-  contentType?: 'post' | 'comment' | 'course' | 'event' | 'product';
-  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  status?: 'pending' | 'approved' | 'rejected' | 'flagged' | 'under_review' | 'escalated';
+  contentType?: 'post' | 'comment' | 'course' | 'event' | 'product' | 'community' | 'user_profile';
+  contentTypes?: 'post' | 'comment' | 'course' | 'event' | 'product' | 'community' | 'user_profile' | Array<'post' | 'comment' | 'course' | 'event' | 'product' | 'community' | 'user_profile'>;
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  priorities?: 'low' | 'normal' | 'high' | 'urgent' | Array<'low' | 'normal' | 'high' | 'urgent'>;
   assignedTo?: string;
   reportedFrom?: string;
   reportedTo?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface ModerateContentDto {
-  action: 'approve' | 'reject' | 'flag' | 'escalate';
+  action: 'approve' | 'reject' | 'flag' | 'escalate' | 'approved' | 'rejected' | 'flagged' | 'escalated';
   reason?: string;
+  rejectionReasons?: string[];
   notes?: string;
+  reviewNotes?: string;
+  escalationReason?: string;
   notifyUser?: boolean;
 }
 
 export interface BulkModerateContentDto {
   itemIds: string[];
-  action: 'approve' | 'reject' | 'flag';
+  action: 'approve' | 'reject' | 'flag' | 'approved' | 'rejected' | 'flagged';
   reason?: string;
+  rejectionReasons?: string[];
   notes?: string;
+  reviewNotes?: string;
 }
 
 // Financial Management Types
@@ -1695,6 +1704,10 @@ export const adminApi = {
 
     compareCommunities: (communityA: string, communityB: string, period?: string) =>
       apiClient.get('/admin/communities/analytics/compare', { communityA, communityB, period }),
+
+    getCustomDomainRequests: () => apiClient.get('/admin/communities/custom-domain-requests'),
+    reviewCustomDomainRequest: (communityId: string, data: { action: 'approve' | 'reject'; note?: string }) =>
+      apiClient.put(`/admin/communities/${communityId}/custom-domain-request`, data),
   },
 
   // ==================== CONTENT MODERATION ====================
@@ -1709,23 +1722,68 @@ export const adminApi = {
     getQueueStats: () =>
       apiClient.get('/admin/content-moderation/queue/stats'),
 
-    getAnalytics: (filters: AdminListQuery) =>
-      apiClient.get<JsonObject>('/admin/content-moderation/analytics', filters),
+    getAnalytics: (filters: AdminListQuery) => {
+      const periodMap: Record<string, string> = {
+        week: 'last_7_days',
+        month: 'last_30_days',
+        quarter: 'last_90_days',
+        year: 'last_year',
+      };
+      const period = typeof filters.period === 'string'
+        ? (periodMap[filters.period] ?? filters.period)
+        : filters.period;
+
+      return apiClient.get<JsonObject>('/admin/content-moderation/analytics', {
+        ...filters,
+        period,
+      });
+    },
 
     getContentDetails: (itemId: string) =>
       apiClient.get(`/admin/content-moderation/queue/${itemId}`),
 
-    moderateContent: (itemId: string, data: ModerateContentDto) =>
-      apiClient.post(`/admin/content-moderation/queue/${itemId}/moderate`, data),
+    moderateContent: (itemId: string, data: ModerateContentDto) => {
+      const actionMap: Record<string, string> = {
+        approve: 'approved',
+        reject: 'rejected',
+        flag: 'flagged',
+        escalate: 'escalated',
+      };
+      const reviewNotes = data.reviewNotes ?? data.notes;
+      const rejectionReasons = data.rejectionReasons ?? (data.reason ? [data.reason] : undefined);
 
-    bulkModerate: (data: BulkModerateContentDto) =>
-      apiClient.post('/admin/content-moderation/queue/bulk-moderate', data),
+      return apiClient.post(`/admin/content-moderation/queue/${itemId}/moderate`, {
+        ...data,
+        action: actionMap[data.action] ?? data.action,
+        reviewNotes,
+        rejectionReasons,
+      });
+    },
+
+    bulkModerate: (data: BulkModerateContentDto) => {
+      const actionMap: Record<string, string> = {
+        approve: 'approved',
+        reject: 'rejected',
+        flag: 'flagged',
+      };
+      const reviewNotes = data.reviewNotes ?? data.notes;
+      const rejectionReasons = data.rejectionReasons ?? (data.reason ? [data.reason] : undefined);
+
+      return apiClient.post('/admin/content-moderation/queue/bulk-moderate', {
+        ...data,
+        action: actionMap[data.action] ?? data.action,
+        reviewNotes,
+        rejectionReasons,
+      });
+    },
 
     updatePriority: (itemId: string, priority: string) =>
-      apiClient.put(`/admin/content-moderation/queue/${itemId}/priority`, { priority }),
+      apiClient.put(`/admin/content-moderation/queue/${itemId}/priority`, {
+        priority: priority === 'medium' ? 'normal' : priority,
+      }),
 
     assignContent: (itemId: string, assignedTo: string) =>
-      apiClient.post(`/admin/content-moderation/queue/${itemId}/assign`, { assignedTo }),
+      apiClient.post(`/admin/content-moderation/queue/${itemId}/assign`, { moderatorId: assignedTo }),
   },
 
   // ==================== FINANCIAL MANAGEMENT ====================
@@ -1779,6 +1837,21 @@ export const adminApi = {
       });
       return toPaginatedResult(response, subscriptions, filters, ['subscriptions']);
     },
+
+    getBillingAudit: async (filters: JsonObject = {}) => {
+      const response = await apiClient.get('/admin/financial/billing-audit', filters);
+      const payload = getResponseData(response);
+      const items = extractListCandidate<UnknownRecord>(payload, ['data', 'items']).map((item) => ({
+        ...item,
+        provider: asString(item.provider, 'unknown'),
+        status: asString(item.status, 'unknown'),
+      }));
+      return toPaginatedResult(response, items, filters, ['items']);
+    },
+
+    getPaymentAuditLogs: async (params?: { limit?: number; orderId?: string }) =>
+      apiClient.get('/admin/financial/payment-audit-logs', params),
+
 
     getTransactions: async (filters: TransactionFilters) => {
       const response = await apiClient.get('/admin/financial/transactions', filters);
@@ -2425,10 +2498,12 @@ export const adminApi = {
       apiClient.get(`/admin/content/courses/${id}`),
     approveCourse: (id: string) =>
       apiClient.put(`/admin/content/courses/${id}/approve`, {}),
-    rejectCourse: (id: string, reason: string) =>
-      apiClient.put(`/admin/content/courses/${id}/reject`, { reason }),
+    rejectCourse: (id: string, reason: string, notes?: string) =>
+      apiClient.put(`/admin/content/courses/${id}/reject`, { reason, notes }),
     featureCourse: (id: string, featured: boolean) =>
       apiClient.put(`/admin/content/courses/${id}/feature`, { featured }),
+    suspendCourse: (id: string, reason: string, notes?: string) =>
+      apiClient.put(`/admin/content/courses/${id}/suspend`, { reason, notes }),
     getCourseEnrollments: (id: string, pagination: Record<string, unknown> = {}) =>
       apiClient.get(`/admin/content/courses/${id}/enrollments`, pagination),
     bulkApproveCourses: (ids: string[]) =>
@@ -2443,8 +2518,10 @@ export const adminApi = {
       apiClient.get(`/admin/content/challenges/${id}/submissions`, filters),
     approveChallenge: (id: string) =>
       apiClient.put(`/admin/content/challenges/${id}/approve`, {}),
-    rejectChallenge: (id: string, reason: string) =>
-      apiClient.put(`/admin/content/challenges/${id}/reject`, { reason }),
+    rejectChallenge: (id: string, reason: string, notes?: string) =>
+      apiClient.put(`/admin/content/challenges/${id}/reject`, { reason, notes }),
+    featureChallenge: (id: string, featured: boolean) =>
+      apiClient.put(`/admin/content/challenges/${id}/feature`, { featured }),
     endChallengeEarly: (id: string) =>
       apiClient.put(`/admin/content/challenges/${id}/end`, {}),
     approveSubmission: (submissionId: string, feedback?: string, markAsWinner?: boolean) =>
@@ -2461,8 +2538,10 @@ export const adminApi = {
       apiClient.get(`/admin/content/events/${id}/attendees`, pagination),
     approveEvent: (id: string) =>
       apiClient.put(`/admin/content/events/${id}/approve`, {}),
-    rejectEvent: (id: string, reason: string) =>
-      apiClient.put(`/admin/content/events/${id}/reject`, { reason }),
+    rejectEvent: (id: string, reason: string, notes?: string) =>
+      apiClient.put(`/admin/content/events/${id}/reject`, { reason, notes }),
+    featureEvent: (id: string, featured: boolean) =>
+      apiClient.put(`/admin/content/events/${id}/feature`, { featured }),
     cancelEvent: (id: string, reason: string) =>
       apiClient.put(`/admin/content/events/${id}/cancel`, { reason }),
     messageAttendees: (id: string, message: string, sendEmail?: boolean) =>
@@ -2501,6 +2580,9 @@ export const adminApi = {
 
     getQueueCounts: () =>
       apiClient.get('/live-support/admin/queue-counts'),
+
+    getMetrics: () =>
+      apiClient.get('/live-support/admin/metrics'),
   },
 };
 

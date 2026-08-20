@@ -116,6 +116,16 @@ export const mediaApi = {
     return res.data;
   },
 
+  listAssets: async (opts?: { entityType?: string; entityId?: string; limit?: number }): Promise<MediaAsset[]> => {
+    const params = new URLSearchParams();
+    if (opts?.entityType) params.set('entityType', opts.entityType);
+    if (opts?.entityId) params.set('entityId', opts.entityId);
+    if (opts?.limit) params.set('limit', String(opts.limit));
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    const res = await apiClient.get<MediaApiResponse<MediaAsset[]>>(`/media${suffix}`);
+    return res.data;
+  },
+
   getAccess: async (assetId: string): Promise<{ assetId: string; url: string; expiresInSeconds: number; visibility: MediaVisibility }> => {
     const res = await apiClient.get<MediaApiResponse<{ assetId: string; url: string; expiresInSeconds: number; visibility: MediaVisibility }>>(
       `/media/${assetId}/access`,

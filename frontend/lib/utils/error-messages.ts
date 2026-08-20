@@ -11,6 +11,13 @@ export interface ErrorMapping {
 
 // Common error patterns from backend (French to English)
 const errorMappings: ErrorMapping[] = [
+  // Plan enforcement and subscription errors
+  {
+    pattern: /your .* plan includes up to|you are currently using .*upgrade to|requires the .* plan|not included in your current plan/i,
+    message: 'Upgrade required',
+    guidance: 'Your current creator plan does not include this feature or limit. Choose a higher plan to continue.'
+  },
+
   // Subscription errors
   {
     pattern: /abonnement.*actif.*requis|active subscription.*required/i,

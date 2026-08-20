@@ -1,5 +1,7 @@
 import { apiClient, ApiSuccessResponse } from '../core/client';
 
+type JsonObject = Record<string, unknown>;
+
 export type TrackableContentType =
   | 'course'
   | 'challenge'
@@ -16,9 +18,9 @@ export const trackingApi = {
   trackView: async (
     contentType: TrackableContentType,
     contentId: string,
-    metadata?: Record<string, any>,
-  ): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.post<ApiSuccessResponse<any>>(
+    metadata?: JsonObject,
+  ): Promise<ApiSuccessResponse<unknown>> => {
+    return apiClient.post<ApiSuccessResponse<unknown>>(
       `/tracking/${encodeURIComponent(contentType)}/${encodeURIComponent(contentId)}/view`,
       { metadata: metadata || {} },
     );
@@ -26,9 +28,9 @@ export const trackingApi = {
   trackStart: async (
     contentType: TrackableContentType,
     contentId: string,
-    metadata?: Record<string, any>,
-  ): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.post<ApiSuccessResponse<any>>(
+    metadata?: JsonObject,
+  ): Promise<ApiSuccessResponse<unknown>> => {
+    return apiClient.post<ApiSuccessResponse<unknown>>(
       `/tracking/${encodeURIComponent(contentType)}/${encodeURIComponent(contentId)}/start`,
       { metadata: metadata || {} },
     );
@@ -36,9 +38,9 @@ export const trackingApi = {
   trackComplete: async (
     contentType: TrackableContentType,
     contentId: string,
-    metadata?: Record<string, any>,
-  ): Promise<ApiSuccessResponse<any>> => {
-    return apiClient.post<ApiSuccessResponse<any>>(
+    metadata?: JsonObject,
+  ): Promise<ApiSuccessResponse<unknown>> => {
+    return apiClient.post<ApiSuccessResponse<unknown>>(
       `/tracking/${encodeURIComponent(contentType)}/${encodeURIComponent(contentId)}/complete`,
       { metadata: metadata || {} },
     );

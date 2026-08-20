@@ -11,6 +11,7 @@ export function Footer() {
   const t = useTranslations("footer")
   const pathname = usePathname()
   const withLocale = (href: string) => localizeHref(pathname, href)
+  const isArabic = pathname === "/ar" || pathname.startsWith("/ar/")
 
   const openCookiePreferences = () => {
     if (typeof window === "undefined") return
@@ -39,7 +40,7 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1">
             <Link href={withLocale("/")} aria-label="Chabaqa — go to homepage" className="flex items-center mb-4">
               <Image
-                src="/Logos/PNG/frensh1.png"
+                src={isArabic ? "/Logos/PNG/arabic.png" : "/Logos/PNG/frensh1.png"}
                 alt="Chabaqa"
                 width={160}
                 height={48}

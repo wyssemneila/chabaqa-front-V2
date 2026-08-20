@@ -1,6 +1,8 @@
 import {
   detectVideoPlatform,
   getCreatorVideoSource,
+  getEmbeddableVideoUrl,
+  getYouTubeEmbedUrl,
   isSupportedCreatorVideoUrl,
   parseYouTubeVideoId,
 } from "@/lib/utils/video-source"
@@ -23,6 +25,8 @@ describe("video-source utils", () => {
       expect(detectVideoPlatform(url)).toBe("youtube")
       expect(isSupportedCreatorVideoUrl(url)).toBe(true)
       expect(getCreatorVideoSource(url)).toBe("youtube")
+      expect(getYouTubeEmbedUrl(url)).toBe(`https://www.youtube-nocookie.com/embed/${youtubeId}`)
+      expect(getEmbeddableVideoUrl(url)).toBe(`https://www.youtube-nocookie.com/embed/${youtubeId}`)
     }
   })
 
@@ -62,5 +66,8 @@ describe("video-source utils", () => {
       expect(isSupportedCreatorVideoUrl(url)).toBe(false)
       expect(getCreatorVideoSource(url)).toBe("unsupported")
     }
+
+    expect(getEmbeddableVideoUrl("https://example.com/video.mp4")).toBeNull()
+    expect(getEmbeddableVideoUrl("https://youtube.com/watch?v=short")).toBeNull()
   })
 })
