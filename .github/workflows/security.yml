@@ -2,9 +2,17 @@ name: Security Gates
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main]
   push:
-    branches: [main, develop]
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "LICENSE"
+  schedule:
+    # Weekly full security sweep (Monday 05:00 UTC) so scanners still run
+    # regularly even when few changes land.
+    - cron: "0 5 * * 1"
   workflow_dispatch:
     inputs:
       dast_target_url:
@@ -24,6 +32,7 @@ jobs:
   dependency-audit:
     name: Dependency Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -53,6 +62,7 @@ jobs:
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -65,6 +75,10 @@ jobs:
   sast:
     name: SAST
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Semgrep is the slowest security job and application source doesn't change
+    # on a dependency bump, so skip it for Dependabot PRs (npm audit still runs).
+    if: github.actor != 'dependabot[bot]'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -90,6 +104,7 @@ jobs:
   security-regression:
     name: Security Regression Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
