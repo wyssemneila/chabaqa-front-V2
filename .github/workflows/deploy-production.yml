@@ -1,0 +1,124 @@
+name: Deploy Production
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or commit to deploy"
+        required: false
+        default: "main"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate Deployment Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.ref }}
+
+      - name: Validate deployment scripts
+        run: bash -n deploy.sh deploy-pm2.sh scripts/verify-production.sh scripts/smoke-production.sh scripts/backup-mongo.sh scripts/restore-mongo-backup.sh
+
+      - name: Validate compose file
+        run: |
+          # Compose interpolation happens before service env_file files are read.
+          # Supply inert values only for the required variables so this check
+          # validates the production topology without accessing production secrets.
+          printf '%s\n' \
+            'REDIS_PASSWORD=validation-only-redis-password' \
+            'MINIO_ROOT_USER=validation-only-minio-user' \
+            'MINIO_ROOT_PASSWORD=validation-only-minio-password' \
+            'MEILI_MASTER_KEY=validation-only-meili-master-key' \
+            'GRAFANA_ADMIN_PASSWORD=validation-only-grafana-password' > .env
+          touch frontend/.env
+          touch backend/.env
+          docker compose config --quiet
+
+  deploy:
+    name: Docker Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.ref }}
+
+      - name: Verify CI passed
+        if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+        run: echo "CI gate passed for ${{ github.event_name }}"
+
+      - name: Validate deployment secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          set -euo pipefail
+          test -n "$VPS_HOST" || (echo "Missing VPS_HOST secret" && exit 1)
+          test -n "$VPS_USER" || (echo "Missing VPS_USER secret" && exit 1)
+          test -n "$VPS_SSH_PRIVATE_KEY" || (echo "Missing VPS_SSH_PRIVATE_KEY secret" && exit 1)
+          echo "Deployment secrets are present. Using SSH private-key authentication on port ${VPS_PORT:-22}."
+
+      - name: Run remote Docker deployment
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          fingerprint: ${{ secrets.VPS_SSH_FINGERPRINT }}
+          passphrase: ${{ secrets.VPS_SSH_PASSPHRASE }}
+          script_stop: true
+          timeout: 30m
+          command_timeout: 45m
+          script: |
+            set -euo pipefail
+            export PROJECT_DIR="${{ secrets.VPS_PROJECT_DIR }}"
+            if [ -z "$PROJECT_DIR" ]; then
+              PROJECT_DIR="/home/ubuntu/chabaqa"
+            fi
+            export BRANCH="main"
+            export DEPLOY_REF="${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.ref }}"
+            export GIT_REPO="${{ github.repository }}"
+            export GIT_AUTH_USER="x-access-token"
+            export GIT_AUTH_TOKEN="${{ github.token }}"
+
+            echo "[github-actions] connected to $(hostname) as $(whoami)"
+            echo "[github-actions] docker deploying ${GIT_REPO}:${DEPLOY_REF} into ${PROJECT_DIR}"
+
+            cd "$PROJECT_DIR"
+            git config --global --add safe.directory "$PROJECT_DIR" || true
+            git fetch origin "$DEPLOY_REF"
+            git checkout main
+            git reset --hard "$DEPLOY_REF"
+            chmod +x ./deploy.sh
+            SKIP_GIT_SYNC=true ./deploy.sh
+
+      - name: Verify public deployment
+        env:
+          DOMAIN: https://chabaqa.io
+          TEST_COMMUNITY_SLUG: ${{ vars.PRODUCTION_TEST_COMMUNITY_SLUG || 'creator-launch-studio' }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 5 --retry-delay 5 --max-time 30 "$DOMAIN/"
+          curl --fail --location --retry 5 --retry-delay 5 --max-time 30 "$DOMAIN/en/community/$TEST_COMMUNITY_SLUG" \
+            | grep -F "Creator Launch Studio"

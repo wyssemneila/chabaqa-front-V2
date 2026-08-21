@@ -1,0 +1,32 @@
+/* Module 1 interaction helpers */
+.btn-press-active {
+  transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.btn-press-active:active {
+  transform: scale(0.96) translateY(0);
+}
+
+.hover-elevate {
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease;
+}
+
+.hover-elevate:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px -12px rgba(142, 120, 251, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-press-active,
+  .hover-elevate {
+    transition: none !important;
+  }
+
+  .btn-press-active:active,
+  .hover-elevate:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}

@@ -1,0 +1,1437 @@
+{
+  "nav": {
+    "features": "Features",
+    "pricing": "Pricing",
+    "explore": "Explore",
+    "blog": "Blog",
+    "login": "Log in",
+    "start": "Start for free"
+  },
+  "footer": {
+    "tagline": "All-in-one community platform for creators, coaches, and educators in MENA.",
+    "copyright": "© 2026 Chabaqa. All rights reserved.",
+    "backTop": "Top",
+    "bottomLinks": [
+      "Terms",
+      "Privacy",
+      "Cookies"
+    ],
+    "columns": [
+      [
+        "Features",
+        "Pricing",
+        "Community",
+        "Courses",
+        "Challenges"
+      ],
+      [
+        "About",
+        "Blog",
+        "Careers",
+        "Contact"
+      ],
+      [
+        "Terms of Service",
+        "Privacy Policy",
+        "Cookies"
+      ]
+    ],
+    "columnHeadings": [
+      "Product",
+      "Company",
+      "Legal"
+    ]
+  },
+  "common": {
+    "brand": "Chabaqa",
+    "language": "Language",
+    "loading": "Loading...",
+    "english": "English",
+    "arabic": "Arabic"
+  },
+  "auth": {
+    "signinPage": {
+      "headline": "Sign in to your Chabaqa space",
+      "subheadline": "Create, educate and manage your digital communities",
+      "footer": "© 2026 Chabaqa. Build the future of communities.",
+      "metaTitle": "Sign In | Chabaqa",
+      "metaDesc": "Sign in to your Chabaqa creator space. Build and monetize your digital community."
+    },
+    "signupPage": {
+      "headline": "Create your Chabaqa space",
+      "subheadline": "Create, educate and manage your digital communities",
+      "footer": "© 2026 Chabaqa. Build the future of communities.",
+      "metaTitle": "Create Account | Chabaqa",
+      "metaDesc": "Create your free Chabaqa account and start building your community."
+    },
+    "signinForm": {
+      "email": "Email address",
+      "emailPlaceholder": "your@email.com",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••••",
+      "rememberMe": "Remember me for 30 days",
+      "signIn": "Sign In",
+      "signingIn": "Signing In...",
+      "orContinueWith": "Or continue with",
+      "continueWithGoogle": "Continue with Google",
+      "forgotPassword": "Forgot your password?",
+      "googleLoginError": "Google Login Error",
+      "googleLoginFailed": "Google sign-in failed. Please try again.",
+      "loginFailed": "Login failed. Please try again.",
+      "connectionError": "Connection Error",
+      "newToChabaqa": "New to Chabaqa?",
+      "createAccount": "Create your account"
+    },
+    "signupForm": {
+      "fullName": "Full Name",
+      "fullNamePlaceholder": "e.g. Ahmed Ben Ali",
+      "email": "Email Address",
+      "emailPlaceholder": "your@email.com",
+      "phoneOptional": "Phone Number (Optional)",
+      "phonePlaceholder": "+216 XX XXX XXX",
+      "birthDateOptional": "Date of Birth (Optional)",
+      "dobDay": "Day",
+      "dobMonth": "Month",
+      "dobYear": "Year",
+      "monthJan": "January",
+      "monthFeb": "February",
+      "monthMar": "March",
+      "monthApr": "April",
+      "monthMay": "May",
+      "monthJun": "June",
+      "monthJul": "July",
+      "monthAug": "August",
+      "monthSep": "September",
+      "monthOct": "October",
+      "monthNov": "November",
+      "monthDec": "December",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••••",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "••••••••••",
+      "passwordStrength": "Password strength:",
+      "agreePrefix": "I agree to the",
+      "terms": "Terms of Service",
+      "and": "and",
+      "privacy": "Privacy Policy",
+      "createAccount": "Create Account",
+      "creatingAccount": "Creating Account...",
+      "alreadyHaveAccount": "Already have an account?",
+      "signIn": "Sign In",
+      "connectionError": "Connection error. Please try again.",
+      "unknownError": "An error occurred"
+    },
+    "forgotPasswordPage": {
+      "backgroundAlt": "Gradient Background",
+      "logoAlt": "Chabaqa Logo",
+      "footer": "© 2026 Chabaqa. Build the future of communities.",
+      "metaTitle": "Forgot Password | Chabaqa",
+      "metaDesc": "Reset your Chabaqa account password securely.",
+      "headline": "Forgot your password?",
+      "subheadline": "Enter your email and we will send you a reset code."
+    },
+    "forgotPasswordForm": {
+      "title": "Forgot your password?",
+      "intro": "No worries! Enter your email address and we'll send you a verification code.",
+      "checkEmailTitle": "Check your email",
+      "checkEmailBody": "We've sent a 6-digit verification code to",
+      "codeExpires": "The code will expire in 10 minutes.",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "your@email.com",
+      "sending": "Sending...",
+      "sendCode": "Send Verification Code",
+      "missingCodeHint": "Didn't receive the code? Check your spam folder or try again.",
+      "enterCode": "Enter Verification Code",
+      "tryDifferentEmail": "Try Different Email",
+      "rememberPassword": "Remember your password?",
+      "signIn": "Sign in",
+      "errors": {
+        "generic": "An error occurred",
+        "connection": "Connection error. Please try again."
+      }
+    },
+    "resetPasswordPage": {
+      "backgroundAlt": "Gradient Background",
+      "logoAlt": "Chabaqa Logo",
+      "footer": "© 2026 Chabaqa. Build the future of communities.",
+      "metaTitle": "Reset Password | Chabaqa",
+      "metaDesc": "Create a new secure password for your Chabaqa account."
+    },
+    "resetPasswordForm": {
+      "title": "Reset your password",
+      "introPrefix": "Enter the code sent to",
+      "introSuffix": "and your new password.",
+      "codeExpires": "The code expires in 10 minutes.",
+      "successTitle": "Password reset successful!",
+      "successBody": "Your password has been successfully updated.",
+      "successHint": "Click the button below to sign in with your new password.",
+      "verificationCodeLabel": "Verification Code",
+      "pasteHint": "Paste is supported for the full code.",
+      "newPasswordLabel": "New Password",
+      "newPasswordPlaceholder": "Enter your new password",
+      "confirmPasswordLabel": "Confirm New Password",
+      "confirmPasswordPlaceholder": "Confirm your new password",
+      "resetting": "Resetting...",
+      "resetPassword": "Reset Password",
+      "signedInHint": "You can now sign in with your new password.",
+      "goToSignIn": "Go to Sign In",
+      "rememberPassword": "Remember your password?",
+      "signIn": "Sign in",
+      "errors": {
+        "passwordMismatch": "Passwords do not match",
+        "passwordLength": "Password must contain at least 8 characters",
+        "codeLength": "Verification code must contain 6 digits",
+        "generic": "An error occurred",
+        "connection": "Connection error. Please try again."
+      }
+    },
+    "verifyEmailPage": {
+      "backgroundAlt": "Gradient Background",
+      "logoAlt": "Chabaqa Logo",
+      "footer": "© 2026 Chabaqa. Build the future of communities."
+    },
+    "verifyEmailForm": {
+      "title": "Verify your email",
+      "introPrefix": "We sent a 6-digit verification code to",
+      "yourEmailFallback": "your email",
+      "codeExpires": "The code expires in 10 minutes.",
+      "successTitle": "Email verified!",
+      "successBody": "Your account is now active.",
+      "verificationCodeLabel": "Verification code",
+      "pasteHint": "You can paste the full 6-digit code.",
+      "verifying": "Verifying...",
+      "verifyAndCreate": "Verify and create account",
+      "resending": "Resending...",
+      "resendIn": "Resend code in {seconds}s",
+      "resendCode": "Resend verification code",
+      "goToSignIn": "Go to Sign In",
+      "wrongEmail": "Entered the wrong email?",
+      "backToSignup": "Go back to signup",
+      "signInNotice": "Email verified successfully. Please sign in.",
+      "resendSent": "A new verification code has been sent",
+      "errors": {
+        "missingEmail": "Missing email. Please return to signup and try again.",
+        "codeLength": "Verification code must be exactly 6 digits",
+        "invalidCode": "Invalid or expired verification code",
+        "verifyFailed": "Unable to verify code right now. Please try again.",
+        "resendFailed": "Unable to resend verification code"
+      }
+    }
+  },
+  "landing": {
+    "header": {
+      "explore": "Explore",
+      "pricing": "Pricing",
+      "about": "About",
+      "blog": "Blog",
+      "features": "Features",
+      "globalNavAria": "Global navigation",
+      "brandAriaLabel": "Chabaqa",
+      "brandLogoAlt": "Chabaqa Logo",
+      "signIn": "Sign in",
+      "getStarted": "Get Started",
+      "createCommunity": "Create Community",
+      "creatorDashboard": "Creator Dashboard",
+      "logout": "Logout",
+      "loggingOut": "Logging out...",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu",
+      "menu": "Menu",
+      "navigation": "Navigation",
+      "logoutError": "Connection error"
+    },
+    "hero": {
+      "badge": "For Creators, By Creators",
+      "title1": "Turn your",
+      "passion": "passion",
+      "title2": "into a",
+      "typedWords": [
+        "business",
+        "community",
+        "courses",
+        "income",
+        "brand"
+      ],
+      "sub": "Create, engage, and monetize your audience with the all-in-one platform built for ambitious creators. Courses, communities, coaching — all in one place.",
+      "ctaPrimary": "Start Free — No card needed",
+      "ctaSecondary": "Watch demo",
+      "proofText": "Joined by creators across MENA — free to start",
+      "stats": [
+        {
+          "val": "Free",
+          "label": "To Start"
+        },
+        {
+          "val": "9",
+          "label": "Creator Tools"
+        },
+        {
+          "val": "1 min",
+          "label": "To Build A Business"
+        },
+        {
+          "val": "24/7",
+          "label": "Support"
+        }
+      ],
+      "pills": {
+        "community": {
+          "label": "Community",
+          "title": "Community Feed",
+          "desc": "Build your private community with feed, reactions, announcements and direct messages."
+        },
+        "courses": {
+          "label": "Online Courses",
+          "title": "Online Courses",
+          "desc": "Create and sell structured courses with video chapters, progress tracking and certificates."
+        },
+        "challenges": {
+          "label": "Challenges",
+          "title": "Challenges",
+          "desc": "Run time-based competitive programs that maximize engagement and community activity."
+        },
+        "products": {
+          "label": "Products",
+          "title": "Digital Products",
+          "desc": "Sell e-books, templates, presets and downloads with instant delivery."
+        },
+        "events": {
+          "label": "Events",
+          "title": "Events",
+          "desc": "Host online and offline events with ticketing, RSVPs and automated reminders."
+        },
+        "sessions": {
+          "label": "1:1 Sessions",
+          "title": "1:1 Coaching Sessions",
+          "desc": "Let students book, pay and get meeting links — all automated from your calendar."
+        }
+      },
+      "headlineLine1": "Chabaqa helps you",
+      "headlineLine2": "passion into",
+      "headlineLine3": "business",
+      "descriptionPrefix": "Create, engage, and monetize your audience with the platform built for",
+      "descriptionHighlight": "ambitious creators",
+      "startFree": "Start Free",
+      "explore": "Explore",
+      "timeline": {
+        "community": {
+          "title": "Community",
+          "date": "Always Available",
+          "content": "Create, customize, and grow your own community space with powerful engagement tools and real-time interactions.",
+          "category": "Engagement"
+        },
+        "courses": {
+          "title": "Courses",
+          "date": "Anytime Learning",
+          "content": "Build and sell structured learning paths with interactive chapters, quizzes, and comprehensive progress tracking.",
+          "category": "Learning"
+        },
+        "challenges": {
+          "title": "Challenges",
+          "date": "Weekly Events",
+          "content": "Host interactive challenges and competitions to boost member engagement, retention, and community growth.",
+          "category": "Engagement"
+        },
+        "products": {
+          "title": "Products",
+          "date": "Anytime Sales",
+          "content": "Offer digital or physical products directly in your community with integrated payments and inventory management.",
+          "category": "Monetization"
+        },
+        "sessions": {
+          "title": "1:1 Sessions",
+          "date": "On Demand",
+          "content": "Provide personalized coaching and mentoring sessions with built-in scheduling, payments, and video integration.",
+          "category": "Coaching"
+        },
+        "events": {
+          "title": "Events",
+          "date": "Monthly Gatherings",
+          "content": "Organize live events, meetups, or webinars for your members with RSVP management and automated reminders.",
+          "category": "Events"
+        }
+      }
+    },
+    "about": {
+      "eyebrow": "What is Chabaqa?",
+      "heading": "What is Chabaqa?",
+      "body": "Chabaqa enables individuals to leverage their expertise, regardless of background or access to traditional employment, to build sustainable careers by monetizing their knowledge. We empower creators to connect with global audiences, gain professional recognition, and generate meaningful income from untapped potential.",
+      "pills": [
+        "No code required",
+        "Built for MENA creators",
+        "Arabic & French support",
+        "Free to start"
+      ],
+      "cta": "Get Started Today",
+      "title": "What is Chabaqa?",
+      "description": "Chabaqa enables individuals to leverage their expertise, regardless of background or access to traditional employment, to build sustainable careers by monetizing their knowledge. We empower creators to connect with global audiences, gain professional recognition, and generate meaningful income from untapped potential.",
+      "aboutVideoAriaLabel": "About video",
+      "closeVideo": "Close video",
+      "aboutVideoExpandedTitle": "About Us Video - Expanded",
+      "playDemoVideo": "Play demo video",
+      "aboutVideoAlt": "About Us Video",
+      "getStartedToday": "Get Started Today",
+      "watchDemo": "Watch Demo"
+    },
+    "features": {
+      "eyebrow": "Everything you need",
+      "title": "One platform. All your creator tools.",
+      "sub": "Click any feature to see it in action.",
+      "items": [
+        {
+          "id": "community",
+          "name": "Community",
+          "desc": "Build & engage your audience daily"
+        },
+        {
+          "id": "course",
+          "name": "Online Courses",
+          "desc": "Create, sell & track structured learning"
+        },
+        {
+          "id": "challenge",
+          "name": "Challenges",
+          "desc": "Drive daily engagement with time-based programs"
+        },
+        {
+          "id": "product",
+          "name": "Digital Products",
+          "desc": "Sell templates, presets & e-books instantly"
+        },
+        {
+          "id": "event",
+          "name": "Events",
+          "desc": "Host & sell tickets for online/offline events"
+        },
+        {
+          "id": "oneToOne",
+          "name": "1:1 Coaching Sessions",
+          "desc": "Book, pay & meet — all automated"
+        },
+        {
+          "id": "dms",
+          "name": "Direct Messages",
+          "desc": "Private messaging & group chats"
+        },
+        {
+          "id": "analytics",
+          "name": "Analytics",
+          "desc": "Revenue, growth & engagement in real time"
+        },
+        {
+          "id": "branding",
+          "name": "Branding",
+          "desc": "Custom themes, logos & white-label"
+        }
+      ],
+      "subtitle": "Explore our comprehensive suite of tools designed to enhance your experience",
+      "videoNotSupported": "Your browser does not support the video tag."
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "subtitle": "Get started with Chabaqa in just four simple steps and watch your community flourish.",
+      "eyebrow": "Simple setup",
+      "steps": [
+        {
+          "num": "1",
+          "title": "Create your community",
+          "desc": "Sign up, name your community, add a description and banner. Takes 3 minutes. Your invite link is live immediately."
+        },
+        {
+          "num": "2",
+          "title": "Add your content",
+          "desc": "Upload course videos, create challenges, set your coaching calendar, and list your digital products — all from one dashboard."
+        },
+        {
+          "num": "3",
+          "title": "Share & earn",
+          "desc": "Share your invite link. Members join, pay, and engage. You get paid with transparent transaction fees starting at 2.9%."
+        }
+      ]
+    },
+    "pricing": {
+      "eyebrow": "Transparent pricing",
+      "title": "Start free, scale when ready",
+      "sub": "Every plan includes a 7-day free trial. No hidden fees.",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "save": "Save 17%",
+      "period": {
+        "free": "forever · no card needed",
+        "monthly": "TND / month · 7-day free trial",
+        "yearly": "TND / month · billed yearly"
+      },
+      "ctaFree": "Start for free",
+      "ctaTrial": "Start 7-day free trial",
+      "plans": [
+        {
+          "badge": "🌱 Starter",
+          "name": "Starter",
+          "desc": "Perfect for getting started",
+          "fee": "Transaction fee: 7.9%",
+          "features": [
+            "1 Community (up to 100 members)",
+            "Activate up to 3 Courses",
+            "Digital Products enabled",
+            "2 GB Storage",
+            "Basic analytics",
+            "24/7 Support"
+          ]
+        },
+        {
+          "badge": "⭐ Most Popular",
+          "name": "Growth",
+          "desc": "For growing communities",
+          "fee": "Transaction fee: 4.9%",
+          "features": [
+            "Up to 3 Communities (10k members)",
+            "Unlimited Courses",
+            "Challenges, Sessions & Events",
+            "Magic Reach automation (500/mo)",
+            "Member gamification",
+            "Verified badge · 50 GB storage",
+            "24/7 Priority Support"
+          ]
+        },
+        {
+          "badge": "🚀 Pro",
+          "name": "Pro",
+          "desc": "For professional creators",
+          "fee": "Transaction fee: 2.9%",
+          "features": [
+            "Unlimited Communities & Members",
+            "Unlimited automation",
+            "Add up to 3 team admins",
+            "Custom domain name",
+            "Featured badge + top listings",
+            "24/7 VIP Support"
+          ]
+        }
+      ],
+      "subtitle": "Start free and scale as you grow",
+      "plansAriaLabel": "Pricing plans",
+      "planAriaLabel": "Plan {name}",
+      "goToSlide": "Go to slide {index}",
+      "trialIncluded": "{trial} trial included",
+      "billing": {
+        "monthly": "Monthly",
+        "yearly": "Yearly",
+        "periodMonthly": "/mo",
+        "periodYearly": "/yr",
+        "perMonthShort": "/mo"
+      },
+      "badges": {
+        "mostPopular": "Most Popular"
+      },
+      "saveBadge": {
+        "yearly": "You're saving up to {percent}%",
+        "monthly": "Save up to {percent}% with yearly",
+        "mobileYearly": "Saving up to {percent}%",
+        "mobileMonthly": "Save up to {percent}% yearly"
+      },
+      "errors": {
+        "invalidPlanTitle": "Invalid plan",
+        "invalidPlanDescription": "Please select a valid subscription plan.",
+        "paymentInitFailedTitle": "Payment initialization failed",
+        "noCheckoutUrl": "No checkout URL returned",
+        "tryAgain": "Please try again."
+      }
+    },
+    "videos": {
+      "eyebrow": "Video Tutorials",
+      "title": "Learn from Videos",
+      "sub": "Watch step-by-step walkthroughs and discover how to build, grow and monetize your community.",
+      "watchNow": "Watch now",
+      "items": [
+        {
+          "num": "01",
+          "tag": "Getting Started",
+          "title": "How to Create Your Community on Chabaqa",
+          "desc": "Set up your community in minutes — name, banner, invite link."
+        },
+        {
+          "num": "02",
+          "tag": "Courses",
+          "title": "Build & Sell Your First Online Course",
+          "desc": "Upload videos, create chapters, set pricing and publish."
+        },
+        {
+          "num": "03",
+          "tag": "Challenges",
+          "title": "Launch a 7-Day Challenge",
+          "desc": "Boost daily member engagement and retention."
+        },
+        {
+          "num": "04",
+          "tag": "Coaching",
+          "title": "Set Up Your 1:1 Coaching Calendar",
+          "desc": "Book, pay and meet — fully automated."
+        },
+        {
+          "num": "05",
+          "tag": "Products",
+          "title": "Sell Digital Products & Earn Passively",
+          "desc": "Upload, price and sell presets or e-books instantly."
+        },
+        {
+          "num": "06",
+          "tag": "Events",
+          "title": "Track Your Growth with Analytics",
+          "desc": "Revenue, engagement and member growth in real time."
+        }
+      ],
+      "sectionAriaLabel": "Video tutorials",
+      "subtitle": "Watch tutorials and discover features to help you build your community",
+      "scrollLeft": "Scroll left",
+      "scrollRight": "Scroll right",
+      "thumbnailAlt": "Video thumbnail",
+      "closeVideo": "Close video",
+      "playerTitle": "YouTube video player"
+    },
+    "appInstall": {
+      "heading": "Ready to build your community?",
+      "sub": "Join creators across MENA turning their expertise into income. Free to start.",
+      "primary": "Start for free — no card needed",
+      "secondary": "Talk to the team",
+      "bannerAlt": "Get Chabaqa App",
+      "downloadAppStore": "Download on App Store",
+      "downloadGooglePlay": "Get it on Google Play"
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Common questions",
+      "sub": "Everything you need to know before getting started with Chabaqa.",
+      "items": [
+        {
+          "q": "What makes Chabaqa different?",
+          "a": "Chabaqa is the only all-in-one platform built specifically for creators in Tunisia and MENA. Courses, challenges, coaching, events — one dashboard, one payout, local support in Arabic and French."
+        },
+        {
+          "q": "Is Chabaqa free to start?",
+          "a": "Yes. The Starter plan is free with no credit card required. Every paid plan also includes a 7-day free trial."
+        },
+        {
+          "q": "What is the difference between Courses and Challenges?",
+          "a": "Courses are self-paced learning with chapters and videos. Challenges are time-bound programs designed to maximize engagement and community participation."
+        },
+        {
+          "q": "Can I use Chabaqa if I'm in Tunisia or MENA?",
+          "a": "Absolutely — Chabaqa was built for creators in Tunisia and across MENA. Pricing is in TND, support is in Arabic and French."
+        },
+        {
+          "q": "How do I get paid?",
+          "a": "Revenue is collected through Chabaqa's secure checkout. Payouts are managed from your creator dashboard with transparent transaction fees (2.9%–7.9% depending on plan)."
+        },
+        {
+          "q": "Is there a money-back guarantee?",
+          "a": "Yes — 30-day money-back guarantee on all paid plans, no questions asked."
+        }
+      ],
+      "subtitle": "Everything you need to know about Chabaqa - the all-in-one community platform for creators, coaches, and educators. Learn about features, pricing, and how to build and monetize your community.",
+      "stillHaveQuestions": "Still have questions about Chabaqa?",
+      "contactSupport": "Contact Our Support Team",
+      "metaTitle": "FAQ | Chabaqa",
+      "metaDesc": "Find answers to common questions about Chabaqa — the all-in-one community platform for creators."
+    },
+    "footer": {
+      "description": "Chabaqa startup",
+      "copyrightReserved": "All rights reserved.",
+      "sections": {
+        "product": "Product",
+        "company": "Company",
+        "followUs": "Follow Us"
+      },
+      "links": {
+        "product": {
+          "explore": "Explore",
+          "features": "All Features",
+          "pricing": "Pricing"
+        },
+        "company": {
+          "about": "About",
+          "terms": "Terms of Service",
+          "privacy": "Privacy Policy"
+        }
+      },
+      "manageCookies": "Manage Cookies",
+      "copyright": "© {year} {brand}. All rights reserved."
+    },
+    "explore": {
+      "hero": {
+        "exploreCommunities": "Explore Communities",
+        "createCommunity": "Create Community"
+      },
+      "featured": {
+        "title": "Dive Into What Moves You",
+        "subtitle": "Communities, challenges, events, and 1:1 sessions - All waiting for you!",
+        "badge": "Featured Communities"
+      },
+      "searchSectionTitle": "Start Your Perfect Discovery!",
+      "searchSectionSubtitle": "Browse, filter, and connect with what excites you the most",
+      "searchPlaceholder": "Search...",
+      "filters": {
+        "label": "Filters",
+        "freeOnly": "Free Only",
+        "paidOnly": "Paid Only",
+        "verifiedOnly": "Verified Only",
+        "members1000": "1000+ Members",
+        "topRated": "Top Rated (4.5+)"
+      },
+      "sort": {
+        "popular": "Popular",
+        "newest": "Newest",
+        "members": "Members",
+        "rating": "Rating",
+        "priceLow": "Price Low",
+        "priceHigh": "Price High"
+      },
+      "resultsFor": "Results for",
+      "showing": "Showing {start}-{end} of {total}",
+      "activeCount": "{count} Active",
+      "view": {
+        "grid": "Grid",
+        "list": "List"
+      },
+      "clear": "Clear",
+      "price": "Price",
+      "all": "All",
+      "minMembers": "Min Members",
+      "anySize": "Any Size",
+      "activeFilters": "Active filters",
+      "pageOf": "Page {current} of {total}",
+      "noResultsTitle": "No communities found",
+      "noResultsDescription": "Try adjusting your search criteria or browse all communities.",
+      "clearAll": "Clear All Filters",
+      "verified": "Verified",
+      "createdBy": "Created by",
+      "by": "by",
+      "communityLabel": "Community",
+      "priceLabels": {
+        "free": "Free"
+      },
+      "types": {
+        "community": "Community",
+        "course": "Course",
+        "challenge": "Challenge",
+        "product": "Product",
+        "oneToOne": "1-to-1 Sessions",
+        "event": "Event"
+      },
+      "cta": {
+        "explore": "Explore",
+        "start": "Start",
+        "join": "Join",
+        "buy": "Buy",
+        "book": "Book",
+        "register": "Register",
+        "download": "Download",
+        "viewCommunity": "View Community"
+      },
+      "ctaCard": {
+        "title": "Ready to Start Your Own Community?",
+        "subtitle": "Join thousands of creators building thriving communities and generating meaningful income with Chabaqa.",
+        "createCommunity": "Create Your Community",
+        "learnMore": "Learn More",
+        "pillars": {
+          "build": {
+            "title": "Build",
+            "subtitle": "Invite members"
+          },
+          "engage": {
+            "title": "Engage",
+            "subtitle": "Share & host"
+          },
+          "monetize": {
+            "title": "Monetize",
+            "subtitle": "Earn revenue"
+          }
+        }
+      },
+      "metaTitle": "Explore Communities, Courses & More | Chabaqa",
+      "metaDesc": "Discover communities, courses, challenges, and more — all built by creators in Tunisia and MENA."
+    },
+    "legal": {
+      "badge": "Legal",
+      "effective": "Effective",
+      "updated": "Updated",
+      "onThisPage": "On This Page",
+      "relatedDocument": "Related Document"
+    },
+    "privacyPolicy": {
+      "title": "Privacy Policy",
+      "subtitle": "We treat privacy as a product responsibility. This policy explains what data we collect, why we process it, and how we protect your information.",
+      "effectiveDate": "February 27, 2026",
+      "lastUpdated": "February 28, 2026",
+      "relatedLabel": "Read Terms of Service",
+      "relatedDescription": "For platform usage rules, account obligations, and legal terms.",
+      "metaTitle": "Privacy Policy | Chabaqa",
+      "metaDesc": "Read how Chabaqa collects, uses, protects, and processes your personal data."
+    },
+    "termsOfService": {
+      "title": "Terms of Service",
+      "subtitle": "These terms define how Chabaqa services can be used, including account obligations, creator responsibilities, payments, and legal protections.",
+      "effectiveDate": "February 27, 2026",
+      "lastUpdated": "February 27, 2026",
+      "relatedLabel": "Read Privacy Policy",
+      "relatedDescription": "For data handling, security, retention, and privacy rights.",
+      "metaTitle": "Terms of Service | Chabaqa",
+      "metaDesc": "Review the terms governing your use of Chabaqa platform, including account obligations and creator responsibilities."
+    },
+    "blogs": {
+      "metaTitle": "Blog | Chabaqa",
+      "metaDesc": "Expert insights on building communities, creating courses, and monetizing your knowledge as a creator.",
+      "heroEyebrow": "Chabaqa Blog",
+      "heroTitle": "Grow Your Education Business",
+      "heroTitleAccent": "With Expert Insights",
+      "heroSub": "Practical guides on building communities, creating high-converting courses, and monetizing your expertise.",
+      "catAll": "All",
+      "catCommunity": "Community",
+      "catCourses": "Courses",
+      "catCoaching": "Coaching",
+      "catEngagement": "Engagement",
+      "catMarketing": "Marketing",
+      "catProducts": "Products",
+      "readMore": "Read more",
+      "minRead": "min read",
+      "featured": "Featured",
+      "backToBlog": "← Back to Blog",
+      "relatedPosts": "Related Posts",
+      "toc": "Table of Contents",
+      "share": "Share",
+      "linkCopied": "Copied!",
+      "loadMore": "Load more posts",
+      "showing": "Showing",
+      "of": "of",
+      "posts": "posts",
+      "noResults": "No posts found in this category",
+      "viewAll": "View all posts",
+      "aboutAuthor": "About the Author",
+      "postCta": "Start Building on Chabaqa",
+      "postCtaSub": "Join thousands of creators building thriving communities and courses.",
+      "getStarted": "Get Started Free →"
+    },
+    "metaTitle": "Chabaqa — Turn your passion into business",
+    "metaDesc": "Build and monetize your community with courses, sessions, events, challenges, and digital products on Chabaqa."
+  },
+  "community": {
+    "labels": {
+      "members": "Members",
+      "joined": "Joined"
+    }
+  },
+  "creator": {
+    "labels": {
+      "revenue": "Revenue",
+      "sessions": "Sessions"
+    }
+  },
+  "forms": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Connection error. Please try again."
+  },
+  "validation": {
+    "required": "This field is required."
+  },
+  "seo": {
+    "siteName": "Chabaqa",
+    "defaultTitle": "Chabaqa Official Site | All-in-One Community Platform for Creators"
+  },
+  "admin": {
+    "brandName": "Chabaqa Admin",
+    "menu": {
+      "dashboard": "Dashboard",
+      "users": "Users",
+      "communities": "Communities",
+      "contentModeration": "Content Moderation",
+      "contentManagement": "Content Management",
+      "financial": "Financial",
+      "analytics": "Analytics",
+      "security": "Security",
+      "communication": "Communication",
+      "settings": "Settings",
+      "operations": "Operations",
+      "exportCenter": "Export Center",
+      "bulkOperations": "Bulk Operations",
+      "subscriptions": "Subscriptions",
+      "transactions": "Transactions",
+      "payouts": "Payouts",
+      "auditLogs": "Audit Logs",
+      "securityEvents": "Security Events",
+      "campaigns": "Campaigns",
+      "templates": "Templates",
+      "notifications": "Notifications",
+      "liveSupport": "Live Support"
+    },
+    "content": {
+      "title": "Content Management",
+      "subtitle": "Review and manage all learning content.",
+      "total": "Total",
+      "pending": "Pending",
+      "hidden": "Hidden",
+      "quickActions": {
+        "title": "Quick Actions",
+        "reviewCourses": "Review pending courses",
+        "manageChallenges": "Manage challenges",
+        "upcomingEvents": "Upcoming events",
+        "moderatePosts": "Moderate posts"
+      },
+      "courses": {
+        "title": "Courses",
+        "description": "Review, feature, and manage courses.",
+        "subtitle": "Manage courses and approvals.",
+        "searchPlaceholder": "Search courses...",
+        "filterByStatus": "Filter by status",
+        "allStatuses": "All statuses",
+        "status": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "featured": "Featured",
+          "suspended": "Suspended"
+        },
+        "table": {
+          "course": "Course",
+          "creator": "Creator",
+          "community": "Community",
+          "price": "Price",
+          "enrollments": "Enrollments",
+          "status": "Status",
+          "actions": "Actions"
+        },
+        "actions": {
+          "view": "View",
+          "approve": "Approve",
+          "feature": "Feature",
+          "unfeature": "Unfeature",
+          "suspend": "Suspend"
+        },
+        "free": "Free",
+        "noCourses": "No courses",
+        "noCoursesDescription": "No courses to show.",
+        "showing": "Showing",
+        "of": "of",
+        "fetchError": "Failed to load courses.",
+        "approveSuccess": "Course approved.",
+        "approveError": "Failed to approve course.",
+        "featureSuccess": "Course featured.",
+        "unfeatureSuccess": "Feature removed.",
+        "featureError": "Failed to update feature.",
+        "detail": {
+          "subtitle": "Course details",
+          "fetchError": "Failed to load course.",
+          "approveSuccess": "Course approved.",
+          "approveError": "Failed to approve course.",
+          "featureSuccess": "Course featured.",
+          "unfeatureSuccess": "Feature removed.",
+          "featureError": "Failed to update feature.",
+          "notFound": "Course not found",
+          "notFoundDescription": "This course no longer exists.",
+          "actions": {
+            "approve": "Approve",
+            "feature": "Feature",
+            "unfeature": "Unfeature",
+            "suspend": "Suspend"
+          },
+          "overview": {
+            "title": "Overview",
+            "published": "Published",
+            "draft": "Draft",
+            "featured": "Featured",
+            "free": "Free",
+            "sections": "Sections",
+            "chapters": "Chapters",
+            "ratings": "ratings",
+            "learningObjectives": "Learning objectives",
+            "requirements": "Requirements"
+          },
+          "tabs": {
+            "sections": "Sections",
+            "resources": "Resources"
+          },
+          "sections": {
+            "title": "Sections",
+            "chapters": "chapters",
+            "preview": "Preview"
+          },
+          "resources": {
+            "title": "Resources",
+            "empty": "No resources yet."
+          },
+          "creator": {
+            "title": "Creator"
+          },
+          "community": {
+            "title": "Community",
+            "viewCommunity": "View community"
+          },
+          "stats": {
+            "title": "Stats",
+            "enrollments": "Enrollments",
+            "created": "Created",
+            "updated": "Updated"
+          },
+          "viewEnrollments": "View enrollments"
+        }
+      },
+      "challenges": {
+        "title": "Challenges",
+        "description": "Oversee challenges and submissions.",
+        "subtitle": "Manage challenges and approvals.",
+        "searchPlaceholder": "Search challenges...",
+        "filterByStatus": "Filter by status",
+        "allStatuses": "All statuses",
+        "status": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "featured": "Featured",
+          "active": "Active",
+          "ended": "Ended",
+          "upcoming": "Upcoming"
+        },
+        "difficulty": {
+          "beginner": "Beginner",
+          "intermediate": "Intermediate",
+          "advanced": "Advanced"
+        },
+        "table": {
+          "challenge": "Challenge",
+          "creator": "Creator",
+          "dates": "Dates",
+          "participants": "Participants",
+          "status": "Status",
+          "actions": "Actions"
+        },
+        "actions": {
+          "view": "View",
+          "viewSubmissions": "View submissions",
+          "approve": "Approve",
+          "endEarly": "End early",
+          "feature": "Feature",
+          "unfeature": "Unfeature"
+        },
+        "teamChallenge": "Team challenge",
+        "participants": "participants",
+        "submissions": "submissions",
+        "noChallenges": "No challenges",
+        "noChallengesDescription": "No challenges to show.",
+        "showing": "Showing",
+        "of": "of",
+        "fetchError": "Failed to load challenges.",
+        "approveSuccess": "Challenge approved.",
+        "approveError": "Failed to approve challenge.",
+        "endSuccess": "Challenge ended.",
+        "endError": "Failed to end challenge.",
+        "detail": {
+          "subtitle": "Challenge details",
+          "fetchError": "Failed to load challenge.",
+          "approveSuccess": "Challenge approved.",
+          "approveError": "Failed to approve challenge.",
+          "endSuccess": "Challenge ended.",
+          "endError": "Failed to end challenge.",
+          "notFound": "Challenge not found",
+          "notFoundDescription": "This challenge no longer exists.",
+          "actions": {
+            "approve": "Approve",
+            "endEarly": "End early",
+            "viewSubmissions": "View submissions"
+          },
+          "difficulty": {
+            "beginner": "Beginner",
+            "intermediate": "Intermediate",
+            "advanced": "Advanced"
+          },
+          "status": {
+            "upcoming": "Upcoming",
+            "active": "Active",
+            "ended": "Ended"
+          },
+          "teamChallenge": "Team challenge",
+          "featured": "Featured",
+          "overview": {
+            "title": "Overview",
+            "startDate": "Start date",
+            "endDate": "End date",
+            "participants": "Participants",
+            "submissions": "Submissions",
+            "prizes": "Prizes",
+            "hashtags": "Hashtags",
+            "max": "max"
+          },
+          "tabs": {
+            "tasks": "Tasks",
+            "rules": "Rules",
+            "prizes": "Prizes",
+            "resources": "Resources"
+          },
+          "tasks": {
+            "title": "Tasks",
+            "day": "Day",
+            "points": "points"
+          },
+          "rules": {
+            "title": "Rules",
+            "evaluationCriteria": "Evaluation criteria"
+          },
+          "prizes": {
+            "title": "Prizes",
+            "value": "Value",
+            "empty": "No prizes listed."
+          },
+          "resources": {
+            "title": "Resources",
+            "empty": "No resources yet."
+          },
+          "creator": {
+            "title": "Creator"
+          },
+          "community": {
+            "title": "Community",
+            "viewCommunity": "View community"
+          },
+          "viewSubmissions": "View submissions"
+        }
+      },
+      "events": {
+        "title": "Events",
+        "description": "Manage events and attendees.",
+        "subtitle": "Manage events and approvals.",
+        "searchPlaceholder": "Search events...",
+        "filterByStatus": "Filter by status",
+        "allStatuses": "All statuses",
+        "status": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "featured": "Featured",
+          "upcoming": "Upcoming",
+          "ongoing": "Ongoing",
+          "ended": "Ended",
+          "cancelled": "Cancelled"
+        },
+        "table": {
+          "event": "Event",
+          "creator": "Creator",
+          "dates": "Dates",
+          "attendees": "Attendees",
+          "location": "Location",
+          "status": "Status",
+          "actions": "Actions"
+        },
+        "actions": {
+          "view": "View",
+          "viewAttendees": "View attendees",
+          "approve": "Approve",
+          "messageAttendees": "Message attendees",
+          "cancel": "Cancel"
+        },
+        "ticketTypes": "ticket types",
+        "online": "Online",
+        "inPerson": "In person",
+        "onlineEvent": "Online event",
+        "noEvents": "No events",
+        "noEventsDescription": "No events to show.",
+        "showing": "Showing",
+        "of": "of",
+        "fetchError": "Failed to load events.",
+        "approveSuccess": "Event approved.",
+        "approveError": "Failed to approve event.",
+        "cancelSuccess": "Event cancelled.",
+        "cancelError": "Failed to cancel event.",
+        "detail": {
+          "subtitle": "Event details",
+          "fetchError": "Failed to load event.",
+          "approveSuccess": "Event approved.",
+          "approveError": "Failed to approve event.",
+          "cancelSuccess": "Event cancelled.",
+          "cancelError": "Failed to cancel event.",
+          "notFound": "Event not found",
+          "notFoundDescription": "This event no longer exists.",
+          "actions": {
+            "approve": "Approve",
+            "cancel": "Cancel"
+          },
+          "status": {
+            "upcoming": "Upcoming",
+            "ongoing": "Ongoing",
+            "ended": "Ended",
+            "cancelled": "Cancelled"
+          },
+          "featured": "Featured",
+          "online": "Online",
+          "inPerson": "In person",
+          "onlineEvent": "Online event",
+          "private": "Private",
+          "overview": {
+            "title": "Overview",
+            "startDate": "Start date",
+            "endDate": "End date",
+            "location": "Location",
+            "attendees": "Attendees",
+            "max": "max",
+            "onlineLink": "Online link",
+            "requirements": "Requirements",
+            "whatToBring": "What to bring"
+          },
+          "tabs": {
+            "tickets": "Tickets",
+            "agenda": "Agenda",
+            "speakers": "Speakers"
+          },
+          "tickets": {
+            "title": "Tickets",
+            "available": "Available",
+            "sold": "Sold",
+            "free": "Free",
+            "empty": "No tickets available."
+          },
+          "agenda": {
+            "title": "Agenda",
+            "speaker": "Speaker"
+          },
+          "speakers": {
+            "title": "Speakers"
+          },
+          "creator": {
+            "title": "Creator"
+          },
+          "community": {
+            "title": "Community",
+            "viewCommunity": "View community"
+          },
+          "viewAttendees": "View attendees",
+          "messageAttendees": "Message attendees"
+        }
+      },
+      "posts": {
+        "title": "Posts",
+        "description": "Moderate community posts.",
+        "subtitle": "Manage posts and moderation.",
+        "searchPlaceholder": "Search posts...",
+        "filterByStatus": "Filter by status",
+        "allStatuses": "All statuses",
+        "status": {
+          "published": "Published",
+          "hidden": "Hidden",
+          "featured": "Featured"
+        },
+        "table": {
+          "post": "Post",
+          "author": "Author",
+          "community": "Community",
+          "engagement": "Engagement",
+          "date": "Date",
+          "status": "Status",
+          "actions": "Actions"
+        },
+        "actions": {
+          "view": "View",
+          "feature": "Feature",
+          "unfeature": "Unfeature",
+          "hide": "Hide",
+          "restore": "Restore",
+          "delete": "Delete"
+        },
+        "noPosts": "No posts",
+        "noPostsDescription": "No posts to show.",
+        "showing": "Showing",
+        "of": "of",
+        "fetchError": "Failed to load posts.",
+        "hideSuccess": "Post hidden.",
+        "restoreSuccess": "Post restored.",
+        "deleteSuccess": "Post deleted.",
+        "moderateError": "Failed to update status.",
+        "featureSuccess": "Post featured.",
+        "unfeatureSuccess": "Feature removed.",
+        "featureError": "Failed to update feature.",
+        "detail": {
+          "subtitle": "Post details",
+          "fetchError": "Failed to load post.",
+          "notFound": "Post not found",
+          "notFoundDescription": "This post no longer exists.",
+          "untitledPost": "Untitled post",
+          "actions": {
+            "feature": "Feature",
+            "unfeature": "Unfeature",
+            "hide": "Hide",
+            "restore": "Restore",
+            "delete": "Delete"
+          },
+          "status": {
+            "published": "Published",
+            "hidden": "Hidden",
+            "featured": "Featured"
+          },
+          "engagement": {
+            "likes": "Likes",
+            "comments": "Comments"
+          },
+          "comments": {
+            "title": "Comments",
+            "empty": "No comments yet."
+          },
+          "author": {
+            "title": "Author"
+          },
+          "community": {
+            "title": "Community",
+            "viewCommunity": "View community"
+          },
+          "stats": {
+            "title": "Stats",
+            "likes": "Likes",
+            "comments": "Comments",
+            "created": "Created",
+            "updated": "Updated"
+          },
+          "hideSuccess": "Post hidden.",
+          "restoreSuccess": "Post restored.",
+          "deleteSuccess": "Post deleted.",
+          "deleteCommentSuccess": "Comment deleted.",
+          "deleteCommentError": "Failed to delete comment.",
+          "moderateError": "Failed to update status.",
+          "featureSuccess": "Post featured.",
+          "unfeatureSuccess": "Feature removed.",
+          "featureError": "Failed to update feature."
+        }
+      }
+    },
+    "header": {
+      "profile": "Profile",
+      "settings": "Settings",
+      "logout": "Logout",
+      "notifications": "Notifications",
+      "openAdminMenu": "Open admin menu",
+      "toggleNavigation": "Toggle navigation menu"
+    },
+    "dashboard": {
+      "totalUsers": "Total Users",
+      "pendingCommunities": "Pending Communities",
+      "pendingContent": "Pending Content",
+      "liveSupportQueue": "Live Support Queue",
+      "revenue": "Revenue",
+      "userBase": "User base",
+      "awaitingApproval": "Awaiting approval",
+      "needsReview": "Needs review",
+      "availableTickets": "Available tickets",
+      "thisPeriod": "This period",
+      "refresh": "Refresh",
+      "loadingDashboard": "Loading admin dashboard",
+      "loadingDashboardData": "Loading dashboard data...",
+      "failedToLoad": "Failed to load dashboard data"
+    },
+    "login": {
+      "title": "Admin Portal",
+      "subtitle": "Sign in to access the admin dashboard",
+      "email": "Email Address",
+      "emailPlaceholder": "admin@chabaqa.com",
+      "password": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "signIn": "Sign In",
+      "signingIn": "Signing in...",
+      "loginSuccess": "Login Successful",
+      "loginFailed": "Login Failed",
+      "invalidCredentials": "Invalid credentials. Please try again.",
+      "twoFactorTitle": "Two-Factor Authentication",
+      "twoFactorSubtitle": "Enter the 6-digit verification code",
+      "verificationCode": "Verification Code",
+      "verificationCodePlaceholder": "123456",
+      "verifyAndLogin": "Verify & Login",
+      "verifying": "Verifying...",
+      "verificationSuccessful": "Verification Successful",
+      "verificationFailed": "Verification Failed",
+      "backToLogin": "Back to Login",
+      "developmentMode": "Development Mode:",
+      "developmentHint": "2FA code will be displayed after login"
+    },
+    "routing": {
+      "redirectingWorkspace": "Redirecting to your admin workspace...",
+      "accessRestrictedTitle": "Access Restricted",
+      "accessRestrictedDescription": "You do not have the required capability to view this admin route.",
+      "goToAllowedArea": "Go To Allowed Area",
+      "reevaluateLanding": "Re-evaluate Landing"
+    }
+  },
+  "exploreUI": {
+    "heroLabel": "Explore hero",
+    "badge": "200+ Creators in Tunisia & MENA",
+    "heroTitle1": "Discover What",
+    "heroTitle2": "Moves You",
+    "heroSub": "Explore communities, courses, challenges, and more — all built by creators in Tunisia and MENA.",
+    "searchPlaceholder": "Search communities, courses, creators...",
+    "searchLabel": "Search explore",
+    "clearSearch": "Clear search",
+    "featuredEyebrow": "Top Communities",
+    "featuredTitle": "Featured Communities",
+    "categoryLabel": "Filter by category",
+    "typeLabel": "Filter by type",
+    "catAll": "All",
+    "catFitness": "Fitness",
+    "catEducation": "Education",
+    "catTechnology": "Technology",
+    "catBusiness": "Business",
+    "catCreative": "Creative",
+    "catLanguage": "Language",
+    "typeCommunity": "Community",
+    "typeCourse": "Course",
+    "typeChallenge": "Challenge",
+    "typeProduct": "Product",
+    "typeSession": "1:1 Session",
+    "typeEvent": "Event",
+    "sortLabel": "Sort by",
+    "gridLabel": "Explore content",
+    "resultsOf": "of",
+    "results": "results",
+    "clearAll": "Clear filters",
+    "noResults": "No results found",
+    "noResultsSub": "Try adjusting your search or filters to find what you're looking for.",
+    "promoLabel": "Start building",
+    "promoBadge": "For Creators, By Creators",
+    "promoTitle": "Ready to Build Your Own Community?",
+    "promoSub": "Join hundreds of creators in Tunisia and MENA who are building, engaging, and monetizing their audience with Chabaqa.",
+    "promoF1": "Build communities",
+    "promoF2": "Sell courses",
+    "promoF3": "Earn income",
+    "promoF4": "Run challenges",
+    "promoCTA": "Start for free — no card needed",
+    "promoSecondary": "Explore more creators",
+    "promoF1Sub": "Build thriving communities around your expertise",
+    "promoF2Sub": "Create and sell courses, challenges & digital products",
+    "promoF3Sub": "Monetize your audience with multiple revenue streams",
+    "promoF4Sub": "Run competitions and gamify your community",
+    "statCreators": "Creators",
+    "statCourses": "Courses & Products",
+    "statMembers": "Members",
+    "free": "Free",
+    "ctaCommunity": "Explore",
+    "ctaCourse": "Start",
+    "ctaChallenge": "Join",
+    "ctaProduct": "Download",
+    "ctaSession": "Book",
+    "ctaEvent": "Register"
+  },
+  "cookieConsent": {
+    "bannerText": "We use cookies to keep Chabaqa secure and improve your experience.",
+    "privacyPolicy": "Privacy Policy",
+    "settings": "Settings",
+    "reject": "Reject",
+    "acceptAll": "Accept all",
+    "modalBadge": "Chabaqa Privacy",
+    "modalTitle": "Cookie Preferences",
+    "modalDesc": "Essential cookies are always active. You can decide whether to enable analytics cookies.",
+    "essentialTitle": "Essential",
+    "essentialDesc": "Required for authentication, security, and basic site functions.",
+    "alwaysActive": "Always active",
+    "analyticsTitle": "Analytics",
+    "analyticsDesc": "Helps us understand usage and improve the product experience.",
+    "rejectNonEssential": "Reject non-essential",
+    "savePreferences": "Save preferences"
+  },
+  "dashboard": {
+    "metaTitle": "Dashboard | Chabaqa",
+    "metaTemplate": "%s | Chabaqa",
+    "metaDesc": "Manage your Chabaqa communities, courses, and creator tools."
+  }
+}

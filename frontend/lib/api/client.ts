@@ -1,0 +1,322 @@
+import {
+  ensureBrowserCsrfToken,
+  getBrowserCookie,
+  issueBrowserCsrfToken,
+  isCsrfTokenRejection,
+  refreshBrowserAccessToken,
+} from '@/lib/auth-refresh';
+
+// API Response types
+export interface ApiSuccessResponse<T> {
+  success: true;
+  data: T;
+  message?: string;
+  timestamp?: string;
+}
+
+export interface ApiErrorResponse {
+  success: false;
+  error: string;
+  message: string;
+  statusCode: number;
+  timestamp?: string;
+}
+
+export interface PaginatedResponse<T> {
+  success: true;
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
+export interface ApiGetOptions {
+  cache?: RequestCache;
+  next?: NextFetchRequestConfig;
+}
+
+export interface ApiRequestOptions {
+  headers?: HeadersInit;
+}
+
+// API Client Configuration
+// IMPORTANT:
+// - `NEXT_PUBLIC_*` env vars are inlined at build-time by Next.js.
+// - For server-side (SSR / RSC) requests in Docker, we need a runtime env var
+//   (e.g. `API_INTERNAL_URL`) so the frontend container can reach `backend:3000`.
+const getApiBaseUrl = () => {
+  if (typeof window === 'undefined') {
+    return process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+  }
+
+  return '/api';
+};
+
+class ApiClient {
+  private baseURL: string;
+  // Single-flight refresh: all concurrent 401 requests share this promise.
+  private refreshPromise: Promise<boolean> | null = null;
+
+  constructor() {
+    this.baseURL = getApiBaseUrl();
+  }
+
+  private async handleResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        message: 'An error occurred',
+        statusCode: response.status,
+      }));
+      const extractErrorMessage = (value: any): string => {
+        if (!value) return '';
+        if (typeof value === 'string') return value;
+        if (Array.isArray(value)) return value.map((v) => extractErrorMessage(v)).filter(Boolean).join(', ');
+        if (typeof value === 'object') {
+          if (Array.isArray(value.details)) {
+            const details = value.details
+              .flatMap((detail: any) => detail?.messages || detail?.message || [])
+              .filter(Boolean)
+              .join(', ');
+            if (details) return details;
+          }
+          if (typeof value.message === 'string') return value.message;
+          if (value.error) return extractErrorMessage(value.error);
+          if (typeof value.code === 'string') return value.code;
+        }
+        return '';
+      };
+      const rawMessage =
+        extractErrorMessage(error?.message) ||
+        extractErrorMessage(error?.error) ||
+        extractErrorMessage(error?.data?.message) ||
+        extractErrorMessage(error?.data?.error) ||
+        'An error occurred';
+      error.message = rawMessage;
+      error.statusCode = response.status;
+
+      // Transform error using error message mapping
+      try {
+        const { mapErrorMessage } = await import('../utils/error-messages');
+        const mapped = mapErrorMessage(error);
+        error.message = mapped.message;
+        error.guidance = mapped.guidance;
+      } catch (importError) {
+        // If error-messages module fails to load, use original error
+        console.warn('Failed to load error message mapping:', importError);
+      }
+
+      throw error;
+    }
+    
+    // Handle empty responses (e.g., 204 No Content for DELETE operations)
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return {} as T;
+    }
+    
+    // Check if response has content before parsing JSON
+    const text = await response.text();
+    if (!text) {
+      return {} as T;
+    }
+    
+    return JSON.parse(text);
+  }
+
+  private buildUrl(endpoint: string, params?: Record<string, any>): string {
+    const base = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const url = new URL(`${this.baseURL}${endpoint}`, base);
+    if (params) {
+      Object.keys(params).forEach((key) => {
+        if (params[key] !== undefined && params[key] !== null) {
+          url.searchParams.append(key, String(params[key]));
+        }
+      });
+    }
+    return url.toString();
+  }
+
+  private getCookie(name: string): string {
+    return getBrowserCookie(name);
+  }
+
+  private getHeaders(isFormData: boolean = false, includeCsrf: boolean = false): HeadersInit {
+    const headers: HeadersInit = {};
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    if (includeCsrf && typeof window !== 'undefined') {
+      const csrfToken = this.getCookie('chabaqa_csrf');
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+    }
+
+    // Add Authorization header if we have an access token
+    // Only add on client side to avoid SSR issues
+    if (typeof window !== 'undefined') {
+      try {
+        const { tokenStorage } = require('@/lib/token-storage');
+        const accessToken = tokenStorage.getAccessToken() || this.getCookie('accessToken');
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+      } catch (error) {
+        // Silently fail - user might not be authenticated
+      }
+    }
+
+    return headers;
+  }
+
+  private async executeUnsafeRequest(doRequest: () => Promise<Response>): Promise<Response> {
+    await ensureBrowserCsrfToken(this.baseURL);
+
+    let response = await doRequest();
+    if (await isCsrfTokenRejection(response)) {
+      await issueBrowserCsrfToken(this.baseURL);
+      response = await doRequest();
+    }
+    if (response.status === 401) {
+      const refreshed = await this.tryRefreshToken();
+      if (refreshed) response = await doRequest();
+    }
+    return response;
+  }
+
+  // Generic HTTP methods
+  async get<T>(
+    endpoint: string,
+    params?: Record<string, any>,
+    options?: ApiGetOptions,
+  ): Promise<T> {
+    const url = this.buildUrl(endpoint, params);
+    const doRequest = async () => fetch(url, {
+      method: 'GET',
+      headers: this.getHeaders(),
+      credentials: 'include',
+      // Publication state changes must not be served from a browser cache.
+      cache: (options?.cache || (typeof window === 'undefined' ? 'no-store' : undefined)) as RequestCache | undefined,
+    });
+    let response = await doRequest();
+    if (response.status === 401) {
+      const refreshed = await this.tryRefreshToken();
+      if (refreshed) {
+        response = await doRequest();
+      }
+    }
+    return this.handleResponse<T>(response);
+  }
+
+  async post<T>(endpoint: string, data?: any, options?: ApiRequestOptions): Promise<T> {
+    const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: { ...this.getHeaders(false, true), ...options?.headers },
+      credentials: 'include',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
+  }
+
+  async patch<T>(endpoint: string, data?: any): Promise<T> {
+    const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
+      method: 'PATCH',
+      headers: this.getHeaders(false, true),
+      credentials: 'include',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
+  }
+
+  async put<T>(endpoint: string, data?: any): Promise<T> {
+    const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
+      method: 'PUT',
+      headers: this.getHeaders(false, true),
+      credentials: 'include',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(false, true),
+      credentials: 'include',
+    });
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
+  }
+
+  // File upload
+  async uploadFile<T>(
+    endpoint: string,
+    file: File,
+    fieldName: string = 'file',
+    extraFields?: Record<string, string | number | boolean | undefined | null>,
+  ): Promise<T> {
+    const formData = new FormData();
+    formData.append(fieldName, file);
+    if (extraFields) {
+      Object.entries(extraFields).forEach(([key, value]) => {
+        if (value === undefined || value === null) return;
+        formData.append(key, String(value));
+      });
+    }
+
+    const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: this.getHeaders(true, true),
+      credentials: 'include',
+      body: formData,
+    });
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
+  }
+
+  // Multiple file upload
+  async uploadFiles<T>(endpoint: string, files: File[]): Promise<T> {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    const doRequest = async () => fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: this.getHeaders(true, true),
+      credentials: 'include',
+      body: formData,
+    });
+    return this.handleResponse<T>(await this.executeUnsafeRequest(doRequest));
+  }
+
+  // Token refresh: single-flight so all concurrent 401 requests share one refresh.
+  private async tryRefreshToken(): Promise<boolean> {
+    // If a refresh is already in progress, piggyback on it — don't start a second one.
+    if (this.refreshPromise) {
+      return this.refreshPromise
+    }
+
+    this.refreshPromise = (async () => {
+      try {
+        const accessToken = await refreshBrowserAccessToken(this.baseURL)
+        return !!accessToken
+      } catch (error) {
+        console.error('[ApiClient] Token refresh failed:', error)
+        return false
+      } finally {
+        this.refreshPromise = null
+      }
+    })()
+
+    return this.refreshPromise
+  }
+}
+
+export const apiClient = new ApiClient();

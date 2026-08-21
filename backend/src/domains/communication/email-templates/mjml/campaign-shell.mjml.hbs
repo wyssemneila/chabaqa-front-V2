@@ -1,0 +1,26 @@
+<mjml>
+  <mj-head><mj-title>{{subject}}</mj-title><mj-preview>{{preheader}}</mj-preview></mj-head>
+  <mj-body background-color="#f0f0f5" width="640px">
+    <mj-section background-color="#ffffff" border-radius="18px 18px 0 0" padding="26px 24px 10px">
+      <mj-column>
+        <mj-text align="center" font-size="28px" font-weight="900"><span style="color:#8e78fb">chabaqa</span><span style="color:#ff9b28">.</span></mj-text>
+        {{#if communityName}}<mj-text align="center" color="#8e78fb" font-size="12px" font-weight="700" letter-spacing="1px">{{communityName}}</mj-text>{{/if}}
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#ffffff" padding="22px 34px">
+      <mj-column>
+        <mj-text>{{{contentHtml}}}</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#ffffff" border-radius="0 0 18px 18px" padding="18px 34px">
+      <mj-column>
+        <mj-text align="center" color="#aaaaaa" font-size="12px">You received this email because you are a member of {{communityName}}.</mj-text>
+        <mj-text align="center" color="#aaaaaa" font-size="12px">
+          {{#if preferencesUrl}}<a href="{{preferencesUrl}}" style="color:#8e78fb;text-decoration:none;font-weight:700;">Manage Preferences</a>{{/if}}
+          {{#if showFooterDivider}} &nbsp;|&nbsp; {{/if}}
+          {{#if unsubscribeUrl}}<a href="{{unsubscribeUrl}}" style="color:#8e78fb;text-decoration:none;font-weight:700;">Unsubscribe</a>{{/if}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

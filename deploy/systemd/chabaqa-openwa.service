@@ -1,0 +1,24 @@
+[Unit]
+Description=Chabaqa OpenWA Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=openwa
+Group=openwa
+WorkingDirectory=/opt/openwa/current
+EnvironmentFile=/etc/chabaqa/openwa.env
+ExecStart=/home/ubuntu/.local/node-v22.19.0-linux-x64/bin/node dist/main.js
+Restart=always
+RestartSec=10
+TimeoutStopSec=45s
+MemoryMax=2G
+CPUQuota=150%
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/openwa/data
+
+[Install]
+WantedBy=multi-user.target
