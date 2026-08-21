@@ -51,47 +51,30 @@ export default function CommunitySettingsPage() {
         <DashTopbar />
 
         <main className="flex-1 px-6 py-6 max-w-6xl w-full mx-auto pb-24">
-          {/* Hero header with gradient */}
-          <div className="relative rounded-3xl p-6 mb-6 overflow-hidden"
-               style={{ background: 'linear-gradient(135deg, var(--p) 0%, #a08cff 55%, var(--pink) 130%)' }}>
-            <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full blur-3xl opacity-40"
-                 style={{ background: 'var(--cyan)' }} />
-            <div className="absolute -left-8 -bottom-16 w-48 h-48 rounded-full blur-3xl opacity-35"
-                 style={{ background: 'var(--orange)' }} />
-            <div className="relative flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-sm"
-                   style={{ background: 'rgba(255,255,255,.22)' }}>
-                <Settings size={22} color="#fff" />
-              </div>
-              <div className="text-white">
-                <h1 className="text-[22px] font-semibold leading-tight">
-                  {t('Community Settings', 'إعدادات المجتمع')}
-                </h1>
-                <p className="text-[13px] opacity-90 mt-0.5">
-                  {t('Configure how your community looks, feels and works.', 'اضبط شكل مجتمعك وطريقة عمله.')}
-                </p>
-              </div>
-            </div>
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-[22px] font-semibold" style={{ color: 'var(--t1)' }}>
+              {t('Community Settings', 'إعدادات المجتمع')}
+            </h1>
+            <p className="text-[13px] mt-1" style={{ color: 'var(--t3)' }}>
+              {t('Configure how your community looks, feels and works.', 'اضبط شكل مجتمعك وطريقة عمله.')}
+            </p>
           </div>
 
-          {/* Tabs — colored pills */}
+          {/* Tabs — minimalist pills with colored icons */}
           <div className="flex gap-2 overflow-x-auto pb-2 mb-2 -mx-1 px-1">
             {TABS.map((T) => {
               const active = tab === T.id
               const Icon = T.icon
               return (
                 <button key={T.id} onClick={() => setTab(T.id)}
-                  className="flex items-center gap-2 px-3.5 py-2.5 text-[13px] font-semibold whitespace-nowrap rounded-xl transition-all border"
+                  className="flex items-center gap-2 px-3.5 py-2.5 text-[13px] font-medium whitespace-nowrap rounded-xl transition-colors border"
                   style={{
-                    background: active ? T.color : 'var(--white)',
-                    color: active ? '#fff' : 'var(--t2)',
+                    background: active ? T.softColor : 'var(--white)',
+                    color: active ? T.color : 'var(--t2)',
                     borderColor: active ? T.color : 'var(--bd)',
-                    boxShadow: active ? `0 6px 16px -6px ${T.color}` : 'none',
                   }}>
-                  <div className="w-5 h-5 rounded-md flex items-center justify-center"
-                       style={{ background: active ? 'rgba(255,255,255,.22)' : T.softColor, color: active ? '#fff' : T.color }}>
-                    <Icon size={12} />
-                  </div>
+                  <Icon size={14} style={{ color: T.color }} />
                   {T.label[lang]}
                 </button>
               )
