@@ -26,11 +26,9 @@ const navGroups = [
     ],
   },
   {
-    label: { en: 'Revenue', ar: 'الإيرادات' },
+    label: { en: 'Finance', ar: 'المالية' },
     items: [
-      { label: { en: 'Subscriptions',   ar: 'الاشتراكات'    }, href: '/creator/subscriptions',   icon: 'creditcard' },
-      { label: { en: 'Payouts',         ar: 'المدفوعات'     }, href: '/creator/payouts',         icon: 'dollar'     },
-      { label: { en: 'Manual Payments', ar: 'المدفوعات اليدوية' }, href: '/creator/manual-payments', icon: 'creditcard' },
+      { label: { en: 'Payouts', ar: 'المدفوعات' }, href: '/creator/payouts', icon: 'dollar' },
     ],
   },
   {
