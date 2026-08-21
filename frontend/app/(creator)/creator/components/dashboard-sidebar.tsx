@@ -216,6 +216,7 @@ export function DashboardSidebar({ user, onLogout }: DashboardSidebarProps) {
       expandable: true,
       items: [
         { title: "Communities", href: "/creator/communities", icon: launchIcons.community },
+        { title: "Community Settings", href: `${communityBasePath}/settings`, icon: Settings },
         { title: "Customize", href: `${communityBasePath}/customize`, icon: launchIcons.branding },
         { title: "Team & Roles", href: "/creator/team", icon: Shield, requiredPermission: CommunityPermission.ROLES_MANAGE as CommunityPermissionValue },
       ],
