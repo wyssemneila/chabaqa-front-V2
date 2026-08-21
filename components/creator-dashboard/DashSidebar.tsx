@@ -11,7 +11,7 @@ const navGroups = [
     label: { en: 'Main', ar: 'الرئيسية' },
     items: [
       { label: { en: 'Overview',    ar: 'نظرة عامة'   }, href: '/creator',                    icon: 'grid'      },
-      { label: { en: 'Settings',    ar: 'الإعدادات'   }, href: '/creator/community-settings', icon: 'brush'     },
+      { label: { en: 'Settings',    ar: 'الإعدادات'   }, href: '/creator/community-settings', icon: 'gear'      },
       { label: { en: 'Analytics',   ar: 'التحليلات'   }, href: '/creator/analytics',          icon: 'chart'     },
     ],
   },
@@ -43,7 +43,7 @@ const navGroups = [
     ],
   },
   {
-    label: { en: 'Workspace', ar: 'مساحة العمل' },
+    label: { en: 'Support', ar: 'المساعدة' },
     items: [
       { label: { en: 'Integrations',  ar: 'التكاملات'       }, href: '/creator/integrations', icon: 'settings', soon: true },
       { label: { en: 'Help & Support', ar: 'المساعدة والدعم' }, href: '/creator/help',        icon: 'help'               },
@@ -95,7 +95,9 @@ export default function DashSidebar() {
               {group.label[lang]}
             </p>
             {group.items.map((item) => {
-              const active = bare === item.href || bare.startsWith(item.href + '/')
+              const active = item.href === '/creator'
+                ? bare === '/creator'
+                : bare === item.href || bare.startsWith(item.href + '/')
               return (
                 <Link key={item.href} href={item.href}
                   className="flex items-center gap-2 px-4 py-[7px] text-[13px] relative transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--p)] focus-visible:ring-offset-1"
