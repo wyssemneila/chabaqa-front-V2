@@ -722,31 +722,7 @@ export default function ProfilePage() {
 
               {/* ── Socials tab ── */}
               {editTab === 'socials' && (
-                <div className="space-y-3.5">
-                  <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
-                    Enter the full URL to your social media profiles (e.g. https://x.com/yourhandle).
-                  </p>
-                  {SOCIALS.map(s => (
-                    <div key={s.id}>
-                      <label className="flex items-center gap-2 text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>
-                        <span style={{ color: s.color }}>
-                          <SocialSvg platform={s.id} size={14} />
-                        </span>
-                        {s.label}
-                      </label>
-                      <input
-                        type="url"
-                        value={draft.socials[s.id as keyof SocialLinks]}
-                        onChange={e => setDraft(d => ({ ...d, socials: { ...d.socials, [s.id]: e.target.value } }))}
-                        placeholder={s.placeholder}
-                        className="w-full h-10 px-3 rounded-xl text-[13px] outline-none"
-                        style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)', transition: 'border-color .15s' }}
-                        onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--p)' }}
-                        onBlur={e =>  { (e.target as HTMLInputElement).style.borderColor = 'var(--bd)' }}
-                      />
-                    </div>
-                  ))}
-                </div>
+                <SocialsTab draft={draft} setDraft={setDraft} />
               )}
 
               {/* ── Notifications tab ── */}
@@ -761,75 +737,12 @@ export default function ProfilePage() {
 
               {/* ── Security tab ── */}
               {editTab === 'security' && (
-                <div className="space-y-6">
-                  {/* Change password */}
-                  <div>
-                    <h3 className="text-[14px] font-semibold mb-4" style={{ color: 'var(--t1)' }}>Change Password</h3>
-                    <div className="space-y-3">
-                      <PwField label="Current Password" value={pwForm.current}
-                        onChange={v => setPwForm(f => ({ ...f, current: v }))} placeholder="Enter current password" />
-                      <PwField label="New Password" value={pwForm.newPw}
-                        onChange={v => setPwForm(f => ({ ...f, newPw: v }))} placeholder="At least 8 characters" />
-                      <PwField label="Confirm New Password" value={pwForm.confirm}
-                        onChange={v => setPwForm(f => ({ ...f, confirm: v }))} placeholder="Repeat new password" />
-                    </div>
-                    {pwError && (
-                      <p className="mt-2 text-[12px] font-medium" style={{ color: '#dc2626' }}>{pwError}</p>
-                    )}
-                    {pwSuccess && (
-                      <div className="mt-2 flex items-center gap-1.5 text-[12px] font-medium" style={{ color: '#16a34a' }}>
-                        <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
-                        Password updated successfully!
-                      </div>
-                    )}
-                    <button onClick={handlePwSubmit}
-                      className="mt-4 w-full h-10 rounded-xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-85"
-                      style={{ background: 'var(--p)', color: '#fff' }}>
-                      Update Password
-                    </button>
-                  </div>
-
-                  {/* Log out all devices */}
-                  <div className="rounded-xl p-4" style={{ border: '1px solid var(--bd)', background: 'var(--bg)' }}>
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                           style={{ background: '#ffe4ee', color: '#f65887' }}>
-                        <LogOut className="w-4 h-4" strokeWidth={2} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
-                          Log out of all devices
-                        </p>
-                        <p className="text-[12px] mb-3" style={{ color: 'var(--t3)' }}>
-                          Sign you out of every browser, phone or tablet where you're logged in.
-                        </p>
-                        <button
-                          className="px-3 py-1.5 rounded-lg text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-85"
-                          style={{ background: '#f65887', color: '#fff' }}>
-                          Log out everywhere
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Danger Zone */}
-                  <div className="rounded-xl p-4" style={{ border: '1.5px solid #fca5a5', background: '#fff5f5' }}>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <AlertTriangle className="w-4 h-4 shrink-0" style={{ color: '#dc2626' }} strokeWidth={1.8} />
-                      <h3 className="text-[13px] font-semibold" style={{ color: '#dc2626' }}>Danger Zone</h3>
-                    </div>
-                    <p className="text-[12px] mb-3 leading-relaxed" style={{ color: '#7f1d1d' }}>
-                      Once you delete your account, all your data, communities, and content will be permanently removed.
-                      This action cannot be undone.
-                    </p>
-                    <button onClick={() => setDeleteOpen(true)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-85"
-                      style={{ background: '#dc2626', color: '#fff' }}>
-                      <Trash2 className="w-3.5 h-3.5" strokeWidth={1.8} />
-                      Delete Account
-                    </button>
-                  </div>
-                </div>
+                <SecurityTab
+                  profileEmail={profile.email}
+                  pwForm={pwForm} setPwForm={setPwForm}
+                  pwError={pwError} pwSuccess={pwSuccess}
+                  onSubmitPassword={handlePwSubmit}
+                  onDelete={() => setDeleteOpen(true)} />
               )}
             </div>
 
@@ -883,6 +796,277 @@ export default function ProfilePage() {
         </div>
       )}
     </>
+  )
+}
+
+/* ─── Socials tab (compact: primary + add-more) ────────────── */
+
+const PRIMARY_SOCIALS = ['youtube', 'instagram', 'tiktok']
+const EXTRA_SOCIALS   = ['twitter', 'linkedin', 'github', 'facebook', 'website']
+
+function SocialsTab({ draft, setDraft }: { draft: ProfileData; setDraft: (fn: (d: ProfileData) => ProfileData) => void }) {
+  // Visible = primary + any extra that already has a value
+  const alwaysOn = new Set(PRIMARY_SOCIALS)
+  const withValues = EXTRA_SOCIALS.filter(id => draft.socials[id as keyof SocialLinks])
+  const initialVisible = new Set([...alwaysOn, ...withValues])
+
+  const [visible, setVisible] = useState<Set<string>>(initialVisible)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerSelected, setPickerSelected] = useState<Set<string>>(new Set())
+
+  const availableExtras = EXTRA_SOCIALS.filter(id => !visible.has(id))
+  const visibleList = SOCIALS.filter(s => visible.has(s.id))
+
+  const openPicker = () => { setPickerSelected(new Set()); setPickerOpen(true) }
+  const togglePickerItem = (id: string) => {
+    const s = new Set(pickerSelected)
+    if (s.has(id)) s.delete(id); else s.add(id)
+    setPickerSelected(s)
+  }
+  const addSelected = () => {
+    const next = new Set(visible)
+    pickerSelected.forEach(id => next.add(id))
+    setVisible(next); setPickerOpen(false); setPickerSelected(new Set())
+  }
+  const removeSocial = (id: string) => {
+    // Clear value + hide (primary stay visible even if cleared)
+    setDraft(d => ({ ...d, socials: { ...d.socials, [id]: '' } }))
+    if (!alwaysOn.has(id)) {
+      const next = new Set(visible); next.delete(id); setVisible(next)
+    }
+  }
+
+  return (
+    <div className="space-y-3.5">
+      <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
+        Enter the full URL to your social media profiles.
+      </p>
+
+      {visibleList.map(s => (
+        <div key={s.id}>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="flex items-center gap-2 text-[12px] font-medium" style={{ color: 'var(--t2)' }}>
+              <span style={{ color: s.color }}><SocialSvg platform={s.id} size={14} /></span>
+              {s.label}
+            </label>
+            {!alwaysOn.has(s.id) && (
+              <button onClick={() => removeSocial(s.id)}
+                      className="text-[11px] font-medium cursor-pointer hover:opacity-70"
+                      style={{ color: 'var(--t3)' }}>
+                Remove
+              </button>
+            )}
+          </div>
+          <input type="url"
+                 value={draft.socials[s.id as keyof SocialLinks]}
+                 onChange={e => setDraft(d => ({ ...d, socials: { ...d.socials, [s.id]: e.target.value } }))}
+                 placeholder={s.placeholder}
+                 className="w-full h-10 px-3 rounded-xl text-[13px] outline-none"
+                 style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)', transition: 'border-color .15s' }}
+                 onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--p)' }}
+                 onBlur={e =>  { (e.target as HTMLInputElement).style.borderColor = 'var(--bd)' }} />
+        </div>
+      ))}
+
+      {availableExtras.length > 0 && (
+        <button onClick={openPicker}
+                className="w-full h-10 rounded-xl border-2 border-dashed text-[13px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors hover:border-[var(--p)] hover:text-[var(--p)]"
+                style={{ borderColor: 'var(--bd)', color: 'var(--t2)' }}>
+          <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Add other social
+        </button>
+      )}
+
+      {pickerOpen && (
+        <div className="fixed inset-0 z-[65] flex items-center justify-center p-4"
+             style={{ background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)' }}
+             onClick={e => { if (e.target === e.currentTarget) setPickerOpen(false) }}>
+          <div className="w-full max-w-[360px] rounded-2xl p-5"
+               style={{ background: 'var(--white)', boxShadow: '0 24px 80px rgba(0,0,0,.28)' }}>
+            <h3 className="text-[15px] font-semibold mb-1" style={{ color: 'var(--t1)' }}>Add socials</h3>
+            <p className="text-[12px] mb-4" style={{ color: 'var(--t3)' }}>
+              Pick one or more to add.
+            </p>
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              {availableExtras.map(id => {
+                const s = SOCIALS.find(x => x.id === id)!
+                const picked = pickerSelected.has(id)
+                return (
+                  <button key={id} onClick={() => togglePickerItem(id)}
+                          className="flex flex-col items-center gap-1.5 rounded-xl border p-3 cursor-pointer transition-all"
+                          style={{
+                            background: picked ? 'var(--p2)' : 'var(--bg)',
+                            borderColor: picked ? 'var(--p)' : 'var(--bd)',
+                            borderWidth: 1.5,
+                          }}>
+                    <span style={{ color: s.color }}><SocialSvg platform={s.id} size={22} /></span>
+                    <span className="text-[11px] font-medium" style={{ color: picked ? 'var(--p)' : 'var(--t2)' }}>
+                      {s.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setPickerOpen(false)}
+                      className="px-4 h-9 rounded-xl text-[13px] font-medium cursor-pointer hover:opacity-70"
+                      style={{ color: 'var(--t2)' }}>
+                Cancel
+              </button>
+              <button onClick={addSelected}
+                      disabled={pickerSelected.size === 0}
+                      className="px-5 h-9 rounded-xl text-[13px] font-semibold text-white disabled:opacity-40 cursor-pointer"
+                      style={{ background: 'var(--p)' }}>
+                Add{pickerSelected.size > 0 ? ` (${pickerSelected.size})` : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Security tab (expandable list) ────────────────────────── */
+
+interface SecurityTabProps {
+  profileEmail: string
+  pwForm: { current: string; newPw: string; confirm: string }
+  setPwForm: React.Dispatch<React.SetStateAction<{ current: string; newPw: string; confirm: string }>>
+  pwError: string
+  pwSuccess: boolean
+  onSubmitPassword: () => void
+  onDelete: () => void
+}
+
+function SecurityTab({ profileEmail, pwForm, setPwForm, pwError, pwSuccess, onSubmitPassword, onDelete }: SecurityTabProps) {
+  const [open, setOpen] = useState<'email' | 'password' | null>(null)
+  const [emailCurrent, setEmailCurrent] = useState('')
+  const [emailNew, setEmailNew] = useState('')
+  const [emailPw, setEmailPw] = useState('')
+  const [emailSaved, setEmailSaved] = useState(false)
+
+  const saveEmail = () => {
+    if (!emailNew || !emailPw) return
+    setEmailSaved(true)
+    setTimeout(() => { setEmailSaved(false); setOpen(null); setEmailNew(''); setEmailPw('') }, 1200)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Email row */}
+      <ExpandRow icon={Mail} iconColor="var(--p)" iconBg="var(--p2)"
+                 title="Change email" hint={profileEmail}
+                 open={open === 'email'} onToggle={() => setOpen(open === 'email' ? null : 'email')}>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>New email address</label>
+            <input type="email" value={emailNew} onChange={e => setEmailNew(e.target.value)}
+                   placeholder="you@domain.com"
+                   className="w-full h-10 px-3 rounded-xl text-[13px] outline-none"
+                   style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }} />
+          </div>
+          <div>
+            <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>Confirm with password</label>
+            <input type="password" value={emailPw} onChange={e => setEmailPw(e.target.value)}
+                   placeholder="Your current password"
+                   className="w-full h-10 px-3 rounded-xl text-[13px] outline-none"
+                   style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }} />
+          </div>
+          <button onClick={saveEmail}
+                  className="w-full h-10 rounded-xl text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-85"
+                  style={{ background: emailSaved ? '#16a34a' : 'var(--p)', color: '#fff' }}>
+            {emailSaved ? 'Saved!' : 'Update email'}
+          </button>
+        </div>
+      </ExpandRow>
+
+      {/* Password row */}
+      <ExpandRow icon={Shield} iconColor="var(--p)" iconBg="var(--p2)"
+                 title="Change password" hint="At least 8 characters"
+                 open={open === 'password'} onToggle={() => setOpen(open === 'password' ? null : 'password')}>
+        <div className="space-y-3">
+          <PwField label="Current Password" value={pwForm.current}
+                   onChange={v => setPwForm(f => ({ ...f, current: v }))} placeholder="Enter current password" />
+          <PwField label="New Password" value={pwForm.newPw}
+                   onChange={v => setPwForm(f => ({ ...f, newPw: v }))} placeholder="At least 8 characters" />
+          <PwField label="Confirm New Password" value={pwForm.confirm}
+                   onChange={v => setPwForm(f => ({ ...f, confirm: v }))} placeholder="Repeat new password" />
+        </div>
+        {pwError && <p className="mt-2 text-[12px] font-medium" style={{ color: '#dc2626' }}>{pwError}</p>}
+        {pwSuccess && (
+          <div className="mt-2 flex items-center gap-1.5 text-[12px] font-medium" style={{ color: '#16a34a' }}>
+            <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> Password updated successfully!
+          </div>
+        )}
+        <button onClick={onSubmitPassword}
+                className="mt-4 w-full h-10 rounded-xl text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-85"
+                style={{ background: 'var(--p)', color: '#fff' }}>
+          Update Password
+        </button>
+      </ExpandRow>
+
+      {/* Log out of all devices — always visible */}
+      <ExpandRow icon={LogOut} iconColor="#f65887" iconBg="#ffe4ee"
+                 title="Log out of all devices" hint="Sign you out on every browser, phone or tablet"
+                 open={false} onToggle={() => {}} actionLabel="Log out everywhere" actionColor="#f65887"
+                 onAction={() => { /* wire later */ }} />
+
+      {/* Danger Zone */}
+      <div className="rounded-xl p-4" style={{ border: '1.5px solid #fca5a5', background: '#fff5f5' }}>
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+               style={{ background: '#fee2e2' }}>
+            <AlertTriangle className="w-4 h-4" style={{ color: '#dc2626' }} strokeWidth={1.8} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold" style={{ color: '#dc2626' }}>Delete account</p>
+            <p className="text-[12px] mb-3" style={{ color: '#7f1d1d' }}>
+              Permanently erase your account, communities and content. This can't be undone.
+            </p>
+            <button onClick={onDelete}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-85"
+                    style={{ background: '#dc2626', color: '#fff' }}>
+              <Trash2 className="w-3.5 h-3.5" /> Delete account
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ExpandRow({ icon: Icon, iconColor, iconBg, title, hint, open, onToggle, children, actionLabel, actionColor, onAction }:
+  { icon: any; iconColor: string; iconBg: string; title: string; hint?: string; open: boolean; onToggle: () => void
+    children?: React.ReactNode; actionLabel?: string; actionColor?: string; onAction?: () => void }) {
+  const isAction = !!actionLabel
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--bd)' }}>
+      <button onClick={isAction ? onAction : onToggle}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer transition-colors hover:bg-[var(--bg)]"
+              style={{ background: open ? 'var(--bg)' : 'transparent' }}>
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+             style={{ background: iconBg, color: iconColor }}>
+          <Icon className="w-4 h-4" strokeWidth={2} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>{title}</p>
+          {hint && <p className="text-[11.5px] truncate" style={{ color: 'var(--t3)' }}>{hint}</p>}
+        </div>
+        {isAction ? (
+          <span className="text-[11.5px] font-semibold px-2.5 py-1 rounded-md" style={{ background: actionColor, color: '#fff' }}>
+            {actionLabel}
+          </span>
+        ) : (
+          <ChevronDown className="w-4 h-4" style={{ color: 'var(--t3)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+        )}
+      </button>
+      {open && children && (
+        <div className="px-4 pb-4 pt-1" style={{ background: 'var(--bg)' }}>
+          {children}
+        </div>
+      )}
+    </div>
   )
 }
 
