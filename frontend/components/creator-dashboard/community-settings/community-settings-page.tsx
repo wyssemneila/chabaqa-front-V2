@@ -89,11 +89,12 @@ function generateId() {
 /* ─── Props ──────────────────────────────────────────────────────── */
 
 interface CommunitySettingsPageProps {
-  slug: string
+  slug?: string
 }
 
-export function CommunitySettingsPage({ slug }: CommunitySettingsPageProps) {
+export function CommunitySettingsPage({ slug }: CommunitySettingsPageProps = {}) {
   const { selectedCommunity } = useCreatorCommunity()
+  const effectiveSlug = slug || selectedCommunity?.slug || ""
   const [tab, setTab] = useState("general")
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -185,7 +186,7 @@ export function CommunitySettingsPage({ slug }: CommunitySettingsPageProps) {
 
       setCommunityName(community?.name || "")
       setDescription(community?.description || community?.bio || "")
-      setCommunitySlug(community?.slug || slug || "")
+      setCommunitySlug(community?.slug || effectiveSlug || "")
       setIsPublic((settings?.visibility || (community?.isPrivate ? "private" : "public")) === "public")
       setAllowComments(settings?.allowMemberPosts ?? true)
       setRequireApproval(settings?.requireApproval ?? false)
@@ -194,7 +195,7 @@ export function CommunitySettingsPage({ slug }: CommunitySettingsPageProps) {
       setLogoUrl(settings?.logo || community?.logo || community?.logoUrl || "")
       setCoverUrl(settings?.heroBackground || community?.coverImage || community?.coverUrl || community?.image || "")
       setIconUrl(settings?.favicon || community?.icon || "")
-      setShareLink(`https://chabaqa.io/${community?.slug || slug}/about`)
+      setShareLink(`https://chabaqa.io/${community?.slug || effectiveSlug}/about`)
 
       if (settings?.notifications) setNotifications(settings.notifications)
       if (settings?.pricingModel) setPricingModel(settings.pricingModel)
@@ -206,7 +207,7 @@ export function CommunitySettingsPage({ slug }: CommunitySettingsPageProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [selectedCommunity, slug])
+  }, [selectedCommunity, effectiveSlug])
 
   useEffect(() => { loadSettings() }, [loadSettings])
 
