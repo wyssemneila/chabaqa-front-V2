@@ -28,7 +28,8 @@ const navGroups = [
   {
     label: { en: 'Finance', ar: 'المالية' },
     items: [
-      { label: { en: 'Payouts', ar: 'المدفوعات' }, href: '/creator/payouts', icon: 'dollar' },
+      { label: { en: 'Payouts',  ar: 'المدفوعات' }, href: '/creator/payouts',  icon: 'dollar'     },
+      { label: { en: 'Billing',  ar: 'الفوترة'    }, href: '/creator/billing',  icon: 'creditcard' },
     ],
   },
   {
