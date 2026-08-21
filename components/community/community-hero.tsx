@@ -20,50 +20,53 @@ export default function CommunityHero({ name, description, slug, membersCount, o
 
   return (
     <>
-      {/* Banner on top with info bar overlay (Skool-style) */}
-      <div className="relative rounded-2xl overflow-hidden bg-[#ede9ff]"
-           style={{ aspectRatio: '16 / 5' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={bannerSrc} alt="" className="w-full h-full object-cover" />
-        {/* bottom gradient for text legibility if we ever overlay */}
-        <div className="absolute inset-0 pointer-events-none"
-             style={{ background: 'linear-gradient(180deg, transparent 55%, rgba(0,0,0,.15) 100%)' }} />
-      </div>
+      {/* Two-column hero: info card left, 16:9 banner right */}
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(260px,340px)_1fr] gap-4">
 
-      {/* Info bar — compact single row under the banner */}
-      <div className="flex items-center gap-3 mt-3 flex-wrap">
-        {/* Avatar — small, next to name */}
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center font-black text-white text-[14px] shadow-sm flex-shrink-0"
-             style={{ background: avatarColor }}>
-          {avatarInitials}
-        </div>
-
-        {/* Name + meta */}
-        <div className="min-w-0 flex-1">
-          <h1 className="text-[16px] font-bold text-gray-900 truncate leading-tight">{name}</h1>
-          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-            <span className="flex items-center gap-1 text-[11px] text-gray-500">
-              <Users className="w-3 h-3" strokeWidth={1.7} />
-              <span className="font-semibold text-gray-700">{membersCount}</span> Members
-            </span>
-            <span className="flex items-center gap-1 text-[11px] text-gray-500">
-              <Circle className="w-2.5 h-2.5 text-emerald-400" fill="#34d399" strokeWidth={0} />
-              <span className="font-semibold text-gray-700">{onlineCount}</span> Online
-            </span>
-            <span className="flex items-center gap-1 text-[11px] text-gray-500">
-              <ShieldCheck className="w-3 h-3 text-amber-500" strokeWidth={1.7} />
-              <span className="font-semibold text-gray-700">{adminCount}</span> Admins
-            </span>
+        {/* ── LEFT: Info card ── */}
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 flex flex-col gap-3">
+          {/* Top: avatar + name + description */}
+          <div className="flex items-start gap-3">
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center font-black text-white text-lg shadow-sm flex-shrink-0"
+                 style={{ background: avatarColor }}>
+              {avatarInitials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-[16px] font-bold text-gray-900 truncate">{name}</h1>
+              {description && (
+                <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-2 leading-snug">{description}</p>
+              )}
+            </div>
           </div>
+
+          {/* Stat cards — stacked to fill the vertical space */}
+          <div className="flex flex-col gap-1.5 flex-1">
+            <StatCard icon={<Users className="w-3.5 h-3.5" strokeWidth={1.8} />}
+                      label="Members" value={membersCount}
+                      iconBg="#ede9ff" iconColor="#8e78fb" />
+            <StatCard icon={<Circle className="w-3 h-3" fill="#34d399" strokeWidth={0} />}
+                      label="Online" value={onlineCount}
+                      iconBg="#dcfce7" iconColor="#22c55e" />
+            <StatCard icon={<ShieldCheck className="w-3.5 h-3.5" strokeWidth={1.8} />}
+                      label="Admins" value={adminCount}
+                      iconBg="#fef3c7" iconColor="#f59e0b" />
+          </div>
+
+          {/* Settings */}
+          <button onClick={() => setSettingsOpen(true)}
+                  className="h-9 px-4 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all hover:shadow-sm w-full"
+                  style={{ background: '#f6f5fb', color: '#46426a', border: '1px solid #eceaf4' }}>
+            <Settings className="w-3.5 h-3.5" strokeWidth={1.8} />
+            Settings
+          </button>
         </div>
 
-        {/* Settings */}
-        <button onClick={() => setSettingsOpen(true)}
-                className="h-9 px-4 rounded-full text-[12px] font-semibold flex items-center gap-1.5 transition-all hover:shadow-sm flex-shrink-0"
-                style={{ background: '#f6f5fb', color: '#46426a', border: '1px solid #eceaf4' }}>
-          <Settings className="w-3.5 h-3.5" strokeWidth={1.8} />
-          Settings
-        </button>
+        {/* ── RIGHT: 16:9 banner card ── */}
+        <div className="rounded-2xl overflow-hidden relative bg-[#ede9ff]"
+             style={{ aspectRatio: '16 / 9' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={bannerSrc} alt="" className="w-full h-full object-cover" />
+        </div>
       </div>
 
       {/* Settings Modal */}
@@ -73,6 +76,22 @@ export default function CommunityHero({ name, description, slug, membersCount, o
 }
 
 type Tab = 'invite' | 'notifications' | 'membership'
+
+function StatCard({ icon, label, value, iconBg, iconColor }:
+  { icon: React.ReactNode; label: string; value: number; iconBg: string; iconColor: string }) {
+  return (
+    <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-gray-100 bg-[#fafafd]">
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+           style={{ background: iconBg, color: iconColor }}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0 flex items-baseline gap-1.5">
+        <span className="text-[13px] font-bold text-gray-900">{value}</span>
+        <span className="text-[11.5px] text-gray-500">{label}</span>
+      </div>
+    </div>
+  )
+}
 
 function SettingsModal({ name, slug, onClose }: { name: string; slug: string; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('invite')
