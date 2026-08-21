@@ -11,14 +11,13 @@ import {
   FileUp, Zap, Globe, Lock, Unlock, ArrowRight, Loader2, PartyPopper,
 } from 'lucide-react'
 
-type TabId = 'general' | 'invitation' | 'landing' | 'pricing' | 'tabs' | 'rules' | 'notifications'
+type TabId = 'general' | 'invitation' | 'pricing' | 'tabs' | 'rules' | 'notifications'
 type PricingModel = 'free' | 'subscription' | 'freemium' | 'one-time'
 type BillingCycle = 'monthly' | 'yearly' | 'both'
 
 const TABS: { id: TabId; label: { en: string; ar: string }; icon: any }[] = [
   { id: 'general',       label: { en: 'General',       ar: 'عام'         }, icon: Settings  },
   { id: 'invitation',    label: { en: 'Invitation',    ar: 'الدعوة'      }, icon: UserPlus  },
-  { id: 'landing',       label: { en: 'Landing Page',  ar: 'صفحة الهبوط' }, icon: Palette   },
   { id: 'pricing',       label: { en: 'Pricing',       ar: 'التسعير'     }, icon: DollarSign },
   { id: 'tabs',          label: { en: 'Tabs & Layout', ar: 'التبويبات'   }, icon: Layout    },
   { id: 'rules',         label: { en: 'Rules',         ar: 'القواعد'     }, icon: BookOpen  },
@@ -85,7 +84,6 @@ export default function CommunitySettingsPage() {
           <div className="mt-6">
             {tab === 'general'       && <GeneralSection t={t} onSave={triggerSave} />}
             {tab === 'invitation'    && <InvitationSection t={t} />}
-            {tab === 'landing'       && <LandingSection t={t} />}
             {tab === 'pricing'       && <PricingSection t={t} onSave={triggerSave} />}
             {tab === 'tabs'          && <TabsLayoutSection t={t} onSave={triggerSave} />}
             {tab === 'rules'         && <RulesSection t={t} onSave={triggerSave} />}
@@ -209,6 +207,29 @@ function GeneralSection({ t, onSave }: { t: (en: string, ar: string) => string; 
           </div>
         </Field>
       )}
+
+      <Divider />
+
+      {/* Landing Page shortcut */}
+      <Link href="/creator/branding"
+        className="flex items-center gap-3 p-4 rounded-xl border transition-colors hover:opacity-90"
+        style={{ background: 'var(--p2)', borderColor: 'var(--p)' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+             style={{ background: 'var(--p)', color: '#fff' }}>
+          <Palette size={18} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+            {t('Landing Page', 'صفحة الهبوط')}
+          </p>
+          <p className="text-[12px]" style={{ color: 'var(--t2)' }}>
+            {t('Design the page people see when they discover your community.', 'صمم الصفحة التي يراها الناس عند اكتشاف مجتمعك.')}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 text-[13px] font-semibold" style={{ color: 'var(--p)' }}>
+          {t('Open Page Builder', 'افتح المنشئ')} <ArrowRight size={13} />
+        </div>
+      </Link>
 
       <Divider />
 
@@ -395,31 +416,6 @@ function InvitationSection({ t }: { t: (en: string, ar: string) => string }) {
   )
 }
 
-/* ─── LANDING PAGE ────────────────────────────────────────────── */
-
-function LandingSection({ t }: { t: (en: string, ar: string) => string }) {
-  return (
-    <div className="rounded-2xl border overflow-hidden"
-         style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
-      <div className="flex items-center justify-between px-4 py-2 border-b"
-           style={{ borderColor: 'var(--bd)', background: 'var(--bg)' }}>
-        <p className="text-[12px] font-medium" style={{ color: 'var(--t3)' }}>
-          {t('Design your landing page below — changes save inside the builder.', 'صمم صفحة الهبوط أدناه — يتم الحفظ داخل المنشئ.')}
-        </p>
-        <a href="/creator/branding" target="_blank" rel="noopener"
-           className="text-[12px] font-semibold flex items-center gap-1"
-           style={{ color: 'var(--p)' }}>
-          {t('Open full screen', 'عرض ملء الشاشة')} <ArrowRight size={12} />
-        </a>
-      </div>
-      <iframe
-        src="/creator/branding?embed=1"
-        className="w-full block"
-        style={{ height: 'calc(100vh - 260px)', minHeight: 620, border: 0 }}
-      />
-    </div>
-  )
-}
 
 /* ─── PRICING ────────────────────────────────────────────── */
 

@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
@@ -32,8 +31,6 @@ const BLOCK_ICONS: Record<BlockType, React.ElementType> = {
 
 export default function BrandingPage() {
   const { lang } = useDashPrefs()
-  const searchParams = useSearchParams()
-  const embed = searchParams?.get('embed') === '1'
   const isAr = lang === 'ar'
   const t = (en: string, ar: string) => (isAr ? ar : en)
 
@@ -151,9 +148,9 @@ export default function BrandingPage() {
 
       {/* h-screen + overflow-hidden keeps the editor panel fixed while only the preview scrolls */}
       <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
-        {!embed && <DashSidebar />}
-        <div className={embed ? "flex-1 flex flex-col h-screen overflow-hidden" : "md:ml-[220px] flex-1 flex flex-col h-screen overflow-hidden"}>
-          {!embed && <DashTopbar title={t('Branding', 'الهوية')} subtitle={t('Design your community landing page', 'صمّم صفحة هبوط مجتمعك')} />}
+        <DashSidebar />
+        <div className="md:ml-[220px] flex-1 flex flex-col h-screen overflow-hidden">
+          <DashTopbar title={t('Branding', 'الهوية')} subtitle={t('Design your community landing page', 'صمّم صفحة هبوط مجتمعك')} />
 
           <div className="flex-1 flex overflow-hidden min-h-0">
 
