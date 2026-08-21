@@ -126,82 +126,42 @@ function GeneralSection({ t, onSave }: { t: (en: string, ar: string) => string; 
   const [visibility, setVisibility] = useState<'public' | 'private'>('public')
   const [requireQuestions, setRequireQuestions] = useState(false)
   const [questions, setQuestions] = useState<string[]>([''])
-  const logoInput = useRef<HTMLInputElement>(null)
-
-  const handleFile = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    if (f) {
-      const reader = new FileReader()
-      reader.onload = () => setter(String(reader.result))
-      reader.readAsDataURL(f)
-    }
-  }
 
   return (
     <div className="space-y-4">
-      {/* Card 1 — Cover with overlay avatar & name */}
-      <div className="rounded-2xl border overflow-hidden"
+      {/* Card 1 — Identity: Icon + Cover uploaders + Name + Description */}
+      <div className="rounded-2xl border p-5 space-y-5"
            style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
-        {/* Cover */}
-        <div className="relative h-40 group"
-             style={{
-               background: cover
-                 ? `url(${cover}) center/cover`
-                 : 'linear-gradient(135deg, var(--p) 0%, #a08cff 55%, var(--pink) 130%)',
-             }}>
-          <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
-                 onChange={handleFile(setCover)} />
-          <div className="absolute top-3 right-3 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white flex items-center gap-1 backdrop-blur-md"
-               style={{ background: 'rgba(0,0,0,.4)' }}>
-            <Upload size={11} /> {cover ? t('Change cover', 'تغيير الغلاف') : t('Upload cover', 'رفع الغلاف')}
-          </div>
+        {/* Two uploaders side by side */}
+        <div className="flex gap-5 flex-wrap">
+          <NiceUploader label={t('Icon', 'الأيقونة')}
+            hint={t('Recommended: 128 × 128', 'مقاس مقترح: 128 × 128')}
+            value={logo} onChange={setLogo} w={110} h={110} />
+          <NiceUploader label={t('Cover', 'الغلاف')}
+            hint={t('Recommended: 1084 × 576', 'مقاس مقترح: 1084 × 576')}
+            value={cover} onChange={setCover} w={220} h={110} />
         </div>
 
-        {/* Avatar + basic info */}
-        <div className="p-5 -mt-10 relative">
-          <div className="flex items-end gap-4 mb-4">
-            <div className="w-20 h-20 rounded-2xl border-4 flex-shrink-0 relative overflow-hidden"
-                 style={{ borderColor: 'var(--white)', background: 'var(--p2)' }}>
-              {logo ? (
-                <img src={logo} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[24px] font-bold" style={{ color: 'var(--p)' }}>
-                  {name.charAt(0) || 'C'}
-                </div>
-              )}
-              <input ref={logoInput} type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
-                     onChange={handleFile(setLogo)} />
-            </div>
-            <button onClick={() => logoInput.current?.click()}
-              className="mb-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1"
-              style={{ background: 'var(--p2)', color: 'var(--p)' }}>
-              <Upload size={11} /> {t('Change logo', 'تغيير الشعار')}
-            </button>
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[12px] font-medium" style={{ color: 'var(--t2)' }}>{t('Community Name', 'اسم المجتمع')}</label>
+            <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{name.length}/30</span>
           </div>
+          <input value={name} maxLength={30} onChange={(e) => setName(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-xl text-[14px] border outline-none focus:border-[var(--p)]"
+            style={{ background: 'var(--bg)', borderColor: 'var(--bd)', color: 'var(--t1)' }} />
+        </div>
 
-          {/* Name & description */}
-          <div className="space-y-3">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[12px] font-medium" style={{ color: 'var(--t2)' }}>{t('Community Name', 'اسم المجتمع')}</label>
-                <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{name.length}/30</span>
-              </div>
-              <input value={name} maxLength={30} onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl text-[14px] border outline-none focus:border-[var(--p)]"
-                style={{ background: 'var(--bg)', borderColor: 'var(--bd)', color: 'var(--t1)' }} />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[12px] font-medium" style={{ color: 'var(--t2)' }}>{t('Description', 'الوصف')}</label>
-                <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{description.length}/150</span>
-              </div>
-              <textarea value={description} maxLength={150} rows={2}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={t('Say what your community is about…', 'اكتب فكرة مجتمعك…')}
-                className="w-full px-3 py-2.5 rounded-xl text-[13px] border outline-none resize-none focus:border-[var(--p)]"
-                style={{ background: 'var(--bg)', borderColor: 'var(--bd)', color: 'var(--t1)' }} />
-            </div>
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[12px] font-medium" style={{ color: 'var(--t2)' }}>{t('Description', 'الوصف')}</label>
+            <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{description.length}/150</span>
           </div>
+          <textarea value={description} maxLength={150} rows={2}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={t('Say what your community is about…', 'اكتب فكرة مجتمعك…')}
+            className="w-full px-3 py-2.5 rounded-xl text-[13px] border outline-none resize-none focus:border-[var(--p)]"
+            style={{ background: 'var(--bg)', borderColor: 'var(--bd)', color: 'var(--t1)' }} />
         </div>
       </div>
 
@@ -969,6 +929,65 @@ function SmallUpload({ label, hint, value, onChange, size, aspect }:
           {value ? 'MODIFY' : 'IMPORT'}
         </button>
       </div>
+    </div>
+  )
+}
+
+function NiceUploader({ label, hint, value, onChange, w, h }:
+  { label: string; hint: string; value: string; onChange: (v: string) => void; w: number; h: number }) {
+  const handle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    const reader = new FileReader()
+    reader.onload = () => onChange(String(reader.result))
+    reader.readAsDataURL(f)
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5" style={{ width: w }}>
+        <label className="text-[12px] font-medium" style={{ color: 'var(--t2)' }}>{label}</label>
+      </div>
+
+      <div className="group relative rounded-2xl border-2 border-dashed overflow-hidden transition-colors"
+           style={{ width: w, height: h, borderColor: value ? 'transparent' : 'var(--bd2)', background: value ? 'transparent' : 'var(--p2)' }}>
+        {value ? (
+          <img src={value} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                 style={{ background: 'var(--white)', color: 'var(--p)' }}>
+              <Upload size={14} />
+            </div>
+            <span className="text-[11px] font-semibold" style={{ color: 'var(--p)' }}>
+              Upload
+            </span>
+          </div>
+        )}
+
+        {value && (
+          <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+               style={{ background: 'rgba(0,0,0,.5)' }}>
+            <label className="px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer flex items-center gap-1"
+                   style={{ background: '#fff', color: 'var(--t1)' }}>
+              <Upload size={11} /> Change
+              <input type="file" accept="image/*" className="hidden" onChange={handle} />
+            </label>
+            <button onClick={() => onChange('')}
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(255,255,255,.9)', color: '#ef4444' }}>
+              <Trash2 size={12} />
+            </button>
+          </div>
+        )}
+
+        {!value && (
+          <input type="file" accept="image/*"
+            className="absolute inset-0 opacity-0 cursor-pointer" onChange={handle} />
+        )}
+      </div>
+
+      <p className="text-[10px] mt-1.5" style={{ color: 'var(--t3)', width: w }}>{hint}</p>
     </div>
   )
 }
