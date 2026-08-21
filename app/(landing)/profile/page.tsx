@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
 import {
   Pencil, MapPin, Mail, Search, Camera,
   BookOpen, Calendar, Trophy, Zap, Package, Users,
   Check, X, Eye, EyeOff, Trash2, AlertTriangle,
+  Bell, CreditCard, LogOut, ChevronDown, ArrowRight, Shield,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -378,8 +380,9 @@ export default function ProfilePage() {
     return DEFAULT_PROFILE
   })
 
+  type EditTab = 'profile' | 'socials' | 'security' | 'notifications' | 'billing'
   const [editOpen, setEditOpen]         = useState(false)
-  const [editTab, setEditTab]           = useState<'profile' | 'socials' | 'security'>('profile')
+  const [editTab, setEditTab]           = useState<EditTab>('profile')
   const [draft, setDraft]               = useState<ProfileData>(profile)
   const [pwForm, setPwForm]             = useState({ current: '', newPw: '', confirm: '' })
   const [pwError, setPwError]           = useState('')
@@ -388,6 +391,19 @@ export default function ProfilePage() {
   const [deleteInput, setDeleteInput]   = useState('')
   const [saved, setSaved]               = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const q = searchParams?.get('edit')
+    if (q && ['profile','socials','security','notifications','billing'].includes(q)) {
+      openEdit(q as EditTab)
+      // clean the URL so refresh doesn't re-open
+      const url = new URL(window.location.href)
+      url.searchParams.delete('edit')
+      window.history.replaceState({}, '', url.toString())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const saveProfile = () => {
     setProfile(draft)
@@ -613,16 +629,22 @@ export default function ProfilePage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex px-6 mt-4 gap-0" style={{ borderBottom: '1px solid var(--bd)' }}>
-              {(['profile', 'socials', 'security'] as const).map(tab => (
-                <button key={tab} onClick={() => setEditTab(tab)}
-                  className="px-4 py-2.5 text-[13px] font-medium cursor-pointer transition-colors"
+            <div className="flex px-6 mt-4 gap-0 overflow-x-auto" style={{ borderBottom: '1px solid var(--bd)' }}>
+              {([
+                { id: 'profile',       label: 'Profile' },
+                { id: 'socials',       label: 'Social Links' },
+                { id: 'notifications', label: 'Notifications' },
+                { id: 'billing',       label: 'Billing' },
+                { id: 'security',      label: 'Security' },
+              ] as { id: EditTab; label: string }[]).map(tabItem => (
+                <button key={tabItem.id} onClick={() => setEditTab(tabItem.id)}
+                  className="px-4 py-2.5 text-[13px] font-medium cursor-pointer transition-colors whitespace-nowrap"
                   style={{
-                    color: editTab === tab ? 'var(--p)' : 'var(--t3)',
-                    borderBottom: editTab === tab ? '2px solid var(--p)' : '2px solid transparent',
+                    color: editTab === tabItem.id ? 'var(--p)' : 'var(--t3)',
+                    borderBottom: editTab === tabItem.id ? '2px solid var(--p)' : '2px solid transparent',
                     marginBottom: -1,
                   }}>
-                  {tab === 'profile' ? 'Profile' : tab === 'socials' ? 'Social Links' : 'Security'}
+                  {tabItem.label}
                 </button>
               ))}
             </div>
@@ -727,6 +749,16 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              {/* ── Notifications tab ── */}
+              {editTab === 'notifications' && (
+                <NotificationsTab />
+              )}
+
+              {/* ── Billing tab ── */}
+              {editTab === 'billing' && (
+                <BillingTab />
+              )}
+
               {/* ── Security tab ── */}
               {editTab === 'security' && (
                 <div className="space-y-6">
@@ -757,6 +789,29 @@ export default function ProfilePage() {
                     </button>
                   </div>
 
+                  {/* Log out all devices */}
+                  <div className="rounded-xl p-4" style={{ border: '1px solid var(--bd)', background: 'var(--bg)' }}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                           style={{ background: '#ffe4ee', color: '#f65887' }}>
+                        <LogOut className="w-4 h-4" strokeWidth={2} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+                          Log out of all devices
+                        </p>
+                        <p className="text-[12px] mb-3" style={{ color: 'var(--t3)' }}>
+                          Sign you out of every browser, phone or tablet where you're logged in.
+                        </p>
+                        <button
+                          className="px-3 py-1.5 rounded-lg text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-85"
+                          style={{ background: '#f65887', color: '#fff' }}>
+                          Log out everywhere
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Danger Zone */}
                   <div className="rounded-xl p-4" style={{ border: '1.5px solid #fca5a5', background: '#fff5f5' }}>
                     <div className="flex items-center gap-2 mb-1.5">
@@ -779,7 +834,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Modal footer — only for profile & socials tabs */}
-            {editTab !== 'security' && (
+            {(editTab === 'profile' || editTab === 'socials') && (
               <div className="px-6 pb-5 pt-2 flex items-center justify-end gap-3"
                 style={{ borderTop: '1px solid var(--bd)' }}>
                 <button onClick={() => setEditOpen(false)}
@@ -800,51 +855,27 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* ── Delete Confirm Modal ── */}
+      {/* ── Delete Confirm Modal — 2 steps ── */}
       {deleteOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)' }}>
-          <div className="w-full max-w-[400px] rounded-2xl p-6"
-            style={{ background: 'var(--white)', border: '1.5px solid #fca5a5', boxShadow: '0 24px 80px rgba(0,0,0,.28)' }}>
+        <DeleteAccountFlow
+          onCancel={() => { setDeleteOpen(false); setDeleteInput('') }}
+          onDelete={() => {
+            try { localStorage.clear() } catch { /* ignore */ }
+            setDeleteOpen(false); setDeleteInput(''); setEditOpen(false)
+          }} />
+      )}
+      {false && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="w-full max-w-[400px] rounded-2xl p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ background: '#fee2e2' }}>
-                <AlertTriangle className="w-5 h-5" style={{ color: '#dc2626' }} strokeWidth={1.8} />
-              </div>
-              <h3 className="text-[15px] font-semibold" style={{ color: 'var(--t1)' }}>Delete Account</h3>
+              <h3>Delete Account</h3>
             </div>
-            <p className="text-[13px] mb-4 leading-relaxed" style={{ color: 'var(--t2)' }}>
-              This will permanently delete your account and all associated data.
-              To confirm, type{' '}
-              <strong style={{ color: 'var(--t1)' }}>{profile.name}</strong>{' '}below.
-            </p>
-            <input
-              value={deleteInput}
-              onChange={e => setDeleteInput(e.target.value)}
-              placeholder={profile.name}
-              className="w-full h-10 px-3 rounded-xl text-[13px] outline-none mb-4"
-              style={{ border: '1.5px solid #fca5a5', background: '#fff5f5', color: 'var(--t1)' }}
-            />
+            <input value={deleteInput} onChange={e => setDeleteInput(e.target.value)} />
             <div className="flex gap-3">
-              <button onClick={() => { setDeleteOpen(false); setDeleteInput('') }}
-                className="flex-1 h-10 rounded-xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-70"
-                style={{ border: '1px solid var(--bd)', color: 'var(--t2)' }}>
+              <button onClick={() => { setDeleteOpen(false); setDeleteInput('') }}>
                 Cancel
               </button>
-              <button
-                onClick={() => {
-                  if (deleteInput !== profile.name) return
-                  try { localStorage.clear() } catch { /* ignore */ }
-                  setDeleteOpen(false)
-                  setDeleteInput('')
-                  setEditOpen(false)
-                }}
-                className="flex-1 h-10 rounded-xl text-[13px] font-semibold transition-all"
-                style={{
-                  background: deleteInput === profile.name ? '#dc2626' : '#fca5a5',
-                  color: '#fff',
-                  cursor: deleteInput === profile.name ? 'pointer' : 'not-allowed',
-                }}>
+              <button onClick={() => {}}>
                 Delete Account
               </button>
             </div>
@@ -852,5 +883,233 @@ export default function ProfilePage() {
         </div>
       )}
     </>
+  )
+}
+
+/* ─── Notifications tab ────────────────────────────────────── */
+
+const MOCK_COMMUNITIES = [
+  { id: '1', name: 'Skoolers',           avatar: '' },
+  { id: '2', name: 'chabaqa testing',    avatar: '' },
+  { id: '3', name: 'NextGen AI',         avatar: '' },
+  { id: '4', name: 'AI Creator Profits', avatar: '' },
+  { id: '5', name: 'Communauté IA',      avatar: '' },
+]
+
+function NotificationsTab() {
+  const [app, setApp] = useState({
+    newFollower: true, likes: true, kaching: true, affiliate: true,
+  })
+  const [openCommunity, setOpenCommunity] = useState<string | null>(null)
+  const [commPrefs, setCommPrefs] = useState<Record<string, any>>(() =>
+    Object.fromEntries(MOCK_COMMUNITIES.map(c => [c.id, {
+      weeklyDigest: true, dailyNotifs: true, adminBroadcast: true, eventReminder: true,
+    }]))
+  )
+  const [saved, setSaved] = useState(false)
+  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 1500) }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-[13px] font-semibold mb-3" style={{ color: 'var(--t1)' }}>App notifications</p>
+        <div className="space-y-1">
+          <MiniToggleRow label="New follower"        checked={app.newFollower} onChange={v => setApp({ ...app, newFollower: v })} />
+          <MiniToggleRow label="Likes & mentions"    checked={app.likes}       onChange={v => setApp({ ...app, likes: v })} />
+          <MiniToggleRow label="Ka-ching (sales)"    checked={app.kaching}     onChange={v => setApp({ ...app, kaching: v })} />
+          <MiniToggleRow label="Affiliate referral"  checked={app.affiliate}   onChange={v => setApp({ ...app, affiliate: v })} />
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[13px] font-semibold mb-1" style={{ color: 'var(--t1)' }}>Community notifications</p>
+        <p className="text-[12px] mb-3" style={{ color: 'var(--t3)' }}>Fine-tune per community you've joined.</p>
+        <div className="space-y-2">
+          {MOCK_COMMUNITIES.map(c => {
+            const open = openCommunity === c.id
+            const p = commPrefs[c.id]
+            return (
+              <div key={c.id} className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--bd)' }}>
+                <button onClick={() => setOpenCommunity(open ? null : c.id)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left cursor-pointer">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-semibold shrink-0"
+                       style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+                    {c.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="flex-1 text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>{c.name}</span>
+                  <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--t3)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+                </button>
+                {open && (
+                  <div className="px-3 pb-3 pt-1 space-y-1" style={{ background: 'var(--bg)' }}>
+                    <MiniToggleRow label="Weekly digest email"       checked={p.weeklyDigest}   onChange={v => setCommPrefs({ ...commPrefs, [c.id]: { ...p, weeklyDigest: v } })} />
+                    <MiniToggleRow label="Daily notifications email" checked={p.dailyNotifs}    onChange={v => setCommPrefs({ ...commPrefs, [c.id]: { ...p, dailyNotifs: v } })} />
+                    <MiniToggleRow label="Admin broadcast email"     checked={p.adminBroadcast} onChange={v => setCommPrefs({ ...commPrefs, [c.id]: { ...p, adminBroadcast: v } })} />
+                    <MiniToggleRow label="Event reminders"           checked={p.eventReminder}  onChange={v => setCommPrefs({ ...commPrefs, [c.id]: { ...p, eventReminder: v } })} />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-3 border-t" style={{ borderColor: 'var(--bd)' }}>
+        <button onClick={save}
+                className="flex items-center gap-1.5 px-5 h-9 rounded-xl text-[13px] font-semibold cursor-pointer transition-all hover:opacity-85"
+                style={{ background: saved ? '#16a34a' : 'var(--p)', color: '#fff' }}>
+          {saved ? <><Check className="w-3.5 h-3.5" strokeWidth={2.5} /> Saved!</> : 'Save Changes'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function MiniToggleRow({ label, checked, onChange }:
+  { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-center justify-between py-1.5">
+      <span className="text-[12.5px]" style={{ color: 'var(--t1)' }}>{label}</span>
+      <button onClick={() => onChange(!checked)}
+              className="relative w-10 h-5 rounded-full transition-colors flex-shrink-0"
+              style={{ background: checked ? 'var(--p)' : 'var(--bd)' }}>
+        <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+              style={{ transform: checked ? 'translateX(20px)' : 'translateX(0)' }} />
+      </button>
+    </div>
+  )
+}
+
+/* ─── Billing tab (user side) ────────────────────────────── */
+
+function BillingTab() {
+  const card = { brand: 'VISA', last4: '4242', exp: '09/28' }
+  const history = [
+    { id: 'INV-2026-08', date: 'Aug 12, 2026', amount: 29, item: 'Skoolers · Monthly' },
+    { id: 'INV-2026-07', date: 'Jul 12, 2026', amount: 29, item: 'Skoolers · Monthly' },
+    { id: 'INV-2026-06', date: 'Jun 12, 2026', amount: 49, item: 'AI Creator Profits · Monthly' },
+  ]
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-[13px] font-semibold mb-1" style={{ color: 'var(--t1)' }}>Payment method</p>
+        <p className="text-[12px] mb-3" style={{ color: 'var(--t3)' }}>Used for community subscriptions and purchases.</p>
+
+        <div className="rounded-xl p-4 relative overflow-hidden"
+             style={{ background: 'linear-gradient(135deg, #1a1730 0%, #3d3570 100%)' }}>
+          <div className="absolute -right-6 -top-6 w-20 h-20 rounded-full opacity-20" style={{ background: '#fff' }} />
+          <p className="text-white text-[11px] uppercase tracking-wider opacity-70">{card.brand}</p>
+          <p className="text-white text-[15px] font-mono mt-3 tracking-wider">•••• •••• •••• {card.last4}</p>
+          <p className="text-white text-[10px] mt-2 opacity-80">Exp {card.exp}</p>
+        </div>
+
+        <button className="w-full mt-3 px-3 py-2.5 rounded-xl text-[12px] font-semibold border flex items-center justify-center gap-1.5 cursor-pointer transition-colors hover:border-[var(--p3)]"
+                style={{ borderColor: 'var(--bd)', color: 'var(--t2)' }}>
+          <CreditCard className="w-3.5 h-3.5" /> Update payment method
+        </button>
+      </div>
+
+      <div>
+        <p className="text-[13px] font-semibold mb-3" style={{ color: 'var(--t1)' }}>Payment history</p>
+        <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--bd)' }}>
+          {history.map((h, i) => (
+            <div key={h.id} className="px-4 py-3 flex items-center gap-3"
+                 style={{ borderTop: i > 0 ? '1px solid var(--bd)' : 'none' }}>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>{h.item}</p>
+                <p className="text-[11px]" style={{ color: 'var(--t3)' }}>{h.date} · {h.id}</p>
+              </div>
+              <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>${h.amount.toFixed(2)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Delete account 2-step flow ────────────────────────────── */
+
+function DeleteAccountFlow({ onCancel, onDelete }: { onCancel: () => void; onDelete: () => void }) {
+  const [step, setStep] = useState<1 | 2>(1)
+  const [reason, setReason] = useState('')
+  const [password, setPassword] = useState('')
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+         style={{ background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)' }}
+         onClick={e => { if (e.target === e.currentTarget) onCancel() }}>
+      <div className="w-full max-w-[420px] rounded-2xl p-6"
+           style={{ background: 'var(--white)', boxShadow: '0 24px 80px rgba(0,0,0,.28)' }}>
+
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-[11px] font-semibold" style={{ color: 'var(--t3)' }}>Step {step} of 2</span>
+          <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--bd)' }}>
+            <div className="h-full transition-all" style={{ background: '#dc2626', width: step === 1 ? '50%' : '100%' }} />
+          </div>
+        </div>
+
+        {step === 1 && (
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-5 h-5" style={{ color: '#dc2626' }} strokeWidth={1.8} />
+              <h3 className="text-[16px] font-semibold" style={{ color: 'var(--t1)' }}>Sorry to see you go</h3>
+            </div>
+            <p className="text-[13px] mb-4 leading-relaxed" style={{ color: 'var(--t2)' }}>
+              Before you delete your account, would you tell us why? It helps us make Chabaqa better.
+            </p>
+            <textarea value={reason} onChange={e => setReason(e.target.value)}
+                      placeholder="Optional — a few words is enough"
+                      rows={4}
+                      className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none resize-none"
+                      style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }} />
+
+            <div className="flex gap-2 justify-end mt-5">
+              <button onClick={onCancel}
+                      className="px-4 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-70"
+                      style={{ color: 'var(--t2)' }}>
+                Cancel
+              </button>
+              <button onClick={() => setStep(2)}
+                      className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-90"
+                      style={{ background: '#dc2626' }}>
+                Next <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <Shield className="w-5 h-5" style={{ color: '#dc2626' }} strokeWidth={1.8} />
+              <h3 className="text-[16px] font-semibold" style={{ color: 'var(--t1)' }}>Confirm with your password</h3>
+            </div>
+            <p className="text-[13px] mb-4 leading-relaxed" style={{ color: 'var(--t2)' }}>
+              This will <b>permanently delete</b> your account, communities and content. There's no undo.
+            </p>
+            <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t2)' }}>Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                   placeholder="Enter your password"
+                   className="w-full h-10 px-3 rounded-xl text-[13px] outline-none"
+                   style={{ border: '1.5px solid var(--bd)', background: 'var(--bg)', color: 'var(--t1)' }} />
+
+            <div className="flex gap-2 justify-end mt-5">
+              <button onClick={() => setStep(1)}
+                      className="px-4 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-70"
+                      style={{ color: 'var(--t2)' }}>
+                Back
+              </button>
+              <button disabled={!password} onClick={onDelete}
+                      className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white flex items-center gap-1.5 disabled:opacity-40"
+                      style={{ background: '#dc2626' }}>
+                <Trash2 className="w-3.5 h-3.5" /> Delete forever
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   )
 }

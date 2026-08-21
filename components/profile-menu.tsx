@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { User as UserIcon, Settings, LifeBuoy, Plus, Compass, LogOut, ChevronDown } from "lucide-react"
-import { AccountSettingsModal } from "./account-settings-modal"
 
 interface Props {
   user: any
@@ -15,7 +14,6 @@ interface Props {
 
 export function ProfileMenu({ user, profileHandle, withLocale, onLogout, isLoggingOut }: Props) {
   const [open, setOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -76,8 +74,8 @@ export function ProfileMenu({ user, profileHandle, withLocale, onLogout, isLoggi
             <div className="p-1.5">
               <MenuLink href={withLocale(`/profile/${profileHandle}`)}
                         icon={UserIcon} label="Profile" onClick={() => setOpen(false)} />
-              <MenuButton icon={Settings} label="Settings"
-                          onClick={() => { setOpen(false); setSettingsOpen(true) }} />
+              <MenuLink href={withLocale("/profile?edit=notifications")}
+                        icon={Settings} label="Settings" onClick={() => setOpen(false)} />
               <MenuLink href={withLocale("/help")} icon={LifeBuoy} label="Help center" onClick={() => setOpen(false)} />
             </div>
 
@@ -99,8 +97,6 @@ export function ProfileMenu({ user, profileHandle, withLocale, onLogout, isLoggi
           </div>
         )}
       </div>
-
-      <AccountSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} user={user} />
 
       <style jsx>{`
         @keyframes menuIn {
