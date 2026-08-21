@@ -1,0 +1,16 @@
+node_modules
+.next
+.next-dev
+out
+.git
+.env
+.env.*
+*.md
+test-results
+e2e
+__tests__
+coverage
+.vscode
+playwright.config.ts
+jest.config.js
+jest.setup.js

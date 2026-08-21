@@ -1,0 +1,285 @@
+import { Controller, Get, Res, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { MonitoringService } from '@/shared/services/monitoring.service';
+import { SecurityService } from '@/shared/services/security.service';
+import { WebhookRetryService } from '@/shared/services/webhook-retry.service';
+import { CacheService } from '@/infrastructure/cache/cache.service';
+import { CreatorIntegrationsService } from '@/domains/communication/integrations/creator-integrations.service';
+import { Response } from 'express';
+import { InternalMetricsGuard } from '@/shared/guards/internal-metrics.guard';
+
+@ApiTags('Health & Monitoring')
+@Controller('metrics')
+@UseGuards(InternalMetricsGuard)
+export class MetricsController {
+  constructor(
+    private monitoringService: MonitoringService,
+    private securityService: SecurityService,
+    private webhookRetryService: WebhookRetryService,
+    private cacheService: CacheService,
+    private creatorIntegrationsService: CreatorIntegrationsService,
+  ) {}
+
+  @Get()
+  @ApiOperation({
+    summary: 'Get comprehensive application metrics',
+    description: 'Retrieve detailed metrics about system performance, application health, and performance history'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Metrics retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        system: {
+          type: 'object',
+          properties: {
+            rss: { type: 'number', description: 'RSS memory in bytes' },
+            heapTotal: { type: 'number', description: 'Total heap in bytes' },
+            heapUsed: { type: 'number', description: 'Used heap in bytes' },
+            rssMB: { type: 'number', description: 'RSS memory in MB' },
+            heapUsedMB: { type: 'number', description: 'Used heap in MB' }
+          }
+        },
+        application: {
+          type: 'object',
+          properties: {
+            uptime: { type: 'number', description: 'Application uptime in milliseconds' },
+            requestCount: { type: 'number', description: 'Total request count' },
+            errorCount: { type: 'number', description: 'Total error count' },
+            errorRate: { type: 'number', description: 'Error rate as percentage' }
+          }
+        },
+        database: {
+          type: 'object',
+          properties: {
+            readyState: { type: 'number', description: 'MongoDB connection ready state' },
+            host: { type: 'string', description: 'Database host' },
+            port: { type: 'number', description: 'Database port' },
+            name: { type: 'string', description: 'Database name' }
+          }
+        },
+        performanceHistory: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              timestamp: { type: 'string', format: 'date-time' },
+              memory: { type: 'object' },
+              cpu: { type: 'object' },
+              database: { type: 'object' }
+            }
+          }
+        }
+      }
+    }
+  })
+  getMetrics() {
+    return this.monitoringService.getMetrics();
+  }
+
+  @Get('system')
+  @ApiOperation({
+    summary: 'Get system resource metrics',
+    description: 'Retrieve CPU, memory, and system resource information'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'System metrics retrieved successfully'
+  })
+  getSystemMetrics() {
+    return {
+      memory: this.monitoringService.getMemoryUsage(),
+      cpu: this.monitoringService.getCPUUsage(),
+      uptime: this.monitoringService.getUptime(),
+    };
+  }
+
+  @Get('memory')
+  @ApiOperation({
+    summary: 'Get memory usage metrics',
+    description: 'Detailed memory usage statistics for the Node.js process'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Memory metrics retrieved successfully'
+  })
+  getMemoryMetrics() {
+    return this.monitoringService.getMemoryUsage();
+  }
+
+  @Get('cpu')
+  @ApiOperation({
+    summary: 'Get CPU usage metrics',
+    description: 'CPU usage statistics including core count and utilization'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'CPU metrics retrieved successfully'
+  })
+  getCpuMetrics() {
+    return this.monitoringService.getCPUUsage();
+  }
+
+  @Get('performance')
+  @ApiOperation({
+    summary: 'Get performance history',
+    description: 'Historical performance data collected over time'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Performance history retrieved successfully',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          timestamp: { type: 'string', format: 'date-time' },
+          memory: { type: 'object' },
+          cpu: { type: 'object' },
+          database: { type: 'object' },
+          requests: { type: 'number' },
+          errors: { type: 'number' }
+        }
+      }
+    }
+  })
+  getPerformanceHistory() {
+    const metrics = this.monitoringService.getMetrics();
+    return metrics.performanceHistory;
+  }
+
+  @Get('webhook-retries')
+  @ApiOperation({ summary: 'Get webhook retry queue stats' })
+  getWebhookRetries() {
+    return this.webhookRetryService.getStats();
+  }
+
+  @Get('prometheus')
+  @ApiOperation({
+    summary: 'Get metrics in Prometheus format',
+    description: 'Export metrics in Prometheus exposition format for external monitoring systems'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Prometheus metrics exported successfully',
+    content: {
+      'text/plain': {
+        schema: {
+          type: 'string',
+          example: '# HELP shabaka_request_total Total number of requests\n# TYPE shabaka_request_total counter\nshabaka_request_total 42\n'
+        }
+      }
+    }
+  })
+  async getPrometheusMetrics(@Res() res: Response): Promise<void> {
+    const metrics = this.monitoringService.getMetrics();
+    const securityMetrics = this.securityService.getSecurityMetrics();
+    const webhookRetryMetrics = this.webhookRetryService.getStats();
+    const integrationDeliveryMetrics = await this.creatorIntegrationsService.getDeliveryStats();
+
+    let output = `# Shabaka Application Metrics\n`;
+
+    // Application metrics
+    output += `# HELP shabaka_request_total Total number of requests processed\n`;
+    output += `# TYPE shabaka_request_total counter\n`;
+    output += `shabaka_request_total ${metrics.application.requestCount}\n\n`;
+
+    output += `# HELP shabaka_error_total Total number of errors\n`;
+    output += `# TYPE shabaka_error_total counter\n`;
+    output += `shabaka_error_total ${metrics.application.errorCount}\n\n`;
+
+    output += `# HELP shabaka_error_rate Error rate as percentage\n`;
+    output += `# TYPE shabaka_error_rate gauge\n`;
+    output += `shabaka_error_rate ${metrics.application.errorRate}\n\n`;
+
+    output += `# HELP shabaka_uptime_seconds Application uptime in seconds\n`;
+    output += `# TYPE shabaka_uptime_seconds gauge\n`;
+    output += `shabaka_uptime_seconds ${metrics.application.uptime / 1000}\n\n`;
+
+    // Memory metrics
+    output += `# HELP shabaka_memory_heap_used_bytes Memory heap used in bytes\n`;
+    output += `# TYPE shabaka_memory_heap_used_bytes gauge\n`;
+    output += `shabaka_memory_heap_used_bytes ${metrics.system.heapUsed}\n\n`;
+
+    output += `# HELP shabaka_memory_rss_bytes Memory RSS in bytes\n`;
+    output += `# TYPE shabaka_memory_rss_bytes gauge\n`;
+    output += `shabaka_memory_rss_bytes ${metrics.system.rss}\n\n`;
+
+    // CPU metrics (would need more complex calculation for accurate CPU monitoring)
+    output += `# HELP shabaka_cpu_usage_percent CPU usage percentage\n`;
+    output += `# TYPE shabaka_cpu_usage_percent gauge\n`;
+    const cpuMetrics = this.monitoringService.getCPUUsage();
+    output += `shabaka_cpu_usage_percent ${cpuMetrics.usage}\n\n`;
+
+    output += `# HELP shabaka_http_request_duration_ms HTTP request duration in milliseconds\n`;
+    output += `# TYPE shabaka_http_request_duration_ms histogram\n`;
+    const duration = metrics.application.requestDuration;
+    for (const bucket of duration.buckets) {
+      output += `shabaka_http_request_duration_ms_bucket{le="${bucket.le}"} ${bucket.count}\n`;
+    }
+    output += `shabaka_http_request_duration_ms_count ${duration.count}\n`;
+    output += `shabaka_http_request_duration_ms_sum ${duration.sumMs}\n\n`;
+
+    output += `# HELP shabaka_webhook_retry_queued Failed webhook jobs queued for retry\n`;
+    output += `# TYPE shabaka_webhook_retry_queued gauge\n`;
+    output += `shabaka_webhook_retry_queued ${webhookRetryMetrics.queued}\n\n`;
+
+    output += `# HELP shabaka_integration_delivery_retrying Creator integration deliveries pending retry\n`;
+    output += `# TYPE shabaka_integration_delivery_retrying gauge\n`;
+    output += `shabaka_integration_delivery_retrying ${integrationDeliveryMetrics.retrying}\n\n`;
+
+    output += `# HELP shabaka_integration_delivery_exhausted Creator integration deliveries that exhausted retries\n`;
+    output += `# TYPE shabaka_integration_delivery_exhausted gauge\n`;
+    output += `shabaka_integration_delivery_exhausted ${integrationDeliveryMetrics.exhausted}\n\n`;
+
+    output += `# HELP shabaka_integration_oauth_callback_failures_total Failed creator integration OAuth callbacks since process start\n`;
+    output += `# TYPE shabaka_integration_oauth_callback_failures_total counter\n`;
+    output += `shabaka_integration_oauth_callback_failures_total ${integrationDeliveryMetrics.oauthCallbackFailures}\n\n`;
+
+    output += `# HELP shabaka_integration_credential_encryption_failures_total Integration credential encryption or decryption failures since process start\n`;
+    output += `# TYPE shabaka_integration_credential_encryption_failures_total counter\n`;
+    output += `shabaka_integration_credential_encryption_failures_total ${integrationDeliveryMetrics.credentialEncryptionFailures}\n\n`;
+
+    const cacheMetrics = this.cacheService.getCacheMetrics();
+    output += `# HELP shabaka_cache_hits_total Cache hits\n`;
+    output += `# TYPE shabaka_cache_hits_total counter\n`;
+    output += `shabaka_cache_hits_total ${cacheMetrics.hits}\n\n`;
+    output += `# HELP shabaka_cache_misses_total Cache misses\n`;
+    output += `# TYPE shabaka_cache_misses_total counter\n`;
+    output += `shabaka_cache_misses_total ${cacheMetrics.misses}\n\n`;
+
+    // Security event metrics
+    output += `# HELP shabaka_security_events_total Total number of security events\n`;
+    output += `# TYPE shabaka_security_events_total counter\n`;
+    output += `shabaka_security_events_total ${securityMetrics.total}\n\n`;
+
+    output += `# HELP shabaka_security_attack_events_total Total number of attack-related security events\n`;
+    output += `# TYPE shabaka_security_attack_events_total counter\n`;
+    output += `shabaka_security_attack_events_total ${securityMetrics.attackTotal}\n\n`;
+
+    output += `# HELP shabaka_security_events_by_level_total Security events grouped by level\n`;
+    output += `# TYPE shabaka_security_events_by_level_total counter\n`;
+    for (const [level, count] of Object.entries(securityMetrics.byLevel)) {
+      output += `shabaka_security_events_by_level_total{level="${this.escapeLabelValue(level)}"} ${count}\n`;
+    }
+    output += `\n`;
+
+    output += `# HELP shabaka_security_event_total Security events grouped by event and level\n`;
+    output += `# TYPE shabaka_security_event_total counter\n`;
+    for (const eventMetric of securityMetrics.byEvent) {
+      output += `shabaka_security_event_total{event="${this.escapeLabelValue(eventMetric.event)}",level="${this.escapeLabelValue(eventMetric.level)}"} ${eventMetric.count}\n`;
+    }
+    output += `\n`;
+
+    res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    res.send(output);
+  }
+
+  private escapeLabelValue(value: string): string {
+    return value
+      .replace(/\\/g, '\\\\')
+      .replace(/\n/g, '\\n')
+      .replace(/"/g, '\\"');
+  }
+}

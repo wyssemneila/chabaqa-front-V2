@@ -1,0 +1,43 @@
+# ── Stage 1: Install dependencies ─────────────────────────────────────────────
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --legacy-peer-deps --no-audit --no-fund
+
+# Keep the runtime dependency tree separate from build tooling. Copying it into
+# the final image also avoids a second, non-deterministic npm install there.
+FROM node:22-alpine AS prod-deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --omit=dev --legacy-peer-deps --no-audit --no-fund && \
+    npm cache clean --force
+
+# ── Stage 2: Build ────────────────────────────────────────────────────────────
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json nest-cli.json tsconfig.json tsconfig.build.json ./
+COPY scripts ./scripts
+COPY src ./src
+RUN npm run build
+
+# ── Stage 3: Production image ────────────────────────────────────────────────
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+RUN apk add --no-cache tini
+
+COPY package.json package-lock.json ./
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY src/domains/communication/email-templates ./dist/src/domains/communication/email-templates
+COPY public ./public
+RUN mkdir -p uploads hls-output
+
+EXPOSE 3000
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "--max-old-space-size=384", "--max-semi-space-size=32", "dist/src/main.js"]

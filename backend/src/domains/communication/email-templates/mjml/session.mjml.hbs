@@ -1,0 +1,29 @@
+<mjml>
+  <mj-head><mj-title>{{subject}}</mj-title><mj-preview>{{preheader}}</mj-preview></mj-head>
+  <mj-body background-color="#f0f0f5" width="620px">
+    <mj-section background-color="#8e78fb" border-radius="18px 18px 0 0" padding="24px">
+      <mj-column>
+        <mj-text color="#ffffff" font-size="24px" font-weight="900">{{heading}}</mj-text>
+        <mj-text color="#ffffff" font-size="14px">{{intro}}</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#ffffff" padding="24px 34px">
+      <mj-column>
+        <mj-text>{{{bodyHtml}}}</mj-text>
+        <mj-table cellpadding="8px">
+          <tr><td><strong>Session</strong></td><td>{{sessionTitle}}</td></tr>
+          {{#if participantName}}<tr><td><strong>Participant</strong></td><td>{{participantName}}</td></tr>{{/if}}
+          {{#if creatorName}}<tr><td><strong>Mentor</strong></td><td>{{creatorName}}</td></tr>{{/if}}
+          <tr><td><strong>Date</strong></td><td>{{scheduledDate}}</td></tr>
+          <tr><td><strong>Time</strong></td><td>{{scheduledTime}}</td></tr>
+          <tr><td><strong>Duration</strong></td><td>{{duration}} minutes</td></tr>
+          {{#if reason}}<tr><td><strong>Reason</strong></td><td>{{reason}}</td></tr>{{/if}}
+        </mj-table>
+        {{#if meetingUrl}}<mj-button href="{{meetingUrl}}" background-color="#8e78fb" color="#ffffff">Join Google Meet</mj-button>{{/if}}
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#ffffff" border-radius="0 0 18px 18px" padding="18px 34px">
+      <mj-column><mj-text align="center" color="#aaaaaa" font-size="12px">Best regards,<br />The Chabaqa Team</mj-text></mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

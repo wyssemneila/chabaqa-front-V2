@@ -1,0 +1,23 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "react/no-unescaped-entities": "off",
+    "react-hooks/exhaustive-deps": "off",
+    "@next/next/no-img-element": "off",
+    "import/no-anonymous-default-export": "off",
+    "no-restricted-imports": ["error", {
+      "patterns": [{
+        "group": ["@/__fixtures__/*", "**/__fixtures__/*"],
+        "message": "Test fixtures must not be imported from production app or component code."
+      }]
+    }]
+  },
+  "overrides": [
+    {
+      "files": ["**/__tests__/**/*", "**/*.test.ts", "**/*.test.tsx", "jest.setup.js"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
+}

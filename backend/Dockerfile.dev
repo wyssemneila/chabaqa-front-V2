@@ -1,0 +1,12 @@
+# Dev image: installs deps, does NOT build.
+# npm run start:dev (webpack HMR) is the container command.
+FROM node:22-alpine
+WORKDIR /app
+
+RUN apk add --no-cache wget
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+COPY . .
+EXPOSE 3000

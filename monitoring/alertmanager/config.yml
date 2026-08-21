@@ -1,0 +1,2 @@
+# Deprecated — Alertmanager uses config.template.yml rendered at container start.
+# See monitoring/alertmanager/config.template.yml and root .env PAGERDUTY_* vars.

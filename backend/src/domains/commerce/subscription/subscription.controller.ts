@@ -1,0 +1,388 @@
+import { Controller, Post, UseGuards, Request, Body, Get, Query, Put, Delete, Param, HttpCode, HttpStatus, Logger, GoneException, BadRequestException } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags, ApiBody, ApiQuery, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { JwtAuthGuard } from '@/domains/auth/guards/jwt-auth.guard';
+import { AdminGuard } from '@/domains/auth/guards/admin.guard';
+import { InternalServiceTokenGuard } from '@/shared/guards/internal-service-token.guard';
+import { SubscriptionService } from '@/domains/commerce/subscription/subscription.service';
+import { PlanTier } from '@/infrastructure/database/schemas/commerce/plan.schema';
+import { BillingInterval } from '@/infrastructure/database/schemas/commerce/subscription.schema';
+import { SubscriptionAddonType } from '@/infrastructure/database/schemas/commerce/subscription-addon.schema';
+import { 
+  CreateSubscriptionDto, 
+  UpdateSubscriptionDto, 
+  GetSubscriptionsQueryDto, 
+  SubscriptionResponseDto, 
+  SubscriptionStatsDto, 
+  SubscriptionPlanDto,
+  WebhookEventDto,
+  WebhookResponseDto,
+  InvoiceDto,
+  InvoiceListDto,
+  CreateInvoiceDto,
+  UsageSummaryDto,
+  RecordUsageDto
+} from '@/domains/commerce/subscription/dto';
+import { PaginatedResponseDto } from '@/shared/dto/paginated-response.dto';
+
+@ApiTags('Subscriptions')
+@Controller('subscriptions')
+export class SubscriptionController {
+  private readonly logger = new Logger(SubscriptionController.name);
+
+  constructor(private readonly subscriptionService: SubscriptionService) {}
+
+  @Post('start-trial')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Start 7-day trial on STARTER plan for current creator' })
+  async startTrial(@Request() req: any) {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.startTrialForCreator(creatorId);
+  }
+
+  @Post('setup-billing')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Setup billing method for current creator (store provider customer + masked info)' })
+  @ApiBody({ 
+    schema: { 
+      type: 'object', 
+      properties: { 
+        providerCustomerId: { type: 'string', description: 'Provider customer ID (required)' }, 
+        paymentBrand: { type: 'string', description: 'Payment method brand (visa, mastercard, etc.)', enum: ['visa', 'mastercard', 'amex', 'discover', 'diners', 'jcb', 'unionpay'] }, 
+        paymentLast4: { type: 'string', description: 'Last 4 digits of payment method', pattern: '^\\d{4}$' },
+        provider: { type: 'string', description: 'Payment provider', enum: ['stripe', 'paypal', 'custom'], default: 'custom' }
+      }, 
+      required: ['providerCustomerId'] 
+    } 
+  })
+  @ApiResponse({ status: 200, description: 'Billing method setup successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid billing information' })
+  async setupBilling(@Request() req: any, @Body() body: any) {
+    throw new GoneException('Direct billing setup is disabled. Use provider checkout or admin-approved billing updates.');
+  }
+
+  @Post('upgrade')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Upgrade plan tier for the current creator subscription' })
+  @ApiBody({ schema: { type: 'object', properties: { tier: { type: 'string', enum: Object.values(PlanTier) } }, required: ['tier'] } })
+  async upgrade(@Request() req: any, @Body('tier') tier: string) {
+    throw new GoneException('Direct paid upgrades are disabled. Use checkout to change plans.');
+  }
+
+  @Post('cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Cancel at period end' })
+  async cancel(@Request() req: any) {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.cancelAtPeriodEnd(creatorId);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get my subscription' })
+  async me(@Request() req: any) {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getMySubscription(creatorId);
+  }
+
+  @Get('trial-remaining')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get remaining time for current creator\'s trial (days/hours/minutes/seconds)' })
+  async trialRemaining(@Request() req: any) {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getTrialRemaining(creatorId);
+  }
+
+  // New endpoints for comprehensive subscription management
+
+  @Get('stats')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get subscription statistics for the current creator' })
+  @ApiResponse({ status: 200, type: SubscriptionStatsDto })
+  async getSubscriptionStats(@Request() req: any): Promise<SubscriptionStatsDto> {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getSubscriptionStats(creatorId);
+  }
+
+  @Get('all')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get all subscriptions with pagination and filtering' })
+  @ApiQuery({ name: 'status', required: false, enum: ['trialing', 'active', 'past_due', 'canceled', 'incomplete'] })
+  @ApiQuery({ name: 'plan', required: false, enum: Object.values(PlanTier) })
+  @ApiQuery({ name: 'startDate', required: false, type: 'string', format: 'date' })
+  @ApiQuery({ name: 'endDate', required: false, type: 'string', format: 'date' })
+  @ApiQuery({ name: 'page', required: false, type: 'number', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: 'number', example: 20 })
+  async getAllSubscriptions(
+    @Request() req: any,
+    @Query() query: GetSubscriptionsQueryDto
+  ): Promise<PaginatedResponseDto<SubscriptionResponseDto>> {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getAllSubscriptions(creatorId, query);
+  }
+
+  @Get('member-revenue')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get customer/member recurring subscriptions for the current creator' })
+  async getMemberRevenueSubscriptions(
+    @Request() req: any,
+    @Query() query: GetSubscriptionsQueryDto,
+  ): Promise<PaginatedResponseDto<any>> {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getCreatorMemberSubscriptions(creatorId, query);
+  }
+
+  @Get('member-revenue/stats')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get aggregate customer/member recurring subscription stats for the current creator' })
+  async getMemberRevenueStats(
+    @Request() req: any,
+    @Query() query: GetSubscriptionsQueryDto,
+  ): Promise<SubscriptionStatsDto> {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getCreatorMemberSubscriptionStats(creatorId, query);
+  }
+
+  @Get('add-ons/available')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get available creator subscription add-ons' })
+  async getAvailableAddons() {
+    return this.subscriptionService.getAvailableAddons();
+  }
+
+  @Get('add-ons')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get active add-ons for the current creator' })
+  async getMyAddons(@Request() req: any) {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getMyAddons(creatorId);
+  }
+
+  @Post('add-ons')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Activate an add-on for the current creator subscription' })
+  async purchaseAddon(
+    @Request() req: any,
+    @Body('type') type: SubscriptionAddonType,
+    @Body('quantity') quantity?: number,
+    @Body('billingInterval') billingInterval?: BillingInterval,
+  ) {
+    throw new GoneException('Self-serve add-on activation is disabled until checkout or admin approval is available.');
+  }
+
+  @Delete('add-ons/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Cancel an active add-on' })
+  async cancelAddon(@Request() req: any, @Param('id') addonId: string) {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.cancelAddon(creatorId, addonId);
+  }
+
+  @Post('plans')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Create a new subscription plan' })
+  @ApiBody({ type: CreateSubscriptionDto })
+  @ApiResponse({ status: 201, type: SubscriptionPlanDto })
+  async createPlan(@Body() createPlanDto: CreateSubscriptionDto): Promise<SubscriptionPlanDto> {
+    return this.subscriptionService.createPlan(createPlanDto);
+  }
+
+  @Get('plans')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get all available subscription plans' })
+  @ApiResponse({ status: 200, type: [SubscriptionPlanDto] })
+  async getPlans(): Promise<SubscriptionPlanDto[]> {
+    return this.subscriptionService.getPlans();
+  }
+
+  @Get('plans/:tier')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get a specific subscription plan by tier' })
+  @ApiResponse({ status: 200, type: SubscriptionPlanDto })
+  async getPlanByTier(@Param('tier') tier: string): Promise<SubscriptionPlanDto> {
+    return this.subscriptionService.getPlanByTier(tier as PlanTier);
+  }
+
+  @Put('plans/:tier')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Update a subscription plan' })
+  @ApiBody({ type: UpdateSubscriptionDto })
+  @ApiResponse({ status: 200, type: SubscriptionPlanDto })
+  async updatePlan(
+    @Param('tier') tier: string,
+    @Body() updatePlanDto: UpdateSubscriptionDto
+  ): Promise<SubscriptionPlanDto> {
+    return this.subscriptionService.updatePlan(tier as PlanTier, updatePlanDto);
+  }
+
+  @Delete('plans/:tier')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Delete a subscription plan' })
+  @ApiResponse({ status: 200, description: 'Plan deleted successfully' })
+  async deletePlan(@Param('tier') tier: string): Promise<{ message: string }> {
+    return this.subscriptionService.deletePlan(tier as PlanTier);
+  }
+
+  @Post('export')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Export subscriptions data to CSV' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['trialing', 'active', 'past_due', 'canceled', 'incomplete'] },
+        plan: { type: 'string', enum: Object.values(PlanTier) },
+        startDate: { type: 'string', format: 'date' },
+        endDate: { type: 'string', format: 'date' }
+      }
+    }
+  })
+  async exportSubscriptions(
+    @Request() req: any,
+    @Body() filters?: { status?: string; plan?: PlanTier; startDate?: string; endDate?: string }
+  ): Promise<{ message: string; downloadUrl: string }> {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.exportSubscriptions(creatorId, filters);
+  }
+
+  @Put(':id')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Update a subscription' })
+  @ApiBody({ type: UpdateSubscriptionDto })
+  @ApiResponse({ status: 200, type: SubscriptionResponseDto })
+  async updateSubscription(
+    @Request() req: any,
+    @Param('id') subscriptionId: string,
+    @Body() updateDto: UpdateSubscriptionDto
+  ): Promise<SubscriptionResponseDto> {
+    return this.subscriptionService.updateSubscription(subscriptionId, updateDto, {
+      adminUserId: req.user?._id || req.user?.sub,
+      adminEmail: req.user?.email,
+      requestId: req.headers?.['x-request-id'],
+    });
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Delete a canceled subscription' })
+  @ApiParam({ name: 'id', description: 'Subscription ID' })
+  @ApiResponse({ status: 200, description: 'Subscription deleted successfully' })
+  @ApiResponse({ status: 400, description: 'Cannot delete active subscription' })
+  @ApiResponse({ status: 404, description: 'Subscription not found' })
+  async deleteSubscription(@Param('id') subscriptionId: string): Promise<{ message: string }> {
+    return this.subscriptionService.deleteSubscription(subscriptionId);
+  }
+
+  // ============ WEBHOOK ENDPOINTS ============
+
+  @Post('webhook')
+  @HttpCode(HttpStatus.GONE)
+  @ApiOperation({ summary: 'Deprecated unsigned webhook endpoint' })
+  @ApiBody({ type: WebhookEventDto })
+  @ApiResponse({ status: 200, type: WebhookResponseDto })
+  async handleWebhook(@Body() webhookEvent: WebhookEventDto): Promise<WebhookResponseDto> {
+    this.logger.warn(
+      `Rejected unsigned subscription webhook attempt for event ${webhookEvent?.id || 'unknown'}`,
+    );
+    return {
+      message: 'Unsigned webhook payloads are no longer accepted. Use a provider-specific signed webhook endpoint.',
+      eventId: webhookEvent?.id || 'unknown',
+      status: 'skipped',
+    };
+  }
+
+  // ============ INVOICE ENDPOINTS ============
+
+  @Get('invoices')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get invoices for current creator' })
+  @ApiQuery({ name: 'page', required: false, type: 'number', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: 'number', example: 20 })
+  @ApiResponse({ status: 200, type: InvoiceListDto })
+  async getInvoices(
+    @Request() req: any,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20
+  ): Promise<InvoiceListDto> {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getInvoices(creatorId, page, limit);
+  }
+
+  @Get('invoices/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get a specific invoice by ID' })
+  @ApiParam({ name: 'id', description: 'Invoice ID' })
+  @ApiResponse({ status: 200, type: InvoiceDto })
+  @ApiResponse({ status: 404, description: 'Invoice not found' })
+  async getInvoiceById(@Param('id') invoiceId: string, @Request() req: any): Promise<InvoiceDto> {
+    const creatorId = req.user._id || req.user.sub;
+    return this.subscriptionService.getInvoiceById(invoiceId, creatorId);
+  }
+
+  @Post('invoices')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Create a new invoice' })
+  @ApiBody({ type: CreateInvoiceDto })
+  @ApiResponse({ status: 201, type: InvoiceDto })
+  async createInvoice(@Body() createInvoiceDto: CreateInvoiceDto): Promise<InvoiceDto> {
+    return this.subscriptionService.createInvoice(createInvoiceDto);
+  }
+
+  // ============ USAGE TRACKING ENDPOINTS ============
+
+  @Post('usage')
+  @UseGuards(InternalServiceTokenGuard)
+  @ApiOperation({ summary: 'Record usage for a creator from an internal service' })
+  @ApiBody({ type: RecordUsageDto })
+  @ApiResponse({ status: 200, description: 'Usage recorded successfully' })
+  async recordUsage(
+    @Body() recordUsageDto: RecordUsageDto
+  ): Promise<{ message: string }> {
+    if (!recordUsageDto.creatorId) {
+      throw new BadRequestException('creatorId is required for internal usage recording.');
+    }
+    return this.subscriptionService.recordUsage(recordUsageDto.creatorId, recordUsageDto);
+  }
+
+  @Get('usage')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get usage summary for current creator' })
+  @ApiQuery({ name: 'startDate', required: false, type: 'string', format: 'date' })
+  @ApiQuery({ name: 'endDate', required: false, type: 'string', format: 'date' })
+  @ApiResponse({ status: 200, type: UsageSummaryDto })
+  async getUsageSummary(
+    @Request() req: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string
+  ): Promise<UsageSummaryDto> {
+    const creatorId = req.user._id || req.user.sub;
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+    return this.subscriptionService.getUsageSummary(creatorId, start, end);
+  }
+}

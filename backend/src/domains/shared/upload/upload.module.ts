@@ -1,0 +1,92 @@
+import { Module, Global } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { MulterModule } from '@nestjs/platform-express';
+import { UploadController } from '@/domains/shared/upload/upload.controller';
+import { UploadService } from '@/domains/shared/upload/upload.service';
+import { MediaResolverService } from '@/shared/services/media-resolver.service';
+import { MalwareScannerService } from '@/shared/services/malware-scanner.service';
+import { PolicyModule } from '@/shared/modules/policy.module';
+import { StorageUsage, StorageUsageSchema } from '@/infrastructure/database/schemas/shared/storage-usage.schema';
+import { MediaAsset, MediaAssetSchema } from '@/infrastructure/database/schemas/content/media-asset.schema';
+import { S3StorageAdapter } from '@/domains/content/media/storage/s3-storage.adapter';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import { ensureUploadDirectories, resolveUploadTypeDir, resolveUploadsRoot } from '@/domains/shared/upload/upload-paths';
+
+@Global()
+@Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: StorageUsage.name, schema: StorageUsageSchema },
+      { name: MediaAsset.name, schema: MediaAssetSchema },
+    ]),
+    PolicyModule,
+    MulterModule.register({
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          ensureUploadDirectories();
+          // Déterminer le type de fichier et le dossier de destination
+          const extension = extname(file.originalname).toLowerCase();
+          let folder = resolveUploadsRoot();
+          
+          // Images
+          if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(extension)) {
+            folder = resolveUploadTypeDir('image');
+          }
+          // Vidéos
+          else if (['.mp4', '.mov', '.webm'].includes(extension)) {
+            folder = resolveUploadTypeDir('video');
+          }
+          // Documents
+          else if (['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.ppt', '.pptx', '.xls', '.xlsx', '.csv'].includes(extension)) {
+            folder = resolveUploadTypeDir('document');
+          }
+          // Audio
+          else if (['.mp3', '.wav', '.ogg', '.aac', '.flac'].includes(extension)) {
+            folder = resolveUploadTypeDir('audio');
+          }
+          
+          cb(null, folder);
+        },
+        filename: (req, file, cb) => {
+          // Générer un nom de fichier unique
+          const extension = extname(file.originalname);
+          const uuid = uuidv4();
+          const timestamp = Date.now();
+          const uniqueName = `${timestamp}-${uuid}${extension}`;
+          cb(null, uniqueName);
+        }
+      }),
+      fileFilter: (req, file, cb) => {
+        // Validation basique des types de fichiers
+        const allowedTypes = [
+          // Images
+          'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+          // Vidéos
+          'video/mp4', 'video/quicktime', 'video/webm',
+          // Documents
+          'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'text/plain', 'text/csv', 'application/csv', 'application/rtf', 'application/vnd.oasis.opendocument.text',
+          // Audio
+          'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/flac'
+        ];
+        
+        if (allowedTypes.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new Error(`Type de fichier non supporté: ${file.mimetype}`), false);
+        }
+      },
+      limits: {
+        fileSize: 500 * 1024 * 1024, // 500MB max (sera validé plus finement dans le service)
+      },
+    }),
+  ],
+  controllers: [UploadController],
+  providers: [UploadService, MediaResolverService, MalwareScannerService, S3StorageAdapter],
+  exports: [UploadService, MediaResolverService, MalwareScannerService, S3StorageAdapter], // Exporter le service pour utilisation dans d'autres modules
+})
+export class UploadModule {}
