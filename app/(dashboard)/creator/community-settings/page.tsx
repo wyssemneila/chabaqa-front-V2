@@ -399,32 +399,24 @@ function InvitationSection({ t }: { t: (en: string, ar: string) => string }) {
 
 function LandingSection({ t }: { t: (en: string, ar: string) => string }) {
   return (
-    <div className="rounded-2xl p-8 border relative overflow-hidden"
+    <div className="rounded-2xl border overflow-hidden"
          style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
-      <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full blur-3xl opacity-40"
-           style={{ background: 'var(--p)' }} />
-      <div className="absolute -left-16 -bottom-16 w-56 h-56 rounded-full blur-3xl opacity-30"
-           style={{ background: 'var(--p2)' }} />
-
-      <div className="relative flex items-start justify-between gap-6 flex-wrap">
-        <div className="max-w-lg">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
-               style={{ background: 'var(--p2)', color: 'var(--p)' }}>
-            <Palette size={20} />
-          </div>
-          <h3 className="text-[18px] font-semibold mb-1.5" style={{ color: 'var(--t1)' }}>
-            {t('Design your community landing page', 'صمم صفحة هبوط مجتمعك')}
-          </h3>
-          <p className="text-[13px]" style={{ color: 'var(--t3)' }}>
-            {t('Craft the page people see when they discover your community — hero, courses, testimonials, pricing, FAQ, and more.', 'اصنع الصفحة التي يراها الناس عند اكتشاف مجتمعك — البطل والدورات والشهادات والتسعير والأسئلة الشائعة والمزيد.')}
-          </p>
-        </div>
-        <Link href="/creator/branding"
-          className="px-6 py-3 rounded-xl text-[13px] font-semibold text-white flex items-center gap-1.5 whitespace-nowrap shadow-lg"
-          style={{ background: 'var(--p)' }}>
-          {t('Open Page Builder', 'افتح المنشئ')} <ArrowRight size={14} />
-        </Link>
+      <div className="flex items-center justify-between px-4 py-2 border-b"
+           style={{ borderColor: 'var(--bd)', background: 'var(--bg)' }}>
+        <p className="text-[12px] font-medium" style={{ color: 'var(--t3)' }}>
+          {t('Design your landing page below — changes save inside the builder.', 'صمم صفحة الهبوط أدناه — يتم الحفظ داخل المنشئ.')}
+        </p>
+        <a href="/creator/branding" target="_blank" rel="noopener"
+           className="text-[12px] font-semibold flex items-center gap-1"
+           style={{ color: 'var(--p)' }}>
+          {t('Open full screen', 'عرض ملء الشاشة')} <ArrowRight size={12} />
+        </a>
       </div>
+      <iframe
+        src="/creator/branding?embed=1"
+        className="w-full block"
+        style={{ height: 'calc(100vh - 260px)', minHeight: 620, border: 0 }}
+      />
     </div>
   )
 }
