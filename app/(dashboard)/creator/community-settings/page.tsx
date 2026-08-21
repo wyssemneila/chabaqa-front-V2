@@ -11,14 +11,14 @@ import {
   FileUp, Zap, Globe, Lock, Unlock, ArrowRight, Loader2, PartyPopper,
 } from 'lucide-react'
 
-type TabId = 'general' | 'invitation' | 'branding' | 'pricing' | 'tabs' | 'rules' | 'notifications'
+type TabId = 'general' | 'invitation' | 'landing' | 'pricing' | 'tabs' | 'rules' | 'notifications'
 type PricingModel = 'free' | 'subscription' | 'freemium' | 'one-time'
 type BillingCycle = 'monthly' | 'yearly' | 'both'
 
 const TABS: { id: TabId; label: { en: string; ar: string }; icon: any }[] = [
   { id: 'general',       label: { en: 'General',       ar: 'عام'         }, icon: Settings  },
   { id: 'invitation',    label: { en: 'Invitation',    ar: 'الدعوة'      }, icon: UserPlus  },
-  { id: 'branding',      label: { en: 'Branding',      ar: 'الهوية'      }, icon: Palette   },
+  { id: 'landing',       label: { en: 'Landing Page',  ar: 'صفحة الهبوط' }, icon: Palette   },
   { id: 'pricing',       label: { en: 'Pricing',       ar: 'التسعير'     }, icon: DollarSign },
   { id: 'tabs',          label: { en: 'Tabs & Layout', ar: 'التبويبات'   }, icon: Layout    },
   { id: 'rules',         label: { en: 'Rules',         ar: 'القواعد'     }, icon: BookOpen  },
@@ -85,7 +85,7 @@ export default function CommunitySettingsPage() {
           <div className="mt-6">
             {tab === 'general'       && <GeneralSection t={t} onSave={triggerSave} />}
             {tab === 'invitation'    && <InvitationSection t={t} />}
-            {tab === 'branding'      && <BrandingSection t={t} onSave={triggerSave} />}
+            {tab === 'landing'       && <LandingSection t={t} />}
             {tab === 'pricing'       && <PricingSection t={t} onSave={triggerSave} />}
             {tab === 'tabs'          && <TabsLayoutSection t={t} onSave={triggerSave} />}
             {tab === 'rules'         && <RulesSection t={t} onSave={triggerSave} />}
@@ -395,46 +395,35 @@ function InvitationSection({ t }: { t: (en: string, ar: string) => string }) {
   )
 }
 
-/* ─── BRANDING ────────────────────────────────────────────── */
+/* ─── LANDING PAGE ────────────────────────────────────────────── */
 
-function BrandingSection({ t, onSave }: { t: (en: string, ar: string) => string; onSave: (m: string) => void }) {
-  const [primary, setPrimary] = useState('#8e78fb')
-  const [accent, setAccent] = useState('#47c7ea')
-
+function LandingSection({ t }: { t: (en: string, ar: string) => string }) {
   return (
-    <div className="space-y-4">
-      <Card>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label={t('Primary Color', 'اللون الرئيسي')}>
-            <ColorPicker value={primary} onChange={setPrimary} />
-          </Field>
-          <Field label={t('Accent Color', 'لون التمييز')}>
-            <ColorPicker value={accent} onChange={setAccent} />
-          </Field>
-        </div>
-        <SaveBar onSave={() => onSave(t('Your brand colors are saved.', 'تم حفظ ألوان العلامة التجارية.'))} t={t} />
-      </Card>
+    <div className="rounded-2xl p-8 border relative overflow-hidden"
+         style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
+      <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full blur-3xl opacity-40"
+           style={{ background: 'var(--p)' }} />
+      <div className="absolute -left-16 -bottom-16 w-56 h-56 rounded-full blur-3xl opacity-30"
+           style={{ background: 'var(--p2)' }} />
 
-      {/* Community Page Builder — direct call to action */}
-      <div className="rounded-2xl p-6 border relative overflow-hidden"
-           style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
-        <div className="absolute right-0 top-0 w-40 h-40 rounded-full blur-3xl opacity-40"
-             style={{ background: 'var(--p)' }} />
-        <div className="relative flex items-start justify-between gap-4 flex-wrap">
-          <div className="max-w-md">
-            <h3 className="text-[16px] font-semibold mb-1" style={{ color: 'var(--t1)' }}>
-              {t('Community Page Builder', 'منشئ صفحة المجتمع')}
-            </h3>
-            <p className="text-[13px]" style={{ color: 'var(--t3)' }}>
-              {t('Design your landing page with hero, courses, testimonials, pricing and more.', 'صمم صفحتك الرئيسية بالبطل والدورات والشهادات والتسعير والمزيد.')}
-            </p>
+      <div className="relative flex items-start justify-between gap-6 flex-wrap">
+        <div className="max-w-lg">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
+               style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+            <Palette size={20} />
           </div>
-          <Link href="/creator/branding"
-            className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white flex items-center gap-1.5 whitespace-nowrap"
-            style={{ background: 'var(--p)' }}>
-            {t('Open Page Builder', 'افتح المنشئ')} <ArrowRight size={14} />
-          </Link>
+          <h3 className="text-[18px] font-semibold mb-1.5" style={{ color: 'var(--t1)' }}>
+            {t('Design your community landing page', 'صمم صفحة هبوط مجتمعك')}
+          </h3>
+          <p className="text-[13px]" style={{ color: 'var(--t3)' }}>
+            {t('Craft the page people see when they discover your community — hero, courses, testimonials, pricing, FAQ, and more.', 'اصنع الصفحة التي يراها الناس عند اكتشاف مجتمعك — البطل والدورات والشهادات والتسعير والأسئلة الشائعة والمزيد.')}
+          </p>
         </div>
+        <Link href="/creator/branding"
+          className="px-6 py-3 rounded-xl text-[13px] font-semibold text-white flex items-center gap-1.5 whitespace-nowrap shadow-lg"
+          style={{ background: 'var(--p)' }}>
+          {t('Open Page Builder', 'افتح المنشئ')} <ArrowRight size={14} />
+        </Link>
       </div>
     </div>
   )
