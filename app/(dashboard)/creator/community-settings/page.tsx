@@ -1,31 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import Link from 'next/link'
 import {
-  UserPlus, Settings, Palette, DollarSign, Layout, Shield, Bell,
-  Copy, Check, Upload, Trash2, Plus, X, Edit3, ExternalLink, Mail,
-  FileUp, Zap, Globe, Lock, Unlock, ArrowRight,
+  UserPlus, Settings, Palette, DollarSign, Layout, BookOpen, Bell,
+  Copy, Check, Upload, Trash2, Plus, X, Edit3, Mail,
+  FileUp, Zap, Globe, Lock, Unlock, ArrowRight, Loader2, PartyPopper,
 } from 'lucide-react'
 
-type TabId = 'invitation' | 'general' | 'branding' | 'pricing' | 'tabs' | 'rules' | 'notifications'
+type TabId = 'general' | 'invitation' | 'branding' | 'pricing' | 'tabs' | 'rules' | 'notifications'
 type PricingModel = 'free' | 'subscription' | 'freemium' | 'one-time'
 type BillingCycle = 'monthly' | 'yearly' | 'both'
 
 const TABS: { id: TabId; label: { en: string; ar: string }; icon: any }[] = [
-  { id: 'invitation',    label: { en: 'Invitation',    ar: 'الدعوة'      }, icon: UserPlus  },
   { id: 'general',       label: { en: 'General',       ar: 'عام'         }, icon: Settings  },
+  { id: 'invitation',    label: { en: 'Invitation',    ar: 'الدعوة'      }, icon: UserPlus  },
   { id: 'branding',      label: { en: 'Branding',      ar: 'الهوية'      }, icon: Palette   },
   { id: 'pricing',       label: { en: 'Pricing',       ar: 'التسعير'     }, icon: DollarSign },
   { id: 'tabs',          label: { en: 'Tabs & Layout', ar: 'التبويبات'   }, icon: Layout    },
-  { id: 'rules',         label: { en: 'Rules',         ar: 'القواعد'     }, icon: Shield    },
+  { id: 'rules',         label: { en: 'Rules',         ar: 'القواعد'     }, icon: BookOpen  },
   { id: 'notifications', label: { en: 'Notifications', ar: 'الإشعارات'   }, icon: Bell      },
 ]
 
-// Community slug for persistence key
 const COMMUNITY_KEY = 'motion-masters'
 const TAB_VIS_KEY = `community-tabs:${COMMUNITY_KEY}`
 
@@ -34,7 +33,16 @@ export default function CommunitySettingsPage() {
   const isAr = lang === 'ar'
   const t = (en: string, ar: string) => (isAr ? ar : en)
 
-  const [tab, setTab] = useState<TabId>('invitation')
+  const [tab, setTab] = useState<TabId>('general')
+  const [saveState, setSaveState] = useState<'idle' | 'loading' | 'success'>('idle')
+  const [savedMessage, setSavedMessage] = useState('')
+
+  const triggerSave = async (message: string) => {
+    setSavedMessage(message)
+    setSaveState('loading')
+    await new Promise((r) => setTimeout(r, 700))
+    setSaveState('success')
+  }
 
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -75,130 +83,75 @@ export default function CommunitySettingsPage() {
           </div>
 
           <div className="mt-6">
+            {tab === 'general'       && <GeneralSection t={t} onSave={triggerSave} />}
             {tab === 'invitation'    && <InvitationSection t={t} />}
-            {tab === 'general'       && <GeneralSection t={t} />}
-            {tab === 'branding'      && <BrandingSection t={t} />}
-            {tab === 'pricing'       && <PricingSection t={t} />}
-            {tab === 'tabs'          && <TabsLayoutSection t={t} />}
-            {tab === 'rules'         && <RulesSection t={t} />}
-            {tab === 'notifications' && <NotificationsSection t={t} />}
+            {tab === 'branding'      && <BrandingSection t={t} onSave={triggerSave} />}
+            {tab === 'pricing'       && <PricingSection t={t} onSave={triggerSave} />}
+            {tab === 'tabs'          && <TabsLayoutSection t={t} onSave={triggerSave} />}
+            {tab === 'rules'         && <RulesSection t={t} onSave={triggerSave} />}
+            {tab === 'notifications' && <NotificationsSection t={t} onSave={triggerSave} />}
           </div>
         </main>
       </div>
-    </div>
-  )
-}
 
-/* ─── INVITATION ────────────────────────────────────────────── */
-
-function InvitationSection({ t }: { t: (en: string, ar: string) => string }) {
-  const [copied, setCopied] = useState(false)
-  const [email, setEmail] = useState('')
-  const shareLink = `https://chabaqa.io/${COMMUNITY_KEY}/about`
-
-  const copy = () => {
-    navigator.clipboard.writeText(shareLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
-  return (
-    <Card>
-      <div>
-        <h3 className="text-[15px] font-semibold mb-1" style={{ color: 'var(--t1)' }}>
-          {t('Share your community link', 'شارك رابط مجتمعك')}
-        </h3>
-        <p className="text-[13px] mb-4" style={{ color: 'var(--t3)' }}>
-          {t('People land on your About page where they can join or purchase access.', 'يصل الأشخاص إلى صفحة عن المجتمع حيث يمكنهم الانضمام أو الشراء.')}
-        </p>
-        <div className="flex gap-2">
-          <input readOnly value={shareLink}
-            className="flex-1 px-3 py-2.5 rounded-xl text-[13px] font-medium border"
-            style={{ background: 'var(--bg)', color: 'var(--p)', borderColor: 'var(--bd)' }} />
-          <button onClick={copy}
-            className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white"
-            style={{ background: 'var(--p)' }}>
-            {copied ? t('COPIED', 'تم النسخ') : t('COPY', 'نسخ')}
-          </button>
+      {/* Save loader / success popup */}
+      {saveState === 'loading' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center"
+             style={{ background: 'rgba(0,0,0,.35)' }}>
+          <div className="rounded-2xl px-6 py-5 flex items-center gap-3"
+               style={{ background: 'var(--white)' }}>
+            <Loader2 size={20} className="animate-spin" style={{ color: 'var(--p)' }} />
+            <span className="text-[14px] font-medium" style={{ color: 'var(--t1)' }}>
+              {t('Saving your changes…', 'جارٍ حفظ تغييراتك…')}
+            </span>
+          </div>
         </div>
-      </div>
-
-      <Divider />
-
-      <div>
-        <p className="text-[13px] mb-4" style={{ color: 'var(--t3)' }}>
-          {t('These invitation methods grant instant access without purchase or approval.', 'هذه الطرق تمنح وصولاً فورياً دون شراء أو موافقة.')}
-        </p>
-
-        <div className="flex gap-2">
-          <input value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder={t('Email address', 'البريد الإلكتروني')}
-            className="flex-1 px-3 py-2.5 rounded-xl text-[13px] border"
-            style={{ background: 'var(--bg)', color: 'var(--t1)', borderColor: 'var(--bd)' }} />
-          <button
-            disabled={!email}
-            className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white disabled:opacity-40"
-            style={{ background: 'var(--p)' }}>
-            {t('SEND', 'إرسال')}
-          </button>
-        </div>
-      </div>
-
-      <IconRow icon={FileUp}
-        title={t('Import a .CSV file', 'استيراد ملف CSV')}
-        hint={t('Invite members in bulk by importing an email list.', 'ادعُ الأعضاء دفعة واحدة عبر ملف البريد.')}
-        cta={t('IMPORT', 'استيراد')} />
-
-      <IconRow icon={Zap}
-        title={t('Zapier Integration', 'تكامل Zapier')}
-        hint={t('Invite members by connecting Chabaqa to 500+ tools via Zapier.', 'ادعُ الأعضاء عبر ربط Chabaqa بأكثر من 500 أداة.')}
-        cta={t('INTEGRATE', 'ربط')} />
-    </Card>
-  )
-}
-
-function IconRow({ icon: Icon, title, hint, cta }: { icon: any; title: string; hint: string; cta: string }) {
-  return (
-    <div className="flex items-center gap-3 py-3">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-           style={{ background: 'var(--p2)', color: 'var(--p)' }}>
-        <Icon size={18} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>{title}</p>
-        <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{hint}</p>
-      </div>
-      <button className="px-4 py-2 rounded-xl text-[12px] font-semibold border"
-              style={{ borderColor: 'var(--bd)', color: 'var(--t2)' }}>
-        {cta}
-      </button>
+      )}
+      {saveState === 'success' && (
+        <SuccessModal t={t} message={savedMessage} onClose={() => setSaveState('idle')} />
+      )}
     </div>
   )
 }
 
 /* ─── GENERAL ────────────────────────────────────────────── */
 
-function GeneralSection({ t }: { t: (en: string, ar: string) => string }) {
+function GeneralSection({ t, onSave }: { t: (en: string, ar: string) => string; onSave: (m: string) => void }) {
+  const [logo, setLogo] = useState('')
+  const [cover, setCover] = useState('')
   const [name, setName] = useState('Motion Masters')
-  const [description, setDescription] = useState('A creative community for motion designers.')
+  const [description, setDescription] = useState('')
   const [slug, setSlug] = useState('motion-masters')
   const [editingSlug, setEditingSlug] = useState(false)
   const [customDomain, setCustomDomain] = useState('')
   const [showDomain, setShowDomain] = useState(false)
   const [visibility, setVisibility] = useState<'public' | 'private'>('public')
-  const [saved, setSaved] = useState(false)
-
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 1500) }
+  const [requireQuestions, setRequireQuestions] = useState(false)
+  const [questions, setQuestions] = useState<string[]>([''])
 
   return (
     <Card>
-      <Field label={t('Community Name', 'اسم المجتمع')}>
-        <Input value={name} onChange={setName} />
-      </Field>
+      {/* Icon + Cover — Skool style, small on left */}
+      <div className="flex gap-4 items-start flex-wrap">
+        <SmallUpload label={t('Icon', 'الأيقونة')} hint={t('Recommended: 128×128', 'مقاس مقترح: 128×128')}
+                     value={logo} onChange={setLogo} size={110} aspect="1/1" />
+        <SmallUpload label={t('Cover', 'الغلاف')} hint={t('Recommended: 1084×576', 'مقاس مقترح: 1084×576')}
+                     value={cover} onChange={setCover} size={220} aspect="1084/576" />
+      </div>
 
-      <Field label={t('Description', 'الوصف')}>
-        <Textarea value={description} onChange={setDescription} rows={3} />
-      </Field>
+      <FloatField label={t('Community Name', 'اسم المجتمع')} counter={`${name.length} / 30`}>
+        <input value={name} maxLength={30} onChange={(e) => setName(e.target.value)}
+          className="w-full text-[15px] py-2 bg-transparent outline-none"
+          style={{ color: 'var(--t1)' }} />
+      </FloatField>
+
+      <FloatField label={t('Community Description', 'وصف المجتمع')} counter={`${description.length} / 150`}>
+        <textarea value={description} maxLength={150} rows={2}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder={t('Say what your community is about…', 'اكتب فكرة مجتمعك…')}
+          className="w-full text-[13px] py-2 bg-transparent outline-none resize-none"
+          style={{ color: 'var(--t1)' }} />
+      </FloatField>
 
       <Field label={t('URL Slug', 'الرابط المخصص')}>
         {editingSlug ? (
@@ -233,7 +186,7 @@ function GeneralSection({ t }: { t: (en: string, ar: string) => string }) {
 
       {!showDomain ? (
         <button onClick={() => setShowDomain(true)}
-          className="flex items-center gap-1.5 text-[13px] font-medium"
+          className="flex items-center gap-1.5 text-[13px] font-medium self-start"
           style={{ color: 'var(--p)' }}>
           <Plus size={13} /> {t('Add custom domain', 'إضافة نطاق مخصص')}
         </button>
@@ -277,7 +230,47 @@ function GeneralSection({ t }: { t: (en: string, ar: string) => string }) {
         </div>
       </div>
 
-      <SaveBar onSave={save} saved={saved} t={t} />
+      {visibility === 'private' && (
+        <div className="rounded-xl border p-4 space-y-3"
+             style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+                {t('Require questions from applicants', 'اشتراط أسئلة على المتقدمين')}
+              </p>
+              <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
+                {t('People must answer before requesting access.', 'يجب على الأشخاص الإجابة قبل طلب الوصول.')}
+              </p>
+            </div>
+            <Toggle checked={requireQuestions} onChange={setRequireQuestions} />
+          </div>
+
+          {requireQuestions && (
+            <div className="space-y-2 pt-2 border-t" style={{ borderColor: 'var(--bd)' }}>
+              {questions.map((q, i) => (
+                <div key={i} className="flex gap-2">
+                  <input value={q}
+                    onChange={(e) => { const n = [...questions]; n[i] = e.target.value; setQuestions(n) }}
+                    placeholder={t('Enter a question…', 'أدخل سؤالاً…')}
+                    className="flex-1 px-3 py-2 rounded-lg text-[13px] border"
+                    style={{ background: 'var(--white)', borderColor: 'var(--bd)', color: 'var(--t1)' }} />
+                  <button onClick={() => setQuestions(questions.filter((_, j) => j !== i))}
+                    className="px-2 rounded-lg" style={{ background: 'var(--white)', color: 'var(--t3)' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+              <button onClick={() => setQuestions([...questions, ''])}
+                className="px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-1.5"
+                style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+                <Plus size={12} /> {t('Add question', 'إضافة سؤال')}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <SaveBar onSave={() => onSave(t('Your general settings are saved. Your community is looking sharp!', 'تم حفظ الإعدادات العامة. مجتمعك يبدو رائعاً!'))} t={t} />
     </Card>
   )
 }
@@ -293,7 +286,7 @@ function VisibilityCard({ icon: Icon, title, hint, active, onClick }:
       }}>
       <div className="flex items-center gap-2 mb-2">
         <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
-             style={{ borderColor: active ? 'var(--p)' : 'var(--bd2, var(--bd))' }}>
+             style={{ borderColor: active ? 'var(--p)' : 'var(--bd)' }}>
           {active && <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--p)' }} />}
         </div>
         <Icon size={15} style={{ color: active ? 'var(--p)' : 'var(--t2)' }} />
@@ -304,27 +297,113 @@ function VisibilityCard({ icon: Icon, title, hint, active, onClick }:
   )
 }
 
+/* ─── INVITATION ────────────────────────────────────────────── */
+
+function InvitationSection({ t }: { t: (en: string, ar: string) => string }) {
+  const [copied, setCopied] = useState(false)
+  const [email, setEmail] = useState('')
+  const [csvEmails, setCsvEmails] = useState<string[]>([])
+  const [csvName, setCsvName] = useState('')
+  const csvRef = useRef<HTMLInputElement>(null)
+  const shareLink = `https://chabaqa.io/${COMMUNITY_KEY}/about`
+
+  const copy = () => {
+    navigator.clipboard.writeText(shareLink)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  const handleCsv = (file: File) => {
+    setCsvName(file.name)
+    const reader = new FileReader()
+    reader.onload = () => {
+      const text = String(reader.result)
+      const emails = text
+        .split(/[\s,;\n]+/)
+        .map((s) => s.trim())
+        .filter((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+      setCsvEmails(Array.from(new Set(emails)))
+    }
+    reader.readAsText(file)
+  }
+
+  return (
+    <Card>
+      <div>
+        <h3 className="text-[15px] font-semibold mb-1" style={{ color: 'var(--t1)' }}>
+          {t('Share your community link', 'شارك رابط مجتمعك')}
+        </h3>
+        <p className="text-[13px] mb-4" style={{ color: 'var(--t3)' }}>
+          {t('People land on your About page where they can join or purchase access.', 'يصل الأشخاص إلى صفحة عن المجتمع حيث يمكنهم الانضمام أو الشراء.')}
+        </p>
+        <div className="flex gap-2">
+          <input readOnly value={shareLink}
+            className="flex-1 px-3 py-2.5 rounded-xl text-[13px] font-medium border"
+            style={{ background: 'var(--bg)', color: 'var(--p)', borderColor: 'var(--bd)' }} />
+          <button onClick={copy}
+            className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white"
+            style={{ background: 'var(--p)' }}>
+            {copied ? t('COPIED', 'تم النسخ') : t('COPY', 'نسخ')}
+          </button>
+        </div>
+      </div>
+
+      <Divider />
+
+      <div>
+        <p className="text-[13px] mb-4" style={{ color: 'var(--t3)' }}>
+          {t('These invitation methods grant instant access without purchase or approval.', 'هذه الطرق تمنح وصولاً فورياً دون شراء أو موافقة.')}
+        </p>
+        <div className="flex gap-2">
+          <input value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder={t('Email address', 'البريد الإلكتروني')}
+            className="flex-1 px-3 py-2.5 rounded-xl text-[13px] border"
+            style={{ background: 'var(--bg)', color: 'var(--t1)', borderColor: 'var(--bd)' }} />
+          <button disabled={!email}
+            className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white disabled:opacity-40"
+            style={{ background: 'var(--p)' }}>
+            {t('SEND', 'إرسال')}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 py-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+             style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+          <FileUp size={18} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+            {t('Import a .CSV file', 'استيراد ملف CSV')}
+          </p>
+          <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
+            {csvName
+              ? `${csvName} — ${csvEmails.length} ${t('emails found', 'بريدًا تم العثور عليه')}`
+              : t('Invite members in bulk by importing an email list.', 'ادعُ الأعضاء دفعة واحدة عبر ملف البريد.')}
+          </p>
+        </div>
+        <input ref={csvRef} type="file" accept=".csv,text/csv,text/plain"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && handleCsv(e.target.files[0])} />
+        <button onClick={() => csvRef.current?.click()}
+          className="px-4 py-2 rounded-xl text-[12px] font-semibold border"
+          style={{ borderColor: 'var(--bd)', color: 'var(--t2)' }}>
+          {csvEmails.length > 0 ? t('SEND ALL', 'إرسال الكل') : t('IMPORT', 'استيراد')}
+        </button>
+      </div>
+    </Card>
+  )
+}
+
 /* ─── BRANDING ────────────────────────────────────────────── */
 
-function BrandingSection({ t }: { t: (en: string, ar: string) => string }) {
-  const [logo, setLogo] = useState('')
-  const [cover, setCover] = useState('')
+function BrandingSection({ t, onSave }: { t: (en: string, ar: string) => string; onSave: (m: string) => void }) {
   const [primary, setPrimary] = useState('#8e78fb')
   const [accent, setAccent] = useState('#47c7ea')
-  const [saved, setSaved] = useState(false)
-
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 1500) }
 
   return (
     <div className="space-y-4">
       <Card>
-        <div className="grid md:grid-cols-2 gap-4">
-          <ImageUpload label={t('Community Logo', 'شعار المجتمع')} value={logo} onChange={setLogo} aspect="1/1" />
-          <ImageUpload label={t('Cover Image', 'صورة الغلاف')} value={cover} onChange={setCover} aspect="16/9" />
-        </div>
-
-        <Divider />
-
         <div className="grid md:grid-cols-2 gap-4">
           <Field label={t('Primary Color', 'اللون الرئيسي')}>
             <ColorPicker value={primary} onChange={setPrimary} />
@@ -333,14 +412,13 @@ function BrandingSection({ t }: { t: (en: string, ar: string) => string }) {
             <ColorPicker value={accent} onChange={setAccent} />
           </Field>
         </div>
-
-        <SaveBar onSave={save} saved={saved} t={t} />
+        <SaveBar onSave={() => onSave(t('Your brand colors are saved.', 'تم حفظ ألوان العلامة التجارية.'))} t={t} />
       </Card>
 
-      {/* Landing page builder card */}
+      {/* Community Page Builder — direct call to action */}
       <div className="rounded-2xl p-6 border relative overflow-hidden"
            style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
-        <div className="absolute right-0 top-0 w-32 h-32 rounded-full blur-3xl opacity-40"
+        <div className="absolute right-0 top-0 w-40 h-40 rounded-full blur-3xl opacity-40"
              style={{ background: 'var(--p)' }} />
         <div className="relative flex items-start justify-between gap-4 flex-wrap">
           <div className="max-w-md">
@@ -364,21 +442,19 @@ function BrandingSection({ t }: { t: (en: string, ar: string) => string }) {
 
 /* ─── PRICING ────────────────────────────────────────────── */
 
-function PricingSection({ t }: { t: (en: string, ar: string) => string }) {
+function PricingSection({ t, onSave }: { t: (en: string, ar: string) => string; onSave: (m: string) => void }) {
   const [model, setModel] = useState<PricingModel>('free')
-  const [price, setPrice] = useState('')
+  const [monthlyPrice, setMonthlyPrice] = useState('')
+  const [yearlyPrice, setYearlyPrice] = useState('')
+  const [oneTimePrice, setOneTimePrice] = useState('')
   const [cycle, setCycle] = useState<BillingCycle>('monthly')
   const [showPriceModal, setShowPriceModal] = useState(false)
   const [trial, setTrial] = useState(false)
 
-  // Freemium tiers
   const [premiumPrice, setPremiumPrice] = useState('')
   const [vipEnabled, setVipEnabled] = useState(false)
   const [vipPrice, setVipPrice] = useState('')
   const [showTierModal, setShowTierModal] = useState<'premium' | 'vip' | null>(null)
-
-  const [saved, setSaved] = useState(false)
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 1500) }
 
   const MODELS = [
     { id: 'free',         label: t('Free',         'مجاني'),        hint: t('Free to join',           'مجاني للانضمام') },
@@ -389,7 +465,6 @@ function PricingSection({ t }: { t: (en: string, ar: string) => string }) {
 
   return (
     <Card>
-      {/* Model selector */}
       <div className="grid md:grid-cols-4 gap-3">
         {MODELS.map((p) => {
           const active = model === p.id
@@ -415,18 +490,26 @@ function PricingSection({ t }: { t: (en: string, ar: string) => string }) {
         })}
       </div>
 
-      {/* Subscription — Skool style */}
+      {/* Subscription */}
       {model === 'subscription' && (
         <>
-          <button onClick={() => setShowPriceModal(true)}
-            className="w-full flex items-center gap-2 p-4 rounded-xl border text-left"
-            style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
-            <DollarSign size={16} style={{ color: 'var(--t2)' }} />
-            <span className="text-[13px] font-medium flex-1" style={{ color: 'var(--t1)' }}>
-              {price ? `${price} TND / ${cycle === 'monthly' ? t('month', 'شهر') : cycle === 'yearly' ? t('year', 'سنة') : t('month + year', 'شهر + سنة')}` : t('Set price', 'تحديد السعر')}
-            </span>
-            <Edit3 size={13} style={{ color: 'var(--t3)' }} />
-          </button>
+          {cycle === 'both' ? (
+            /* Two columns: monthly + yearly */
+            <div className="grid md:grid-cols-2 gap-3">
+              <PriceButton label={t('Monthly price', 'السعر الشهري')}
+                value={monthlyPrice} suffix={`/${t('month', 'شهر')}`}
+                onClick={() => setShowPriceModal(true)} />
+              <PriceButton label={t('Yearly price', 'السعر السنوي')}
+                value={yearlyPrice} suffix={`/${t('year', 'سنة')}`}
+                onClick={() => setShowPriceModal(true)} />
+            </div>
+          ) : (
+            <PriceButton
+              label={cycle === 'monthly' ? t('Monthly price', 'السعر الشهري') : t('Yearly price', 'السعر السنوي')}
+              value={cycle === 'monthly' ? monthlyPrice : yearlyPrice}
+              suffix={`/${cycle === 'monthly' ? t('month', 'شهر') : t('year', 'سنة')}`}
+              onClick={() => setShowPriceModal(true)} />
+          )}
 
           <ToggleRow icon={Zap}
             title={t('7-day free trial', 'تجربة مجانية 7 أيام')}
@@ -435,51 +518,59 @@ function PricingSection({ t }: { t: (en: string, ar: string) => string }) {
         </>
       )}
 
-      {/* Freemium — Skool style */}
+      {/* Freemium */}
       {model === 'freemium' && (
         <div className="grid md:grid-cols-3 gap-3">
-          <TierCard title={t('Standard', 'قياسي')} priceLabel={t('Free', 'مجاني')} onSetPrice={() => {}} enabled disabled />
+          <TierCard title={t('Standard', 'قياسي')} priceLabel={t('Free', 'مجاني')} onSetPrice={() => {}} disabled />
           <TierCard title={t('Premium', 'مميز')}
             priceLabel={premiumPrice ? `${premiumPrice} TND` : t('Set price', 'تحديد السعر')}
-            onSetPrice={() => setShowTierModal('premium')} enabled disabled={false} />
+            onSetPrice={() => setShowTierModal('premium')} />
           <TierCard title={t('VIP', 'كبار')}
             priceLabel={vipPrice ? `${vipPrice} TND` : t('Set price', 'تحديد السعر')}
             onSetPrice={() => vipEnabled && setShowTierModal('vip')}
-            enabled={vipEnabled}
-            toggle={{ value: vipEnabled, onChange: setVipEnabled }} disabled={!vipEnabled} />
+            disabled={!vipEnabled}
+            toggle={{ value: vipEnabled, onChange: setVipEnabled }} />
         </div>
       )}
 
       {/* One-time */}
       {model === 'one-time' && (
-        <button onClick={() => { setCycle('monthly'); setShowPriceModal(true) }}
-          className="w-full flex items-center gap-2 p-4 rounded-xl border text-left"
-          style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
-          <DollarSign size={16} style={{ color: 'var(--t2)' }} />
-          <span className="text-[13px] font-medium flex-1" style={{ color: 'var(--t1)' }}>
-            {price ? `${price} TND ${t('(one-time)', '(دفعة واحدة)')}` : t('Set price', 'تحديد السعر')}
-          </span>
-          <Edit3 size={13} style={{ color: 'var(--t3)' }} />
-        </button>
+        <PriceButton label={t('One-time price', 'السعر الواحد')}
+          value={oneTimePrice} suffix={t('(one-time)', '(دفعة واحدة)')}
+          onClick={() => setShowPriceModal(true)} />
       )}
 
-      <SaveBar onSave={save} saved={saved} t={t} />
+      <SaveBar onSave={() => onSave(t('Pricing updated. Time to make some sales!', 'تم تحديث التسعير. حان وقت البيع!'))} t={t} />
 
       {/* Set price modal */}
       {showPriceModal && (
         <Modal onClose={() => setShowPriceModal(false)} title={t('Set price', 'تحديد السعر')}>
-          <div className="flex items-center rounded-xl border overflow-hidden mb-3"
-               style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
-            <span className="px-3 text-[15px] font-semibold" style={{ color: 'var(--t3)' }}>TND</span>
-            <input type="number" value={price} onChange={(e) => setPrice(e.target.value)}
-              className="flex-1 px-2 py-3 text-[15px] font-semibold text-right bg-transparent outline-none"
-              style={{ color: 'var(--t1)' }} autoFocus />
-            {model === 'subscription' && (
-              <span className="px-3 text-[13px]" style={{ color: 'var(--t3)' }}>
-                /{cycle === 'monthly' ? t('month', 'شهر') : t('year', 'سنة')}
-              </span>
-            )}
-          </div>
+          {cycle === 'both' && model === 'subscription' ? (
+            <div className="space-y-3 mb-3">
+              <PriceInput label={t('Monthly', 'شهري')} value={monthlyPrice} onChange={setMonthlyPrice} suffix={`/${t('month', 'شهر')}`} />
+              <PriceInput label={t('Yearly', 'سنوي')} value={yearlyPrice} onChange={setYearlyPrice} suffix={`/${t('year', 'سنة')}`} />
+            </div>
+          ) : (
+            <div className="flex items-center rounded-xl border overflow-hidden mb-3"
+                 style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
+              <span className="px-3 text-[15px] font-semibold" style={{ color: 'var(--t3)' }}>TND</span>
+              <input type="number" autoFocus
+                value={model === 'one-time' ? oneTimePrice : cycle === 'monthly' ? monthlyPrice : yearlyPrice}
+                onChange={(e) => {
+                  const v = e.target.value
+                  if (model === 'one-time') setOneTimePrice(v)
+                  else if (cycle === 'monthly') setMonthlyPrice(v)
+                  else setYearlyPrice(v)
+                }}
+                className="flex-1 px-2 py-3 text-[15px] font-semibold text-right bg-transparent outline-none"
+                style={{ color: 'var(--t1)' }} />
+              {model === 'subscription' && (
+                <span className="px-3 text-[13px]" style={{ color: 'var(--t3)' }}>
+                  /{cycle === 'monthly' ? t('month', 'شهر') : t('year', 'سنة')}
+                </span>
+              )}
+            </div>
+          )}
           <p className="text-[11px] mb-4" style={{ color: 'var(--t3)' }}>
             {t('Prices are in TND. Payouts happen in your local currency.', 'الأسعار بالدينار. المدفوعات تتم بعملتك المحلية.')}
           </p>
@@ -494,13 +585,11 @@ function PricingSection({ t }: { t: (en: string, ar: string) => string }) {
 
           <div className="flex gap-2 justify-end mt-5">
             <button onClick={() => setShowPriceModal(false)}
-              className="px-4 py-2 rounded-xl text-[13px] font-semibold"
-              style={{ color: 'var(--t2)' }}>
+              className="px-4 py-2 rounded-xl text-[13px] font-semibold" style={{ color: 'var(--t2)' }}>
               {t('CANCEL', 'إلغاء')}
             </button>
             <button onClick={() => setShowPriceModal(false)}
-              disabled={!price}
-              className="px-5 py-2 rounded-xl text-[13px] font-semibold text-white disabled:opacity-40"
+              className="px-5 py-2 rounded-xl text-[13px] font-semibold text-white"
               style={{ background: 'var(--p)' }}>
               {t('SET', 'تحديد')}
             </button>
@@ -508,23 +597,21 @@ function PricingSection({ t }: { t: (en: string, ar: string) => string }) {
         </Modal>
       )}
 
-      {/* Tier price modal (freemium) */}
       {showTierModal && (
         <Modal onClose={() => setShowTierModal(null)} title={t('Set tier price', 'تحديد سعر المستوى')}>
           <div className="flex items-center rounded-xl border overflow-hidden mb-4"
                style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
             <span className="px-3 text-[15px] font-semibold" style={{ color: 'var(--t3)' }}>TND</span>
-            <input type="number"
+            <input type="number" autoFocus
               value={showTierModal === 'premium' ? premiumPrice : vipPrice}
               onChange={(e) => showTierModal === 'premium' ? setPremiumPrice(e.target.value) : setVipPrice(e.target.value)}
               className="flex-1 px-2 py-3 text-[15px] font-semibold bg-transparent outline-none"
-              style={{ color: 'var(--t1)' }} autoFocus />
+              style={{ color: 'var(--t1)' }} />
             <span className="px-3 text-[13px]" style={{ color: 'var(--t3)' }}>/{t('month', 'شهر')}</span>
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowTierModal(null)}
-              className="px-4 py-2 rounded-xl text-[13px] font-semibold"
-              style={{ color: 'var(--t2)' }}>
+              className="px-4 py-2 rounded-xl text-[13px] font-semibold" style={{ color: 'var(--t2)' }}>
               {t('CANCEL', 'إلغاء')}
             </button>
             <button onClick={() => setShowTierModal(null)}
@@ -539,22 +626,50 @@ function PricingSection({ t }: { t: (en: string, ar: string) => string }) {
   )
 }
 
-function TierCard({ title, priceLabel, onSetPrice, enabled, disabled, toggle }:
-  { title: string; priceLabel: string; onSetPrice: () => void; enabled: boolean;
-    disabled: boolean; toggle?: { value: boolean; onChange: (v: boolean) => void } }) {
+function PriceButton({ label, value, suffix, onClick }:
+  { label: string; value: string; suffix: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick}
+      className="w-full flex items-center gap-2 p-4 rounded-xl border text-left"
+      style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
+      <DollarSign size={16} style={{ color: 'var(--t2)' }} />
+      <div className="flex-1">
+        <p className="text-[11px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--t3)' }}>{label}</p>
+        <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+          {value ? `${value} TND ${suffix}` : 'Set price'}
+        </p>
+      </div>
+      <Edit3 size={13} style={{ color: 'var(--t3)' }} />
+    </button>
+  )
+}
+
+function PriceInput({ label, value, onChange, suffix }:
+  { label: string; value: string; onChange: (v: string) => void; suffix: string }) {
+  return (
+    <div>
+      <label className="block text-[12px] font-medium mb-1" style={{ color: 'var(--t2)' }}>{label}</label>
+      <div className="flex items-center rounded-xl border overflow-hidden"
+           style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
+        <span className="px-3 text-[13px] font-semibold" style={{ color: 'var(--t3)' }}>TND</span>
+        <input type="number" value={value} onChange={(e) => onChange(e.target.value)}
+          className="flex-1 px-2 py-2.5 text-[14px] font-semibold text-right bg-transparent outline-none"
+          style={{ color: 'var(--t1)' }} />
+        <span className="px-3 text-[12px]" style={{ color: 'var(--t3)' }}>{suffix}</span>
+      </div>
+    </div>
+  )
+}
+
+function TierCard({ title, priceLabel, onSetPrice, disabled, toggle }:
+  { title: string; priceLabel: string; onSetPrice: () => void;
+    disabled?: boolean; toggle?: { value: boolean; onChange: (v: boolean) => void } }) {
   return (
     <div className="p-4 rounded-2xl border relative"
          style={{ background: 'var(--bg)', borderColor: 'var(--bd)', opacity: disabled ? 0.5 : 1 }}>
       <div className="flex items-center justify-between mb-3">
         <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>{title}</p>
-        {toggle && (
-          <button onClick={() => toggle.onChange(!toggle.value)}
-            className="relative w-9 h-5 rounded-full transition-colors"
-            style={{ background: toggle.value ? 'var(--p)' : 'var(--bd)' }}>
-            <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform"
-                  style={{ transform: toggle.value ? 'translateX(16px)' : 'translateX(0)' }} />
-          </button>
-        )}
+        {toggle && <Toggle checked={toggle.value} onChange={toggle.onChange} />}
       </div>
       <button disabled={disabled} onClick={onSetPrice}
         className="flex items-center gap-1.5 text-[13px] font-medium"
@@ -570,8 +685,7 @@ function TierCard({ title, priceLabel, onSetPrice, enabled, disabled, toggle }:
 
 function RadioRow({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick}
-      className="w-full flex items-center gap-2.5 py-2 text-left">
+    <button onClick={onClick} className="w-full flex items-center gap-2.5 py-2 text-left">
       <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center"
            style={{ borderColor: active ? 'var(--p)' : 'var(--bd)' }}>
         {active && <div className="w-2 h-2 rounded-full" style={{ background: 'var(--p)' }} />}
@@ -597,19 +711,10 @@ function Modal({ children, onClose, title }: { children: React.ReactNode; onClos
 
 /* ─── TABS & LAYOUT ────────────────────────────────────────── */
 
-const TAB_ITEMS = [
-  { key: 'courses',    label: { en: 'Courses',    ar: 'الدورات' } },
-  { key: 'challenges', label: { en: 'Challenges', ar: 'التحديات' } },
-  { key: 'sessions',   label: { en: 'Sessions',   ar: 'الجلسات' } },
-  { key: 'events',     label: { en: 'Events',     ar: 'الأحداث' } },
-  { key: 'products',   label: { en: 'Products',   ar: 'المنتجات' } },
-] as const
-
-function TabsLayoutSection({ t }: { t: (en: string, ar: string) => string }) {
+function TabsLayoutSection({ t, onSave }: { t: (en: string, ar: string) => string; onSave: (m: string) => void }) {
   const [vis, setVis] = useState<Record<string, boolean>>({
     courses: true, challenges: true, sessions: true, events: true, products: true,
   })
-  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     try {
@@ -620,41 +725,39 @@ function TabsLayoutSection({ t }: { t: (en: string, ar: string) => string }) {
 
   const save = () => {
     localStorage.setItem(TAB_VIS_KEY, JSON.stringify(vis))
-    setSaved(true); setTimeout(() => setSaved(false), 1500)
+    onSave(t('Community tabs updated. Refresh your community view to see it.', 'تم تحديث تبويبات المجتمع. حدّث صفحة المجتمع لرؤيتها.'))
   }
+
+  const items: [string, string][] = [
+    ['courses',    t('Courses',    'الدورات')],
+    ['challenges', t('Challenges', 'التحديات')],
+    ['sessions',   t('Sessions',   'الجلسات')],
+    ['events',     t('Events',     'الأحداث')],
+    ['products',   t('Products',   'المنتجات')],
+  ]
 
   return (
     <Card>
       <p className="text-[13px]" style={{ color: 'var(--t3)' }}>
         {t('Choose which sections show up inside your community. Home is always visible.', 'اختر الأقسام التي تظهر داخل مجتمعك. الرئيسية دائماً ظاهرة.')}
       </p>
-
-      {TAB_ITEMS.map((item) => (
-        <ToggleRow key={item.key} icon={Layout}
-          title={item.label.en === 'Courses' ? t('Courses', 'الدورات')
-               : item.label.en === 'Challenges' ? t('Challenges', 'التحديات')
-               : item.label.en === 'Sessions' ? t('Sessions', 'الجلسات')
-               : item.label.en === 'Events' ? t('Events', 'الأحداث')
-               : t('Products', 'المنتجات')}
-          checked={vis[item.key]}
-          onChange={(v) => setVis({ ...vis, [item.key]: v })} />
+      {items.map(([k, label]) => (
+        <ToggleRow key={k} icon={Layout} title={label}
+          checked={vis[k]} onChange={(v) => setVis({ ...vis, [k]: v })} />
       ))}
-
-      <SaveBar onSave={save} saved={saved} t={t} />
+      <SaveBar onSave={save} t={t} />
     </Card>
   )
 }
 
 /* ─── RULES ────────────────────────────────────────────── */
 
-function RulesSection({ t }: { t: (en: string, ar: string) => string }) {
+function RulesSection({ t, onSave }: { t: (en: string, ar: string) => string; onSave: (m: string) => void }) {
   const [rules, setRules] = useState<string[]>([
     'Be respectful and kind to other members.',
     'No spam, self-promotion, or off-topic posts.',
     'Share your work and support others.',
   ])
-  const [saved, setSaved] = useState(false)
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 1500) }
 
   return (
     <Card>
@@ -680,20 +783,18 @@ function RulesSection({ t }: { t: (en: string, ar: string) => string }) {
         style={{ background: 'var(--p2)', color: 'var(--p)' }}>
         <Plus size={13} /> {t('Add rule', 'إضافة قاعدة')}
       </button>
-      <SaveBar onSave={save} saved={saved} t={t} />
+      <SaveBar onSave={() => onSave(t('Rules saved. Members will see them from now on.', 'تم حفظ القواعد. سيراها الأعضاء من الآن.'))} t={t} />
     </Card>
   )
 }
 
 /* ─── NOTIFICATIONS ────────────────────────────────────────── */
 
-function NotificationsSection({ t }: { t: (en: string, ar: string) => string }) {
+function NotificationsSection({ t, onSave }: { t: (en: string, ar: string) => string; onSave: (m: string) => void }) {
   const [n, setN] = useState({
     newMember: true, newPost: true, newComment: true, newPurchase: true,
     weeklyDigest: false, monthlyReport: true, dmNotifs: true, mentions: true,
   })
-  const [saved, setSaved] = useState(false)
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 1500) }
 
   const rows: [keyof typeof n, string][] = [
     ['newMember',     t('New member joins',   'انضمام عضو جديد')],
@@ -715,7 +816,7 @@ function NotificationsSection({ t }: { t: (en: string, ar: string) => string }) 
         <ToggleRow key={k} icon={Bell} title={label}
           checked={n[k]} onChange={(v) => setN({ ...n, [k]: v })} />
       ))}
-      <SaveBar onSave={save} saved={saved} t={t} />
+      <SaveBar onSave={() => onSave(t('Notification preferences saved.', 'تم حفظ تفضيلات الإشعارات.'))} t={t} />
     </Card>
   )
 }
@@ -741,31 +842,28 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-function Input({ value, onChange, prefix, type = 'text', placeholder }:
-  { value: string; onChange: (v: string) => void; prefix?: string; type?: string; placeholder?: string }) {
+function FloatField({ label, counter, children }: { label: string; counter: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center rounded-xl border overflow-hidden"
-         style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
-      {prefix && <span className="px-3 text-[13px]" style={{ color: 'var(--t3)' }}>{prefix}</span>}
-      <input type={type} value={value} placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 px-3 py-2.5 text-[13px] bg-transparent outline-none"
-        style={{ color: 'var(--t1)' }} />
+    <div className="rounded-xl border px-3 pt-1.5 pb-1 relative"
+         style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
+      <label className="block text-[11px] font-medium" style={{ color: 'var(--t3)' }}>{label}</label>
+      {children}
+      <p className="text-[11px] text-right" style={{ color: 'var(--t3)' }}>{counter}</p>
     </div>
   )
 }
 
-function Textarea({ value, onChange, rows = 3 }: { value: string; onChange: (v: string) => void; rows?: number }) {
-  return (
-    <textarea value={value} rows={rows}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full px-3 py-2.5 text-[13px] rounded-xl border outline-none resize-none"
-      style={{ background: 'var(--bg)', borderColor: 'var(--bd)', color: 'var(--t1)' }} />
-  )
-}
+function Divider() { return <div className="h-px" style={{ background: 'var(--bd)' }} /> }
 
-function Divider() {
-  return <div className="h-px" style={{ background: 'var(--bd)' }} />
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button onClick={() => onChange(!checked)}
+      className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0"
+      style={{ background: checked ? 'var(--p)' : 'var(--bd)' }}>
+      <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform"
+            style={{ transform: checked ? 'translateX(20px)' : 'translateX(0)' }} />
+    </button>
+  )
 }
 
 function ToggleRow({ icon: Icon, title, hint, checked, onChange }:
@@ -780,12 +878,7 @@ function ToggleRow({ icon: Icon, title, hint, checked, onChange }:
         <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>{title}</p>
         {hint && <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{hint}</p>}
       </div>
-      <button onClick={() => onChange(!checked)}
-        className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0"
-        style={{ background: checked ? 'var(--p)' : 'var(--bd)' }}>
-        <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform"
-              style={{ transform: checked ? 'translateX(20px)' : 'translateX(0)' }} />
-      </button>
+      <Toggle checked={checked} onChange={onChange} />
     </div>
   )
 }
@@ -803,27 +896,16 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (v: string)
   )
 }
 
-function ImageUpload({ label, value, onChange, aspect }:
-  { label: string; value: string; onChange: (v: string) => void; aspect: string }) {
+function SmallUpload({ label, hint, value, onChange, size, aspect }:
+  { label: string; hint: string; value: string; onChange: (v: string) => void; size: number; aspect: string }) {
   return (
-    <div>
-      <p className="text-[12px] font-medium mb-2" style={{ color: 'var(--t2)' }}>{label}</p>
-      <div className="rounded-xl border-2 border-dashed flex items-center justify-center relative overflow-hidden"
-           style={{ borderColor: 'var(--bd)', background: 'var(--bg)', aspectRatio: aspect }}>
+    <div className="flex items-start gap-3">
+      <div className="rounded-xl relative overflow-hidden flex items-center justify-center flex-shrink-0"
+           style={{ background: 'var(--bg)', border: '1px solid var(--bd)', width: size, aspectRatio: aspect }}>
         {value ? (
-          <>
-            <img src={value} alt="" className="w-full h-full object-cover" />
-            <button onClick={() => onChange('')}
-              className="absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: 'rgba(0,0,0,.6)', color: '#fff' }}>
-              <X size={14} />
-            </button>
-          </>
+          <img src={value} alt="" className="w-full h-full object-cover" />
         ) : (
-          <div className="text-center px-3">
-            <Upload size={20} className="mx-auto mb-1" style={{ color: 'var(--t3)' }} />
-            <p className="text-[11px]" style={{ color: 'var(--t3)' }}>Click to upload</p>
-          </div>
+          <span className="text-[12px] font-semibold" style={{ color: 'var(--p)' }}>Import</span>
         )}
         <input type="file" accept="image/*"
           className="absolute inset-0 opacity-0 cursor-pointer"
@@ -836,19 +918,68 @@ function ImageUpload({ label, value, onChange, aspect }:
             }
           }} />
       </div>
+      <div>
+        <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>{label}</p>
+        <p className="text-[11px] mb-2" style={{ color: 'var(--t3)' }}>{hint}</p>
+        <button className="px-3 py-1.5 rounded-lg text-[11px] font-semibold border"
+                style={{ borderColor: 'var(--bd)', color: 'var(--t2)' }}>
+          {value ? 'MODIFY' : 'IMPORT'}
+        </button>
+      </div>
     </div>
   )
 }
 
-function SaveBar({ onSave, saved, t }:
-  { onSave: () => void; saved: boolean; t: (en: string, ar: string) => string }) {
+function SaveBar({ onSave, t }: { onSave: () => void; t: (en: string, ar: string) => string }) {
   return (
     <div className="flex justify-end pt-2 border-t" style={{ borderColor: 'var(--bd)' }}>
       <button onClick={onSave}
-        className="mt-4 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white flex items-center gap-1.5 transition-opacity hover:opacity-90"
-        style={{ background: saved ? '#22c55e' : 'var(--p)' }}>
-        {saved ? <><Check size={14} /> {t('Saved', 'تم الحفظ')}</> : t('Save changes', 'حفظ التغييرات')}
+        className="mt-4 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+        style={{ background: 'var(--p)' }}>
+        {t('Save changes', 'حفظ التغييرات')}
       </button>
+    </div>
+  )
+}
+
+function SuccessModal({ t, message, onClose }: { t: (en: string, ar: string) => string; message: string; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 2500)
+    return () => clearTimeout(timer)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style={{ background: 'rgba(0,0,0,.4)', animation: 'fadeIn .2s ease' }}
+         onClick={onClose}>
+      <div className="rounded-2xl p-6 max-w-sm text-center relative"
+           style={{ background: 'var(--white)', animation: 'popIn .3s ease' }}
+           onClick={(e) => e.stopPropagation()}>
+        <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+             style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)' }}>
+          <PartyPopper size={28} color="#fff" />
+        </div>
+        <h3 className="text-[17px] font-semibold mb-1" style={{ color: 'var(--t1)' }}>
+          {t('All set!', 'تم بنجاح!')}
+        </h3>
+        <p className="text-[13px]" style={{ color: 'var(--t2)' }}>
+          {message}
+        </p>
+        <button onClick={onClose}
+          className="mt-5 px-5 py-2 rounded-xl text-[13px] font-semibold text-white"
+          style={{ background: 'var(--p)' }}>
+          {t('Awesome', 'ممتاز')}
+        </button>
+      </div>
+
+      <style jsx>{`
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes popIn {
+          0%   { transform: scale(.85); opacity: 0 }
+          60%  { transform: scale(1.05); opacity: 1 }
+          100% { transform: scale(1); opacity: 1 }
+        }
+      `}</style>
     </div>
   )
 }
