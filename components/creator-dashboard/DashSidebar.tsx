@@ -43,7 +43,7 @@ const navGroups = [
     ],
   },
   {
-    label: { en: 'Support', ar: 'المساعدة' },
+    label: { en: 'Tools', ar: 'أدوات' },
     items: [
       { label: { en: 'Integrations',  ar: 'التكاملات'       }, href: '/creator/integrations', icon: 'settings', soon: true },
       { label: { en: 'Help & Support', ar: 'المساعدة والدعم' }, href: '/creator/help',        icon: 'help'               },
