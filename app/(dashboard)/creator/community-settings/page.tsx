@@ -15,13 +15,13 @@ type TabId = 'general' | 'invitation' | 'pricing' | 'tabs' | 'rules' | 'notifica
 type PricingModel = 'free' | 'subscription' | 'freemium' | 'one-time'
 type BillingCycle = 'monthly' | 'yearly' | 'both'
 
-const TABS: { id: TabId; label: { en: string; ar: string }; icon: any }[] = [
-  { id: 'general',       label: { en: 'General',       ar: 'عام'         }, icon: Settings  },
-  { id: 'invitation',    label: { en: 'Invitation',    ar: 'الدعوة'      }, icon: UserPlus  },
-  { id: 'pricing',       label: { en: 'Pricing',       ar: 'التسعير'     }, icon: DollarSign },
-  { id: 'tabs',          label: { en: 'Tabs & Layout', ar: 'التبويبات'   }, icon: Layout    },
-  { id: 'rules',         label: { en: 'Rules',         ar: 'القواعد'     }, icon: BookOpen  },
-  { id: 'notifications', label: { en: 'Notifications', ar: 'الإشعارات'   }, icon: Bell      },
+const TABS: { id: TabId; label: { en: string; ar: string }; icon: any; color: string; softColor: string }[] = [
+  { id: 'general',       label: { en: 'General',       ar: 'عام'         }, icon: Settings,   color: 'var(--p)',      softColor: 'var(--p2)'  },
+  { id: 'invitation',    label: { en: 'Invitation',    ar: 'الدعوة'      }, icon: UserPlus,   color: 'var(--pink)',   softColor: 'var(--pk2)' },
+  { id: 'pricing',       label: { en: 'Pricing',       ar: 'التسعير'     }, icon: DollarSign, color: 'var(--orange)', softColor: 'var(--o2)'  },
+  { id: 'tabs',          label: { en: 'Tabs & Layout', ar: 'التبويبات'   }, icon: Layout,     color: 'var(--cyan)',   softColor: 'var(--c2)'  },
+  { id: 'rules',         label: { en: 'Rules',         ar: 'القواعد'     }, icon: BookOpen,   color: 'var(--p)',      softColor: 'var(--p2)'  },
+  { id: 'notifications', label: { en: 'Notifications', ar: 'الإشعارات'   }, icon: Bell,       color: 'var(--pink)',   softColor: 'var(--pk2)' },
 ]
 
 const COMMUNITY_KEY = 'motion-masters'
@@ -51,31 +51,48 @@ export default function CommunitySettingsPage() {
         <DashTopbar />
 
         <main className="flex-1 px-6 py-6 max-w-6xl w-full mx-auto pb-24">
-          <div className="mb-6">
-            <h1 className="text-[22px] font-semibold" style={{ color: 'var(--t1)' }}>
-              {t('Community Settings', 'إعدادات المجتمع')}
-            </h1>
-            <p className="text-[13px] mt-1" style={{ color: 'var(--t3)' }}>
-              {t('Configure how your community looks, feels and works.', 'اضبط شكل مجتمعك وطريقة عمله.')}
-            </p>
+          {/* Hero header with gradient */}
+          <div className="relative rounded-3xl p-6 mb-6 overflow-hidden"
+               style={{ background: 'linear-gradient(135deg, var(--p) 0%, #a08cff 55%, var(--pink) 130%)' }}>
+            <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full blur-3xl opacity-40"
+                 style={{ background: 'var(--cyan)' }} />
+            <div className="absolute -left-8 -bottom-16 w-48 h-48 rounded-full blur-3xl opacity-35"
+                 style={{ background: 'var(--orange)' }} />
+            <div className="relative flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-sm"
+                   style={{ background: 'rgba(255,255,255,.22)' }}>
+                <Settings size={22} color="#fff" />
+              </div>
+              <div className="text-white">
+                <h1 className="text-[22px] font-semibold leading-tight">
+                  {t('Community Settings', 'إعدادات المجتمع')}
+                </h1>
+                <p className="text-[13px] opacity-90 mt-0.5">
+                  {t('Configure how your community looks, feels and works.', 'اضبط شكل مجتمعك وطريقة عمله.')}
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 border-b overflow-x-auto"
-               style={{ borderColor: 'var(--bd)' }}>
+          {/* Tabs — colored pills */}
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-2 -mx-1 px-1">
             {TABS.map((T) => {
               const active = tab === T.id
               const Icon = T.icon
               return (
                 <button key={T.id} onClick={() => setTab(T.id)}
-                  className="flex items-center gap-1.5 px-4 py-3 text-[13px] font-medium transition-colors whitespace-nowrap relative"
-                  style={{ color: active ? 'var(--p)' : 'var(--t2)' }}>
-                  <Icon size={15} />
+                  className="flex items-center gap-2 px-3.5 py-2.5 text-[13px] font-semibold whitespace-nowrap rounded-xl transition-all border"
+                  style={{
+                    background: active ? T.color : 'var(--white)',
+                    color: active ? '#fff' : 'var(--t2)',
+                    borderColor: active ? T.color : 'var(--bd)',
+                    boxShadow: active ? `0 6px 16px -6px ${T.color}` : 'none',
+                  }}>
+                  <div className="w-5 h-5 rounded-md flex items-center justify-center"
+                       style={{ background: active ? 'rgba(255,255,255,.22)' : T.softColor, color: active ? '#fff' : T.color }}>
+                    <Icon size={12} />
+                  </div>
                   {T.label[lang]}
-                  {active && (
-                    <span className="absolute left-2 right-2 bottom-[-1px] h-[2px] rounded-full"
-                          style={{ background: 'var(--p)' }} />
-                  )}
                 </button>
               )
             })}
@@ -212,22 +229,24 @@ function GeneralSection({ t, onSave }: { t: (en: string, ar: string) => string; 
 
       {/* Landing Page shortcut */}
       <Link href="/creator/branding"
-        className="flex items-center gap-3 p-4 rounded-xl border transition-colors hover:opacity-90"
-        style={{ background: 'var(--p2)', borderColor: 'var(--p)' }}>
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-             style={{ background: 'var(--p)', color: '#fff' }}>
-          <Palette size={18} />
+        className="flex items-center gap-3 p-4 rounded-2xl transition-transform hover:scale-[1.01] relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, var(--p) 0%, #a08cff 60%, var(--pink) 130%)' }}>
+        <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full blur-2xl opacity-40"
+             style={{ background: 'var(--cyan)' }} />
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm relative"
+             style={{ background: 'rgba(255,255,255,.25)' }}>
+          <Palette size={18} color="#fff" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+        <div className="flex-1 min-w-0 relative">
+          <p className="text-[14px] font-semibold text-white">
             {t('Landing Page', 'صفحة الهبوط')}
           </p>
-          <p className="text-[12px]" style={{ color: 'var(--t2)' }}>
+          <p className="text-[12px] text-white opacity-90">
             {t('Design the page people see when they discover your community.', 'صمم الصفحة التي يراها الناس عند اكتشاف مجتمعك.')}
           </p>
         </div>
-        <div className="flex items-center gap-1 text-[13px] font-semibold" style={{ color: 'var(--p)' }}>
-          {t('Open Page Builder', 'افتح المنشئ')} <ArrowRight size={13} />
+        <div className="flex items-center gap-1 text-[13px] font-semibold text-white bg-white/25 backdrop-blur-sm px-3 py-1.5 rounded-lg relative">
+          {t('Open', 'افتح')} <ArrowRight size={13} />
         </div>
       </Link>
 
@@ -491,6 +510,7 @@ function PricingSection({ t, onSave }: { t: (en: string, ar: string) => string; 
           <ToggleRow icon={Zap}
             title={t('7-day free trial', 'تجربة مجانية 7 أيام')}
             hint={t('Members get 7 days free before being charged.', 'يحصل الأعضاء على 7 أيام مجاناً قبل الدفع.')}
+            color="var(--orange)" softColor="var(--o2)"
             checked={trial} onChange={setTrial} />
         </>
       )}
@@ -720,6 +740,7 @@ function TabsLayoutSection({ t, onSave }: { t: (en: string, ar: string) => strin
       </p>
       {items.map(([k, label]) => (
         <ToggleRow key={k} icon={Layout} title={label}
+          color="var(--cyan)" softColor="var(--c2)"
           checked={vis[k]} onChange={(v) => setVis({ ...vis, [k]: v })} />
       ))}
       <SaveBar onSave={save} t={t} />
@@ -791,6 +812,7 @@ function NotificationsSection({ t, onSave }: { t: (en: string, ar: string) => st
       </p>
       {rows.map(([k, label]) => (
         <ToggleRow key={k} icon={Bell} title={label}
+          color="var(--pink)" softColor="var(--pk2)"
           checked={n[k]} onChange={(v) => setN({ ...n, [k]: v })} />
       ))}
       <SaveBar onSave={() => onSave(t('Notification preferences saved.', 'تم حفظ تفضيلات الإشعارات.'))} t={t} />
@@ -832,30 +854,30 @@ function FloatField({ label, counter, children }: { label: string; counter: stri
 
 function Divider() { return <div className="h-px" style={{ background: 'var(--bd)' }} /> }
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, color = 'var(--p)' }: { checked: boolean; onChange: (v: boolean) => void; color?: string }) {
   return (
     <button onClick={() => onChange(!checked)}
       className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0"
-      style={{ background: checked ? 'var(--p)' : 'var(--bd)' }}>
+      style={{ background: checked ? color : 'var(--bd)' }}>
       <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform"
             style={{ transform: checked ? 'translateX(20px)' : 'translateX(0)' }} />
     </button>
   )
 }
 
-function ToggleRow({ icon: Icon, title, hint, checked, onChange }:
-  { icon: any; title: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+function ToggleRow({ icon: Icon, title, hint, checked, onChange, color = 'var(--p)', softColor = 'var(--p2)' }:
+  { icon: any; title: string; hint?: string; checked: boolean; onChange: (v: boolean) => void; color?: string; softColor?: string }) {
   return (
     <div className="flex items-center gap-3">
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-           style={{ background: checked ? 'var(--p2)' : 'var(--bg)', color: checked ? 'var(--p)' : 'var(--t3)' }}>
+           style={{ background: checked ? softColor : 'var(--bg)', color: checked ? color : 'var(--t3)' }}>
         <Icon size={16} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-medium" style={{ color: 'var(--t1)' }}>{title}</p>
         {hint && <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{hint}</p>}
       </div>
-      <Toggle checked={checked} onChange={onChange} />
+      <Toggle checked={checked} onChange={onChange} color={color} />
     </div>
   )
 }
@@ -911,8 +933,11 @@ function SaveBar({ onSave, t }: { onSave: () => void; t: (en: string, ar: string
   return (
     <div className="flex justify-end pt-2 border-t" style={{ borderColor: 'var(--bd)' }}>
       <button onClick={onSave}
-        className="mt-4 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
-        style={{ background: 'var(--p)' }}>
+        className="mt-4 px-6 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.99]"
+        style={{
+          background: 'linear-gradient(135deg, var(--p) 0%, #a08cff 100%)',
+          boxShadow: '0 8px 20px -8px var(--p)',
+        }}>
         {t('Save changes', 'حفظ التغييرات')}
       </button>
     </div>
