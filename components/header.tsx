@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { getUserProfileHandle } from "@/lib/profile-handle"
 import { useTranslations } from "next-intl"
 import { localizeHref } from "@/lib/i18n/client"
+import { ProfileMenu } from "@/components/profile-menu"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -162,20 +163,13 @@ export function Header() {
                   <LayoutDashboard className="h-4 w-4" />
                 </Link>
               )}
-              <Link
-                href={withLocale(`/profile/${profileHandle}`)}
-                className="hidden md:inline-flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold text-[var(--t2)] border border-[var(--bd)] bg-[var(--white)] hover:border-[var(--p3)] hover:text-[var(--p)] transition-colors"
-              >
-                <UserIcon className="w-4 h-4" />
-                @{profileHandle}
-              </Link>
-              <button
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="hidden md:inline-flex items-center h-10 px-4 rounded-xl text-sm font-semibold text-white bg-[var(--p)] hover:bg-[var(--p-dark)] transition-colors disabled:opacity-70"
-              >
-                {isLoggingOut ? "Logging out..." : "Logout"}
-              </button>
+              <ProfileMenu
+                user={authUser}
+                profileHandle={profileHandle}
+                withLocale={withLocale}
+                onLogout={handleLogout}
+                isLoggingOut={isLoggingOut}
+              />
             </>
           )}
           {/* Burger */}
