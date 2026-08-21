@@ -10,10 +10,9 @@ const navGroups = [
   {
     label: { en: 'Main', ar: 'الرئيسية' },
     items: [
-      { label: { en: 'Overview',    ar: 'نظرة عامة'   }, href: '/creator',             icon: 'grid'      },
-      { label: { en: 'Communities', ar: 'المجتمعات'   }, href: '/creator/communities',  icon: 'users'     },
-      { label: { en: 'Community Settings', ar: 'إعدادات المجتمع' }, href: '/creator/community-settings', icon: 'settings' },
-      { label: { en: 'Analytics',   ar: 'التحليلات'   }, href: '/creator/analytics',   icon: 'chart'     },
+      { label: { en: 'Overview',    ar: 'نظرة عامة'   }, href: '/creator',                    icon: 'grid'      },
+      { label: { en: 'Settings',    ar: 'الإعدادات'   }, href: '/creator/community-settings', icon: 'brush'     },
+      { label: { en: 'Analytics',   ar: 'التحليلات'   }, href: '/creator/analytics',          icon: 'chart'     },
     ],
   },
   {
@@ -44,9 +43,8 @@ const navGroups = [
     ],
   },
   {
-    label: { en: 'Settings', ar: 'الإعدادات' },
+    label: { en: 'Workspace', ar: 'مساحة العمل' },
     items: [
-      { label: { en: 'Team & Roles',  ar: 'الفريق والأدوار' }, href: '/creator/team',         icon: 'team'               },
       { label: { en: 'Integrations',  ar: 'التكاملات'       }, href: '/creator/integrations', icon: 'settings', soon: true },
       { label: { en: 'Help & Support', ar: 'المساعدة والدعم' }, href: '/creator/help',        icon: 'help'               },
     ],

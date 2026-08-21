@@ -6,18 +6,19 @@ import DashTopbar from '@/components/creator-dashboard/DashTopbar'
 import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import Link from 'next/link'
 import {
-  UserPlus, Settings, Palette, DollarSign, Layout, BookOpen, Bell,
-  Copy, Check, Upload, Trash2, Plus, X, Edit3, Mail,
-  FileUp, Zap, Globe, Lock, Unlock, ArrowRight, Loader2, PartyPopper,
+  UserPlus, Settings, Palette, DollarSign, Layout, BookOpen, Bell, Users2,
+  Copy, Check, Upload, Trash2, Plus, X, Edit3, Mail, ChevronDown, LayoutTemplate,
+  FileUp, Zap, Globe, Lock, Unlock, ArrowRight, Loader2, PartyPopper, Shield,
 } from 'lucide-react'
 
-type TabId = 'general' | 'invitation' | 'pricing' | 'tabs' | 'rules' | 'notifications'
+type TabId = 'general' | 'invitation' | 'team' | 'pricing' | 'tabs' | 'rules' | 'notifications'
 type PricingModel = 'free' | 'subscription' | 'freemium' | 'one-time'
 type BillingCycle = 'monthly' | 'yearly' | 'both'
 
 const TABS: { id: TabId; label: { en: string; ar: string }; icon: any; color: string; softColor: string }[] = [
   { id: 'general',       label: { en: 'General',       ar: 'عام'         }, icon: Settings,   color: 'var(--p)',      softColor: 'var(--p2)'  },
   { id: 'invitation',    label: { en: 'Invitation',    ar: 'الدعوة'      }, icon: UserPlus,   color: 'var(--pink)',   softColor: 'var(--pk2)' },
+  { id: 'team',          label: { en: 'Team & Roles',  ar: 'الفريق'      }, icon: Users2,     color: 'var(--cyan)',   softColor: 'var(--c2)'  },
   { id: 'pricing',       label: { en: 'Pricing',       ar: 'التسعير'     }, icon: DollarSign, color: 'var(--orange)', softColor: 'var(--o2)'  },
   { id: 'tabs',          label: { en: 'Tabs & Layout', ar: 'التبويبات'   }, icon: Layout,     color: 'var(--cyan)',   softColor: 'var(--c2)'  },
   { id: 'rules',         label: { en: 'Rules',         ar: 'القواعد'     }, icon: BookOpen,   color: 'var(--p)',      softColor: 'var(--p2)'  },
@@ -84,6 +85,7 @@ export default function CommunitySettingsPage() {
           <div className="mt-6">
             {tab === 'general'       && <GeneralSection t={t} onSave={triggerSave} />}
             {tab === 'invitation'    && <InvitationSection t={t} />}
+            {tab === 'team'          && <TeamSection t={t} onSave={triggerSave} />}
             {tab === 'pricing'       && <PricingSection t={t} onSave={triggerSave} />}
             {tab === 'tabs'          && <TabsLayoutSection t={t} onSave={triggerSave} />}
             {tab === 'rules'         && <RulesSection t={t} onSave={triggerSave} />}
@@ -136,10 +138,10 @@ function GeneralSection({ t, onSave }: { t: (en: string, ar: string) => string; 
         <div className="flex gap-5 flex-wrap">
           <NiceUploader label={t('Icon', 'الأيقونة')}
             hint={t('Recommended: 128 × 128', 'مقاس مقترح: 128 × 128')}
-            value={logo} onChange={setLogo} w={110} h={110} />
+            value={logo} onChange={setLogo} w={200} h={200} />
           <NiceUploader label={t('Cover', 'الغلاف')}
             hint={t('Recommended: 1084 × 576', 'مقاس مقترح: 1084 × 576')}
-            value={cover} onChange={setCover} w={220} h={110} />
+            value={cover} onChange={setCover} w={380} h={200} />
         </div>
 
         <div>
@@ -227,26 +229,24 @@ function GeneralSection({ t, onSave }: { t: (en: string, ar: string) => string; 
         )}
       </div>
 
-      {/* Card 3 — Landing Page shortcut */}
+      {/* Card 3 — Landing Page shortcut (flat, minimalist) */}
       <Link href="/creator/branding"
-        className="block rounded-2xl transition-transform hover:scale-[1.005] relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, var(--p) 0%, #a08cff 60%, var(--pink) 130%)' }}>
-        <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full blur-2xl opacity-40"
-             style={{ background: 'var(--cyan)' }} />
-        <div className="relative flex items-center gap-3 p-4">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm"
-               style={{ background: 'rgba(255,255,255,.25)' }}>
-            <Palette size={18} color="#fff" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-semibold text-white">{t('Landing Page', 'صفحة الهبوط')}</p>
-            <p className="text-[12px] text-white opacity-90">
-              {t('Design the page people see when they discover your community.', 'صمم الصفحة التي يراها الناس عند اكتشاف مجتمعك.')}
-            </p>
-          </div>
-          <div className="text-[13px] font-semibold text-white bg-white/25 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-1">
-            {t('Open', 'افتح')} <ArrowRight size={13} />
-          </div>
+        className="flex items-center gap-4 p-4 rounded-2xl border transition-colors hover:border-[var(--p)]"
+        style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+             style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+          <LayoutTemplate size={18} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-semibold" style={{ color: 'var(--t1)' }}>
+            {t('Landing Page', 'صفحة الهبوط')}
+          </p>
+          <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
+            {t('Design the page people see when they discover your community.', 'صمم الصفحة التي يراها الناس عند اكتشاف مجتمعك.')}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 text-[13px] font-semibold" style={{ color: 'var(--p)' }}>
+          {t('Open', 'افتح')} <ArrowRight size={13} />
         </div>
       </Link>
 
@@ -338,6 +338,142 @@ function VisibilityCard({ icon: Icon, title, hint, active, onClick }:
       </div>
       <p className="text-[12px]" style={{ color: 'var(--t3)' }}>{hint}</p>
     </button>
+  )
+}
+
+/* ─── TEAM & ROLES ────────────────────────────────────────────── */
+
+type Role = 'owner' | 'admin' | 'moderator' | 'support'
+type Member = { id: string; name: string; email: string; role: Role; avatar?: string }
+
+const ROLES: { id: Role; label: string; hint: string; color: string }[] = [
+  { id: 'owner',     label: 'Owner',     hint: 'Full access', color: 'var(--p)' },
+  { id: 'admin',     label: 'Admin',     hint: 'Manage content, members, settings', color: 'var(--pink)' },
+  { id: 'moderator', label: 'Moderator', hint: 'Manage posts and members', color: 'var(--cyan)' },
+  { id: 'support',   label: 'Support',   hint: 'Reply to help requests', color: 'var(--orange)' },
+]
+
+function TeamSection({ t, onSave }: { t: (en: string, ar: string) => string; onSave: (m: string) => void }) {
+  const [members, setMembers] = useState<Member[]>([
+    { id: '1', name: 'You', email: 'you@chabaqa.io', role: 'owner' },
+  ])
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<Role>('admin')
+
+  const invite = () => {
+    if (!inviteEmail) return
+    setMembers([...members, {
+      id: String(Date.now()),
+      name: inviteEmail.split('@')[0],
+      email: inviteEmail,
+      role: inviteRole,
+    }])
+    setInviteEmail('')
+  }
+
+  const removeMember = (id: string) => setMembers(members.filter(m => m.id !== id))
+  const setRole = (id: string, role: Role) =>
+    setMembers(members.map(m => m.id === id ? { ...m, role } : m))
+
+  return (
+    <div className="space-y-4">
+      {/* Invite */}
+      <div className="rounded-2xl border p-5"
+           style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <UserPlus size={14} style={{ color: 'var(--cyan)' }} />
+          <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+            {t('Invite a team member', 'ادعُ عضو فريق')}
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder={t('Email address', 'البريد الإلكتروني')}
+            className="flex-1 min-w-[220px] px-3 py-2.5 rounded-xl text-[13px] border"
+            style={{ background: 'var(--bg)', color: 'var(--t1)', borderColor: 'var(--bd)' }} />
+          <RoleSelect value={inviteRole} onChange={setInviteRole} />
+          <button onClick={invite} disabled={!inviteEmail}
+            className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white disabled:opacity-40"
+            style={{ background: 'var(--p)' }}>
+            {t('Invite', 'دعوة')}
+          </button>
+        </div>
+      </div>
+
+      {/* Members list */}
+      <div className="rounded-2xl border p-5"
+           style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
+        <div className="flex items-center gap-2 mb-4">
+          <Users2 size={14} style={{ color: 'var(--cyan)' }} />
+          <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+            {t('Team members', 'أعضاء الفريق')}
+          </p>
+          <span className="text-[12px] ml-auto" style={{ color: 'var(--t3)' }}>
+            {members.length} {t('members', 'أعضاء')}
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          {members.map((m) => {
+            const roleObj = ROLES.find(r => r.id === m.role)!
+            return (
+              <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl border"
+                   style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-semibold flex-shrink-0"
+                     style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+                  {m.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--t1)' }}>{m.name}</p>
+                  <p className="text-[11px] truncate" style={{ color: 'var(--t3)' }}>{m.email}</p>
+                </div>
+                {m.role === 'owner' ? (
+                  <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold"
+                        style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+                    Owner
+                  </span>
+                ) : (
+                  <>
+                    <RoleSelect value={m.role} onChange={(r) => setRole(m.id, r)} compact />
+                    <button onClick={() => removeMember(m.id)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: 'var(--white)', color: '#ef4444', border: '1px solid var(--bd)' }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <SaveBar onSave={() => onSave(t('Team roles saved. Your crew is ready to help.', 'تم حفظ صلاحيات الفريق.'))} t={t} />
+    </div>
+  )
+}
+
+function RoleSelect({ value, onChange, compact = false }:
+  { value: Role; onChange: (v: Role) => void; compact?: boolean }) {
+  const roleObj = ROLES.find(r => r.id === value)!
+  return (
+    <div className="relative">
+      <select value={value} onChange={(e) => onChange(e.target.value as Role)}
+        className="appearance-none rounded-xl text-[12px] font-semibold border pl-3 pr-8 cursor-pointer"
+        style={{
+          background: 'var(--white)',
+          color: roleObj.color,
+          borderColor: 'var(--bd)',
+          height: compact ? 36 : 42,
+        }}>
+        {ROLES.filter(r => r.id !== 'owner').map(r => (
+          <option key={r.id} value={r.id}>{r.label}</option>
+        ))}
+      </select>
+      <ChevronDown size={12}
+        className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+        style={{ color: 'var(--t3)' }} />
+    </div>
   )
 }
 
@@ -1017,21 +1153,26 @@ function SuccessModal({ t, message, onClose }: { t: (en: string, ar: string) => 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
          style={{ background: 'rgba(0,0,0,.4)', animation: 'fadeIn .2s ease' }}
          onClick={onClose}>
-      <div className="rounded-2xl p-6 max-w-sm text-center relative"
-           style={{ background: 'var(--white)', animation: 'popIn .3s ease' }}
+      <div className="rounded-2xl p-6 text-center relative flex flex-col items-center"
+           style={{
+             background: 'var(--white)',
+             animation: 'popIn .3s ease',
+             width: 380,
+             minHeight: 280,
+           }}
            onClick={(e) => e.stopPropagation()}>
-        <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+        <div className="w-16 h-16 rounded-full mb-4 flex items-center justify-center flex-shrink-0"
              style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)' }}>
           <PartyPopper size={28} color="#fff" />
         </div>
         <h3 className="text-[17px] font-semibold mb-1" style={{ color: 'var(--t1)' }}>
           {t('All set!', 'تم بنجاح!')}
         </h3>
-        <p className="text-[13px]" style={{ color: 'var(--t2)' }}>
+        <p className="text-[13px] flex-1 flex items-center" style={{ color: 'var(--t2)' }}>
           {message}
         </p>
         <button onClick={onClose}
-          className="mt-5 px-5 py-2 rounded-xl text-[13px] font-semibold text-white"
+          className="mt-4 px-6 py-2 rounded-xl text-[13px] font-semibold text-white flex-shrink-0"
           style={{ background: 'var(--p)' }}>
           {t('Awesome', 'ممتاز')}
         </button>
