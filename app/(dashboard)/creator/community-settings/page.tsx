@@ -126,78 +126,137 @@ function GeneralSection({ t, onSave }: { t: (en: string, ar: string) => string; 
   const [visibility, setVisibility] = useState<'public' | 'private'>('public')
   const [requireQuestions, setRequireQuestions] = useState(false)
   const [questions, setQuestions] = useState<string[]>([''])
+  const logoInput = useRef<HTMLInputElement>(null)
+
+  const handleFile = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (f) {
+      const reader = new FileReader()
+      reader.onload = () => setter(String(reader.result))
+      reader.readAsDataURL(f)
+    }
+  }
 
   return (
-    <Card>
-      {/* Icon + Cover — Skool style, small on left */}
-      <div className="flex gap-4 items-start flex-wrap">
-        <SmallUpload label={t('Icon', 'الأيقونة')} hint={t('Recommended: 128×128', 'مقاس مقترح: 128×128')}
-                     value={logo} onChange={setLogo} size={110} aspect="1/1" />
-        <SmallUpload label={t('Cover', 'الغلاف')} hint={t('Recommended: 1084×576', 'مقاس مقترح: 1084×576')}
-                     value={cover} onChange={setCover} size={220} aspect="1084/576" />
+    <div className="space-y-4">
+      {/* Card 1 — Cover with overlay avatar & name */}
+      <div className="rounded-2xl border overflow-hidden"
+           style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
+        {/* Cover */}
+        <div className="relative h-40 group"
+             style={{
+               background: cover
+                 ? `url(${cover}) center/cover`
+                 : 'linear-gradient(135deg, var(--p) 0%, #a08cff 55%, var(--pink) 130%)',
+             }}>
+          <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
+                 onChange={handleFile(setCover)} />
+          <div className="absolute top-3 right-3 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white flex items-center gap-1 backdrop-blur-md"
+               style={{ background: 'rgba(0,0,0,.4)' }}>
+            <Upload size={11} /> {cover ? t('Change cover', 'تغيير الغلاف') : t('Upload cover', 'رفع الغلاف')}
+          </div>
+        </div>
+
+        {/* Avatar + basic info */}
+        <div className="p-5 -mt-10 relative">
+          <div className="flex items-end gap-4 mb-4">
+            <div className="w-20 h-20 rounded-2xl border-4 flex-shrink-0 relative overflow-hidden"
+                 style={{ borderColor: 'var(--white)', background: 'var(--p2)' }}>
+              {logo ? (
+                <img src={logo} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[24px] font-bold" style={{ color: 'var(--p)' }}>
+                  {name.charAt(0) || 'C'}
+                </div>
+              )}
+              <input ref={logoInput} type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
+                     onChange={handleFile(setLogo)} />
+            </div>
+            <button onClick={() => logoInput.current?.click()}
+              className="mb-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1"
+              style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+              <Upload size={11} /> {t('Change logo', 'تغيير الشعار')}
+            </button>
+          </div>
+
+          {/* Name & description */}
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[12px] font-medium" style={{ color: 'var(--t2)' }}>{t('Community Name', 'اسم المجتمع')}</label>
+                <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{name.length}/30</span>
+              </div>
+              <input value={name} maxLength={30} onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl text-[14px] border outline-none focus:border-[var(--p)]"
+                style={{ background: 'var(--bg)', borderColor: 'var(--bd)', color: 'var(--t1)' }} />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[12px] font-medium" style={{ color: 'var(--t2)' }}>{t('Description', 'الوصف')}</label>
+                <span className="text-[11px]" style={{ color: 'var(--t3)' }}>{description.length}/150</span>
+              </div>
+              <textarea value={description} maxLength={150} rows={2}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t('Say what your community is about…', 'اكتب فكرة مجتمعك…')}
+                className="w-full px-3 py-2.5 rounded-xl text-[13px] border outline-none resize-none focus:border-[var(--p)]"
+                style={{ background: 'var(--bg)', borderColor: 'var(--bd)', color: 'var(--t1)' }} />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <FloatField label={t('Community Name', 'اسم المجتمع')} counter={`${name.length} / 30`}>
-        <input value={name} maxLength={30} onChange={(e) => setName(e.target.value)}
-          className="w-full text-[15px] py-2 bg-transparent outline-none"
-          style={{ color: 'var(--t1)' }} />
-      </FloatField>
+      {/* Card 2 — URL & Domain */}
+      <div className="rounded-2xl border p-5"
+           style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <Globe size={14} style={{ color: 'var(--p)' }} />
+          <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+            {t('URL & Domain', 'الرابط والنطاق')}
+          </p>
+        </div>
 
-      <FloatField label={t('Community Description', 'وصف المجتمع')} counter={`${description.length} / 150`}>
-        <textarea value={description} maxLength={150} rows={2}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder={t('Say what your community is about…', 'اكتب فكرة مجتمعك…')}
-          className="w-full text-[13px] py-2 bg-transparent outline-none resize-none"
-          style={{ color: 'var(--t1)' }} />
-      </FloatField>
-
-      <Field label={t('URL Slug', 'الرابط المخصص')}>
         {editingSlug ? (
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-3">
             <div className="flex items-center rounded-xl border overflow-hidden flex-1"
-                 style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
+                 style={{ background: 'var(--bg)', borderColor: 'var(--p)' }}>
               <span className="px-3 text-[13px]" style={{ color: 'var(--t3)' }}>chabaqa.io/</span>
               <input value={slug} onChange={(e) => setSlug(e.target.value.replace(/[^a-z0-9-]/gi, '-').toLowerCase())}
-                className="flex-1 px-2 py-2.5 text-[13px] bg-transparent outline-none"
+                className="flex-1 px-1 py-2.5 text-[13px] bg-transparent outline-none"
                 style={{ color: 'var(--t1)' }} autoFocus />
             </div>
             <button onClick={() => setEditingSlug(false)}
-              className="px-4 py-2 rounded-xl text-[13px] font-semibold text-white"
+              className="px-4 rounded-xl text-[13px] font-semibold text-white"
               style={{ background: 'var(--p)' }}>
               {t('Done', 'تم')}
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <div className="flex-1 px-3 py-2.5 rounded-xl text-[13px] border"
-                 style={{ background: 'var(--bg)', color: 'var(--t2)', borderColor: 'var(--bd)' }}>
+          <div className="flex items-center justify-between p-3 rounded-xl border mb-3"
+               style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
+            <span className="text-[13px]" style={{ color: 'var(--t2)' }}>
               chabaqa.io/<span className="font-semibold" style={{ color: 'var(--t1)' }}>{slug}</span>
-            </div>
+            </span>
             <button onClick={() => setEditingSlug(true)}
-              className="px-3 py-2.5 rounded-xl text-[13px] font-medium flex items-center gap-1.5"
-              style={{ background: 'var(--p2)', color: 'var(--p)' }}>
-              <Edit3 size={13} /> {t('Edit', 'تعديل')}
+              className="text-[12px] font-medium flex items-center gap-1" style={{ color: 'var(--p)' }}>
+              <Edit3 size={12} /> {t('Edit', 'تعديل')}
             </button>
           </div>
         )}
-      </Field>
 
-      {!showDomain ? (
-        <button onClick={() => setShowDomain(true)}
-          className="flex items-center gap-1.5 text-[13px] font-medium self-start"
-          style={{ color: 'var(--p)' }}>
-          <Plus size={13} /> {t('Add custom domain', 'إضافة نطاق مخصص')}
-        </button>
-      ) : (
-        <Field label={t('Custom Domain', 'نطاق مخصص')}
-               hint={t('Point your domain via CNAME to cname.chabaqa.io', 'وجّه نطاقك عبر CNAME إلى cname.chabaqa.io')}>
+        {!showDomain ? (
+          <button onClick={() => setShowDomain(true)}
+            className="text-[12px] font-medium flex items-center gap-1.5"
+            style={{ color: 'var(--p)' }}>
+            <Plus size={12} /> {t('Add custom domain', 'إضافة نطاق مخصص')}
+          </button>
+        ) : (
           <div className="flex gap-2">
             <div className="flex items-center rounded-xl border overflow-hidden flex-1"
                  style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
-              <Globe size={14} className="ml-3" style={{ color: 'var(--t3)' }} />
+              <Globe size={13} className="ml-3" style={{ color: 'var(--t3)' }} />
               <input value={customDomain} onChange={(e) => setCustomDomain(e.target.value)}
                 placeholder="community.yourdomain.com"
-                className="flex-1 px-3 py-2.5 text-[13px] bg-transparent outline-none"
+                className="flex-1 px-2 py-2.5 text-[13px] bg-transparent outline-none"
                 style={{ color: 'var(--t1)' }} />
             </div>
             <button onClick={() => { setShowDomain(false); setCustomDomain('') }}
@@ -205,40 +264,41 @@ function GeneralSection({ t, onSave }: { t: (en: string, ar: string) => string; 
               <X size={14} />
             </button>
           </div>
-        </Field>
-      )}
+        )}
+      </div>
 
-      <Divider />
-
-      {/* Landing Page shortcut */}
+      {/* Card 3 — Landing Page shortcut */}
       <Link href="/creator/branding"
-        className="flex items-center gap-3 p-4 rounded-2xl transition-transform hover:scale-[1.01] relative overflow-hidden"
+        className="block rounded-2xl transition-transform hover:scale-[1.005] relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, var(--p) 0%, #a08cff 60%, var(--pink) 130%)' }}>
         <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full blur-2xl opacity-40"
              style={{ background: 'var(--cyan)' }} />
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm relative"
-             style={{ background: 'rgba(255,255,255,.25)' }}>
-          <Palette size={18} color="#fff" />
-        </div>
-        <div className="flex-1 min-w-0 relative">
-          <p className="text-[14px] font-semibold text-white">
-            {t('Landing Page', 'صفحة الهبوط')}
-          </p>
-          <p className="text-[12px] text-white opacity-90">
-            {t('Design the page people see when they discover your community.', 'صمم الصفحة التي يراها الناس عند اكتشاف مجتمعك.')}
-          </p>
-        </div>
-        <div className="flex items-center gap-1 text-[13px] font-semibold text-white bg-white/25 backdrop-blur-sm px-3 py-1.5 rounded-lg relative">
-          {t('Open', 'افتح')} <ArrowRight size={13} />
+        <div className="relative flex items-center gap-3 p-4">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm"
+               style={{ background: 'rgba(255,255,255,.25)' }}>
+            <Palette size={18} color="#fff" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[14px] font-semibold text-white">{t('Landing Page', 'صفحة الهبوط')}</p>
+            <p className="text-[12px] text-white opacity-90">
+              {t('Design the page people see when they discover your community.', 'صمم الصفحة التي يراها الناس عند اكتشاف مجتمعك.')}
+            </p>
+          </div>
+          <div className="text-[13px] font-semibold text-white bg-white/25 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-1">
+            {t('Open', 'افتح')} <ArrowRight size={13} />
+          </div>
         </div>
       </Link>
 
-      <Divider />
-
-      <div>
-        <p className="text-[13px] font-medium mb-3" style={{ color: 'var(--t1)' }}>
-          {t('Community Visibility', 'ظهور المجتمع')}
-        </p>
+      {/* Card 4 — Visibility */}
+      <div className="rounded-2xl border p-5"
+           style={{ background: 'var(--white)', borderColor: 'var(--bd)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <Lock size={14} style={{ color: 'var(--p)' }} />
+          <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+            {t('Community Visibility', 'ظهور المجتمع')}
+          </p>
+        </div>
         <div className="grid md:grid-cols-2 gap-3">
           <VisibilityCard icon={Unlock}
             title={t('Public', 'عام')}
@@ -251,50 +311,51 @@ function GeneralSection({ t, onSave }: { t: (en: string, ar: string) => string; 
             active={visibility === 'private'}
             onClick={() => setVisibility('private')} />
         </div>
+
+        {visibility === 'private' && (
+          <div className="mt-4 rounded-xl border p-4"
+               style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1">
+                <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
+                  {t('Require questions from applicants', 'اشتراط أسئلة على المتقدمين')}
+                </p>
+                <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
+                  {t('People must answer before requesting access.', 'يجب على الأشخاص الإجابة قبل طلب الوصول.')}
+                </p>
+              </div>
+              <Toggle checked={requireQuestions} onChange={setRequireQuestions} />
+            </div>
+
+            {requireQuestions && (
+              <div className="space-y-2 pt-3 border-t" style={{ borderColor: 'var(--bd)' }}>
+                {questions.map((q, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input value={q}
+                      onChange={(e) => { const n = [...questions]; n[i] = e.target.value; setQuestions(n) }}
+                      placeholder={t('Enter a question…', 'أدخل سؤالاً…')}
+                      className="flex-1 px-3 py-2 rounded-lg text-[13px] border"
+                      style={{ background: 'var(--white)', borderColor: 'var(--bd)', color: 'var(--t1)' }} />
+                    <button onClick={() => setQuestions(questions.filter((_, j) => j !== i))}
+                      className="px-2 rounded-lg" style={{ background: 'var(--white)', color: 'var(--t3)' }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button onClick={() => setQuestions([...questions, ''])}
+                  className="px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-1.5"
+                  style={{ background: 'var(--p2)', color: 'var(--p)' }}>
+                  <Plus size={12} /> {t('Add question', 'إضافة سؤال')}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {visibility === 'private' && (
-        <div className="rounded-xl border p-4 space-y-3"
-             style={{ background: 'var(--bg)', borderColor: 'var(--bd)' }}>
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <p className="text-[13px] font-semibold" style={{ color: 'var(--t1)' }}>
-                {t('Require questions from applicants', 'اشتراط أسئلة على المتقدمين')}
-              </p>
-              <p className="text-[12px]" style={{ color: 'var(--t3)' }}>
-                {t('People must answer before requesting access.', 'يجب على الأشخاص الإجابة قبل طلب الوصول.')}
-              </p>
-            </div>
-            <Toggle checked={requireQuestions} onChange={setRequireQuestions} />
-          </div>
-
-          {requireQuestions && (
-            <div className="space-y-2 pt-2 border-t" style={{ borderColor: 'var(--bd)' }}>
-              {questions.map((q, i) => (
-                <div key={i} className="flex gap-2">
-                  <input value={q}
-                    onChange={(e) => { const n = [...questions]; n[i] = e.target.value; setQuestions(n) }}
-                    placeholder={t('Enter a question…', 'أدخل سؤالاً…')}
-                    className="flex-1 px-3 py-2 rounded-lg text-[13px] border"
-                    style={{ background: 'var(--white)', borderColor: 'var(--bd)', color: 'var(--t1)' }} />
-                  <button onClick={() => setQuestions(questions.filter((_, j) => j !== i))}
-                    className="px-2 rounded-lg" style={{ background: 'var(--white)', color: 'var(--t3)' }}>
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-              <button onClick={() => setQuestions([...questions, ''])}
-                className="px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-1.5"
-                style={{ background: 'var(--p2)', color: 'var(--p)' }}>
-                <Plus size={12} /> {t('Add question', 'إضافة سؤال')}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
+      {/* Save */}
       <SaveBar onSave={() => onSave(t('Your general settings are saved. Your community is looking sharp!', 'تم حفظ الإعدادات العامة. مجتمعك يبدو رائعاً!'))} t={t} />
-    </Card>
+    </div>
   )
 }
 
