@@ -104,9 +104,9 @@ export default async function CourseDetailPage({ params }: Props) {
 
       {/* Two-column body — CURRICULUM is the star */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
-        {/* LEFT — MAIN — Curriculum with elevated purple styling */}
-        <div className="rounded-2xl p-5 shadow-lg relative overflow-hidden"
-             style={{ background: '#fff', border: '2px solid #8e78fb' }}>
+        {/* LEFT — MAIN — Curriculum */}
+        <div className="rounded-2xl p-5 shadow-lg relative overflow-hidden border"
+             style={{ background: '#fff', borderColor: '#e8e4ff' }}>
           {/* subtle purple glow */}
           <div className="absolute -right-16 -top-16 w-40 h-40 rounded-full blur-3xl opacity-20 pointer-events-none"
                style={{ background: '#8e78fb' }} />

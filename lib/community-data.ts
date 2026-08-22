@@ -60,6 +60,7 @@ export interface CommunityCourse {
   level: 'beginner' | 'intermediate' | 'advanced'
   rating: number
   thumbnail: string | null
+  banner?: string
   price: 'free' | number
   currency?: string
   enrolled?: boolean
@@ -139,12 +140,19 @@ export interface CommunitySession {
 export interface CommunityProduct {
   id: string
   title: string
+  titleAr?: string
   description: string
+  descriptionAr?: string
   price: number | 'free'
   currency?: string
   type: 'ebook' | 'template' | 'preset' | 'other'
+  fileType?: 'pdf' | 'video' | 'audio' | 'zip' | 'image' | 'doc' | 'xls' | 'ppt' | 'file'
   thumbnail: string | null
+  banner?: string
+  creator?: string
   downloadsCount: number
+  rating?: number
+  ratingCount?: number
   purchased?: boolean
 }
 
@@ -244,6 +252,7 @@ const MOTION_SCHOOL: CommunityData = {
       level:'beginner',
       rating:5.0,
       thumbnail:null,
+      banner:'/banners-community/community-2-branding.png',
       price:'free',
       enrolled:true,
       progress:35,
@@ -321,6 +330,7 @@ const MOTION_SCHOOL: CommunityData = {
       duration:'7 days', difficulty:'beginner', participantsCount:24,
       startDate:'Apr 24, 2026', endDate:'May 1, 2026',
       status:'active', progress:40, joined:true,
+      banner:'/banners-community/community-4-dev.png',
       reward:'Feature on the community showcase + 1 free mentorship session',
       rewardAr:'الظهور في معرض المجتمع + جلسة إرشاد مجانية',
       steps: [
@@ -385,6 +395,7 @@ const MOTION_SCHOOL: CommunityData = {
       duration:'5 days', difficulty:'intermediate', participantsCount:0,
       startDate:'May 10, 2026', endDate:'May 15, 2026',
       status:'upcoming',
+      banner:'/banners-community/community-1-email-marketing.png',
       reward:'50 TND cash prize + winner badge',
       rewardAr:'جائزة نقدية 50 دينار + شارة الفائز',
       steps: [
@@ -403,6 +414,7 @@ const MOTION_SCHOOL: CommunityData = {
       duration:'30 days', difficulty:'advanced', participantsCount:47,
       startDate:'Feb 1, 2026', endDate:'Mar 2, 2026',
       status:'ended', joined:true, progress:100,
+      banner:'/banners-community/community-3-fitness.png',
       reward:'Certificate + featured spotlight',
       rewardAr:'شهادة + إبراز مميز',
     },
@@ -411,8 +423,48 @@ const MOTION_SCHOOL: CommunityData = {
     { id:'1', title:'1-on-1 After Effects Mentorship', mentorName:'Mohamed Trabelsi', mentorAvatar:null, mentorInitials:'MT', mentorColor:'#47c7ea', duration:60, price:50, currency:'TND', rating:5.0, reviewsCount:2, availableSlots:3, booked:false },
   ],
   products: [
-    { id:'1', title:'After Effects Motion Presets Pack', description:'50+ professional motion presets for After Effects.', price:29, currency:'TND', type:'preset', thumbnail:null, downloadsCount:12, purchased:false },
-    { id:'2', title:'Motion Design Starter Template', description:'Complete project template for motion designers.', price:'free', type:'template', thumbnail:null, downloadsCount:45, purchased:false },
+    {
+      id:'1', title:'After Effects Motion Presets Pack',
+      description:'50+ pro motion presets — drag-and-drop into any AE 2022+ project. Comes with a demo scene and setup guide.',
+      price:29, currency:'TND', type:'preset', fileType:'zip', creator:'Mohamed Trabelsi',
+      thumbnail:null, banner:'/banners-community/community-2-branding.png',
+      downloadsCount:12, rating:4.8, ratingCount:8, purchased:false,
+    },
+    {
+      id:'2', title:'Motion Design Starter Template',
+      description:'Complete project template for motion designers — layered, commented, ready to remix.',
+      price:'free', type:'template', fileType:'zip', creator:'Mohamed Trabelsi',
+      thumbnail:null, banner:'/banners-community/community-4-dev.png',
+      downloadsCount:145, rating:4.9, ratingCount:22, purchased:true,
+    },
+    {
+      id:'3', title:'The Motion Designer Handbook',
+      description:'80-page PDF ebook covering timing, easing, principles and a career roadmap.',
+      price:15, currency:'TND', type:'ebook', fileType:'pdf', creator:'Mohamed Trabelsi',
+      thumbnail:null, banner:'/banners-community/community-1-email-marketing.png',
+      downloadsCount:34, rating:5.0, ratingCount:12, purchased:false,
+    },
+    {
+      id:'4', title:'Sound FX Library — Motion Kit',
+      description:'40 whooshes, clicks, pops and pings — royalty-free, perfect for kinetic type and UI motion.',
+      price:'free', type:'other', fileType:'audio', creator:'Community Contributor',
+      thumbnail:null, banner:'/banners-community/community-3-fitness.png',
+      downloadsCount:87, rating:4.6, ratingCount:15, purchased:false,
+    },
+    {
+      id:'5', title:'Kinetic Type Video Walkthrough',
+      description:'45-min recorded walkthrough of a full kinetic type project — from storyboard to final render.',
+      price:25, currency:'TND', type:'other', fileType:'video', creator:'Mohamed Trabelsi',
+      thumbnail:null, banner:'/banners-community/community-4-dev.png',
+      downloadsCount:9, rating:5.0, ratingCount:4, purchased:false,
+    },
+    {
+      id:'6', title:'Brand Storyboard Sheet',
+      description:'Printable A3 storyboard sheet for pitching motion concepts to clients.',
+      price:5, currency:'TND', type:'other', fileType:'pdf', creator:'Community Contributor',
+      thumbnail:null, banner:'/banners-community/community-2-branding.png',
+      downloadsCount:52, rating:4.5, ratingCount:9, purchased:false,
+    },
   ],
   events: [
     { id:'1', title:'Motion Design Live Workshop', description:'Hands-on live workshop on advanced motion techniques.', date:'May 15, 2026', time:'19:00', type:'online', ticketsTotal:50, ticketsSold:18, price:0, currency:'TND', registered:false },

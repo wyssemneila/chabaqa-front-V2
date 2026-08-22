@@ -10,7 +10,7 @@ import {
 interface Props { params: Promise<{ slug: string; challengeId: string }> }
 
 const STATUS_CONFIG = {
-  active:   { label: 'Active',   labelAr: 'نشط',    bg: '#dcfce7', color: '#16a34a' },
+  active:   { label: 'Active',   labelAr: 'نشط',    bg: '#ede9ff', color: '#7c6ff5' },
   upcoming: { label: 'Upcoming', labelAr: 'قادم',    bg: '#fff3e4', color: '#ff9b28' },
   ended:    { label: 'Ended',    labelAr: 'انتهى',   bg: '#f3f4f6', color: '#9590b8' },
 } as const
@@ -74,7 +74,7 @@ export default async function ChallengeDetailPage({ params }: Props) {
           {challenge.status === 'active' && steps[nextStepIndex] && (
             <Link href={`/communities/${slug}/challenges/${challenge.id}/steps/${nextStepIndex}`}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white shrink-0 transition-opacity hover:opacity-90"
-                  style={{ background: '#22c55e' }}>
+                  style={{ background: '#8e78fb' }}>
               <Zap className="w-4 h-4" fill="#fff" />
               {challenge.joined
                 ? (progressPct > 0 ? (isAr ? 'تابع' : 'Continue') : (isAr ? 'ابدأ الآن' : 'Start now'))
@@ -97,13 +97,13 @@ export default async function ChallengeDetailPage({ params }: Props) {
                 <span className="text-[11.5px] font-medium" style={{ color: '#46426a' }}>
                   {isAr ? 'تقدمك' : 'Your progress'}
                 </span>
-                <span className="text-[11.5px] font-semibold" style={{ color: '#22c55e' }}>
+                <span className="text-[11.5px] font-semibold" style={{ color: '#8e78fb' }}>
                   {doneCount}/{steps.length} · {progressPct}%
                 </span>
               </div>
-              <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: '#dcfce7' }}>
+              <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: '#ede9ff' }}>
                 <div className="h-full rounded-full transition-all"
-                     style={{ width: `${progressPct}%`, background: '#22c55e' }} />
+                     style={{ width: `${progressPct}%`, background: '#8e78fb' }} />
               </div>
             </div>
 
@@ -138,13 +138,13 @@ export default async function ChallengeDetailPage({ params }: Props) {
       {/* Two-column */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
         {/* MAIN — Steps */}
-        <div className="rounded-2xl p-5 shadow-lg relative overflow-hidden"
-             style={{ background: '#fff', border: '2px solid #22c55e' }}>
+        <div className="rounded-2xl p-5 shadow-lg relative overflow-hidden border"
+             style={{ background: '#fff', borderColor: '#e8e4ff' }}>
           <div className="absolute -right-16 -top-16 w-40 h-40 rounded-full blur-3xl opacity-20 pointer-events-none"
-               style={{ background: '#22c55e' }} />
+               style={{ background: '#8e78fb' }} />
           <div className="flex items-center gap-2 mb-5 relative">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                 style={{ background: '#22c55e' }}>
+                 style={{ background: '#8e78fb' }}>
               <ListChecks className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1">
@@ -206,8 +206,8 @@ function StatChip({ icon, value, label, iconColor }:
   { icon: React.ReactNode; value: string | number; label?: string; iconColor?: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium"
-          style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a' }}>
-      <span style={{ color: iconColor || '#16a34a' }}>{icon}</span>
+          style={{ background: 'rgba(142,120,251,0.1)', color: '#7c6ff5' }}>
+      <span style={{ color: iconColor || '#7c6ff5' }}>{icon}</span>
       <span className="font-bold">{value}</span>
       {label && <span className="opacity-75">{label}</span>}
     </span>

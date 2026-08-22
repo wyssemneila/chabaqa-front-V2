@@ -54,15 +54,15 @@ export default function ChallengeSteps({ slug, challengeId, steps, challengeLock
           <Wrap key={step.order} {...wrapProps}
                 className={`group rounded-2xl border p-4 flex gap-4 transition-all ${isLocked ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-md hover:scale-[1.005] cursor-pointer'}`}
                 style={{
-                  borderColor: isDone ? '#86efac' : isCurrent ? '#22c55e' : '#e8e4ff',
-                  background: isDone ? '#f0fdf4' : isCurrent ? '#dcfce7' : '#fff',
+                  borderColor: isDone ? '#c4b8fd' : isCurrent ? '#8e78fb' : '#e8e4ff',
+                  background: isDone ? '#f8f5ff' : isCurrent ? '#ede9ff' : '#fff',
                   borderWidth: isCurrent ? 2 : 1,
                 }}>
             {/* Left: number badge + content-type icon */}
             <div className="flex flex-col items-center gap-2 flex-shrink-0">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center relative"
                    style={{
-                     background: isDone ? '#22c55e' : isLocked ? '#f3f4f6' : cfg.bg,
+                     background: isDone ? '#8e78fb' : isLocked ? '#f3f4f6' : cfg.bg,
                      color: isDone ? '#fff' : isLocked ? '#9590b8' : cfg.color,
                    }}>
                 {isDone
@@ -102,7 +102,7 @@ export default function ChallengeSteps({ slug, challengeId, steps, challengeLock
             <div className="flex flex-col items-end justify-between flex-shrink-0 gap-2">
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold"
                     style={{
-                      background: isDone ? '#22c55e' : '#fef3c7',
+                      background: isDone ? '#8e78fb' : '#fef3c7',
                       color: isDone ? '#fff' : '#d97706',
                     }}>
                 <Zap className="w-2.5 h-2.5" fill={isDone ? '#fff' : '#d97706'} />
@@ -110,7 +110,7 @@ export default function ChallengeSteps({ slug, challengeId, steps, challengeLock
               </span>
               {!isLocked && (
                 <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5"
-                              style={{ color: isCurrent ? '#22c55e' : '#9590b8' }} />
+                              style={{ color: isCurrent ? '#8e78fb' : '#9590b8' }} />
               )}
             </div>
           </Wrap>

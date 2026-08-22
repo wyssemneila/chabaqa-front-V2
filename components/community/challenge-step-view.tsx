@@ -68,10 +68,10 @@ export default function ChallengeStepView({ slug, challengeId, step, totalSteps,
       {/* ── LEFT — content + tabs ── */}
       <div className="space-y-4 min-w-0">
         {/* Step header (points + step index) */}
-        <div className="rounded-2xl p-5"
-             style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '2px solid #22c55e' }}>
+        <div className="rounded-2xl p-5 border"
+             style={{ background: 'linear-gradient(135deg, #f8f5ff 0%, #ede9ff 100%)', borderColor: '#e8e4ff' }}>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: '#16a34a' }}>
+            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: '#7c6ff5' }}>
               {isAr ? `الخطوة ${step.order} من ${totalSteps}` : `Step ${step.order} of ${totalSteps}`}
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold"
@@ -93,7 +93,7 @@ export default function ChallengeStepView({ slug, challengeId, step, totalSteps,
             <TabButton active={tab === 'submit'} onClick={() => setTab('submit')}
                        icon={submitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
                        label={isAr ? 'إرسال العمل' : 'Submit work'}
-                       highlight={submitted ? '#22c55e' : undefined} />
+                       highlight={submitted ? '#8e78fb' : undefined} />
             <TabButton active={tab === 'comments'} onClick={() => setTab('comments')}
                        icon={<MessageSquare className="w-3.5 h-3.5" />}
                        label={isAr ? 'التعليقات' : 'Comments'} count={DEMO_COMMENTS.length} />
@@ -170,7 +170,7 @@ function ContentPanel({ step, isAr }: { step: Step; isAr: boolean }) {
 
       {step.contentType === 'meet' && (
         <div className="rounded-2xl p-6 relative overflow-hidden"
-             style={{ background: 'linear-gradient(135deg, #e4f8fd 0%, #f0fdf4 100%)', border: '1px solid #86e4fd' }}>
+             style={{ background: 'linear-gradient(135deg, #e4f8fd 0%, #f8f5ff 100%)', border: '1px solid #86e4fd' }}>
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
                  style={{ background: 'linear-gradient(135deg, #47c7ea 0%, #86e4fd 100%)' }}>
@@ -236,26 +236,26 @@ function SubmitPanel({ submitted, onSubmit, backHref, nextHref, isAr, points }:
     return (
       <div className="text-center py-6">
         <div className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center"
-             style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}>
+             style={{ background: 'linear-gradient(135deg, #8e78fb 0%, #7c6ff5 100%)' }}>
           <Sparkles className="w-7 h-7 text-white" />
         </div>
-        <h3 className="text-[17px] font-bold mb-1" style={{ color: '#16a34a' }}>
+        <h3 className="text-[17px] font-bold mb-1" style={{ color: '#7c6ff5' }}>
           {isAr ? 'رائع! تم استلام عملك' : 'Nice work! Submission received'}
         </h3>
-        <p className="text-[13px] mb-4" style={{ color: '#15803d' }}>
+        <p className="text-[13px] mb-4" style={{ color: '#6c52f0' }}>
           {isAr ? `لقد ربحت +${points} نقاط!` : `You just earned +${points} points!`}
         </p>
         {nextHref ? (
           <Link href={nextHref}
                 className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white"
-                style={{ background: '#22c55e' }}>
+                style={{ background: '#8e78fb' }}>
             {isAr ? 'الخطوة التالية' : 'Next step'}
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         ) : (
           <Link href={backHref}
                 className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white"
-                style={{ background: '#22c55e' }}>
+                style={{ background: '#8e78fb' }}>
             <Trophy className="w-3.5 h-3.5" />
             {isAr ? 'إنهاء التحدي' : 'Finish challenge'}
           </Link>
@@ -278,15 +278,15 @@ function SubmitPanel({ submitted, onSubmit, backHref, nextHref, isAr, points }:
       <textarea value={text} onChange={(e) => setText(e.target.value)}
                 placeholder={isAr ? 'اكتب ملاحظاتك…' : 'Write your notes…'}
                 rows={4}
-                className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none resize-none border mb-3 focus:border-[#22c55e]"
+                className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none resize-none border mb-3 focus:border-[#8e78fb]"
                 style={{ background: '#fafafd', borderColor: '#e8e4ff', color: '#1a1730' }} />
 
       <div className="grid sm:grid-cols-2 gap-3 mb-4">
-        <label className="rounded-xl border-2 border-dashed p-4 flex flex-col items-center gap-1.5 cursor-pointer transition-colors hover:border-[#22c55e]"
-               style={{ borderColor: file ? '#22c55e' : '#e8e4ff', background: file ? '#f0fdf4' : '#fafafd' }}>
+        <label className="rounded-xl border-2 border-dashed p-4 flex flex-col items-center gap-1.5 cursor-pointer transition-colors hover:border-[#8e78fb]"
+               style={{ borderColor: file ? '#8e78fb' : '#e8e4ff', background: file ? '#f8f5ff' : '#fafafd' }}>
           <input type="file" className="hidden" onChange={handleFile} />
           <div className="w-9 h-9 rounded-full flex items-center justify-center"
-               style={{ background: file ? '#22c55e' : '#ede9ff', color: file ? '#fff' : '#8e78fb' }}>
+               style={{ background: file ? '#8e78fb' : '#ede9ff', color: file ? '#fff' : '#8e78fb' }}>
             {file ? <CheckCircle2 className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
           </div>
           <p className="text-[12px] font-semibold" style={{ color: '#1a1730' }}>
@@ -298,9 +298,9 @@ function SubmitPanel({ submitted, onSubmit, backHref, nextHref, isAr, points }:
         </label>
 
         <div className="rounded-xl border-2 border-dashed p-4 flex flex-col gap-1.5"
-             style={{ borderColor: linkUrl ? '#22c55e' : '#e8e4ff', background: linkUrl ? '#f0fdf4' : '#fafafd' }}>
+             style={{ borderColor: linkUrl ? '#8e78fb' : '#e8e4ff', background: linkUrl ? '#f8f5ff' : '#fafafd' }}>
           <div className="w-9 h-9 rounded-full flex items-center justify-center mx-auto"
-               style={{ background: linkUrl ? '#22c55e' : '#ede9ff', color: linkUrl ? '#fff' : '#8e78fb' }}>
+               style={{ background: linkUrl ? '#8e78fb' : '#ede9ff', color: linkUrl ? '#fff' : '#8e78fb' }}>
             <Link2 className="w-4 h-4" />
           </div>
           <p className="text-[12px] font-semibold text-center" style={{ color: '#1a1730' }}>
@@ -315,7 +315,7 @@ function SubmitPanel({ submitted, onSubmit, backHref, nextHref, isAr, points }:
 
       <button onClick={onSubmit} disabled={!canSubmit}
               className="w-full py-2.5 rounded-xl text-[13px] font-semibold text-white flex items-center justify-center gap-1.5 disabled:opacity-40 transition-opacity"
-              style={{ background: '#22c55e' }}>
+              style={{ background: '#8e78fb' }}>
         <Send className="w-3.5 h-3.5" />
         {isAr ? `أرسل واحصل على +${points} نقاط` : `Submit and earn +${points} pts`}
       </button>
@@ -371,7 +371,7 @@ function CommentsPanel({ isAr }: { isAr: boolean }) {
           <div className="flex justify-end mt-2">
             <button onClick={post} disabled={!draft.trim()}
                     className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[12px] font-semibold text-white disabled:opacity-40"
-                    style={{ background: '#22c55e' }}>
+                    style={{ background: '#8e78fb' }}>
               <Send className="w-3 h-3" /> {isAr ? 'نشر' : 'Post'}
             </button>
           </div>
@@ -401,7 +401,7 @@ function CommentsPanel({ isAr }: { isAr: boolean }) {
                   <div className="flex justify-end mt-1">
                     <button onClick={() => postReply(c.id)} disabled={!replyDraft.trim()}
                             className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[11px] font-semibold text-white disabled:opacity-40"
-                            style={{ background: '#22c55e' }}>
+                            style={{ background: '#8e78fb' }}>
                       <Send className="w-3 h-3" /> {isAr ? 'رد' : 'Reply'}
                     </button>
                   </div>
@@ -456,7 +456,7 @@ function CommentRow({ author, initials, color, isInstructor, text, timeAgo, like
           </button>
           {showReply && onReply && (
             <button onClick={onReply}
-                    className="inline-flex items-center gap-1 text-[11.5px] transition-colors hover:text-[#22c55e]"
+                    className="inline-flex items-center gap-1 text-[11.5px] transition-colors hover:text-[#8e78fb]"
                     style={{ color: '#9590b8' }}>
               <Reply className="w-3.5 h-3.5" />
               <span className="font-semibold">{isAr ? 'رد' : 'Reply'}</span>
@@ -479,7 +479,7 @@ function ResourceList({ resources, title, isAr }: { resources: StepResource[]; t
           const Icon = RESOURCE_ICON[r.type]
           return (
             <a key={r.id} href={r.url}
-               className="flex items-center gap-3 p-3 rounded-xl border transition-colors hover:border-[#22c55e]"
+               className="flex items-center gap-3 p-3 rounded-xl border transition-colors hover:border-[#8e78fb]"
                style={{ borderColor: '#e8e4ff', background: '#fff' }}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                    style={{ background: '#ede9ff', color: '#8e78fb' }}>
@@ -526,7 +526,7 @@ function ContentTypeBadge({ type, isAr }: { type: StepContentType; isAr: boolean
 
 function TabButton({ active, onClick, icon, label, count, highlight }:
   { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; count?: number; highlight?: string }) {
-  const color = active ? '#22c55e' : (highlight || '#9590b8')
+  const color = active ? '#8e78fb' : (highlight || '#9590b8')
   return (
     <button onClick={onClick}
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-[13px] font-semibold transition-colors relative"
@@ -534,13 +534,13 @@ function TabButton({ active, onClick, icon, label, count, highlight }:
       {icon} {label}
       {count !== undefined && (
         <span className="text-[10px] px-1.5 py-0.5 rounded"
-              style={{ background: active ? '#dcfce7' : '#f6f5fb', color: active ? '#16a34a' : '#9590b8' }}>
+              style={{ background: active ? '#ede9ff' : '#f6f5fb', color: active ? '#7c6ff5' : '#9590b8' }}>
           {count}
         </span>
       )}
       {active && (
         <span className="absolute left-0 right-0 bottom-0 h-[2px] rounded-t"
-              style={{ background: '#22c55e' }} />
+              style={{ background: '#8e78fb' }} />
       )}
     </button>
   )

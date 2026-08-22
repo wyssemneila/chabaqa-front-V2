@@ -61,15 +61,24 @@ export default async function CoursesPage({ params }: Props) {
                   href={`/communities/${slug}/courses/${course.id}`}
                   className="group rounded-2xl overflow-hidden border bg-white transition-all hover:shadow-xl hover:scale-[1.015] flex flex-col"
                   style={{ borderColor: '#e8e4ff' }}>
-              {/* Cover 16:9 */}
-              <div className="relative aspect-[16/9] w-full overflow-hidden"
-                   style={{ background: 'linear-gradient(135deg, #8e78fb 0%, #a08cff 55%, #f65887 130%)' }}>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-md transition-transform group-hover:scale-110"
-                       style={{ background: 'rgba(255,255,255,.25)' }}>
-                    <Play className="w-6 h-6 text-white ml-0.5" fill="#fff" />
+              {/* Cover 16:9 — banner image if available, else gradient */}
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-gray-100">
+                {course.banner ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={course.banner} alt={course.title}
+                       className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center"
+                       style={{ background: 'linear-gradient(135deg, #8e78fb 0%, #a08cff 55%, #f65887 130%)' }}>
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-md"
+                         style={{ background: 'rgba(255,255,255,.25)' }}>
+                      <Play className="w-6 h-6 text-white ml-0.5" fill="#fff" />
+                    </div>
                   </div>
-                </div>
+                )}
+                {/* Overlay gradient for badge readability */}
+                <div className="absolute inset-0 pointer-events-none"
+                     style={{ background: 'linear-gradient(180deg, rgba(0,0,0,.25) 0%, transparent 30%, transparent 70%, rgba(0,0,0,.3) 100%)' }} />
 
                 {/* Price badge top-right */}
                 <span className="absolute top-3 right-3 text-[11px] font-bold px-2 py-1 rounded-md text-white shadow-md"
