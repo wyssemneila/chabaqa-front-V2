@@ -73,12 +73,29 @@ export interface CommunityCourse {
   sections?: CourseSection[]
 }
 
+export type StepContentType = 'video' | 'meet' | 'file' | 'text'
+
+export interface StepResource {
+  id: string
+  title: string
+  type: 'pdf' | 'zip' | 'link' | 'image' | 'video'
+  url: string
+  sizeLabel?: string
+}
+
 export interface ChallengeStep {
   order: number
   title: string
   titleAr?: string
   description: string
   descriptionAr?: string
+  contentType: StepContentType
+  videoUrl?: string
+  meetUrl?: string
+  meetTime?: string
+  meetTimeAr?: string
+  resources?: StepResource[]
+  points: number
   done?: boolean
   submission?: string
 }
@@ -307,13 +324,57 @@ const MOTION_SCHOOL: CommunityData = {
       reward:'Feature on the community showcase + 1 free mentorship session',
       rewardAr:'الظهور في معرض المجتمع + جلسة إرشاد مجانية',
       steps: [
-        { order:1, title:'Pick your character', description:"Choose a simple 2D character illustration. Anything on 2 legs works. Post your pick in the challenge feed so others can react.", done:true },
-        { order:2, title:'Split into layers', description:'Break the illustration into rig-ready layers in Illustrator: head, torso, arms, legs. Name your layers cleanly.', done:true },
-        { order:3, title:'Install & set up Duik', description:'Install Duik Angela (free) and open your layered PSD/AI in After Effects. Auto-rig the structure.', done:true },
-        { order:4, title:'Attach controllers', description:'Add IK to the arms and legs. Test each joint rotation with a controller.', done:false },
-        { order:5, title:'Animate a walk cycle', description:'Block a 12-frame walk cycle. Focus on hip movement + arm swing.', done:false },
-        { order:6, title:'Add secondary motion', description:'Layer in overlap and follow-through: hair, cloth, floppy ears. Small polish, big life.', done:false },
-        { order:7, title:'Export & submit', description:'Render a 4-second loop as MP4 or GIF. Submit it below to complete the challenge.', done:false },
+        {
+          order:1, title:'Pick your character',
+          description:'Choose a simple 2D character illustration. Anything on 2 legs works. Post your pick in the challenge feed so others can react.',
+          contentType:'text', points:10, done:true,
+        },
+        {
+          order:2, title:'Split into layers',
+          description:'Break the illustration into rig-ready layers in Illustrator: head, torso, arms, legs. Name your layers cleanly.',
+          contentType:'file', points:10, done:true,
+          resources: [
+            { id:'r1', title:'Layer-naming Cheatsheet.pdf', type:'pdf', url:'/videos/test.mp4', sizeLabel:'640 KB' },
+            { id:'r2', title:'Reference Illustration.png',   type:'image', url:'/videos/test.mp4', sizeLabel:'820 KB' },
+          ],
+        },
+        {
+          order:3, title:'Install & set up Duik',
+          description:'Watch the 6-minute walkthrough — install Duik Angela (free), open your layered PSD/AI, and auto-rig the structure.',
+          contentType:'video', points:15, done:true,
+          videoUrl:'/videos/test.mp4',
+          resources: [
+            { id:'r3', title:'Duik Angela installer', type:'link', url:'https://rainboxlab.org/tools/duik/', sizeLabel:'rainboxlab.org' },
+          ],
+        },
+        {
+          order:4, title:'Attach controllers',
+          description:'Add IK to the arms and legs. Test each joint rotation with a controller. Watch the demo, then wire up your rig.',
+          contentType:'video', points:15, done:false,
+          videoUrl:'/videos/test.mp4',
+          resources: [
+            { id:'r4', title:'Controller Presets.zip', type:'zip', url:'/videos/test.mp4', sizeLabel:'2.4 MB' },
+          ],
+        },
+        {
+          order:5, title:'Live rigging clinic',
+          description:'Optional live Google Meet with Mohamed — bring your rig, get feedback, ask anything. Shows up as recorded video after.',
+          contentType:'meet', points:20, done:false,
+          meetUrl:'https://meet.google.com/abc-defg-hij',
+          meetTime:'Apr 29, 2026 · 20:00 CET',
+          meetTimeAr:'29 أبريل 2026 · 20:00 بتوقيت وسط أوروبا',
+        },
+        {
+          order:6, title:'Animate a walk cycle',
+          description:'Block a 12-frame walk cycle. Focus on hip movement + arm swing. Watch the demo and try to match the timing.',
+          contentType:'video', points:20, done:false,
+          videoUrl:'/videos/test.mp4',
+        },
+        {
+          order:7, title:'Export & submit',
+          description:'Render a 4-second loop as MP4 or GIF. Upload your file below to finish the challenge and earn your final points.',
+          contentType:'text', points:30, done:false,
+        },
       ],
     },
     {
@@ -327,11 +388,11 @@ const MOTION_SCHOOL: CommunityData = {
       reward:'50 TND cash prize + winner badge',
       rewardAr:'جائزة نقدية 50 دينار + شارة الفائز',
       steps: [
-        { order:1, title:'Sign up & pick your lyric', description:'Choose any short lyric (max 12 words). Post it in the challenge thread.' },
-        { order:2, title:'Storyboard the beats', description:'Sketch how each word hits — timing is everything.' },
-        { order:3, title:'Animate in AE', description:'Bring the words to life. Motion should follow the rhythm.' },
-        { order:4, title:'Sound + polish', description:'Sync to the track. Add micro details.' },
-        { order:5, title:'Submit for community vote', description:'Upload your entry. Voting opens for 24h.' },
+        { order:1, title:'Sign up & pick your lyric', description:'Choose any short lyric (max 12 words). Post it in the challenge thread.', contentType:'text', points:10 },
+        { order:2, title:'Storyboard the beats',      description:'Sketch how each word hits — timing is everything.',                       contentType:'file', points:15 },
+        { order:3, title:'Animate in AE',              description:'Bring the words to life. Motion should follow the rhythm.',              contentType:'video', points:20 },
+        { order:4, title:'Sound + polish',             description:'Sync to the track. Add micro details.',                                  contentType:'video', points:15 },
+        { order:5, title:'Submit for community vote',  description:'Upload your entry. Voting opens for 24h.',                              contentType:'text', points:40 },
       ],
     },
     {

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { getCommunity, LEVEL_CONFIG } from '@/lib/community-data'
 import ChallengeSteps from '@/components/community/challenge-steps'
 import {
-  ArrowLeft, Users, Calendar, Trophy, Info, ListChecks, Zap, Clock,
+  ArrowLeft, Users, Calendar, Trophy, Info, ListChecks, Zap, Clock, Award,
 } from 'lucide-react'
 
 interface Props { params: Promise<{ slug: string; challengeId: string }> }
@@ -33,6 +33,8 @@ export default async function ChallengeDetailPage({ params }: Props) {
   const steps = challenge.steps || []
   const doneCount = steps.filter((s) => s.done).length
   const progressPct = steps.length ? Math.round((doneCount / steps.length) * 100) : (challenge.progress || 0)
+  const totalPoints = steps.reduce((n, s) => n + s.points, 0)
+  const earnedPoints = steps.filter((s) => s.done).reduce((n, s) => n + s.points, 0)
 
   const firstUndone = steps.find((s) => !s.done)
   const nextStepIndex = firstUndone ? firstUndone.order - 1 : 0
@@ -87,20 +89,39 @@ export default async function ChallengeDetailPage({ params }: Props) {
           )}
         </div>
 
-        {/* Progress */}
+        {/* Progress + Points */}
         {challenge.joined && (
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11.5px] font-medium" style={{ color: '#46426a' }}>
-                {isAr ? 'تقدمك' : 'Your progress'}
-              </span>
-              <span className="text-[11.5px] font-semibold" style={{ color: '#22c55e' }}>
-                {doneCount}/{steps.length} · {progressPct}%
-              </span>
+          <div className="mt-4 grid sm:grid-cols-[1fr_auto] gap-4 items-center">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11.5px] font-medium" style={{ color: '#46426a' }}>
+                  {isAr ? 'تقدمك' : 'Your progress'}
+                </span>
+                <span className="text-[11.5px] font-semibold" style={{ color: '#22c55e' }}>
+                  {doneCount}/{steps.length} · {progressPct}%
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: '#dcfce7' }}>
+                <div className="h-full rounded-full transition-all"
+                     style={{ width: `${progressPct}%`, background: '#22c55e' }} />
+              </div>
             </div>
-            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: '#dcfce7' }}>
-              <div className="h-full rounded-full transition-all"
-                   style={{ width: `${progressPct}%`, background: '#22c55e' }} />
+
+            {/* Points earned card */}
+            <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
+                 style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center"
+                   style={{ background: '#f59e0b' }}>
+                <Award className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#92400e' }}>
+                  {isAr ? 'نقاطك' : 'Your points'}
+                </p>
+                <p className="text-[15px] font-bold" style={{ color: '#78350f' }}>
+                  {earnedPoints} <span className="text-[11px] opacity-75">/ {totalPoints}</span>
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -110,6 +131,7 @@ export default async function ChallengeDetailPage({ params }: Props) {
           <StatChip icon={<Calendar className="w-3 h-3" />} value={challenge.duration} />
           <StatChip icon={<Users className="w-3 h-3" />} value={`${challenge.participantsCount}`} label={isAr ? 'مشارك' : 'joined'} />
           <StatChip icon={<ListChecks className="w-3 h-3" />} value={`${steps.length}`} label={isAr ? 'خطوات' : 'steps'} />
+          <StatChip icon={<Zap className="w-3 h-3" iconColor="#f59e0b" />} value={`${totalPoints}`} label={isAr ? 'نقاط متاحة' : 'pts available'} />
         </div>
       </div>
 
@@ -142,9 +164,13 @@ export default async function ChallengeDetailPage({ params }: Props) {
               order: s.order,
               title: isAr && s.titleAr ? s.titleAr : s.title,
               description: isAr && s.descriptionAr ? s.descriptionAr : s.description,
+              contentType: s.contentType,
+              points: s.points,
               done: !!s.done,
+              resourceCount: s.resources?.length,
+              meetTime: isAr && s.meetTimeAr ? s.meetTimeAr : s.meetTime,
             }))}
-            locked={challenge.status === 'upcoming'}
+            challengeLocked={challenge.status === 'upcoming'}
             isAr={isAr} />
         </div>
 

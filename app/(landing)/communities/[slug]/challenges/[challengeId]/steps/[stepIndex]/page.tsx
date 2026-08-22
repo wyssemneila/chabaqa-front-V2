@@ -20,7 +20,12 @@ export default async function ChallengeStepPage({ params }: Props) {
   if (!step) notFound()
 
   const isAr = locale === 'ar'
-  const total = challenge.steps.length
+  const totalSteps = challenge.steps.length
+
+  const totalPoints  = challenge.steps.reduce((n, s) => n + s.points, 0)
+  const earnedSoFar  = challenge.steps.filter((s) => s.done).reduce((n, s) => n + s.points, 0)
+
+  const nextStepIndex = idx < totalSteps - 1 ? idx + 1 : undefined
 
   return (
     <div className="w-full" dir={isAr ? 'rtl' : 'ltr'}>
@@ -34,14 +39,22 @@ export default async function ChallengeStepPage({ params }: Props) {
       <ChallengeStepView
         slug={slug}
         challengeId={challengeId}
-        steps={challenge.steps.map((s) => ({
-          order: s.order,
-          title: isAr && s.titleAr ? s.titleAr : s.title,
-          description: isAr && s.descriptionAr ? s.descriptionAr : s.description,
-          done: !!s.done,
-        }))}
-        currentIndex={idx}
-        total={total}
+        step={{
+          order:       step.order,
+          title:       isAr && step.titleAr ? step.titleAr : step.title,
+          description: isAr && step.descriptionAr ? step.descriptionAr : step.description,
+          contentType: step.contentType,
+          points:      step.points,
+          done:        !!step.done,
+          videoUrl:    step.videoUrl,
+          meetUrl:     step.meetUrl,
+          meetTime:    isAr && step.meetTimeAr ? step.meetTimeAr : step.meetTime,
+          resources:   step.resources,
+        }}
+        totalSteps={totalSteps}
+        earnedSoFar={earnedSoFar}
+        totalPoints={totalPoints}
+        nextStepIndex={nextStepIndex}
         isAr={isAr}
       />
     </div>
