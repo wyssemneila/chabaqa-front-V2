@@ -72,6 +72,7 @@
     "framer-motion": "^12.42.1",
     "hls.js": "^1.6.16",
     "input-otp": "1.4.2",
+    "isomorphic-dompurify": "^3.7.1",
     "jose": "^5.10.0",
     "lucide-react": "^0.454.0",
     "next": "^15.5.19",
