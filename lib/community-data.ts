@@ -73,6 +73,16 @@ export interface CommunityCourse {
   sections?: CourseSection[]
 }
 
+export interface ChallengeStep {
+  order: number
+  title: string
+  titleAr?: string
+  description: string
+  descriptionAr?: string
+  done?: boolean
+  submission?: string
+}
+
 export interface CommunityChallenge {
   id: string
   title: string
@@ -83,8 +93,14 @@ export interface CommunityChallenge {
   difficulty: 'beginner' | 'intermediate' | 'advanced'
   participantsCount: number
   startDate: string
+  endDate?: string
   status: 'upcoming' | 'active' | 'ended'
   progress?: number
+  joined?: boolean
+  reward?: string
+  rewardAr?: string
+  banner?: string
+  steps?: ChallengeStep[]
 }
 
 export interface CommunitySession {
@@ -280,7 +296,55 @@ const MOTION_SCHOOL: CommunityData = {
     },
   ],
   challenges: [
-    { id:'1', title:'Character Rigging in 7 Days', titleAr:'تعلم ريقينق الشخصيات في 7 أيام', description:'7-day challenge to learn professional character rigging in After Effects.', descriptionAr:'تحدي مدته 7 أيام ستتعلم فيه كيف تعمل ريقينق احترافي للشخصيات في After Effects.', duration:'7 days', difficulty:'beginner', participantsCount:3, startDate:'Apr 24, 2026', status:'active', progress:40 },
+    {
+      id:'1', title:'Character Rigging in 7 Days',
+      titleAr:'تعلم ريقينق الشخصيات في 7 أيام',
+      description:'A 7-day guided sprint: rig a character from scratch in After Effects with Duik. Ship one polished walk cycle by the end of the week.',
+      descriptionAr:'تحدٍ إرشادي مدته 7 أيام: ريغ شخصية من الصفر في أفتر إفكتس باستخدام Duik. اصنع دورة مشي واحدة مصقولة بنهاية الأسبوع.',
+      duration:'7 days', difficulty:'beginner', participantsCount:24,
+      startDate:'Apr 24, 2026', endDate:'May 1, 2026',
+      status:'active', progress:40, joined:true,
+      reward:'Feature on the community showcase + 1 free mentorship session',
+      rewardAr:'الظهور في معرض المجتمع + جلسة إرشاد مجانية',
+      steps: [
+        { order:1, title:'Pick your character', description:"Choose a simple 2D character illustration. Anything on 2 legs works. Post your pick in the challenge feed so others can react.", done:true },
+        { order:2, title:'Split into layers', description:'Break the illustration into rig-ready layers in Illustrator: head, torso, arms, legs. Name your layers cleanly.', done:true },
+        { order:3, title:'Install & set up Duik', description:'Install Duik Angela (free) and open your layered PSD/AI in After Effects. Auto-rig the structure.', done:true },
+        { order:4, title:'Attach controllers', description:'Add IK to the arms and legs. Test each joint rotation with a controller.', done:false },
+        { order:5, title:'Animate a walk cycle', description:'Block a 12-frame walk cycle. Focus on hip movement + arm swing.', done:false },
+        { order:6, title:'Add secondary motion', description:'Layer in overlap and follow-through: hair, cloth, floppy ears. Small polish, big life.', done:false },
+        { order:7, title:'Export & submit', description:'Render a 4-second loop as MP4 or GIF. Submit it below to complete the challenge.', done:false },
+      ],
+    },
+    {
+      id:'2', title:'Kinetic Type Battle',
+      titleAr:'معركة الطباعة الحركية',
+      description:'A 5-day head-to-head: animate one lyric of your choice. Winner picked by community vote.',
+      descriptionAr:'تحدٍ من 5 أيام: حرّك سطراً واحداً من أغنية. الفائز باختيار المجتمع.',
+      duration:'5 days', difficulty:'intermediate', participantsCount:0,
+      startDate:'May 10, 2026', endDate:'May 15, 2026',
+      status:'upcoming',
+      reward:'50 TND cash prize + winner badge',
+      rewardAr:'جائزة نقدية 50 دينار + شارة الفائز',
+      steps: [
+        { order:1, title:'Sign up & pick your lyric', description:'Choose any short lyric (max 12 words). Post it in the challenge thread.' },
+        { order:2, title:'Storyboard the beats', description:'Sketch how each word hits — timing is everything.' },
+        { order:3, title:'Animate in AE', description:'Bring the words to life. Motion should follow the rhythm.' },
+        { order:4, title:'Sound + polish', description:'Sync to the track. Add micro details.' },
+        { order:5, title:'Submit for community vote', description:'Upload your entry. Voting opens for 24h.' },
+      ],
+    },
+    {
+      id:'3', title:'Loop Master — 30-day daily animation',
+      titleAr:'تحدي الحلقات — 30 يوماً من الرسوم اليومية',
+      description:'One tiny animated loop every day for 30 days. Build the habit that ships portfolios.',
+      descriptionAr:'حلقة متحركة صغيرة كل يوم لمدة 30 يوماً. ابنِ العادة التي تصنع البورتفوليو.',
+      duration:'30 days', difficulty:'advanced', participantsCount:47,
+      startDate:'Feb 1, 2026', endDate:'Mar 2, 2026',
+      status:'ended', joined:true, progress:100,
+      reward:'Certificate + featured spotlight',
+      rewardAr:'شهادة + إبراز مميز',
+    },
   ],
   sessions: [
     { id:'1', title:'1-on-1 After Effects Mentorship', mentorName:'Mohamed Trabelsi', mentorAvatar:null, mentorInitials:'MT', mentorColor:'#47c7ea', duration:60, price:50, currency:'TND', rating:5.0, reviewsCount:2, availableSlots:3, booked:false },
