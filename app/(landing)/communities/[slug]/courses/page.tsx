@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
+import Link from 'next/link'
 import { getCommunity, LEVEL_CONFIG } from '@/lib/community-data'
 import { BookOpen, Users, Clock, Star, Search, Play, ImageIcon } from 'lucide-react'
 
@@ -140,10 +141,12 @@ export default async function CoursesPage({ params }: Props) {
                     </div>
 
                     {/* CTA */}
-                    <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg text-white" style={{ background: '#8e78fb' }}>
+                    <Link href={`/communities/${slug}/courses/${course.id}`}
+                          className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg text-white transition-opacity hover:opacity-90"
+                          style={{ background: '#8e78fb' }}>
                       <Play className="w-3.5 h-3.5" />
                       {course.enrolled ? (isAr ? 'تابع' : 'Continue') : (isAr ? 'سجّل الآن' : 'Enroll Now')}
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>

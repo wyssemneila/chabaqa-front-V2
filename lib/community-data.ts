@@ -28,6 +28,25 @@ export interface CommunityPost {
   saves: number
 }
 
+export interface CourseChapter {
+  id: string
+  title: string
+  titleAr?: string
+  duration: string
+  isPreview?: boolean
+  isPaid?: boolean
+  videoUrl?: string
+  done?: boolean
+  resources?: { id: string; title: string; type: 'pdf' | 'zip' | 'link' | 'image'; url: string; sizeLabel?: string }[]
+}
+
+export interface CourseSection {
+  id: string
+  title: string
+  titleAr?: string
+  chapters: CourseChapter[]
+}
+
 export interface CommunityCourse {
   id: string
   title: string
@@ -43,6 +62,13 @@ export interface CommunityCourse {
   currency?: string
   enrolled?: boolean
   progress?: number
+  description?: string
+  descriptionAr?: string
+  objectives?: string[]
+  objectivesAr?: string[]
+  requirements?: string[]
+  requirementsAr?: string[]
+  sections?: CourseSection[]
 }
 
 export interface CommunityChallenge {
@@ -172,7 +198,74 @@ const MOTION_SCHOOL: CommunityData = {
     { id:'1', authorName:'Ahmed Ben Ali', authorHandle:'ahmedbenali', authorAvatar:null, authorInitials:'AB', authorColor:'#8e78fb', content:'hello everyone! i have a problem with After Effects 2019, does anyone have the 2025 or similar version? thank you 🙂', timeAgo:'4d ago', likes:2, comments:1, saves:0 },
   ],
   courses: [
-    { id:'1', title:'Motion Graphics & Animation from Zero to Pro', titleAr:'الموشن جرافيكس والأنيميشن من الصفر للاحتراف', instructor:'Mohamed Trabelsi', studentsCount:4, lessonsCount:12, duration:'8h 30m', level:'beginner', rating:5.0, thumbnail:null, price:'free', enrolled:true, progress:35 },
+    {
+      id:'1',
+      title:'Motion Graphics & Animation from Zero to Pro',
+      titleAr:'الموشن جرافيكس والأنيميشن من الصفر للاحتراف',
+      instructor:'Mohamed Trabelsi',
+      studentsCount:4,
+      lessonsCount:12,
+      duration:'8h 30m',
+      level:'beginner',
+      rating:5.0,
+      thumbnail:null,
+      price:'free',
+      enrolled:true,
+      progress:35,
+      description:'A hands-on journey from zero to pro. You will learn the fundamentals of motion design, After Effects timeline & keyframes, easing, and how to ship your first animation portfolio pieces.',
+      descriptionAr:'رحلة عملية من الصفر إلى الاحتراف. ستتعلم أساسيات تصميم الحركة، والجدول الزمني والإطارات المفتاحية في أفتر إفكتس، والتخفيف، وكيفية إنتاج أول أعمالك الاحترافية.',
+      objectives: [
+        'Master the After Effects timeline, layers and keyframes',
+        'Craft smooth easing and secondary motion that feels alive',
+        'Design animated logos and brand-driven kinetic type',
+        'Export web-ready and social-ready deliverables',
+      ],
+      requirements: [
+        'A laptop that can run After Effects (any version 2022+)',
+        'No prior animation experience needed — we start from zero',
+      ],
+      sections: [
+        {
+          id: 's1', title: 'Getting Started', titleAr: 'البداية',
+          chapters: [
+            { id: 'c1', title: 'Welcome & how this course works', titleAr: 'مرحبًا وكيف يعمل هذا الكورس', duration: '4:12', isPreview: true, done: true, videoUrl: '' },
+            { id: 'c2', title: 'Installing After Effects & workspace setup', titleAr: 'تثبيت أفتر إفكتس وإعداد بيئة العمل', duration: '8:45', done: true, videoUrl: '',
+              resources: [
+                { id: 'r1', title: 'Workspace Layout (PDF)', type: 'pdf', url: '#', sizeLabel: '1.2 MB' },
+                { id: 'r2', title: 'Starter Project Files', type: 'zip', url: '#', sizeLabel: '18 MB' },
+              ] },
+          ],
+        },
+        {
+          id: 's2', title: 'Fundamentals', titleAr: 'الأساسيات',
+          chapters: [
+            { id: 'c3', title: 'The Timeline explained', titleAr: 'شرح الجدول الزمني', duration: '12:30', done: true, videoUrl: '' },
+            { id: 'c4', title: 'Keyframes 101 — position, scale, rotation', titleAr: 'الإطارات المفتاحية 101', duration: '15:20', done: true, videoUrl: '',
+              resources: [
+                { id: 'r3', title: 'Keyframe Cheatsheet (PDF)', type: 'pdf', url: '#', sizeLabel: '640 KB' },
+              ] },
+            { id: 'c5', title: 'Easing that feels natural', titleAr: 'تخفيف يبدو طبيعيًا', duration: '18:00', videoUrl: '' },
+            { id: 'c6', title: 'Anticipation & follow-through', titleAr: 'التوقع والمتابعة', duration: '14:10', videoUrl: '' },
+          ],
+        },
+        {
+          id: 's3', title: 'Real Projects', titleAr: 'مشاريع حقيقية',
+          chapters: [
+            { id: 'c7', title: 'Animating your first logo', titleAr: 'تحريك أول شعار', duration: '22:40', videoUrl: '' },
+            { id: 'c8', title: 'Kinetic typography techniques', titleAr: 'تقنيات الطباعة الحركية', duration: '19:15', videoUrl: '' },
+            { id: 'c9', title: 'Exporting for web & social', titleAr: 'التصدير للويب والسوشيال', duration: '11:05', videoUrl: '' },
+          ],
+        },
+        {
+          id: 's4', title: 'Ship Your Portfolio', titleAr: 'أنشر أعمالك',
+          chapters: [
+            { id: 'c10', title: 'Case study — a brand animation', titleAr: 'دراسة حالة — تحريك علامة', duration: '26:00', isPaid: true, videoUrl: '' },
+            { id: 'c11', title: 'Feedback loops & iteration', titleAr: 'حلقات الملاحظات والتكرار', duration: '13:30', isPaid: true, videoUrl: '' },
+            { id: 'c12', title: 'Landing your first paid project', titleAr: 'الحصول على أول مشروع مدفوع', duration: '17:20', isPaid: true, videoUrl: '' },
+          ],
+        },
+      ],
+    },
   ],
   challenges: [
     { id:'1', title:'Character Rigging in 7 Days', titleAr:'تعلم ريقينق الشخصيات في 7 أيام', description:'7-day challenge to learn professional character rigging in After Effects.', descriptionAr:'تحدي مدته 7 أيام ستتعلم فيه كيف تعمل ريقينق احترافي للشخصيات في After Effects.', duration:'7 days', difficulty:'beginner', participantsCount:3, startDate:'Apr 24, 2026', status:'active', progress:40 },
