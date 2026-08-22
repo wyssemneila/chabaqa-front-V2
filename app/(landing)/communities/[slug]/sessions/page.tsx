@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
+import Link from 'next/link'
 import { getCommunity } from '@/lib/community-data'
 import { Star, Clock, Video, Users, Calendar as CalendarIcon } from 'lucide-react'
 
@@ -18,7 +19,7 @@ export default async function SessionsPage({ params }: Props) {
       {/* Sessions list — vertical cards like screenshot */}
       <div className="flex flex-col gap-5">
         {community.sessions.map((session) => (
-          <div key={session.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid #e8e4ff', background: '#fff' }}>
+          <Link key={session.id} href={`/communities/${slug}/sessions/${session.id}`} className="rounded-xl overflow-hidden block hover:shadow-lg transition-shadow" style={{ border: '1px solid #e8e4ff', background: '#fff' }}>
 
             {/* Thumbnail — 16:9 */}
             <div className="w-full h-[200px] relative" style={{ background: '#f7f7fe' }}>
@@ -110,7 +111,7 @@ export default async function SessionsPage({ params }: Props) {
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

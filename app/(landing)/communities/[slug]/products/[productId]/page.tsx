@@ -85,16 +85,6 @@ export default async function ProductDetailPage({ params }: Props) {
             )}
           </div>
 
-          {/* CTA */}
-          <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white shrink-0 transition-opacity hover:opacity-90"
-                  style={{ background: product.purchased ? '#10b981' : '#8e78fb' }}>
-            <Download className="w-4 h-4" />
-            {product.purchased
-              ? (isAr ? 'تحميل' : 'Download')
-              : free
-                ? (isAr ? 'تحميل مجاني' : 'Free download')
-                : (isAr ? 'اشترِ الآن' : 'Buy now')}
-          </button>
         </div>
 
         {/* Stats row */}
@@ -111,15 +101,6 @@ export default async function ProductDetailPage({ params }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
         {/* LEFT — Main content */}
         <div className="space-y-4">
-          {/* Preview / Banner */}
-          {product.banner && (
-            <div className="rounded-2xl overflow-hidden border" style={{ borderColor: '#e8e4ff' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={product.banner} alt={product.title}
-                   className="w-full aspect-[16/9] object-cover" />
-            </div>
-          )}
-
           {/* Description card */}
           <div className="rounded-2xl p-5 border" style={{ background: '#fff', borderColor: '#e8e4ff' }}>
             <div className="flex items-center gap-2 mb-4">

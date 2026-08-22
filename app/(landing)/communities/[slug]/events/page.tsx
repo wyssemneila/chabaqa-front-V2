@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
+import Link from 'next/link'
 import { getCommunity } from '@/lib/community-data'
 import { Calendar, MapPin, Globe, Users } from 'lucide-react'
 
@@ -55,7 +56,7 @@ export default async function EventsPage({ params }: Props) {
           const typeConf = EVENT_TYPE_CONFIG[event.type]
           const attending = event.ticketsSold
           return (
-            <div key={event.id} className="flex gap-5 p-5">
+            <Link key={event.id} href={`/communities/${slug}/events/${event.id}`} className="flex gap-5 p-5 hover:bg-[#f7f7fe] transition-colors">
               {/* Thumbnail — 16:9 */}
               <div className="flex-shrink-0 w-[220px] h-[124px] rounded-xl flex items-center justify-center" style={{ background: '#f7f7fe' }}>
                 <Calendar className="w-10 h-10" style={{ color: '#c4b8fd' }} />
@@ -116,7 +117,7 @@ export default async function EventsPage({ params }: Props) {
                   </div>
                 </div>
               </div>
-            </div>
+            </Link>
           )
         })}
       </div>
