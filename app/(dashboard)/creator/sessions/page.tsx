@@ -283,13 +283,13 @@ export default function SessionsPage() {
               {STATS.map(s => (
                 <div key={s.label} className="rounded-2xl p-5 flex items-center gap-4"
                   style={{ background:'var(--white)', border:'1px solid var(--bd)', boxShadow:'0 2px 8px rgba(0,0,0,.03)' }}>
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
                     style={{ background: s.bg }}>
-                    <s.icon className="w-6 h-6" style={{ color: s.color }} />
+                    <s.icon className="w-5 h-5" style={{ color: s.color }} />
                   </div>
                   <div>
-                    <p className="text-[28px] font-black leading-none" style={{ color: s.color }}>{s.value}</p>
-                    <p className="text-[12px] font-semibold mt-0.5" style={{ color:'var(--t2)' }}>{s.label}</p>
+                    <p className="text-[22px] font-semibold leading-none" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[12px] font-medium mt-1" style={{ color:'var(--t3)' }}>{s.label}</p>
                   </div>
                 </div>
               ))}

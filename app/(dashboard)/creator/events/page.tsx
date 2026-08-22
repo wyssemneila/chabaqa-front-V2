@@ -8,8 +8,9 @@ import { useDashPrefs } from '@/hooks/use-dash-prefs'
 import {
   Plus, Calendar, Globe, MapPin, Layers2,
   Ticket, Users, Clock, Tag, Pencil, Trash2,
-  Inbox,
+  Inbox, Zap,
 } from 'lucide-react'
+import { PageStatsBar, PageFilterTabs } from '@/components/creator-dashboard/PageStatsBar'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Event {
@@ -39,6 +40,7 @@ export default function EventsPage() {
 
   const [events,  setEvents]  = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState<'all' | 'active' | 'inactive'>('all')
 
   useEffect(() => {
     try {
@@ -88,19 +90,56 @@ export default function EventsPage() {
         <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title={T.title} subtitle={T.subtitle} />
 
-          <main id="main-content" className="p-7 flex-1" style={{ animation:'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1 space-y-6" style={{ animation:'dashFadeUp .4s ease both' }}>
 
-            {/* Toolbar */}
-            <div className="flex items-center justify-between mb-6">
-              <p className="text-[13px] font-semibold" style={{ color:'var(--t3)' }}>
-                {events.length} {lang==='ar'?'فعالية':'event'}{events.length!==1&&lang==='en'?'s':''}
-              </p>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-[20px] font-semibold" style={{ color:'var(--t1)' }}>
+                  {lang==='ar' ? 'فعالياتك' : 'Your Events'}
+                </h2>
+                <p className="text-[13px] mt-0.5" style={{ color:'var(--t3)' }}>
+                  {events.length} {lang==='ar'?'فعالية':'event'}{events.length!==1&&lang==='en'?'s':''} {lang==='ar'?'مُنشأة':'created'}
+                </p>
+              </div>
               <button onClick={() => router.push('/creator/events/create')}
-                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[13px] font-bold text-white
-                           cursor-pointer hover:opacity-90 transition-opacity"
-                style={{ background:'var(--p)' }}>
+                className="flex items-center gap-2 h-10 px-4 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
+                style={{ background:'var(--p)', boxShadow:'0 4px 14px rgba(142,120,251,.4)' }}>
                 <Plus className="w-4 h-4" strokeWidth={1.7} /> {T.create}
               </button>
+            </div>
+
+            {/* Stats */}
+            <PageStatsBar stats={[
+              { label: lang==='ar' ? 'إجمالي الفعاليات' : 'Total Events',
+                value: events.length, icon: Calendar,
+                color: 'var(--p)', bg: 'var(--p2)' },
+              { label: lang==='ar' ? 'منشور' : 'Published',
+                value: events.filter(e => e.status==='published').length, icon: Zap,
+                color: 'var(--pink)', bg: 'rgba(236,72,153,.1)' },
+              { label: lang==='ar' ? 'إجمالي التذاكر' : 'Total Tickets',
+                value: events.reduce((n, e) => n + (e.tickets?.length ?? 0), 0), icon: Ticket,
+                color: 'var(--cyan)', bg: 'rgba(34,211,238,.12)' },
+            ]} />
+
+            {/* Section header + tabs */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-[15px] font-bold" style={{ color:'var(--t1)' }}>
+                {lang==='ar' ? 'كل الفعاليات' : 'All Events'}
+              </h3>
+              <PageFilterTabs<'all' | 'active' | 'inactive'>
+                active={tab}
+                onChange={setTab}
+                tabs={[
+                  { key:'all',      label: lang==='ar' ? 'الكل' : 'All' },
+                  { key:'active',   label: lang==='ar' ? 'نشط' : 'Active' },
+                  { key:'inactive', label: lang==='ar' ? 'غير نشط' : 'Inactive' },
+                ]}
+                counts={{
+                  all:      events.length,
+                  active:   events.filter(e => e.status==='published').length,
+                  inactive: events.filter(e => e.status!=='published').length,
+                }} />
             </div>
 
             {/* Loading */}
@@ -128,7 +167,9 @@ export default function EventsPage() {
             ) : (
               /* Events grid */
               <div className="grid grid-cols-1 gap-4 max-w-4xl">
-                {events.map((ev, i) => {
+                {events
+                  .filter((e) => tab === 'all' ? true : tab === 'active' ? e.status === 'published' : e.status !== 'published')
+                  .map((ev, i) => {
                   const FormatIcon = FORMAT_ICON[ev.format]
                   const fmtColor   = FORMAT_COLOR[ev.format]
                   const stStatus   = STATUS_STYLE[ev.status]

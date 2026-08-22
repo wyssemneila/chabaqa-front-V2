@@ -9,6 +9,7 @@ import {
   Plus, Trophy, Zap, Star, BookOpen, Target,
   Users, Calendar, Clock, Pencil, Trash2, Inbox, Layers,
 } from 'lucide-react'
+import { PageStatsBar, PageFilterTabs } from '@/components/creator-dashboard/PageStatsBar'
 
 interface Challenge {
   id: string; title: string; description: string; category: string
@@ -31,6 +32,7 @@ export default function ChallengesPage() {
   const { lang } = useDashPrefs()
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [loading,    setLoading]    = useState(true)
+  const [tab, setTab] = useState<'all' | 'active' | 'inactive'>('all')
 
   useEffect(() => {
     try {
@@ -56,18 +58,56 @@ export default function ChallengesPage() {
         <DashSidebar />
         <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
           <DashTopbar title="Challenges" subtitle="Create and manage your community challenges" />
-          <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
+          <main id="main-content" className="p-7 flex-1 space-y-6" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
-            {/* toolbar */}
-            <div className="flex items-center justify-between mb-6">
-              <p className="text-[13px] font-semibold" style={{ color: 'var(--t3)' }}>
-                {challenges.length} challenge{challenges.length !== 1 ? 's' : ''}
-              </p>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-[20px] font-semibold" style={{ color: 'var(--t1)' }}>
+                  {lang==='ar' ? 'تحدياتك' : 'Your Challenges'}
+                </h2>
+                <p className="text-[13px] mt-0.5" style={{ color: 'var(--t3)' }}>
+                  {challenges.length} {lang==='ar' ? 'تحدي' : 'challenge'}{challenges.length !== 1 && lang==='en' ? 's' : ''} {lang==='ar' ? 'مُنشأ' : 'created'}
+                </p>
+              </div>
               <button onClick={() => router.push('/creator/challenges/create')}
-                className="flex items-center gap-2 h-9 px-4 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
-                style={{ background: 'var(--p)' }}>
-                <Plus className="w-4 h-4" strokeWidth={1.7} /> Create Challenge
+                className="flex items-center gap-2 h-10 px-4 rounded-xl text-[13px] font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
+                style={{ background: 'var(--p)', boxShadow: '0 4px 14px rgba(142,120,251,.4)' }}>
+                <Plus className="w-4 h-4" strokeWidth={1.7} /> {lang==='ar' ? 'إنشاء تحدي' : 'Create Challenge'}
               </button>
+            </div>
+
+            {/* Stats */}
+            <PageStatsBar stats={[
+              { label: lang==='ar' ? 'إجمالي التحديات' : 'Total Challenges',
+                value: challenges.length, icon: Trophy,
+                color: 'var(--p)', bg: 'var(--p2)' },
+              { label: lang==='ar' ? 'منشور' : 'Published',
+                value: challenges.filter(c => c.isPublished).length, icon: Zap,
+                color: 'var(--pink)', bg: 'rgba(236,72,153,.1)' },
+              { label: lang==='ar' ? 'إجمالي الخطوات' : 'Total Steps',
+                value: challenges.reduce((n, c) => n + (c.steps?.length ?? 0), 0), icon: Layers,
+                color: 'var(--cyan)', bg: 'rgba(34,211,238,.12)' },
+            ]} />
+
+            {/* Section header + tabs */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-[15px] font-bold" style={{ color: 'var(--t1)' }}>
+                {lang==='ar' ? 'كل التحديات' : 'All Challenges'}
+              </h3>
+              <PageFilterTabs<'all' | 'active' | 'inactive'>
+                active={tab}
+                onChange={setTab}
+                tabs={[
+                  { key:'all',      label: lang==='ar' ? 'الكل' : 'All' },
+                  { key:'active',   label: lang==='ar' ? 'نشط' : 'Active' },
+                  { key:'inactive', label: lang==='ar' ? 'غير نشط' : 'Inactive' },
+                ]}
+                counts={{
+                  all:      challenges.length,
+                  active:   challenges.filter(c => c.isPublished).length,
+                  inactive: challenges.filter(c => !c.isPublished).length,
+                }} />
             </div>
 
             {loading ? (
@@ -91,7 +131,9 @@ export default function ChallengesPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 max-w-4xl">
-                {challenges.map((ch, i) => {
+                {challenges
+                  .filter((c) => tab === 'all' ? true : tab === 'active' ? c.isPublished : !c.isPublished)
+                  .map((ch, i) => {
                   const diff = DIFF_COLOR[ch.difficulty] ?? { bg: 'var(--p2)', color: 'var(--p)' }
                   return (
                     <div key={ch.id}
