@@ -23,8 +23,7 @@
     "i18n:translate:ar": "node scripts/i18n/translate-libre.mjs",
     "i18n:check:parity": "node scripts/i18n/check-parity.mjs",
     "i18n:check:hardcoded": "node scripts/i18n/find-hardcoded.mjs",
-    "i18n:ci": "npm run i18n:check:parity && node scripts/i18n/find-hardcoded.mjs \"app/(auth)\" \"app/(landing)\" \"app/(admin)\"",
-    "postbuild": "node scripts/sync-standalone-assets.js"
+    "i18n:ci": "npm run i18n:check:parity && node scripts/i18n/find-hardcoded.mjs \"app/(auth)\" \"app/(landing)\" \"app/(admin)\""
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
