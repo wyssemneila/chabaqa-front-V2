@@ -20,44 +20,39 @@ export default function CommunityHero({ name, description, slug, membersCount, o
 
   return (
     <>
-      {/* Overlay hero — Facebook/LinkedIn style */}
-      <div>
-        {/* Banner 16:6 with floating Settings top-right */}
-        <div className="relative rounded-2xl overflow-hidden bg-[#ede9ff]"
-             style={{ aspectRatio: '16 / 6' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={bannerSrc} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 pointer-events-none"
-               style={{ background: 'linear-gradient(180deg, transparent 55%, rgba(0,0,0,.25) 100%)' }} />
+      {/* No-banner hero — compact identity card */}
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 md:p-5"
+           style={{ background: `linear-gradient(135deg, ${avatarColor}0d 0%, #ffffff 45%)` }}>
 
-          {/* Settings — floating top-right */}
-          <button onClick={() => setSettingsOpen(true)}
-                  className="absolute top-3 right-3 h-8 px-3 rounded-full text-[12px] font-semibold flex items-center gap-1.5 transition-all backdrop-blur-md hover:bg-white/95"
-                  style={{ background: 'rgba(255,255,255,.85)', color: '#1a1730' }}>
-            <Settings className="w-3.5 h-3.5" strokeWidth={1.8} />
-            Settings
-          </button>
-        </div>
-
-        {/* Overlay row: avatar overlaps banner bottom, name+meta below */}
-        <div className="flex items-end gap-4 -mt-8 md:-mt-10 px-2 md:px-4 relative z-10">
-          {/* Avatar — overlaps the banner */}
-          <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center font-black text-white text-xl md:text-2xl shadow-lg ring-4 ring-white flex-shrink-0"
+        {/* Top row: avatar + name/description + Settings */}
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center font-black text-white text-[18px] md:text-[20px] shadow-md flex-shrink-0"
                style={{ background: avatarColor }}>
             {avatarInitials}
           </div>
 
-          {/* Name + description — aligned to bottom of avatar */}
-          <div className="flex-1 min-w-0 pb-1">
-            <h1 className="text-[18px] md:text-[20px] font-bold text-gray-900 truncate leading-tight">{name}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[17px] md:text-[19px] font-bold text-gray-900 truncate leading-tight">
+              {name}
+            </h1>
             {description && (
-              <p className="text-[12.5px] text-gray-500 truncate mt-0.5">{description}</p>
+              <p className="text-[12.5px] text-gray-500 mt-0.5 line-clamp-1">{description}</p>
             )}
           </div>
+
+          <button onClick={() => setSettingsOpen(true)}
+                  className="h-9 px-4 rounded-xl text-[12px] font-semibold flex items-center gap-1.5 transition-colors hover:bg-white flex-shrink-0"
+                  style={{ background: '#f6f5fb', color: '#46426a', border: '1px solid #eceaf4' }}>
+            <Settings className="w-3.5 h-3.5" strokeWidth={1.8} />
+            <span className="hidden sm:inline">Settings</span>
+          </button>
         </div>
 
+        {/* Divider */}
+        <div className="h-px my-4" style={{ background: 'linear-gradient(90deg, transparent 0%, #eceaf4 20%, #eceaf4 80%, transparent 100%)' }} />
+
         {/* Meta pills row */}
-        <div className="flex items-center gap-2 mt-3 px-2 md:px-4 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <MetaPill icon={<Users className="w-3.5 h-3.5" strokeWidth={1.8} />}
                     value={membersCount} label="Members"
                     iconColor="#8e78fb" bg="#ede9ff" />
