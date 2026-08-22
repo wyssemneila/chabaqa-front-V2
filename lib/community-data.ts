@@ -228,7 +228,7 @@ const MOTION_SCHOOL: CommunityData = {
         {
           id: 's1', title: 'Getting Started', titleAr: 'البداية',
           chapters: [
-            { id: 'c1', title: 'Welcome & how this course works', titleAr: 'مرحبًا وكيف يعمل هذا الكورس', duration: '4:12', isPreview: true, done: true, videoUrl: '' },
+            { id: 'c1', title: 'Welcome & how this course works', titleAr: 'مرحبًا وكيف يعمل هذا الكورس', duration: '4:12', isPreview: true, done: true, videoUrl: '/videos/test.mp4' },
             { id: 'c2', title: 'Installing After Effects & workspace setup', titleAr: 'تثبيت أفتر إفكتس وإعداد بيئة العمل', duration: '8:45', done: true, videoUrl: '',
               resources: [
                 { id: 'r1', title: 'Workspace Layout (PDF)', type: 'pdf', url: '#', sizeLabel: '1.2 MB' },
@@ -239,29 +239,29 @@ const MOTION_SCHOOL: CommunityData = {
         {
           id: 's2', title: 'Fundamentals', titleAr: 'الأساسيات',
           chapters: [
-            { id: 'c3', title: 'The Timeline explained', titleAr: 'شرح الجدول الزمني', duration: '12:30', done: true, videoUrl: '' },
+            { id: 'c3', title: 'The Timeline explained', titleAr: 'شرح الجدول الزمني', duration: '12:30', done: true, videoUrl: '/videos/test.mp4' },
             { id: 'c4', title: 'Keyframes 101 — position, scale, rotation', titleAr: 'الإطارات المفتاحية 101', duration: '15:20', done: true, videoUrl: '',
               resources: [
                 { id: 'r3', title: 'Keyframe Cheatsheet (PDF)', type: 'pdf', url: '#', sizeLabel: '640 KB' },
               ] },
-            { id: 'c5', title: 'Easing that feels natural', titleAr: 'تخفيف يبدو طبيعيًا', duration: '18:00', videoUrl: '' },
-            { id: 'c6', title: 'Anticipation & follow-through', titleAr: 'التوقع والمتابعة', duration: '14:10', videoUrl: '' },
+            { id: 'c5', title: 'Easing that feels natural', titleAr: 'تخفيف يبدو طبيعيًا', duration: '18:00', videoUrl: '/videos/test.mp4' },
+            { id: 'c6', title: 'Anticipation & follow-through', titleAr: 'التوقع والمتابعة', duration: '14:10', videoUrl: '/videos/test.mp4' },
           ],
         },
         {
           id: 's3', title: 'Real Projects', titleAr: 'مشاريع حقيقية',
           chapters: [
-            { id: 'c7', title: 'Animating your first logo', titleAr: 'تحريك أول شعار', duration: '22:40', videoUrl: '' },
-            { id: 'c8', title: 'Kinetic typography techniques', titleAr: 'تقنيات الطباعة الحركية', duration: '19:15', videoUrl: '' },
-            { id: 'c9', title: 'Exporting for web & social', titleAr: 'التصدير للويب والسوشيال', duration: '11:05', videoUrl: '' },
+            { id: 'c7', title: 'Animating your first logo', titleAr: 'تحريك أول شعار', duration: '22:40', videoUrl: '/videos/test.mp4' },
+            { id: 'c8', title: 'Kinetic typography techniques', titleAr: 'تقنيات الطباعة الحركية', duration: '19:15', videoUrl: '/videos/test.mp4' },
+            { id: 'c9', title: 'Exporting for web & social', titleAr: 'التصدير للويب والسوشيال', duration: '11:05', videoUrl: '/videos/test.mp4' },
           ],
         },
         {
           id: 's4', title: 'Ship Your Portfolio', titleAr: 'أنشر أعمالك',
           chapters: [
-            { id: 'c10', title: 'Case study — a brand animation', titleAr: 'دراسة حالة — تحريك علامة', duration: '26:00', isPaid: true, videoUrl: '' },
-            { id: 'c11', title: 'Feedback loops & iteration', titleAr: 'حلقات الملاحظات والتكرار', duration: '13:30', isPaid: true, videoUrl: '' },
-            { id: 'c12', title: 'Landing your first paid project', titleAr: 'الحصول على أول مشروع مدفوع', duration: '17:20', isPaid: true, videoUrl: '' },
+            { id: 'c10', title: 'Case study — a brand animation', titleAr: 'دراسة حالة — تحريك علامة', duration: '26:00', isPaid: true, videoUrl: '/videos/test.mp4' },
+            { id: 'c11', title: 'Feedback loops & iteration', titleAr: 'حلقات الملاحظات والتكرار', duration: '13:30', isPaid: true, videoUrl: '/videos/test.mp4' },
+            { id: 'c12', title: 'Landing your first paid project', titleAr: 'الحصول على أول مشروع مدفوع', duration: '17:20', isPaid: true, videoUrl: '/videos/test.mp4' },
           ],
         },
       ],
