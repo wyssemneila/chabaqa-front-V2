@@ -20,52 +20,56 @@ export default function CommunityHero({ name, description, slug, membersCount, o
 
   return (
     <>
-      {/* Two-column hero: info card left, 16:9 banner right */}
-      <div className="grid grid-cols-1 md:grid-cols-[minmax(260px,340px)_1fr] gap-4">
-
-        {/* ── LEFT: Info card ── */}
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 flex flex-col gap-3">
-          {/* Top: avatar + name + description */}
-          <div className="flex items-start gap-3">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center font-black text-white text-lg shadow-sm flex-shrink-0"
-                 style={{ background: avatarColor }}>
-              {avatarInitials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-[16px] font-bold text-gray-900 truncate">{name}</h1>
-              {description && (
-                <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-2 leading-snug">{description}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Stat cards — stacked to fill the vertical space */}
-          <div className="flex flex-col gap-1.5 flex-1">
-            <StatCard icon={<Users className="w-3.5 h-3.5" strokeWidth={1.8} />}
-                      label="Members" value={membersCount}
-                      iconBg="#ede9ff" iconColor="#8e78fb" />
-            <StatCard icon={<Circle className="w-3 h-3" fill="#34d399" strokeWidth={0} />}
-                      label="Online" value={onlineCount}
-                      iconBg="#dcfce7" iconColor="#22c55e" />
-            <StatCard icon={<ShieldCheck className="w-3.5 h-3.5" strokeWidth={1.8} />}
-                      label="Admins" value={adminCount}
-                      iconBg="#fef3c7" iconColor="#f59e0b" />
-          </div>
-
-          {/* Settings */}
-          <button onClick={() => setSettingsOpen(true)}
-                  className="h-9 px-4 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all hover:shadow-sm w-full"
-                  style={{ background: '#f6f5fb', color: '#46426a', border: '1px solid #eceaf4' }}>
-            <Settings className="w-3.5 h-3.5" strokeWidth={1.8} />
-            Settings
-          </button>
-        </div>
-
-        {/* ── RIGHT: 16:9 banner card ── */}
+      {/* Banner-first hero: full-width 16:9 + floating pill-row card */}
+      <div className="relative pb-[68px] md:pb-[52px]">
+        {/* Banner */}
         <div className="rounded-2xl overflow-hidden relative bg-[#ede9ff]"
              style={{ aspectRatio: '16 / 9' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={bannerSrc} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 pointer-events-none"
+               style={{ background: 'linear-gradient(180deg, transparent 60%, rgba(0,0,0,.15) 100%)' }} />
+        </div>
+
+        {/* Floating pill-row card */}
+        <div className="absolute left-4 right-4 md:left-6 md:right-6 -bottom-2 md:-bottom-1">
+          <div className="rounded-2xl bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,.18)] border border-gray-100 flex items-center gap-3 md:gap-4 px-3 md:px-4 py-2.5 flex-wrap md:flex-nowrap">
+
+            {/* Avatar */}
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center font-black text-white text-[14px] shadow-sm flex-shrink-0"
+                 style={{ background: avatarColor }}>
+              {avatarInitials}
+            </div>
+
+            {/* Name + description (compact) */}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[15px] font-bold text-gray-900 truncate leading-tight">{name}</h1>
+              {description && (
+                <p className="text-[11.5px] text-gray-500 truncate leading-snug">{description}</p>
+              )}
+            </div>
+
+            {/* Meta pills — inline */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <MetaPill icon={<Users className="w-3 h-3" strokeWidth={1.8} />}
+                        value={membersCount} label="Members"
+                        iconColor="#8e78fb" bg="#ede9ff" />
+              <MetaPill icon={<Circle className="w-2 h-2" fill="#34d399" strokeWidth={0} />}
+                        value={onlineCount} label="Online"
+                        iconColor="#22c55e" bg="#dcfce7" />
+              <MetaPill icon={<ShieldCheck className="w-3 h-3" strokeWidth={1.8} />}
+                        value={adminCount} label="Admins"
+                        iconColor="#f59e0b" bg="#fef3c7" />
+            </div>
+
+            {/* Settings */}
+            <button onClick={() => setSettingsOpen(true)}
+                    className="h-8 px-3 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-colors hover:bg-[#eceaf4] flex-shrink-0"
+                    style={{ background: '#f6f5fb', color: '#46426a', border: '1px solid #eceaf4' }}>
+              <Settings className="w-3.5 h-3.5" strokeWidth={1.8} />
+              Settings
+            </button>
+          </div>
         </div>
       </div>
 
@@ -77,18 +81,15 @@ export default function CommunityHero({ name, description, slug, membersCount, o
 
 type Tab = 'invite' | 'notifications' | 'membership'
 
-function StatCard({ icon, label, value, iconBg, iconColor }:
-  { icon: React.ReactNode; label: string; value: number; iconBg: string; iconColor: string }) {
+function MetaPill({ icon, value, label, iconColor, bg }:
+  { icon: React.ReactNode; value: number; label: string; iconColor: string; bg: string }) {
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-gray-100 bg-[#fafafd]">
-      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-           style={{ background: iconBg, color: iconColor }}>
+    <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-gray-100 bg-white">
+      <span className="flex items-center justify-center" style={{ color: iconColor }}>
         {icon}
-      </div>
-      <div className="flex-1 min-w-0 flex items-baseline gap-1.5">
-        <span className="text-[13px] font-bold text-gray-900">{value}</span>
-        <span className="text-[11.5px] text-gray-500">{label}</span>
-      </div>
+      </span>
+      <span className="text-[12px] font-bold text-gray-900">{value}</span>
+      <span className="text-[11px] text-gray-500">{label}</span>
     </div>
   )
 }
