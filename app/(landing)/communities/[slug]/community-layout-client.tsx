@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import {
@@ -11,6 +12,10 @@ import {
   Maximize2, MoreHorizontal,
 } from 'lucide-react'
 import type { CommunityData, CommunityTab } from '@/lib/community-data'
+import { ProfileMenu } from '@/components/profile-menu'
+import { useAuth } from '@/hooks/use-auth'
+import { getUserProfileHandle } from '@/lib/profile-handle'
+import { localizeHref } from '@/lib/i18n/client'
 
 interface Props {
   community: CommunityData
@@ -85,6 +90,15 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
   const pathname = usePathname()
   const isAr = locale === 'ar'
 
+  const { user: authUser, logout } = useAuth()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const profileHandle = getUserProfileHandle(authUser)
+  const withLocale = (href: string) => localizeHref(pathname, href)
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try { await logout() } finally { setIsLoggingOut(false) }
+  }
+
   const [notifOpen, setNotifOpen] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [activeChat, setActiveChat] = useState<ChatUser | null>(null)
@@ -126,11 +140,17 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
   const unreadChats = MOCK_CHATS.filter(c => c.unread).length
 
   return (
-    <div style={{ background: '#fff', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
 
       {/* ── TOP BAR ──────────────────────────────── */}
       <header className="sticky top-0 z-50" style={{ background: '#fff', borderBottom: '1px solid #e8e8e8' }}>
         <div className="max-w-[1200px] mx-auto px-6 flex items-center h-[56px] gap-6">
+
+          <Link href={withLocale('/')} aria-label="Chabaqa — go to homepage" className="flex-shrink-0 hidden md:block">
+            <Image src="/Logos/PNG/frensh1.png" alt="Chabaqa" width={100} height={32} className="h-7 w-auto" priority />
+          </Link>
+
+          <div className="w-px h-6 hidden md:block" style={{ background: '#e8e4ff' }} />
 
           <Link href={tabHref('feed')} className="flex items-center gap-2.5 flex-shrink-0">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-white text-[10px]"
@@ -306,9 +326,14 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
               )}
             </div>
 
-            <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-[10px] cursor-pointer ml-1"
-              style={{ background: community.avatarColor }}>
-              WN
+            <div className="ml-1">
+              <ProfileMenu
+                user={authUser}
+                profileHandle={profileHandle}
+                withLocale={withLocale}
+                onLogout={handleLogout}
+                isLoggingOut={isLoggingOut}
+              />
             </div>
           </div>
         </div>
@@ -400,7 +425,7 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
 
         {/* ── LEFT SIDEBAR ── */}
         <aside className="hidden lg:flex flex-col w-[200px] flex-shrink-0 border-r border-gray-100 sticky top-[56px] h-[calc(100vh-56px)] overflow-y-auto py-4 px-3"
-          style={{ background: '#fafbfc' }}>
+          style={{ background: 'var(--bg)' }}>
 
           <nav className="flex flex-col gap-0.5">
             {visibleNav.map(({ id, label, labelAr, Icon }) => {
