@@ -100,7 +100,7 @@ export default async function CoursesPage({ params }: Props) {
                     {/* Meta row */}
                     <div className="flex items-center gap-4 mt-3 text-sm" style={{ color: '#9590b8' }}>
                       <span className="flex items-center gap-1">
-                        <BookOpen className="w-3.5 h-3.5" /> {course.sections || 2} {isAr ? 'أقسام' : 'sections'}
+                        <BookOpen className="w-3.5 h-3.5" /> {course.sections?.length || 2} {isAr ? 'أقسام' : 'sections'}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" /> {chaptersTotal} {isAr ? 'فصول' : 'chapters'}
