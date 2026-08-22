@@ -37,6 +37,8 @@ export interface CourseChapter {
   isPaid?: boolean
   videoUrl?: string
   done?: boolean
+  description?: string
+  descriptionAr?: string
   resources?: { id: string; title: string; type: 'pdf' | 'zip' | 'link' | 'image'; url: string; sizeLabel?: string }[]
 }
 
@@ -228,11 +230,21 @@ const MOTION_SCHOOL: CommunityData = {
         {
           id: 's1', title: 'Getting Started', titleAr: 'البداية',
           chapters: [
-            { id: 'c1', title: 'Welcome & how this course works', titleAr: 'مرحبًا وكيف يعمل هذا الكورس', duration: '4:12', isPreview: true, done: true, videoUrl: '/videos/test.mp4' },
-            { id: 'c2', title: 'Installing After Effects & workspace setup', titleAr: 'تثبيت أفتر إفكتس وإعداد بيئة العمل', duration: '8:45', done: true, videoUrl: '',
+            { id: 'c1', title: 'Welcome & how this course works', titleAr: 'مرحبًا وكيف يعمل هذا الكورس', duration: '4:12', isPreview: true, done: true, videoUrl: '/videos/test.mp4',
+              description: "Quick walkthrough of what we'll build over 12 chapters. I'll show the roadmap, how to get the most out of each lesson, and how to use the community feed to ask questions.",
+              descriptionAr: 'جولة سريعة على ما ستبنيه في 12 فصلاً. سأعرض لك الخارطة وطريقة الاستفادة القصوى من كل درس واستخدام المجتمع لطرح الأسئلة.',
               resources: [
-                { id: 'r1', title: 'Workspace Layout (PDF)', type: 'pdf', url: '#', sizeLabel: '1.2 MB' },
-                { id: 'r2', title: 'Starter Project Files', type: 'zip', url: '#', sizeLabel: '18 MB' },
+                { id: 'r0', title: 'Course Roadmap.pdf', type: 'pdf', url: '/videos/test.mp4', sizeLabel: '820 KB' },
+                { id: 'r0b', title: 'Community Guidelines', type: 'link', url: '#', sizeLabel: 'External link' },
+              ] },
+            { id: 'c2', title: 'Installing After Effects & workspace setup', titleAr: 'تثبيت أفتر إفكتس وإعداد بيئة العمل', duration: '8:45', done: true, videoUrl: '/videos/test.mp4',
+              description: 'Step-by-step install (Creative Cloud or standalone) plus the exact panel layout I use every day. Save the workspace preset to jump right in next time.',
+              descriptionAr: 'التثبيت خطوة بخطوة (كلاود أو مستقل) مع تخطيط اللوحات الذي أستخدمه يومياً. احفظ إعداد بيئة العمل لبدء العمل بسرعة.',
+              resources: [
+                { id: 'r1', title: 'Workspace Layout.pdf', type: 'pdf', url: '/videos/test.mp4', sizeLabel: '1.2 MB' },
+                { id: 'r2', title: 'Starter Project Files.zip', type: 'zip', url: '/videos/test.mp4', sizeLabel: '18 MB' },
+                { id: 'r2b', title: 'Reference Screenshot.png', type: 'image', url: '/videos/test.mp4', sizeLabel: '540 KB' },
+                { id: 'r2c', title: 'Adobe Download Page', type: 'link', url: '#', sizeLabel: 'adobe.com' },
               ] },
           ],
         },

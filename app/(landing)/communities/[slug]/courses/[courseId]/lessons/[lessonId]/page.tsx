@@ -46,6 +46,7 @@ export default async function LessonPage({ params }: Props) {
           duration: current.duration,
           videoUrl: current.videoUrl || '',
           sectionTitle: isAr && current.sectionTitleAr ? current.sectionTitleAr : current.sectionTitle,
+          description: isAr && current.descriptionAr ? current.descriptionAr : (current.description || ''),
           resources: current.resources || [],
           done: !!current.done,
         }}

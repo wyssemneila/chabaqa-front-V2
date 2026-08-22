@@ -102,58 +102,71 @@ export default async function CourseDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Two-column body — CURRICULUM is now the main content */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-        {/* LEFT — MAIN — Curriculum */}
-        <div className="rounded-2xl border p-5" style={{ borderColor: '#e8e4ff', background: '#fff' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <BookOpen className="w-5 h-5" style={{ color: '#8e78fb' }} />
-            <h2 className="text-[16px] font-bold" style={{ color: '#1a1730' }}>
-              {isAr ? 'المنهج الدراسي' : 'Curriculum'}
-            </h2>
-            <span className="text-[12px] ml-auto" style={{ color: '#9590b8' }}>
-              {course.sections?.length || 0} {isAr ? 'أقسام' : 'sections'} · {totalChapters} {isAr ? 'فصل' : 'chapters'}
-            </span>
+      {/* Two-column body — CURRICULUM is the star */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
+        {/* LEFT — MAIN — Curriculum with elevated purple styling */}
+        <div className="rounded-2xl p-5 shadow-lg relative overflow-hidden"
+             style={{ background: '#fff', border: '2px solid #8e78fb' }}>
+          {/* subtle purple glow */}
+          <div className="absolute -right-16 -top-16 w-40 h-40 rounded-full blur-3xl opacity-20 pointer-events-none"
+               style={{ background: '#8e78fb' }} />
+
+          <div className="flex items-center gap-2 mb-5 relative">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                 style={{ background: '#8e78fb' }}>
+              <BookOpen className="w-4.5 h-4.5" style={{ color: '#fff' }} />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-[17px] font-bold leading-tight" style={{ color: '#1a1730' }}>
+                {isAr ? 'المنهج الدراسي' : 'Curriculum'}
+              </h2>
+              <p className="text-[11.5px]" style={{ color: '#9590b8' }}>
+                {course.sections?.length || 0} {isAr ? 'أقسام' : 'sections'} · {totalChapters} {isAr ? 'فصل' : 'chapters'} · {course.duration}
+              </p>
+            </div>
           </div>
-          <CourseCurriculum
-            slug={slug}
-            courseId={course.id}
-            sections={course.sections || []}
-            isAr={isAr} />
+
+          <div className="relative">
+            <CourseCurriculum
+              slug={slug}
+              courseId={course.id}
+              sections={course.sections || []}
+              isAr={isAr} />
+          </div>
         </div>
 
-        {/* RIGHT — Info sidebar */}
-        <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+        {/* RIGHT — Muted info sidebar (visually secondary) */}
+        <div className="space-y-3 lg:sticky lg:top-4 lg:self-start">
           {description && (
-            <SideCard title={isAr ? 'حول الدورة' : 'About'} icon={<Info className="w-3.5 h-3.5" />}>
-              <p className="text-[12.5px] leading-relaxed" style={{ color: '#46426a' }}>{description}</p>
-            </SideCard>
+            <MutedCard title={isAr ? 'حول الدورة' : 'About'} icon={<Info className="w-3.5 h-3.5" />}>
+              <p className="text-[12px] leading-relaxed" style={{ color: '#6b6885' }}>{description}</p>
+            </MutedCard>
           )}
 
           {objectives.length > 0 && (
-            <SideCard title={isAr ? 'ما ستتعلمه' : "What you'll learn"} icon={<Award className="w-3.5 h-3.5" />}>
-              <ul className="space-y-2">
+            <MutedCard title={isAr ? 'ما ستتعلمه' : "What you'll learn"} icon={<Award className="w-3.5 h-3.5" />}>
+              <ul className="space-y-1.5">
                 {objectives.map((o, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[12.5px]" style={{ color: '#46426a' }}>
-                    <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: '#8e78fb' }} />
+                  <li key={i} className="flex items-start gap-2 text-[12px]" style={{ color: '#6b6885' }}>
+                    <CheckCircle2 className="w-3 h-3 mt-0.5 flex-shrink-0" style={{ color: '#9590b8' }} />
                     <span>{o}</span>
                   </li>
                 ))}
               </ul>
-            </SideCard>
+            </MutedCard>
           )}
 
           {requirements.length > 0 && (
-            <SideCard title={isAr ? 'المتطلبات' : 'Requirements'} icon={<ListChecks className="w-3.5 h-3.5" />}>
-              <ul className="space-y-1.5">
+            <MutedCard title={isAr ? 'المتطلبات' : 'Requirements'} icon={<ListChecks className="w-3.5 h-3.5" />}>
+              <ul className="space-y-1">
                 {requirements.map((r, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[12.5px]" style={{ color: '#46426a' }}>
-                    <span className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: '#8e78fb' }} />
+                  <li key={i} className="flex items-start gap-2 text-[12px]" style={{ color: '#6b6885' }}>
+                    <span className="w-1 h-1 rounded-full mt-1.5 flex-shrink-0" style={{ background: '#9590b8' }} />
                     {r}
                   </li>
                 ))}
               </ul>
-            </SideCard>
+            </MutedCard>
           )}
         </div>
       </div>
@@ -173,12 +186,12 @@ function StatChip({ icon, value, label, iconColor }:
   )
 }
 
-function SideCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function MutedCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border p-4" style={{ borderColor: '#e8e4ff', background: '#fff' }}>
-      <div className="flex items-center gap-1.5 mb-2.5">
-        <span style={{ color: '#8e78fb' }}>{icon}</span>
-        <h3 className="text-[13px] font-semibold" style={{ color: '#1a1730' }}>{title}</h3>
+    <div className="rounded-xl p-3" style={{ background: '#f6f5fb' }}>
+      <div className="flex items-center gap-1.5 mb-2">
+        <span style={{ color: '#9590b8' }}>{icon}</span>
+        <h3 className="text-[11.5px] font-bold uppercase tracking-wider" style={{ color: '#9590b8' }}>{title}</h3>
       </div>
       {children}
     </div>

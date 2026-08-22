@@ -24,6 +24,7 @@ interface CurrentLesson {
   duration: string
   videoUrl: string
   sectionTitle: string
+  description?: string
   resources: Resource[]
   done: boolean
 }
@@ -147,41 +148,48 @@ export default function LessonViewer({ slug, courseId, sections, current, prevId
         {/* Real video player */}
         <VideoPlayer src={current.videoUrl || '/videos/test.mp4'} />
 
-        {/* Lesson header + actions */}
+        {/* Lesson header + description + actions */}
         <div className="rounded-2xl border p-4" style={{ borderColor: '#e8e4ff', background: '#fff' }}>
           <p className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#9590b8' }}>
             {current.sectionTitle}
           </p>
           <h1 className="text-[18px] font-bold" style={{ color: '#1a1730' }}>{current.title}</h1>
 
-          <div className="mt-4 flex items-center gap-2 flex-wrap">
-            {/* Previous — left */}
+          {current.description && (
+            <p className="text-[13px] leading-relaxed mt-2" style={{ color: '#46426a' }}>
+              {current.description}
+            </p>
+          )}
+
+          {/* Action row — minimalist */}
+          <div className="mt-4 pt-3 flex items-center gap-1.5 flex-wrap border-t" style={{ borderColor: '#f0edfa' }}>
+            {/* Previous — icon+text minimal */}
             {prevId ? (
               <Link href={`/communities/${slug}/courses/${courseId}/lessons/${prevId}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold transition-colors hover:bg-[#eceaf4]"
-                    style={{ background: '#f6f5fb', color: '#46426a', border: '1px solid #eceaf4' }}>
+                    className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-[#f6f5fb]"
+                    style={{ color: '#46426a' }}>
                 <ChevronLeft className="w-3.5 h-3.5" />
                 {isAr ? 'السابق' : 'Previous'}
               </Link>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold opacity-40"
-                    style={{ background: '#f6f5fb', color: '#46426a', border: '1px solid #eceaf4' }}>
+              <span className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-[12px] font-medium opacity-30"
+                    style={{ color: '#46426a' }}>
                 <ChevronLeft className="w-3.5 h-3.5" />
                 {isAr ? 'السابق' : 'Previous'}
               </span>
             )}
 
-            {/* Next — beside Previous, left area */}
+            {/* Next — minimalist purple text */}
             {nextId ? (
               <Link href={`/communities/${slug}/courses/${courseId}/lessons/${nextId}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
-                    style={{ background: '#8e78fb' }}>
+                    className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-[12px] font-semibold transition-colors hover:bg-[#ede9ff]"
+                    style={{ color: '#8e78fb' }}>
                 {isAr ? 'التالي' : 'Next'}
                 <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold text-white opacity-50"
-                    style={{ background: '#8e78fb' }}>
+              <span className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-[12px] font-semibold opacity-30"
+                    style={{ color: '#8e78fb' }}>
                 {isAr ? 'انتهت' : 'End'}
                 <ChevronRight className="w-3.5 h-3.5" />
               </span>
@@ -189,17 +197,16 @@ export default function LessonViewer({ slug, courseId, sections, current, prevId
 
             <div className="flex-1" />
 
-            {/* Mark complete — right, GREEN when done */}
+            {/* Mark complete — right, FLAT solid green */}
             <button onClick={() => setDone(!done)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold transition-all"
+                    className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-lg text-[12px] font-semibold transition-colors"
                     style={{
-                      background: done ? 'linear-gradient(to right, #16a34a, #22c55e)' : '#fff',
+                      background: done ? '#22c55e' : '#fff',
                       color: done ? '#fff' : '#16a34a',
-                      border: `1.5px solid ${done ? '#16a34a' : '#86efac'}`,
-                      boxShadow: done ? '0 4px 12px -2px rgba(34,197,94,.4)' : 'none',
+                      border: `1.5px solid ${done ? '#22c55e' : '#86efac'}`,
                     }}>
               {done
-                ? <><CheckCircle2 className="w-3.5 h-3.5" fill="#fff" stroke="#16a34a" /> {isAr ? 'مكتمل ✓' : 'Completed'}</>
+                ? <><CheckCircle2 className="w-3.5 h-3.5" /> {isAr ? 'مكتمل' : 'Completed'}</>
                 : <><Circle className="w-3.5 h-3.5" /> {isAr ? 'وضع علامة اكتمال' : 'Mark as complete'}</>}
             </button>
           </div>
