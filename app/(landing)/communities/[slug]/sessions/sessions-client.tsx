@@ -4,8 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { CommunitySession } from '@/lib/community-data'
 import {
-  Clock, Video, Users, Calendar, MapPin, Globe,
-  ExternalLink, CalendarPlus, Eye,
+  Clock, Video, Users, Calendar,
+  CalendarPlus, Eye,
 } from 'lucide-react'
 
 interface Props {
@@ -27,16 +27,9 @@ function formatBookedDate(dateStr: string) {
 
 export default function SessionsClient({ slug, sessions, communityName, locale }: Props) {
   const isAr = locale === 'ar'
-  const [filter, setFilter] = useState<'all' | 'online' | 'in-person'>('all')
+  const [tab, setTab] = useState<'all' | 'my'>('all')
 
   const bookedSessions = sessions.filter(s => s.booked)
-  const filtered = filter === 'all' ? sessions : sessions.filter(s => s.type === filter)
-
-  const tabs: { key: typeof filter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'online', label: 'Online' },
-    { key: 'in-person', label: 'In-Person' },
-  ]
 
   return (
     <div className="w-full">
@@ -50,12 +43,31 @@ export default function SessionsClient({ slug, sessions, communityName, locale }
         </p>
       </div>
 
-      {/* My Sessions (booked) */}
-      {bookedSessions.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-[13px] font-semibold uppercase tracking-wider mb-3" style={{ color: '#9590b8' }}>
-            My Sessions
-          </h2>
+      {/* Tabs: All | My Sessions */}
+      <div className="flex items-center gap-6 mb-6 border-b" style={{ borderColor: '#e8e4ff' }}>
+        <button onClick={() => setTab('all')}
+          className="pb-3 text-sm font-medium border-b-2 transition-colors cursor-pointer"
+          style={{ borderColor: tab === 'all' ? '#8e78fb' : 'transparent', color: tab === 'all' ? '#1a1730' : '#9590b8' }}>
+          All
+        </button>
+        <button onClick={() => setTab('my')}
+          className="pb-3 text-sm font-medium border-b-2 transition-colors cursor-pointer"
+          style={{ borderColor: tab === 'my' ? '#8e78fb' : 'transparent', color: tab === 'my' ? '#1a1730' : '#9590b8' }}>
+          My Sessions {bookedSessions.length > 0 && `(${bookedSessions.length})`}
+        </button>
+      </div>
+
+      {/* My Sessions tab */}
+      {tab === 'my' && (
+        bookedSessions.length === 0 ? (
+          <div className="rounded-2xl border p-12 flex flex-col items-center gap-3" style={{ borderColor: '#e8e4ff', background: '#fff' }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: '#ede9ff' }}>
+              <Calendar className="w-7 h-7" style={{ color: '#8e78fb' }} />
+            </div>
+            <p className="text-[15px] font-semibold" style={{ color: '#1a1730' }}>No booked sessions</p>
+            <p className="text-[13px]" style={{ color: '#9590b8' }}>Your booked sessions will appear here</p>
+          </div>
+        ) : (
           <div className="space-y-2">
             {bookedSessions.map(session => (
               <div key={session.id}
@@ -103,26 +115,11 @@ export default function SessionsClient({ slug, sessions, communityName, locale }
               </div>
             ))}
           </div>
-        </div>
+        )
       )}
 
-      {/* Tabs */}
-      <div className="flex items-center gap-6 mb-6 border-b" style={{ borderColor: '#e8e4ff' }}>
-        {tabs.map(tab => (
-          <button key={tab.key}
-            onClick={() => setFilter(tab.key)}
-            className="pb-3 text-sm font-medium border-b-2 transition-colors cursor-pointer"
-            style={{
-              borderColor: filter === tab.key ? '#8e78fb' : 'transparent',
-              color: filter === tab.key ? '#1a1730' : '#9590b8',
-            }}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Session Cards Grid */}
-      {filtered.length === 0 ? (
+      {/* All Sessions cards */}
+      {tab === 'all' && (sessions.length === 0 ? (
         <div className="rounded-2xl border p-12 flex flex-col items-center gap-3" style={{ borderColor: '#e8e4ff', background: '#fff' }}>
           <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: '#ede9ff' }}>
             <Video className="w-7 h-7" style={{ color: '#8e78fb' }} />
@@ -226,7 +223,7 @@ export default function SessionsClient({ slug, sessions, communityName, locale }
             )
           })}
         </div>
-      )}
+      ))}
     </div>
   )
 }
