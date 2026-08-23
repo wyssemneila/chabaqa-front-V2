@@ -95,7 +95,7 @@ export default function EventsClient({ slug, events, communityName, locale, isAd
       </div>
 
       {view === 'cards' ? (
-        <CardsView events={filtered} slug={slug} isAr={isAr} />
+        <CardsView events={filtered} slug={slug} isAr={isAr} isAdmin={isAdmin} />
       ) : (
         <CalendarView events={filtered} slug={slug} isAr={isAr} calMonth={calMonth} setCalMonth={setCalMonth} />
       )}
@@ -104,7 +104,7 @@ export default function EventsClient({ slug, events, communityName, locale, isAd
 }
 
 /* ───── Cards View ───── */
-function CardsView({ events, slug, isAr }: { events: CommunityEvent[]; slug: string; isAr: boolean }) {
+function CardsView({ events, slug, isAr, isAdmin }: { events: CommunityEvent[]; slug: string; isAr: boolean; isAdmin?: boolean }) {
   if (events.length === 0) {
     return (
       <div className="rounded-2xl border p-12 flex flex-col items-center gap-3" style={{ borderColor: '#e8e4ff', background: '#fff' }}>

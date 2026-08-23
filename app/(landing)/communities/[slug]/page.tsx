@@ -45,7 +45,7 @@ export default async function CommunityFeedPage({ params, searchParams }: Props)
         {[
           { label: isAr ? 'المنشورات' : 'Feed', icon: MessageSquare, href: `/communities/${slug}`, key: 'feed' },
           { label: isAr ? 'المحفوظ' : 'Saved', icon: Bookmark, href: `/communities/${slug}?tab=saved`, key: 'saved' },
-          { label: isAr ? 'حول' : 'About', icon: Info, href: `/communities/${slug}?tab=about`, key: 'about' },
+          { label: isAr ? 'حول' : 'About', icon: Info, href: `/communities/${slug}/reviews`, key: 'about' },
         ].map(t => (
           <Link key={t.key} href={t.href}
             className="flex items-center gap-1.5 px-4 pb-2.5 text-[13px] font-medium transition-colors"

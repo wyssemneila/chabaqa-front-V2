@@ -158,8 +158,8 @@ export default function FeedSection({ communityName, avatarColor, isJoined, init
         </div>
       ) : (
         sortedPosts.map(post => (
-          <article key={post.id} className="py-5 relative"
-            style={{ borderBottom: '2px solid #ede9ff' }}>
+          <article key={post.id} className="p-5 rounded-2xl relative mb-3"
+            style={{ background: '#fff', border: '1px solid #e8e4ff' }}>
 
             {/* Pinned indicator */}
             {post.pinned && (

@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import Link from 'next/link'
-import { getCommunity, LEVEL_CONFIG } from '@/lib/community-data'
-import { Zap, Users, Calendar, Trophy, Play, Lock, Clock } from 'lucide-react'
+import { getCommunity, LEVEL_CONFIG, isCurrentUserOwner } from '@/lib/community-data'
+import { Zap, Users, Calendar, Trophy, Play, Lock, Clock, Plus, Pencil, Eye } from 'lucide-react'
 
 interface Props { params: Promise<{ slug: string }> }
 
@@ -18,6 +18,7 @@ export default async function ChallengesPage({ params }: Props) {
   const community = getCommunity(slug)
   if (!community) notFound()
   const isAr = locale === 'ar'
+  const isAdmin = isCurrentUserOwner(community)
 
   // Sort: active first, then upcoming, then ended
   const order = { active: 0, upcoming: 1, ended: 2 } as const
@@ -25,6 +26,14 @@ export default async function ChallengesPage({ params }: Props) {
 
   return (
     <div className="w-full" dir={isAr ? 'rtl' : 'ltr'}>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold" style={{ color: '#1a1730' }}>
+          {community.name} {isAr ? 'التحديات' : 'Challenges'}
+        </h1>
+        <p className="mt-1 text-[14px]" style={{ color: '#9590b8' }}>
+          {isAr ? 'تحدى نفسك وتنافس مع المجتمع' : 'Challenge yourself and compete with the community'}
+        </p>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {challenges.map((challenge) => {
           const diff = LEVEL_CONFIG[challenge.difficulty]
@@ -123,7 +132,18 @@ export default async function ChallengesPage({ params }: Props) {
                 )}
 
                 {/* CTA */}
-                {locked ? (
+                {isAdmin ? (
+                  <div className="flex gap-2 mt-2">
+                    <button className="flex-1 py-2 text-[12px] font-semibold rounded-lg text-center flex items-center justify-center gap-1.5 border transition-colors hover:bg-[#f9f7ff]"
+                            style={{ borderColor: '#46426a', color: '#46426a' }}>
+                      <Pencil className="w-3 h-3" /> {isAr ? 'تعديل' : 'Edit'}
+                    </button>
+                    <button className="flex-1 py-2 text-[12px] font-semibold rounded-lg text-white text-center flex items-center justify-center gap-1.5 transition-opacity hover:opacity-90"
+                            style={{ background: '#8e78fb' }}>
+                      <Eye className="w-3 h-3" /> {isAr ? 'عرض كمستخدم' : 'View as User'}
+                    </button>
+                  </div>
+                ) : locked ? (
                   <div className="w-full mt-2 py-2 text-[12px] font-semibold rounded-lg text-center flex items-center justify-center gap-1.5"
                        style={{ background: '#f3f4f6', color: '#9590b8' }}>
                     <Lock className="w-3 h-3" /> {isAr ? 'مغلق' : 'Locked'}
@@ -142,6 +162,17 @@ export default async function ChallengesPage({ params }: Props) {
             </CardWrap>
           )
         })}
+        {isAdmin && (
+          <button className="rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-3 min-h-[280px] transition-colors hover:bg-[#f9f7ff] cursor-pointer"
+                  style={{ borderColor: '#d8d5e8', color: '#9590b8' }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#ede9ff' }}>
+              <Plus className="w-5 h-5" style={{ color: '#8e78fb' }} />
+            </div>
+            <span className="text-[14px] font-medium" style={{ color: '#8e78fb' }}>
+              {isAr ? '+ تحدي جديد' : '+ New challenge'}
+            </span>
+          </button>
+        )}
       </div>
     </div>
   )

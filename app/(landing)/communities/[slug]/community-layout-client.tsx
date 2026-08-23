@@ -120,6 +120,8 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [emojiOpen, setEmojiOpen] = useState(false)
   const [gifOpen, setGifOpen] = useState(false)
+  const [newChannelOpen, setNewChannelOpen] = useState(false)
+  const [newChannelName, setNewChannelName] = useState('')
   const switcherRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
@@ -182,57 +184,45 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
             </button>
 
             {switcherOpen && (
-              <div className="absolute left-0 top-[calc(100%+8px)] w-[320px] rounded-2xl overflow-hidden z-[80]"
-                style={{ background: '#fff', boxShadow: '0 20px 60px rgba(26,23,48,.14), 0 0 0 1px rgba(0,0,0,.06)', animation: 'ckSlide .2s ease both' }}>
-                <div className="p-4">
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3" style={{ background: '#f5f5f5' }}>
-                    <Search className="w-3.5 h-3.5 text-gray-400" />
-                    <input type="text" placeholder="Search communities..." className="flex-1 text-[12px] bg-transparent outline-none text-gray-700 placeholder:text-gray-400" />
-                  </div>
-
-                  <div className="flex gap-2 mb-3">
-                    <Link href="/communities/create" onClick={() => setSwitcherOpen(false)}
-                      className="flex-1 py-2 text-[12px] font-medium text-center rounded-lg transition-colors hover:bg-[#f9f7ff]"
-                      style={{ border: '1px solid #e8e4ff', color: '#8e78fb' }}>
-                      + Create community
-                    </Link>
-                    <Link href="/communities" onClick={() => setSwitcherOpen(false)}
-                      className="flex-1 py-2 text-[12px] font-medium text-center rounded-lg transition-colors hover:bg-[#f9f7ff]"
-                      style={{ border: '1px solid #e8e4ff', color: '#46426a' }}>
-                      Discover
-                    </Link>
-                  </div>
-
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">My Communities</p>
-                  <div className="space-y-1 max-h-[240px] overflow-y-auto">
+              <div className="absolute left-0 top-[calc(100%+8px)] w-[300px] rounded-2xl overflow-hidden z-[80]"
+                style={{ background: '#fff', boxShadow: '0 16px 48px rgba(26,23,48,.12), 0 0 0 1px rgba(0,0,0,.05)', animation: 'ckSlide .2s ease both' }}>
+                <div className="px-2 pt-3 pb-2">
+                  <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Switch community</p>
+                  <div className="space-y-0.5 max-h-[220px] overflow-y-auto">
                     {[
-                      { slug: 'motion-masters', name: 'Motion Masters', initials: 'MM', color: '#f97316', role: 'owner' as const },
-                      { slug: 'motion-school', name: 'Motion School', initials: 'MS', color: '#8e78fb', role: 'member' as const },
+                      { slug: 'motion-masters', name: 'Motion Masters', initials: 'MM', color: '#f97316', members: 1240, role: 'owner' as const },
+                      { slug: 'motion-school', name: 'Motion School', initials: 'MS', color: '#8e78fb', members: 860, role: 'member' as const },
                     ].map(c => (
                       <Link key={c.slug} href={`/communities/${c.slug}`}
                         onClick={() => setSwitcherOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-gray-50 cursor-pointer"
-                        style={{ background: c.slug === community.slug ? '#f9f8fd' : 'transparent' }}>
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white text-[10px]"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer"
+                        style={{ background: c.slug === community.slug ? '#f4f2fc' : 'transparent' }}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-[11px]"
                           style={{ background: c.color }}>
                           {c.initials}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-semibold text-gray-900 truncate">{c.name}</p>
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                            style={{
-                              background: c.role === 'owner' ? '#fef2f2' : '#f0fdf4',
-                              color: c.role === 'owner' ? '#dc2626' : '#16a34a',
-                            }}>
-                            {c.role === 'owner' ? 'Owner' : 'Member'}
-                          </span>
+                          <p className="text-[11px] text-gray-400">{c.members.toLocaleString()} members · {c.role}</p>
                         </div>
                         {c.slug === community.slug && (
-                          <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: '#8e78fb' }} />
+                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#8e78fb' }} />
                         )}
                       </Link>
                     ))}
                   </div>
+                </div>
+                <div className="px-3 py-2.5 flex gap-2" style={{ borderTop: '1px solid #f0f0f0' }}>
+                  <Link href="/communities/create" onClick={() => setSwitcherOpen(false)}
+                    className="flex-1 py-2 text-[11px] font-medium text-center rounded-lg transition-colors hover:bg-[#f9f7ff] cursor-pointer"
+                    style={{ color: '#8e78fb' }}>
+                    + Create
+                  </Link>
+                  <Link href="/communities" onClick={() => setSwitcherOpen(false)}
+                    className="flex-1 py-2 text-[11px] font-medium text-center rounded-lg transition-colors hover:bg-gray-50 cursor-pointer"
+                    style={{ color: '#46426a' }}>
+                    Discover
+                  </Link>
                 </div>
               </div>
             )}
@@ -391,7 +381,7 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
                           </div>
                           <p className="text-[12px] text-gray-500 mt-0.5 truncate">{chat.lastMessage}</p>
                           <span className="text-[10px] mt-0.5 block" style={{ color: chat.online ? '#10b981' : '#9ca3af' }}>
-                            {chat.online ? '🟢 Online' : chat.lastSeen ? `Last seen ${chat.lastSeen}` : 'Offline'}
+                            {chat.online ? 'Active now' : chat.lastSeen ? `Active ${chat.lastSeen}` : 'Offline'}
                           </span>
                         </div>
                       </div>
@@ -440,7 +430,7 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-semibold text-white">{activeChat.name}</p>
-                <p className="text-[11px] text-white/70">{activeChat.online ? '🟢 Online now' : `Offline · ${activeChat.lastSeen || 'a while ago'}`}</p>
+                <p className="text-[11px] text-white/70">{activeChat.online ? 'Active now' : `Active ${activeChat.lastSeen || 'a while ago'}`}</p>
               </div>
               <button className="w-7 h-7 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors">
                 <Maximize2 className="w-3.5 h-3.5" strokeWidth={2} />
@@ -469,7 +459,10 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
                         : { background: '#fff', color: '#1a1730', border: '1px solid #eee', borderBottomLeftRadius: 6 }
                       }>
                       {msg.text}
-                      <span className="block text-[10px] mt-1 text-right" style={{ opacity: 0.5 }}>{msg.time}</span>
+                      <span className="flex items-center justify-end gap-1 text-[10px] mt-1" style={{ opacity: 0.6 }}>
+                        {msg.time}
+                        {msg.sender === 'me' && <span className="text-[9px]">✓✓</span>}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -490,15 +483,36 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
                   <Smile className="w-4 h-4" strokeWidth={1.7} />
                 </button>
                 {emojiOpen && (
-                  <div className="absolute bottom-full mb-2 right-0 w-[280px] rounded-xl overflow-hidden shadow-xl z-50"
+                  <div className="absolute bottom-full mb-2 right-0 w-[320px] rounded-xl overflow-hidden shadow-xl z-50"
                     style={{ background: '#fff', border: '1px solid #e8e4ff' }}>
-                    <div className="p-3 grid grid-cols-8 gap-1 max-h-[200px] overflow-y-auto">
-                      {['😀','😂','🥹','😍','🤩','😎','🥳','🤗','😊','🙌','👏','🔥','💜','❤️','✨','💪','👋','🎉','🚀','💯','👀','🤔','😅','🫡','✅','⭐','🎯','💡','🙏','😭','🤣','😤'].map(e => (
-                        <button key={e} onClick={() => { setChatMsg(prev => prev + e); setEmojiOpen(false) }}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-[18px] cursor-pointer transition-colors">
-                          {e}
-                        </button>
-                      ))}
+                    <div className="p-3">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Smileys</p>
+                      <div className="grid grid-cols-8 gap-1 mb-2">
+                        {['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🫡','🤭','🫢','🫣','🤫','🤔'].map(e => (
+                          <button key={e} onClick={() => { setChatMsg(prev => prev + e); setEmojiOpen(false) }}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-[18px] cursor-pointer transition-colors">
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Gestures</p>
+                      <div className="grid grid-cols-8 gap-1 mb-2">
+                        {['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶'].map(e => (
+                          <button key={e} onClick={() => { setChatMsg(prev => prev + e); setEmojiOpen(false) }}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-[18px] cursor-pointer transition-colors">
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Objects</p>
+                      <div className="grid grid-cols-8 gap-1">
+                        {['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💯','💢','💥','✨','🔥','⭐','🎉','🎊','🚀','💪','🎯','💡','📌','✅','❌','⚡','🏆','🥇','💎','🌟'].map(e => (
+                          <button key={e} onClick={() => { setChatMsg(prev => prev + e); setEmojiOpen(false) }}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-[18px] cursor-pointer transition-colors">
+                            {e}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -509,20 +523,39 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
                   <span className="text-[11px] font-bold">GIF</span>
                 </button>
                 {gifOpen && (
-                  <div className="absolute bottom-full mb-2 right-0 w-[300px] rounded-xl overflow-hidden shadow-xl z-50"
+                  <div className="absolute bottom-full mb-2 right-0 w-[320px] rounded-xl overflow-hidden shadow-xl z-50"
                     style={{ background: '#fff', border: '1px solid #e8e4ff' }}>
                     <div className="p-3">
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-2" style={{ background: '#f5f5f5' }}>
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3" style={{ background: '#f5f5f5' }}>
                         <Search className="w-3.5 h-3.5 text-gray-400" />
-                        <input type="text" placeholder="Search GIFs (Tenor)" className="flex-1 text-[12px] bg-transparent outline-none text-gray-700 placeholder:text-gray-400" />
+                        <input type="text" placeholder="Search GIFs..." className="flex-1 text-[12px] bg-transparent outline-none text-gray-700 placeholder:text-gray-400" />
                       </div>
-                      <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto">
-                        {['Thumbs up','Celebrate','Thank you','LOL','Mind blown','High five'].map((label, i) => (
-                          <button key={i} onClick={() => { setChatMsg(prev => prev + ` [GIF: ${label}]`); setGifOpen(false) }}
-                            className="rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                            style={{ background: `hsl(${i * 60}, 60%, 85%)`, height: 80 }}>
-                            <div className="w-full h-full flex items-center justify-center text-[11px] font-medium" style={{ color: `hsl(${i * 60}, 40%, 35%)` }}>
-                              {label}
+                      <div className="flex gap-1.5 mb-3 flex-wrap">
+                        {['Trending','Reactions','Love','Funny','Sad','Yes','No'].map(tag => (
+                          <span key={tag} className="px-2.5 py-1 rounded-full text-[10px] font-medium cursor-pointer hover:opacity-80 transition-opacity"
+                            style={{ background: '#f4f2fc', color: '#6c52f0' }}>{tag}</span>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5 max-h-[220px] overflow-y-auto">
+                        {[
+                          { label: '👍 Thumbs Up', bg: 'linear-gradient(135deg, #a78bfa, #7c3aed)' },
+                          { label: '🎉 Celebrate', bg: 'linear-gradient(135deg, #fbbf24, #f59e0b)' },
+                          { label: '😂 LOL', bg: 'linear-gradient(135deg, #34d399, #10b981)' },
+                          { label: '🙏 Thanks', bg: 'linear-gradient(135deg, #f472b6, #ec4899)' },
+                          { label: '🤯 Mind Blown', bg: 'linear-gradient(135deg, #60a5fa, #3b82f6)' },
+                          { label: '🙌 High Five', bg: 'linear-gradient(135deg, #fb923c, #f97316)' },
+                          { label: '👋 Wave', bg: 'linear-gradient(135deg, #a3e635, #84cc16)' },
+                          { label: '😍 Love It', bg: 'linear-gradient(135deg, #f87171, #ef4444)' },
+                          { label: '🔥 Fire', bg: 'linear-gradient(135deg, #fcd34d, #f59e0b)' },
+                          { label: '💪 Strong', bg: 'linear-gradient(135deg, #818cf8, #6366f1)' },
+                          { label: '🚀 Rocket', bg: 'linear-gradient(135deg, #2dd4bf, #14b8a6)' },
+                          { label: '😢 Sad', bg: 'linear-gradient(135deg, #93c5fd, #60a5fa)' },
+                        ].map((gif, i) => (
+                          <button key={i} onClick={() => { setChatMsg(prev => prev + ` [GIF: ${gif.label}]`); setGifOpen(false) }}
+                            className="rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+                            style={{ background: gif.bg, height: 70 }}>
+                            <div className="w-full h-full flex items-center justify-center text-[18px]">
+                              {gif.label.split(' ')[0]}
                             </div>
                           </button>
                         ))}
@@ -538,6 +571,40 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
                   <Send className="w-3.5 h-3.5" strokeWidth={2} />
                 </button>
               )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── New Channel Modal ── */}
+      {newChannelOpen && (
+        <>
+          <div className="fixed inset-0 z-[90]" style={{ background: 'rgba(26,23,48,.25)', backdropFilter: 'blur(4px)' }}
+            onClick={() => { setNewChannelOpen(false); setNewChannelName('') }} />
+          <div className="fixed z-[100] w-[400px] rounded-2xl p-6"
+            style={{ background: '#fff', boxShadow: '0 24px 80px rgba(26,23,48,.2)', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+            <h3 className="text-[16px] font-bold mb-1" style={{ color: '#1a1730' }}>
+              {isAr ? 'إنشاء قناة جديدة' : 'Create a new channel'}
+            </h3>
+            <p className="text-[12px] mb-4" style={{ color: '#9590b8' }}>
+              {isAr ? 'اختر اسمًا لقناتك الجديدة' : 'Choose a name for your new channel'}
+            </p>
+            <input type="text" value={newChannelName} onChange={e => setNewChannelName(e.target.value)}
+              placeholder={isAr ? 'اسم القناة' : 'Channel name'}
+              className="w-full px-4 py-3 rounded-xl text-[13px] outline-none mb-4"
+              style={{ border: '1px solid #e8e4ff', background: '#f9f8fd' }}
+              autoFocus />
+            <div className="flex gap-3">
+              <button onClick={() => { setNewChannelOpen(false); setNewChannelName('') }}
+                className="flex-1 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-colors hover:bg-gray-50"
+                style={{ border: '1px solid #e8e4ff', color: '#46426a' }}>
+                {isAr ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button onClick={() => { setNewChannelOpen(false); setNewChannelName('') }}
+                className="flex-1 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-90"
+                style={{ background: newChannelName.trim() ? '#8e78fb' : '#e8e4ff', color: newChannelName.trim() ? '#fff' : '#9590b8' }}>
+                {isAr ? 'إنشاء' : 'Create'}
+              </button>
             </div>
           </div>
         </>
@@ -577,7 +644,6 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
             {[
               { id: 'members' as CommunityTab, label: isAr ? 'الأعضاء' : 'Members', labelAr: 'الأعضاء', Icon: Users },
               { id: 'progress' as CommunityTab, label: isAr ? 'المتصدرين' : 'Leaderboards', labelAr: 'المتصدرين', Icon: Trophy },
-              { id: 'reviews' as CommunityTab, label: isAr ? 'حول' : 'About', labelAr: 'حول', Icon: Info },
             ].map(({ id, label, Icon }) => {
               const isActive = active === id
               return (
@@ -619,7 +685,8 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
               )
             })}
             {isAdmin && (
-              <button className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors hover:bg-[#f9f7ff] cursor-pointer mt-1"
+              <button onClick={() => setNewChannelOpen(true)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors hover:bg-[#f9f7ff] cursor-pointer mt-1"
                 style={{ color: '#8e78fb' }}>
                 <Plus className="w-3 h-3" strokeWidth={2} />
                 {isAr ? 'قناة جديدة' : 'Add new channel'}
@@ -629,11 +696,21 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
 
           {/* Download the app */}
           <div className="mb-4 px-3">
-            <button className="w-full flex items-center gap-2 py-2.5 px-3 rounded-xl text-[12px] font-medium transition-colors hover:bg-[#f9f7ff] cursor-pointer"
-              style={{ background: '#f9f8fd', border: '1px solid #e8e4ff', color: '#46426a' }}>
-              <Smartphone className="w-4 h-4" style={{ color: '#8e78fb' }} />
-              {isAr ? 'حمّل التطبيق' : 'Download the app'}
-            </button>
+            <div className="rounded-xl p-3" style={{ background: '#f9f8fd', border: '1px solid #e8e4ff' }}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <Smartphone className="w-4 h-4" style={{ color: '#8e78fb' }} />
+                <span className="text-[12px] font-semibold" style={{ color: '#1a1730' }}>
+                  {isAr ? 'تطبيق شبقة' : 'Chabaqa Mobile'}
+                </span>
+              </div>
+              <p className="text-[11px] leading-relaxed mb-2" style={{ color: '#9590b8' }}>
+                {isAr ? 'ابقَ على تواصل مع مجتمعك من أي مكان' : 'Stay connected with your community on the go'}
+              </p>
+              <button className="w-full py-2 rounded-lg text-[11px] font-medium transition-colors hover:opacity-90 cursor-pointer"
+                style={{ background: '#8e78fb', color: '#fff' }}>
+                {isAr ? 'حمّل مجاناً' : 'Get it free'}
+              </button>
+            </div>
           </div>
 
           <div className="mt-auto">
