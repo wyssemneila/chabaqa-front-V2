@@ -1,9 +1,11 @@
-import { notFound } from 'next/navigation'
-import { getLocale } from 'next-intl/server'
-import { Hash, Pin, Heart, MessageCircle, Image as ImageIcon, FileText, Play, Mic, Download } from 'lucide-react'
-import { getCommunity } from '@/lib/community-data'
+'use client'
 
-interface Props { params: Promise<{ slug: string; channel: string }> }
+import { useState } from 'react'
+import { useParams } from 'next/navigation'
+import {
+  Hash, Pin, Heart, Image as ImageIcon, FileText, Play, Mic, Download,
+  Send, Paperclip, ImagePlus, Video,
+} from 'lucide-react'
 
 interface ChannelPost {
   id: string
@@ -14,17 +16,18 @@ interface ChannelPost {
   time: string
   pinned?: boolean
   likes: number
+  liked?: boolean
   media?: { type: 'image' | 'video' | 'file' | 'voice'; label: string; duration?: string; size?: string }
 }
 
 const MOCK_CHANNEL_POSTS: Record<string, ChannelPost[]> = {
   general: [
     { id: '1', author: 'Motion Masters', initials: 'MM', color: '#f97316',
-      content: "Welcome everyone! 🎉 This is the General channel — here you'll find important announcements and community updates. Feel free to read through and stay in the loop!",
+      content: "Welcome everyone! 🎉 This is the General channel — here you'll find important announcements and community updates.",
       time: '2d ago', pinned: true, likes: 12,
       media: { type: 'image', label: 'community-welcome-banner.png' } },
     { id: '2', author: 'Motion Masters', initials: 'MM', color: '#f97316',
-      content: "New course dropping next week! 🚀 Check out this sneak peek of what we've been working on.",
+      content: "New course dropping next week! 🚀 Check out this sneak peek.",
       time: '1d ago', likes: 8,
       media: { type: 'video', label: 'course-preview.mp4', duration: '2:34' } },
     { id: '3', author: 'Motion Masters', initials: 'MM', color: '#f97316',
@@ -45,26 +48,16 @@ const MOCK_CHANNEL_POSTS: Record<string, ChannelPost[]> = {
       content: '🎨 Color grading LUTs pack — 50+ professional LUTs for your video projects.',
       time: '1d ago', likes: 15,
       media: { type: 'file', label: 'pro-luts-pack-50.zip', size: '12 MB' } },
-    { id: '3', author: 'Motion Masters', initials: 'MM', color: '#f97316',
-      content: 'Tutorial walkthrough — how to use the templates from Pack #1. Watch this first!',
-      time: '1d ago', likes: 9,
-      media: { type: 'video', label: 'templates-tutorial.mp4', duration: '8:12' } },
-    { id: '4', author: 'Motion Masters', initials: 'MM', color: '#f97316',
-      content: 'Quick voice note explaining the difference between the Standard and Pro packs 🎙️',
-      time: '12h ago', likes: 6,
-      media: { type: 'voice', label: 'Packs explanation', duration: '1:22' } },
   ],
   showcase: [
     { id: '1', author: 'Motion Masters', initials: 'MM', color: '#f97316',
       content: "✨ Member spotlight this week goes to @ahmed-benali! Check out their amazing reel 🔥",
       time: '2d ago', pinned: true, likes: 18,
       media: { type: 'image', label: 'ahmed-reel-screenshot.jpg' } },
-    { id: '2', author: 'Motion Masters', initials: 'MM', color: '#f97316',
-      content: "This week's top 3 submissions — incredible work from our community!",
-      time: '1d ago', likes: 22,
-      media: { type: 'video', label: 'top3-showcase-aug.mp4', duration: '3:45' } },
   ],
 }
+
+const IS_ADMIN = true
 
 function MediaBlock({ media }: { media: ChannelPost['media'] }) {
   if (!media) return null
@@ -111,7 +104,7 @@ function MediaBlock({ media }: { media: ChannelPost['media'] }) {
           <p className="text-[12px] font-medium text-gray-800 truncate">{media.label}</p>
           <p className="text-[10px] text-gray-400 mt-0.5">{media.size}</p>
         </div>
-        <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+        <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer">
           <Download className="w-4 h-4" strokeWidth={1.7} />
         </button>
       </div>
@@ -121,7 +114,7 @@ function MediaBlock({ media }: { media: ChannelPost['media'] }) {
   if (media.type === 'voice') {
     return (
       <div className="mt-3 rounded-xl p-3 flex items-center gap-3" style={{ background: '#f4f2fc', border: '1px solid #e4dffb' }}>
-        <button className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #8e78fb, #6c52f0)' }}>
+        <button className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer" style={{ background: 'linear-gradient(135deg, #8e78fb, #6c52f0)' }}>
           <Play className="w-4 h-4 text-white ml-0.5" fill="white" strokeWidth={0} />
         </button>
         <div className="flex-1">
@@ -140,19 +133,35 @@ function MediaBlock({ media }: { media: ChannelPost['media'] }) {
   return null
 }
 
-export default async function ChannelPage({ params }: Props) {
-  const { slug, channel } = await params
-  const locale = await getLocale()
-  const community = getCommunity(slug)
-  if (!community) notFound()
-  const isAr = locale === 'ar'
-
+export default function ChannelPage() {
+  const params = useParams()
+  const channel = params.channel as string
   const channelName = channel.charAt(0).toUpperCase() + channel.slice(1)
-  const posts = MOCK_CHANNEL_POSTS[channel] || []
+
+  const [posts, setPosts] = useState<ChannelPost[]>(MOCK_CHANNEL_POSTS[channel] || [])
+  const [message, setMessage] = useState('')
+
+  function toggleLike(id: string) {
+    setPosts(prev => prev.map(p => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p))
+  }
+
+  function sendMessage() {
+    if (!message.trim()) return
+    const newPost: ChannelPost = {
+      id: Date.now().toString(),
+      author: 'Wyssem Neila',
+      initials: 'WN',
+      color: '#f97316',
+      content: message.trim(),
+      time: 'Just now',
+      likes: 0,
+    }
+    setPosts(prev => [...prev, newPost])
+    setMessage('')
+  }
 
   return (
     <div className="flex flex-col gap-5">
-
       {/* Channel header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#f4f2fc' }}>
@@ -161,7 +170,7 @@ export default async function ChannelPage({ params }: Props) {
         <div>
           <h1 className="text-lg font-bold text-gray-900">{channelName}</h1>
           <p className="text-[12px] text-gray-400">
-            {isAr ? 'قناة للقراءة فقط — المشرفون فقط يمكنهم النشر' : 'Read-only channel — only admins can post here'}
+            {IS_ADMIN ? 'You can post messages, files, and media here' : 'Read-only channel — only admins can post here'}
           </p>
         </div>
       </div>
@@ -170,12 +179,8 @@ export default async function ChannelPage({ params }: Props) {
       {posts.length === 0 ? (
         <div className="py-16 text-center">
           <Hash className="w-10 h-10 mx-auto mb-3 text-gray-200" strokeWidth={1.3} />
-          <p className="text-[14px] font-medium text-gray-500">
-            {isAr ? 'لا توجد منشورات في هذه القناة بعد' : 'Nothing here yet — stay tuned!'}
-          </p>
-          <p className="text-[12px] text-gray-400 mt-1">
-            {isAr ? 'ترقبوا التحديثات' : "The admins haven't posted anything yet, but they will soon 🙌"}
-          </p>
+          <p className="text-[14px] font-medium text-gray-500">Nothing here yet — stay tuned!</p>
+          <p className="text-[12px] text-gray-400 mt-1">The admins haven&apos;t posted anything yet, but they will soon 🙌</p>
         </div>
       ) : (
         posts.map(post => (
@@ -202,14 +207,13 @@ export default async function ChannelPage({ params }: Props) {
                 </div>
                 <p className="text-[13.5px] leading-[1.7] text-gray-700 mt-1.5">{post.content}</p>
                 <MediaBlock media={post.media} />
+                {/* Likes only — no reply in channels */}
                 <div className="flex items-center gap-4 mt-3">
-                  <button className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors text-[12px]">
-                    <Heart className="w-3.5 h-3.5" strokeWidth={1.5} />
-                    {post.likes}
-                  </button>
-                  <button className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors text-[12px]">
-                    <MessageCircle className="w-3.5 h-3.5" strokeWidth={1.5} />
-                    Reply
+                  <button onClick={() => toggleLike(post.id)}
+                    className="flex items-center gap-1.5 transition-colors text-[12px] cursor-pointer"
+                    style={{ color: post.liked ? '#ef4444' : '#9ca3af' }}>
+                    <Heart className="w-3.5 h-3.5" strokeWidth={1.5} fill={post.liked ? '#ef4444' : 'none'} />
+                    {post.likes > 0 && post.likes}
                   </button>
                 </div>
               </div>
@@ -218,14 +222,46 @@ export default async function ChannelPage({ params }: Props) {
         ))
       )}
 
-      {/* Read-only notice */}
-      <div className="rounded-xl p-4 text-center" style={{ background: '#fafbfc', border: '1px solid #f0f0f0' }}>
-        <p className="text-[12px] text-gray-400">
-          {isAr
-            ? '🔒 هذه القناة للقراءة فقط — فقط المشرفون يمكنهم النشر هنا'
-            : "🔒 This channel is read-only — only the community admins can post here"}
-        </p>
-      </div>
+      {/* Admin composer */}
+      {IS_ADMIN ? (
+        <div className="rounded-xl p-3" style={{ background: '#f9f8fd', border: '1px solid #e8e4ff' }}>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
+                placeholder="Write a message..."
+                rows={2}
+                className="w-full px-3 py-2.5 text-[13px] rounded-xl resize-none focus:outline-none bg-white"
+                style={{ border: '1px solid #e8e4ff' }}
+              />
+              <div className="flex items-center gap-2 mt-2">
+                <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white transition-colors cursor-pointer" style={{ color: '#9590b8' }}>
+                  <ImagePlus className="w-4 h-4" />
+                </button>
+                <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white transition-colors cursor-pointer" style={{ color: '#9590b8' }}>
+                  <Video className="w-4 h-4" />
+                </button>
+                <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white transition-colors cursor-pointer" style={{ color: '#9590b8' }}>
+                  <Paperclip className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <button onClick={sendMessage}
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-opacity hover:opacity-90 cursor-pointer flex-shrink-0"
+              style={{ background: message.trim() ? '#8e78fb' : '#e8e4ff' }}>
+              <Send className="w-4 h-4" style={{ color: message.trim() ? '#fff' : '#9590b8' }} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl p-4 text-center" style={{ background: '#fafbfc', border: '1px solid #f0f0f0' }}>
+          <p className="text-[12px] text-gray-400">
+            🔒 This channel is read-only — only the community admins can post here
+          </p>
+        </div>
+      )}
     </div>
   )
 }

@@ -43,9 +43,10 @@ interface Props {
   initialPosts: PostData[]
   members: { id: string; initials: string; color: string }[]
   isAdmin?: boolean
+  showSavedOnly?: boolean
 }
 
-export default function FeedSection({ communityName, avatarColor, isJoined, initialPosts, members, isAdmin }: Props) {
+export default function FeedSection({ communityName, avatarColor, isJoined, initialPosts, members, isAdmin, showSavedOnly }: Props) {
   const [posts, setPosts] = useState<PostData[]>(initialPosts)
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [commentsOpen, setCommentsOpen] = useState<string | null>(null)
@@ -140,7 +141,8 @@ export default function FeedSection({ communityName, avatarColor, isJoined, init
     setReplyTo(null)
   }
 
-  const sortedPosts = [...posts].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
+  const displayPosts = showSavedOnly ? posts.filter(p => p.saved) : posts
+  const sortedPosts = [...displayPosts].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
 
   return (
     <>

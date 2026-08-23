@@ -9,7 +9,7 @@ import {
   UserCheck, Users, Trophy, Info, Search, Bell,
   MessageCircle, Hash, CheckCircle2, Circle,
   X, Send, Paperclip, Smile, ChevronLeft,
-  Maximize2, MoreHorizontal,
+  Maximize2, MoreHorizontal, Plus, Smartphone,
 } from 'lucide-react'
 import type { CommunityData, CommunityTab } from '@/lib/community-data'
 import { ProfileMenu } from '@/components/profile-menu'
@@ -21,6 +21,7 @@ interface Props {
   community: CommunityData
   locale: string
   children: React.ReactNode
+  isAdmin?: boolean
 }
 
 interface Notification {
@@ -86,7 +87,7 @@ const SIDEBAR_NAV: { id: CommunityTab; label: string; labelAr: string; Icon: Rea
   { id: 'products',   label: 'Products',    labelAr: 'المنتجات',  Icon: ShoppingBag },
 ]
 
-export function CommunityLayoutClient({ community, locale, children }: Props) {
+export function CommunityLayoutClient({ community, locale, children, isAdmin }: Props) {
   const pathname = usePathname()
   const isAr = locale === 'ar'
 
@@ -483,7 +484,7 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
               const isChActive = pathname.includes(`/channels/${chSlug}`)
               return (
                 <Link key={ch} href={`/communities/${community.slug}/channels/${chSlug}`}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] transition-colors cursor-pointer"
                   style={{
                     color: isChActive ? '#1a1730' : '#6b7280',
                     background: isChActive ? '#ede9ff' : 'transparent',
@@ -495,6 +496,22 @@ export function CommunityLayoutClient({ community, locale, children }: Props) {
                 </Link>
               )
             })}
+            {isAdmin && (
+              <button className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors hover:bg-[#f9f7ff] cursor-pointer mt-1"
+                style={{ color: '#8e78fb' }}>
+                <Plus className="w-3 h-3" strokeWidth={2} />
+                {isAr ? 'قناة جديدة' : 'Add new channel'}
+              </button>
+            )}
+          </div>
+
+          {/* Download the app */}
+          <div className="mb-4 px-3">
+            <button className="w-full flex items-center gap-2 py-2.5 px-3 rounded-xl text-[12px] font-medium transition-colors hover:bg-[#f9f7ff] cursor-pointer"
+              style={{ background: '#f9f8fd', border: '1px solid #e8e4ff', color: '#46426a' }}>
+              <Smartphone className="w-4 h-4" style={{ color: '#8e78fb' }} />
+              {isAr ? 'حمّل التطبيق' : 'Download the app'}
+            </button>
           </div>
 
           <div className="mt-auto">

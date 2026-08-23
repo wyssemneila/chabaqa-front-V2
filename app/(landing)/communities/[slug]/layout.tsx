@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
-import { getCommunity } from '@/lib/community-data'
+import { getCommunity, isCurrentUserOwner } from '@/lib/community-data'
 import { CommunityLayoutClient } from './community-layout-client'
 
 interface Props {
@@ -16,7 +16,7 @@ export default async function CommunityLayout({ children, params }: Props) {
   if (!community) notFound()
 
   return (
-    <CommunityLayoutClient community={community} locale={locale}>
+    <CommunityLayoutClient community={community} locale={locale} isAdmin={isCurrentUserOwner(community)}>
       {children}
     </CommunityLayoutClient>
   )
