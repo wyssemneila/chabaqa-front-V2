@@ -632,6 +632,16 @@ const MOTION_MASTERS: CommunityData = {
   rating: 4.8,
   ratingCount: 32,
   isJoined: true,
+  members: [
+    { id:'1', name:'Wyssem Neila', handle:'wys-sem', email:'clashwissem49@gmail.com', avatar:null, initials:'WN', color:'#ff9b28', role:'owner', isYou:true },
+    { id:'2', name:'Mohamed Trabelsi', handle:'mohamedtrabelsi', email:'', avatar:null, initials:'MT', color:'#47c7ea', role:'admin' },
+    { id:'3', name:'Louay Rjili', handle:'louay-rjili', email:'', avatar:null, initials:'LR', color:'#f65887', role:'member' },
+    { id:'4', name:'Ghassen Zaouali', handle:'ghassen-zaouali', email:'', avatar:null, initials:'GZ', color:'#ff9b28', role:'member' },
+    { id:'5', name:'Ahmed Ben Ali', handle:'ahmedbenali', email:'', avatar:null, initials:'AB', color:'#8e78fb', role:'member' },
+    { id:'6', name:'Maryem Yousfi', handle:'maryem-yousfi', email:'', avatar:null, initials:'MY', color:'#47c7ea', role:'member' },
+    { id:'7', name:'Chabaqa Contact', handle:'chabaqa-contact', email:'', avatar:null, initials:'CC', color:'#c4b8fd', role:'member' },
+    { id:'8', name:'Yassine Aniba', handle:'yassine-aniba', email:'', avatar:null, initials:'YA', color:'#f65887', role:'member' },
+  ],
 }
 
 export const COMMUNITY_MAP: Record<string, CommunityData> = {
@@ -641,6 +651,11 @@ export const COMMUNITY_MAP: Record<string, CommunityData> = {
 
 export function getCommunity(slug: string): CommunityData | null {
   return COMMUNITY_MAP[slug] ?? null
+}
+
+export function isCurrentUserOwner(community: CommunityData): boolean {
+  const me = community.members.find(m => m.isYou)
+  return me?.role === 'owner' || me?.role === 'admin'
 }
 
 export const LEVEL_CONFIG = {

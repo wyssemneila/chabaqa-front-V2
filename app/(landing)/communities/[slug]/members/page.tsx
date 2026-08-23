@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import {
-  Search, MessageSquare, Users, UserPlus, Calendar,
+  Search, MessageSquare, Users, UserPlus, Calendar, UserMinus, X, Upload,
 } from 'lucide-react'
 
 interface Member {
@@ -42,11 +42,23 @@ type Filter = 'all' | 'online' | 'admins'
 export default function MembersPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [kickTarget, setKickTarget] = useState<Member | null>(null)
+  const [kickReason, setKickReason] = useState('')
+  const [members, setMembers] = useState(MOCK_MEMBERS)
 
-  const onlineCount = MOCK_MEMBERS.filter(m => m.online).length
-  const adminCount = MOCK_MEMBERS.filter(m => m.role === 'owner' || m.role === 'admin').length
+  const isAdmin = members.find(m => m.isYou)?.role === 'owner' || members.find(m => m.isYou)?.role === 'admin'
 
-  const filtered = MOCK_MEMBERS.filter(m => {
+  function handleKick() {
+    if (!kickTarget) return
+    setMembers(prev => prev.filter(m => m.id !== kickTarget.id))
+    setKickTarget(null)
+    setKickReason('')
+  }
+
+  const onlineCount = members.filter(m => m.online).length
+  const adminCount = members.filter(m => m.role === 'owner' || m.role === 'admin').length
+
+  const filtered = members.filter(m => {
     if (filter === 'online' && !m.online) return false
     if (filter === 'admins' && m.role !== 'owner' && m.role !== 'admin') return false
     if (searchQuery && !m.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
@@ -54,7 +66,7 @@ export default function MembersPage() {
   })
 
   const filters: { id: Filter; label: string; count: number }[] = [
-    { id: 'all', label: 'Members', count: MOCK_MEMBERS.length },
+    { id: 'all', label: 'Members', count: members.length },
     { id: 'admins', label: 'Admins', count: adminCount },
     { id: 'online', label: 'Online', count: onlineCount },
   ]
@@ -148,13 +160,84 @@ export default function MembersPage() {
                 )}
 
                 {!member.isYou && (
-                  <button className="h-9 px-3.5 rounded-lg border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-100 flex items-center gap-1.5 transition-colors flex-shrink-0">
-                    CHAT <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.7} />
-                  </button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button className="h-9 px-3.5 rounded-lg border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-100 flex items-center gap-1.5 transition-colors cursor-pointer">
+                      CHAT <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.7} />
+                    </button>
+                    {isAdmin && member.role === 'member' && (
+                      <button onClick={() => setKickTarget(member)}
+                        className="h-9 px-3.5 rounded-lg text-[12px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer hover:bg-red-100"
+                        style={{ border: '1px solid #fecaca', color: '#ef4444' }}>
+                        <UserMinus className="w-3.5 h-3.5" strokeWidth={1.7} />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Kick member popup */}
+      {kickTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,.4)' }}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl relative" style={{ border: '1px solid #e8e4ff' }}>
+            <button onClick={() => { setKickTarget(null); setKickReason('') }}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer">
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold"
+                style={{ background: kickTarget.color }}>
+                {kickTarget.initials}
+              </div>
+              <div>
+                <p className="text-[15px] font-bold text-gray-900">{kickTarget.name}</p>
+                <p className="text-[12px] text-gray-400">@{kickTarget.handle}</p>
+              </div>
+            </div>
+
+            <h3 className="text-[16px] font-bold mb-1" style={{ color: '#1a1730' }}>
+              Remove this member? 😔
+            </h3>
+            <p className="text-[13px] mb-4" style={{ color: '#9590b8' }}>
+              We&apos;re sorry to see them go. Let us know why so we can keep the community great.
+            </p>
+
+            <label className="text-[12px] font-medium block mb-1.5" style={{ color: '#46426a' }}>
+              Reason (optional)
+            </label>
+            <textarea
+              value={kickReason}
+              onChange={(e) => setKickReason(e.target.value)}
+              placeholder="Why are you removing this member?"
+              className="w-full h-24 px-3 py-2.5 rounded-xl text-[13px] resize-none focus:outline-none"
+              style={{ border: '1px solid #e8e4ff', background: '#f9f8fd' }}
+            />
+
+            <label className="text-[12px] font-medium block mt-3 mb-1.5" style={{ color: '#46426a' }}>
+              Screenshot (optional)
+            </label>
+            <button className="w-full py-3 rounded-xl text-[12px] font-medium flex items-center justify-center gap-2 cursor-pointer hover:bg-[#f9f7ff] transition-colors"
+              style={{ border: '1px dashed #d8d5e8', color: '#9590b8' }}>
+              <Upload className="w-4 h-4" /> Upload image
+            </button>
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => { setKickTarget(null); setKickReason('') }}
+                className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-colors hover:bg-gray-100 cursor-pointer"
+                style={{ border: '1px solid #e8e4ff', color: '#46426a' }}>
+                Cancel
+              </button>
+              <button onClick={handleKick}
+                className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-opacity hover:opacity-90 cursor-pointer"
+                style={{ background: '#ef4444' }}>
+                Remove member
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

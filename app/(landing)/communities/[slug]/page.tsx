@@ -3,7 +3,7 @@ import { getLocale } from 'next-intl/server'
 import {
   MessageSquare, Bookmark, Search, Info,
 } from 'lucide-react'
-import { getCommunity } from '@/lib/community-data'
+import { getCommunity, isCurrentUserOwner } from '@/lib/community-data'
 import Link from 'next/link'
 import FeedSection from '@/components/community/feed-section'
 import CommunityHero from '@/components/community/community-hero'
@@ -77,6 +77,7 @@ export default async function CommunityFeedPage({ params }: Props) {
           comments: p.comments,
         }))}
         members={community.members.slice(0, 3).map(m => ({ id: m.id, initials: m.initials, color: m.color }))}
+        isAdmin={isCurrentUserOwner(community)}
       />
     </div>
   )

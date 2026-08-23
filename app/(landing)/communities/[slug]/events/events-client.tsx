@@ -6,6 +6,7 @@ import type { CommunityEvent } from '@/lib/community-data'
 import {
   Calendar, MapPin, Globe, Users, Ticket, Search,
   LayoutList, CalendarDays, ChevronLeft, ChevronRight,
+  Plus, Pencil, Eye,
 } from 'lucide-react'
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
   events: CommunityEvent[]
   communityName: string
   locale: string
+  isAdmin?: boolean
 }
 
 const TYPE_CONFIG = {
@@ -31,22 +33,22 @@ function formatDate(dateStr: string) {
   return `${day}, ${month} ${date}`
 }
 
-export default function EventsClient({ slug, events, communityName, locale }: Props) {
+export default function EventsClient({ slug, events, communityName, locale, isAdmin }: Props) {
   const isAr = locale === 'ar'
   const [view, setView] = useState<'cards' | 'calendar'>('cards')
-  const [filter, setFilter] = useState<'all' | 'online' | 'in-person'>('all')
+  const [filter, setFilter] = useState<'all' | 'free' | 'paid'>('all')
   const [calMonth, setCalMonth] = useState(() => {
     const first = events[0]
     if (first) { const d = new Date(first.date); return { year: d.getFullYear(), month: d.getMonth() } }
     const now = new Date(); return { year: now.getFullYear(), month: now.getMonth() }
   })
 
-  const filtered = filter === 'all' ? events : events.filter(e => e.type === filter)
+  const filtered = filter === 'all' ? events : filter === 'free' ? events.filter(e => e.price === 'free' || e.price === 0) : events.filter(e => e.price !== 'free' && e.price !== 0)
 
   const tabs: { key: typeof filter; label: string }[] = [
     { key: 'all', label: 'All' },
-    { key: 'online', label: 'Online' },
-    { key: 'in-person', label: 'In-Person' },
+    { key: 'free', label: 'Free' },
+    { key: 'paid', label: 'Paid' },
   ]
 
   return (
@@ -212,16 +214,43 @@ function CardsView({ events, slug, isAr }: { events: CommunityEvent[]; slug: str
                 </div>
               )}
 
-              {/* CTA */}
-              <div className="w-full mt-1 py-2 text-[12px] font-semibold rounded-lg text-white text-center flex items-center justify-center gap-1.5 transition-opacity group-hover:opacity-90"
-                style={{ background: event.registered ? '#10b981' : '#8e78fb' }}>
-                <Ticket className="w-3 h-3" />
-                {event.registered ? 'Registered' : free ? 'RSVP Free' : 'Get Tickets'}
-              </div>
+              {/* CTA: Admin vs User */}
+              {isAdmin ? (
+                <div className="flex gap-2 mt-1">
+                  <button className="flex-1 py-2 text-[12px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors hover:bg-[#f9f7ff]"
+                    style={{ border: '1px solid #e8e4ff', color: '#46426a' }}
+                    onClick={(e) => e.preventDefault()}>
+                    <Pencil className="w-3 h-3" /> Edit
+                  </button>
+                  <span className="flex-1 py-2 text-[12px] font-semibold rounded-lg text-white flex items-center justify-center gap-1.5 transition-opacity hover:opacity-90"
+                    style={{ background: '#8e78fb' }}>
+                    <Eye className="w-3 h-3" /> View as User
+                  </span>
+                </div>
+              ) : (
+                <div className="w-full mt-1 py-2 text-[12px] font-semibold rounded-lg text-white text-center flex items-center justify-center gap-1.5 transition-opacity group-hover:opacity-90"
+                  style={{ background: event.registered ? '#10b981' : '#8e78fb' }}>
+                  <Ticket className="w-3 h-3" />
+                  {event.registered ? 'Registered' : free ? 'RSVP Free' : 'Get Tickets'}
+                </div>
+              )}
             </div>
           </Link>
         )
       })}
+
+      {/* +New Event card (admin only) */}
+      {isAdmin && (
+        <button className="rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-3 min-h-[280px] transition-colors hover:bg-[#f9f7ff] cursor-pointer"
+                style={{ borderColor: '#d8d5e8', color: '#9590b8' }}>
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#ede9ff' }}>
+            <Plus className="w-5 h-5" style={{ color: '#8e78fb' }} />
+          </div>
+          <span className="text-[14px] font-medium" style={{ color: '#8e78fb' }}>
+            + New event
+          </span>
+        </button>
+      )}
     </div>
   )
 }

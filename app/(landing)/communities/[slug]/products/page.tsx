@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import Link from 'next/link'
-import { getCommunity } from '@/lib/community-data'
+import { getCommunity, isCurrentUserOwner } from '@/lib/community-data'
 import type { CommunityProduct } from '@/lib/community-data'
-import { Package, Star, Download, Search, FileText, FileImage, Video, Music, FileArchive, FileSpreadsheet, FileType2 } from 'lucide-react'
+import { Package, Star, Download, FileText, FileImage, Video, Music, FileArchive, FileSpreadsheet, FileType2, Plus, Pencil, Eye } from 'lucide-react'
 
 interface Props { params: Promise<{ slug: string }> }
 
@@ -25,19 +25,29 @@ export default async function ProductsPage({ params }: Props) {
   const community = getCommunity(slug)
   if (!community) notFound()
   const isAr = locale === 'ar'
+  const isAdmin = isCurrentUserOwner(community)
 
   const products = community.products
 
   const tabs = [
-    { label: 'All',       labelAr: 'الكل',     count: products.length },
-    { label: 'Free',      labelAr: 'مجاني',    count: products.filter((p) => p.price === 'free').length },
-    { label: 'Paid',      labelAr: 'مدفوع',    count: products.filter((p) => p.price !== 'free').length },
-    { label: 'Purchased', labelAr: 'مشتراة',   count: products.filter((p) => p.purchased).length },
+    { label: 'All',  labelAr: 'الكل',  count: products.length },
+    { label: 'Free', labelAr: 'مجاني', count: products.filter((p) => p.price === 'free').length },
+    { label: 'Paid', labelAr: 'مدفوع', count: products.filter((p) => p.price !== 'free').length },
   ]
 
   return (
     <div className="w-full" dir={isAr ? 'rtl' : 'ltr'}>
-      {/* Tabs + Search */}
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold" style={{ color: '#1a1730' }}>
+          {community.name} {isAr ? 'المنتجات' : 'Products'}
+        </h1>
+        <p className="mt-1 text-[14px]" style={{ color: '#9590b8' }}>
+          {isAr ? 'قوالب وملفات وموارد رقمية' : 'Templates, files, and digital resources'}
+        </p>
+      </div>
+
+      {/* Tabs */}
       <div className="flex items-center gap-6 mb-6 border-b" style={{ borderColor: '#e8e4ff' }}>
         {tabs.map((tab, i) => (
           <button key={tab.label}
@@ -49,15 +59,6 @@ export default async function ProductsPage({ params }: Props) {
             {isAr ? tab.labelAr : tab.label} ({tab.count})
           </button>
         ))}
-        <div className="ml-auto flex items-center gap-2 pb-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#9590b8' }} />
-            <input type="text"
-                   placeholder={isAr ? 'بحث في المنتجات...' : 'Search products...'}
-                   className="pl-9 pr-4 py-2 text-sm rounded-lg bg-white focus:outline-none"
-                   style={{ border: '1px solid #e8e4ff' }} />
-          </div>
-        </div>
       </div>
 
       {products.length === 0 ? (
@@ -173,20 +174,47 @@ export default async function ProductsPage({ params }: Props) {
                     </p>
                   )}
 
-                  {/* CTA */}
-                  <div className="w-full mt-1 py-2 text-[12px] font-semibold rounded-lg text-white text-center flex items-center justify-center gap-1.5 transition-opacity group-hover:opacity-90"
-                       style={{ background: product.purchased ? '#10b981' : (free ? '#8e78fb' : '#8e78fb') }}>
-                    <Download className="w-3 h-3" />
-                    {product.purchased
-                      ? (isAr ? 'تحميل' : 'Download')
-                      : free
-                        ? (isAr ? 'تحميل مجاني' : 'Free download')
-                        : (isAr ? 'اشترِ الآن' : 'Buy now')}
-                  </div>
+                  {/* CTA: Admin vs User */}
+                  {isAdmin ? (
+                    <div className="flex gap-2 mt-1">
+                      <button className="flex-1 py-2 text-[12px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors hover:bg-[#f9f7ff]"
+                              style={{ border: '1px solid #e8e4ff', color: '#46426a' }}>
+                        <Pencil className="w-3 h-3" /> Edit
+                      </button>
+                      <Link href={`/communities/${slug}/products/${product.id}`}
+                            className="flex-1 py-2 text-[12px] font-semibold rounded-lg text-white flex items-center justify-center gap-1.5 transition-opacity hover:opacity-90"
+                            style={{ background: '#8e78fb' }}>
+                        <Eye className="w-3 h-3" /> View as User
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="w-full mt-1 py-2 text-[12px] font-semibold rounded-lg text-white text-center flex items-center justify-center gap-1.5 transition-opacity group-hover:opacity-90"
+                         style={{ background: product.purchased ? '#10b981' : '#8e78fb' }}>
+                      <Download className="w-3 h-3" />
+                      {product.purchased
+                        ? (isAr ? 'تحميل' : 'Download')
+                        : free
+                          ? (isAr ? 'تحميل مجاني' : 'Free download')
+                          : (isAr ? 'اشترِ الآن' : 'Buy now')}
+                    </div>
+                  )}
                 </div>
               </Link>
             )
           })}
+
+          {/* +New Product card (admin only) */}
+          {isAdmin && (
+            <button className="rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-3 min-h-[280px] transition-colors hover:bg-[#f9f7ff] cursor-pointer"
+                    style={{ borderColor: '#d8d5e8', color: '#9590b8' }}>
+              <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#ede9ff' }}>
+                <Plus className="w-5 h-5" style={{ color: '#8e78fb' }} />
+              </div>
+              <span className="text-[14px] font-medium" style={{ color: '#8e78fb' }}>
+                {isAr ? '+ منتج جديد' : '+ New product'}
+              </span>
+            </button>
+          )}
         </div>
       )}
     </div>
