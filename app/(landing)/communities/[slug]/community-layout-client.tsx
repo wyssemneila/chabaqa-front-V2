@@ -552,35 +552,37 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
                         <input type="text" placeholder="Search GIFs..." className="flex-1 text-[12px] bg-transparent outline-none text-gray-700 placeholder:text-gray-400" />
                       </div>
                       <div className="flex gap-1 mb-2 overflow-x-auto">
-                        {['Trending','Agree','Applause','Aww','Dance','Facepalm','Goodbye','Happy','Hug','Kiss','Laugh','Love','No','OMG','Please','Sad','Scared','Shrug','Surprised','Thanks','Thumbs Up','Win','Wink','Yes'].map(tag => (
+                        {['Trending','Agree','Applause','Dance','Happy','Laugh','Love','No','OMG','Sad','Thanks','Yes'].map(tag => (
                           <span key={tag} className="px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap flex-shrink-0"
                             style={{ background: '#f4f2fc', color: '#6c52f0' }}>{tag}</span>
                         ))}
                       </div>
-                      <div className="grid grid-cols-2 gap-1 max-h-[240px] overflow-y-auto">
+                      <div className="grid grid-cols-2 gap-1.5 max-h-[260px] overflow-y-auto">
                         {[
-                          { emoji: '👍', label: 'Thumbs Up', bg: '#e8e0ff' },
-                          { emoji: '👏', label: 'Clapping', bg: '#fef3c7' },
-                          { emoji: '😂', label: 'Laughing', bg: '#dcfce7' },
-                          { emoji: '🎉', label: 'Party', bg: '#fce7f3' },
-                          { emoji: '🔥', label: 'Fire', bg: '#ffedd5' },
-                          { emoji: '❤️', label: 'Heart', bg: '#fee2e2' },
-                          { emoji: '🙌', label: 'Hands Up', bg: '#e0f2fe' },
-                          { emoji: '😍', label: 'Heart Eyes', bg: '#fce7f3' },
-                          { emoji: '💪', label: 'Strong', bg: '#e8e0ff' },
-                          { emoji: '🤣', label: 'ROFL', bg: '#dcfce7' },
-                          { emoji: '🙏', label: 'Please', bg: '#fef3c7' },
-                          { emoji: '🤯', label: 'Mind Blown', bg: '#e0f2fe' },
-                          { emoji: '🚀', label: 'Rocket', bg: '#dbeafe' },
-                          { emoji: '😭', label: 'Crying', bg: '#e0f2fe' },
-                          { emoji: '🤔', label: 'Thinking', bg: '#fef3c7' },
-                          { emoji: '👋', label: 'Waving', bg: '#ffedd5' },
+                          { label: 'Thumbs Up', bg: 'linear-gradient(135deg,#667eea,#764ba2)' },
+                          { label: 'Slow Clap', bg: 'linear-gradient(135deg,#f093fb,#f5576c)' },
+                          { label: 'LOL', bg: 'linear-gradient(135deg,#4facfe,#00f2fe)' },
+                          { label: 'Mind Blown', bg: 'linear-gradient(135deg,#43e97b,#38f9d7)' },
+                          { label: 'Deal With It', bg: 'linear-gradient(135deg,#fa709a,#fee140)' },
+                          { label: 'Mic Drop', bg: 'linear-gradient(135deg,#a18cd1,#fbc2eb)' },
+                          { label: 'Nailed It', bg: 'linear-gradient(135deg,#fccb90,#d57eeb)' },
+                          { label: 'Awkward', bg: 'linear-gradient(135deg,#e0c3fc,#8ec5fc)' },
+                          { label: 'High Five', bg: 'linear-gradient(135deg,#f6d365,#fda085)' },
+                          { label: 'Crying', bg: 'linear-gradient(135deg,#89f7fe,#66a6ff)' },
+                          { label: 'Dancing', bg: 'linear-gradient(135deg,#ffecd2,#fcb69f)' },
+                          { label: 'Facepalm', bg: 'linear-gradient(135deg,#a1c4fd,#c2e9fb)' },
+                          { label: 'Eye Roll', bg: 'linear-gradient(135deg,#fdcbf1,#e6dee9)' },
+                          { label: 'Shocked', bg: 'linear-gradient(135deg,#f5f7fa,#c3cfe2)' },
+                          { label: 'Thank You', bg: 'linear-gradient(135deg,#667eea,#764ba2)' },
+                          { label: 'You Rock', bg: 'linear-gradient(135deg,#ff9a9e,#fecfef)' },
                         ].map((gif, i) => (
                           <button key={i} onClick={() => { setChatMsg(prev => prev + ` [GIF: ${gif.label}]`); setGifOpen(false) }}
-                            className="rounded-lg overflow-hidden cursor-pointer hover:brightness-95 transition-all flex flex-col items-center justify-center gap-1"
-                            style={{ background: gif.bg, height: 64 }}>
-                            <span className="text-[24px]">{gif.emoji}</span>
-                            <span className="text-[9px] font-medium" style={{ color: '#555' }}>{gif.label}</span>
+                            className="rounded-lg overflow-hidden cursor-pointer hover:scale-[1.03] transition-transform relative"
+                            style={{ background: gif.bg, height: 72 }}>
+                            <span className="absolute inset-0 flex items-center justify-center text-white font-black text-[13px] drop-shadow-md"
+                              style={{ textShadow: '0 1px 4px rgba(0,0,0,.4)' }}>
+                              {gif.label}
+                            </span>
                           </button>
                         ))}
                       </div>

@@ -288,26 +288,28 @@ export default function FeedComposer({ communityName, avatarColor, onPost }: Pro
                     style={{ background: '#f4f2fc', color: '#6c52f0' }}>{tag}</span>
                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-1 max-h-[200px] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-1.5 max-h-[220px] overflow-y-auto">
                 {[
-                  { emoji: '👍', label: 'Thumbs Up', bg: '#e8e0ff' },
-                  { emoji: '👏', label: 'Clapping', bg: '#fef3c7' },
-                  { emoji: '😂', label: 'Laughing', bg: '#dcfce7' },
-                  { emoji: '🎉', label: 'Party', bg: '#fce7f3' },
-                  { emoji: '🔥', label: 'Fire', bg: '#ffedd5' },
-                  { emoji: '❤️', label: 'Heart', bg: '#fee2e2' },
-                  { emoji: '🙌', label: 'Hands Up', bg: '#e0f2fe' },
-                  { emoji: '😍', label: 'Heart Eyes', bg: '#fce7f3' },
-                  { emoji: '💪', label: 'Strong', bg: '#e8e0ff' },
-                  { emoji: '🤣', label: 'ROFL', bg: '#dcfce7' },
-                  { emoji: '🙏', label: 'Please', bg: '#fef3c7' },
-                  { emoji: '🤯', label: 'Mind Blown', bg: '#e0f2fe' },
+                  { label: 'Thumbs Up', bg: 'linear-gradient(135deg,#667eea,#764ba2)' },
+                  { label: 'Slow Clap', bg: 'linear-gradient(135deg,#f093fb,#f5576c)' },
+                  { label: 'LOL', bg: 'linear-gradient(135deg,#4facfe,#00f2fe)' },
+                  { label: 'Mind Blown', bg: 'linear-gradient(135deg,#43e97b,#38f9d7)' },
+                  { label: 'Deal With It', bg: 'linear-gradient(135deg,#fa709a,#fee140)' },
+                  { label: 'Mic Drop', bg: 'linear-gradient(135deg,#a18cd1,#fbc2eb)' },
+                  { label: 'Nailed It', bg: 'linear-gradient(135deg,#fccb90,#d57eeb)' },
+                  { label: 'High Five', bg: 'linear-gradient(135deg,#f6d365,#fda085)' },
+                  { label: 'Dancing', bg: 'linear-gradient(135deg,#ffecd2,#fcb69f)' },
+                  { label: 'Facepalm', bg: 'linear-gradient(135deg,#a1c4fd,#c2e9fb)' },
+                  { label: 'Thank You', bg: 'linear-gradient(135deg,#667eea,#764ba2)' },
+                  { label: 'You Rock', bg: 'linear-gradient(135deg,#ff9a9e,#fecfef)' },
                 ].map((gif, i) => (
                   <button key={i} onClick={() => { setContent(prev => prev + ` [GIF: ${gif.label}]`); setShowGif(false) }}
-                    className="rounded-lg overflow-hidden cursor-pointer hover:brightness-95 transition-all flex flex-col items-center justify-center gap-1"
-                    style={{ background: gif.bg, height: 60 }}>
-                    <span className="text-[22px]">{gif.emoji}</span>
-                    <span className="text-[9px] font-medium" style={{ color: '#555' }}>{gif.label}</span>
+                    className="rounded-lg overflow-hidden cursor-pointer hover:scale-[1.03] transition-transform relative"
+                    style={{ background: gif.bg, height: 64 }}>
+                    <span className="absolute inset-0 flex items-center justify-center text-white font-black text-[12px] drop-shadow-md"
+                      style={{ textShadow: '0 1px 4px rgba(0,0,0,.4)' }}>
+                      {gif.label}
+                    </span>
                   </button>
                 ))}
               </div>

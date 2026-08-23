@@ -136,6 +136,7 @@ export default function ChannelPage() {
   const [posts, setPosts] = useState<ChannelPost[]>(MOCK_CHANNEL_POSTS[channel] || [])
   const [message, setMessage] = useState('')
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
+  const [deleteChannelOpen, setDeleteChannelOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -188,13 +189,52 @@ export default function ChannelPage() {
         <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#f4f2fc' }}>
           <Hash className="w-5 h-5" style={{ color: '#8e78fb' }} strokeWidth={2} />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-lg font-bold text-gray-900">{channelName}</h1>
           <p className="text-[12px] text-gray-400">
             {IS_ADMIN ? 'You can post messages, files, and media here' : 'Read-only channel — only admins can post here'}
           </p>
         </div>
+        {IS_ADMIN && (
+          <button onClick={() => setDeleteChannelOpen(true)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+            title="Delete channel">
+            <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+          </button>
+        )}
       </div>
+
+      {/* Delete channel confirmation */}
+      {deleteChannelOpen && (
+        <>
+          <div className="fixed inset-0 z-[90]" style={{ background: 'rgba(26,23,48,.25)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setDeleteChannelOpen(false)} />
+          <div className="fixed z-[100] w-[380px] rounded-2xl p-6"
+            style={{ background: '#fff', boxShadow: '0 24px 80px rgba(26,23,48,.2)', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: '#fef2f2' }}>
+              <Trash2 className="w-6 h-6 text-red-500" strokeWidth={1.5} />
+            </div>
+            <h3 className="text-[16px] font-bold text-center mb-2" style={{ color: '#1a1730' }}>
+              Delete &ldquo;{channelName}&rdquo;?
+            </h3>
+            <p className="text-[13px] text-center leading-relaxed mb-5" style={{ color: '#9590b8' }}>
+              This will permanently remove the channel and all its messages. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteChannelOpen(false)}
+                className="flex-1 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-colors hover:bg-gray-50"
+                style={{ border: '1px solid #e8e4ff', color: '#46426a' }}>
+                Cancel
+              </button>
+              <button onClick={() => setDeleteChannelOpen(false)}
+                className="flex-1 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-90"
+                style={{ background: '#ef4444', color: '#fff' }}>
+                Delete channel
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Admin composer — AT TOP, directly under title */}
       {IS_ADMIN && (

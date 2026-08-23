@@ -1,12 +1,13 @@
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import {
-  MessageSquare, Bookmark, Info,
+  MessageSquare, Bookmark, Info, Star,
 } from 'lucide-react'
 import { getCommunity, isCurrentUserOwner } from '@/lib/community-data'
 import Link from 'next/link'
 import FeedSection from '@/components/community/feed-section'
 import CommunityHero from '@/components/community/community-hero'
+import ReviewsClient from './reviews/reviews-client'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -45,7 +46,7 @@ export default async function CommunityFeedPage({ params, searchParams }: Props)
         {[
           { label: isAr ? 'المنشورات' : 'Feed', icon: MessageSquare, href: `/communities/${slug}`, key: 'feed' },
           { label: isAr ? 'المحفوظ' : 'Saved', icon: Bookmark, href: `/communities/${slug}?tab=saved`, key: 'saved' },
-          { label: isAr ? 'حول' : 'About', icon: Info, href: `/communities/${slug}/reviews`, key: 'about' },
+          { label: isAr ? 'حول' : 'About', icon: Info, href: `/communities/${slug}?tab=about`, key: 'about' },
         ].map(t => (
           <Link key={t.key} href={t.href}
             className="flex items-center gap-1.5 px-4 pb-2.5 text-[13px] font-medium transition-colors"
@@ -61,19 +62,7 @@ export default async function CommunityFeedPage({ params, searchParams }: Props)
 
       {/* ── FEED / SAVED / ABOUT ──────────────── */}
       {activeTab === 'about' ? (
-        <div className="rounded-2xl p-6" style={{ background: '#f9f8fd', border: '1px solid #e8e4ff' }}>
-          <h2 className="text-[18px] font-bold mb-3" style={{ color: '#1a1730' }}>
-            {isAr ? 'حول المجتمع' : 'About this community'}
-          </h2>
-          <p className="text-[14px] leading-relaxed" style={{ color: '#46426a' }}>
-            {isAr ? community.descriptionAr : community.description}
-          </p>
-          <div className="mt-4 flex items-center gap-4 text-[13px]" style={{ color: '#9590b8' }}>
-            <span><strong style={{ color: '#1a1730' }}>{community.membersCount}</strong> members</span>
-            <span><strong style={{ color: '#1a1730' }}>{community.activeTodayCount}</strong> online today</span>
-            <span><strong style={{ color: '#1a1730' }}>{adminCount}</strong> admins</span>
-          </div>
-        </div>
+        <ReviewsClient community={community} locale={locale} />
       ) : (
         <FeedSection
           communityName={isAr ? community.nameAr : community.name}
