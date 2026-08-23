@@ -117,6 +117,10 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [chatSearchQuery, setChatSearchQuery] = useState('')
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [emojiOpen, setEmojiOpen] = useState(false)
+  const [gifOpen, setGifOpen] = useState(false)
+  const switcherRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLDivElement>(null)
@@ -126,6 +130,7 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false)
       if (chatRef.current && !chatRef.current.contains(e.target as Node) && !activeChat) setChatOpen(false)
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false)
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) setSwitcherOpen(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -163,15 +168,75 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
 
           <div className="w-px h-6 hidden md:block" style={{ background: '#e8e4ff' }} />
 
-          <Link href={tabHref('feed')} className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-white text-[10px]"
-              style={{ background: community.avatarColor }}>
-              {community.avatarInitials}
-            </div>
-            <span className="font-bold text-[16px] text-gray-900 hidden sm:block">
-              {isAr ? community.nameAr : community.name}
-            </span>
-          </Link>
+          <div className="relative" ref={switcherRef}>
+            <button onClick={() => setSwitcherOpen(v => !v)}
+              className="flex items-center gap-2.5 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-white text-[10px]"
+                style={{ background: community.avatarColor }}>
+                {community.avatarInitials}
+              </div>
+              <span className="font-bold text-[16px] text-gray-900 hidden sm:block">
+                {isAr ? community.nameAr : community.name}
+              </span>
+              <ChevronLeft className="w-3.5 h-3.5 text-gray-400 -rotate-90 hidden sm:block" />
+            </button>
+
+            {switcherOpen && (
+              <div className="absolute left-0 top-[calc(100%+8px)] w-[320px] rounded-2xl overflow-hidden z-[80]"
+                style={{ background: '#fff', boxShadow: '0 20px 60px rgba(26,23,48,.14), 0 0 0 1px rgba(0,0,0,.06)', animation: 'ckSlide .2s ease both' }}>
+                <div className="p-4">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3" style={{ background: '#f5f5f5' }}>
+                    <Search className="w-3.5 h-3.5 text-gray-400" />
+                    <input type="text" placeholder="Search communities..." className="flex-1 text-[12px] bg-transparent outline-none text-gray-700 placeholder:text-gray-400" />
+                  </div>
+
+                  <div className="flex gap-2 mb-3">
+                    <Link href="/communities/create" onClick={() => setSwitcherOpen(false)}
+                      className="flex-1 py-2 text-[12px] font-medium text-center rounded-lg transition-colors hover:bg-[#f9f7ff]"
+                      style={{ border: '1px solid #e8e4ff', color: '#8e78fb' }}>
+                      + Create community
+                    </Link>
+                    <Link href="/communities" onClick={() => setSwitcherOpen(false)}
+                      className="flex-1 py-2 text-[12px] font-medium text-center rounded-lg transition-colors hover:bg-[#f9f7ff]"
+                      style={{ border: '1px solid #e8e4ff', color: '#46426a' }}>
+                      Discover
+                    </Link>
+                  </div>
+
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">My Communities</p>
+                  <div className="space-y-1 max-h-[240px] overflow-y-auto">
+                    {[
+                      { slug: 'motion-masters', name: 'Motion Masters', initials: 'MM', color: '#f97316', role: 'owner' as const },
+                      { slug: 'motion-school', name: 'Motion School', initials: 'MS', color: '#8e78fb', role: 'member' as const },
+                    ].map(c => (
+                      <Link key={c.slug} href={`/communities/${c.slug}`}
+                        onClick={() => setSwitcherOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-gray-50 cursor-pointer"
+                        style={{ background: c.slug === community.slug ? '#f9f8fd' : 'transparent' }}>
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white text-[10px]"
+                          style={{ background: c.color }}>
+                          {c.initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-gray-900 truncate">{c.name}</p>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                            style={{
+                              background: c.role === 'owner' ? '#fef2f2' : '#f0fdf4',
+                              color: c.role === 'owner' ? '#dc2626' : '#16a34a',
+                            }}>
+                            {c.role === 'owner' ? 'Owner' : 'Member'}
+                          </span>
+                        </div>
+                        {c.slug === community.slug && (
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: '#8e78fb' }} />
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="flex-1" />
 
@@ -416,15 +481,57 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
                 onKeyDown={e => { if (e.key === 'Enter') sendChatMessage() }}
                 placeholder={`Message ${activeChat.name.split(' ')[0]}`}
                 className="flex-1 text-[13px] outline-none text-gray-700 placeholder:text-gray-400 bg-transparent" />
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer">
                 <Paperclip className="w-4 h-4" strokeWidth={1.7} />
               </button>
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                <Smile className="w-4 h-4" strokeWidth={1.7} />
-              </button>
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                <span className="text-[11px] font-bold">GIF</span>
-              </button>
+              <div className="relative">
+                <button onClick={() => { setEmojiOpen(v => !v); setGifOpen(false) }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer">
+                  <Smile className="w-4 h-4" strokeWidth={1.7} />
+                </button>
+                {emojiOpen && (
+                  <div className="absolute bottom-full mb-2 right-0 w-[280px] rounded-xl overflow-hidden shadow-xl z-50"
+                    style={{ background: '#fff', border: '1px solid #e8e4ff' }}>
+                    <div className="p-3 grid grid-cols-8 gap-1 max-h-[200px] overflow-y-auto">
+                      {['😀','😂','🥹','😍','🤩','😎','🥳','🤗','😊','🙌','👏','🔥','💜','❤️','✨','💪','👋','🎉','🚀','💯','👀','🤔','😅','🫡','✅','⭐','🎯','💡','🙏','😭','🤣','😤'].map(e => (
+                        <button key={e} onClick={() => { setChatMsg(prev => prev + e); setEmojiOpen(false) }}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-[18px] cursor-pointer transition-colors">
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <button onClick={() => { setGifOpen(v => !v); setEmojiOpen(false) }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer">
+                  <span className="text-[11px] font-bold">GIF</span>
+                </button>
+                {gifOpen && (
+                  <div className="absolute bottom-full mb-2 right-0 w-[300px] rounded-xl overflow-hidden shadow-xl z-50"
+                    style={{ background: '#fff', border: '1px solid #e8e4ff' }}>
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-2" style={{ background: '#f5f5f5' }}>
+                        <Search className="w-3.5 h-3.5 text-gray-400" />
+                        <input type="text" placeholder="Search GIFs (Tenor)" className="flex-1 text-[12px] bg-transparent outline-none text-gray-700 placeholder:text-gray-400" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto">
+                        {['Thumbs up','Celebrate','Thank you','LOL','Mind blown','High five'].map((label, i) => (
+                          <button key={i} onClick={() => { setChatMsg(prev => prev + ` [GIF: ${label}]`); setGifOpen(false) }}
+                            className="rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                            style={{ background: `hsl(${i * 60}, 60%, 85%)`, height: 80 }}>
+                            <div className="w-full h-full flex items-center justify-center text-[11px] font-medium" style={{ color: `hsl(${i * 60}, 40%, 35%)` }}>
+                              {label}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[9px] text-gray-400 text-center mt-2">Powered by Tenor</p>
+                    </div>
+                  </div>
+                )}
+              </div>
               {chatMsg.trim() && (
                 <button onClick={sendChatMessage}
                   className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer" style={{ background: '#8e78fb', color: '#fff' }}>
