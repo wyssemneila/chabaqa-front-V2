@@ -164,18 +164,40 @@ export interface CommunityProduct {
   purchased?: boolean
 }
 
+export interface EventSpeaker {
+  id: string
+  name: string
+  initials: string
+  color: string
+  role?: string
+}
+
+export interface EventTicketVariant {
+  id: string
+  label: string
+  price: number | 'free'
+  perks?: string[]
+}
+
 export interface CommunityEvent {
   id: string
   title: string
   description: string
   date: string
   time: string
+  endTime?: string
   type: 'online' | 'in-person'
+  meetLink?: string
+  location?: string
+  locationUrl?: string
   ticketsTotal: number
   ticketsSold: number
   price: number | 'free'
   currency?: string
   registered?: boolean
+  speakers?: EventSpeaker[]
+  ticketVariants?: EventTicketVariant[]
+  banner?: string | null
 }
 
 export interface CommunityReview {
@@ -480,7 +502,44 @@ const MOTION_SCHOOL: CommunityData = {
     },
   ],
   events: [
-    { id:'1', title:'Motion Design Live Workshop', description:'Hands-on live workshop on advanced motion techniques.', date:'May 15, 2026', time:'19:00', type:'online', ticketsTotal:50, ticketsSold:18, price:0, currency:'TND', registered:false },
+    {
+      id:'1', title:'Motion Design Live Workshop',
+      description:'Hands-on live workshop on advanced motion techniques. Learn keyframing, easing curves, and professional animation workflows used in top studios.',
+      date:'2026-09-03', time:'18:00', endTime:'19:00', type:'online',
+      meetLink:'https://meet.google.com/abc-defg-hij',
+      ticketsTotal:50, ticketsSold:18, price:'free', currency:'TND', registered:false,
+      speakers:[
+        { id:'s1', name:'Mohamed Karim', initials:'MK', color:'#8e78fb', role:'Motion Designer' },
+      ],
+    },
+    {
+      id:'2', title:'Client Acquisition Masterclass',
+      description:'Learn proven strategies to land high-ticket clients as a freelance motion designer. From cold outreach to inbound funnels.',
+      date:'2026-09-06', time:'18:00', endTime:'19:30', type:'online',
+      meetLink:'https://meet.google.com/xyz-uvwx-rst',
+      ticketsTotal:30, ticketsSold:22, price:25, currency:'TND', registered:false,
+      ticketVariants:[
+        { id:'tv1', label:'Standard', price:25 },
+        { id:'tv2', label:'VIP + Recording', price:45, perks:['Full recording access','Bonus templates','Private Q&A'] },
+      ],
+      speakers:[
+        { id:'s1', name:'Mohamed Karim', initials:'MK', color:'#8e78fb', role:'Motion Designer' },
+        { id:'s2', name:'Sara Ben Ali', initials:'SB', color:'#f65887', role:'Business Coach' },
+      ],
+    },
+    {
+      id:'3', title:'Motion Meetup Tunis',
+      description:'In-person networking meetup for motion designers in Tunis. Share your work, get feedback, and connect with the community.',
+      date:'2026-09-10', time:'17:00', endTime:'20:00', type:'in-person',
+      location:'Cogite Coworking, Les Berges du Lac, Tunis',
+      locationUrl:'https://maps.google.com/?q=Cogite+Coworking+Tunis',
+      ticketsTotal:40, ticketsSold:35, price:'free', currency:'TND', registered:true,
+      speakers:[
+        { id:'s1', name:'Mohamed Karim', initials:'MK', color:'#8e78fb', role:'Host' },
+        { id:'s3', name:'Yassine Dridi', initials:'YD', color:'#47c7ea', role:'3D Artist' },
+        { id:'s4', name:'Amira Gharbi', initials:'AG', color:'#ff9b28', role:'UI Animator' },
+      ],
+    },
   ],
   reviews: [
     { id:'1', authorName:'Ahmed Ben Ali', authorInitials:'AB', authorColor:'#8e78fb', rating:5, comment:'Amazing community! Mohamed is a fantastic mentor. The course quality is outstanding and the community is very supportive.', date:'Apr 28, 2026' },
