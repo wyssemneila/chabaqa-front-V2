@@ -137,6 +137,13 @@ export interface CommunitySession {
   booked?: boolean
 }
 
+export interface ProductVariant {
+  id: string
+  label: string
+  labelAr?: string
+  price: number | 'free'
+}
+
 export interface CommunityProduct {
   id: string
   title: string
@@ -145,6 +152,7 @@ export interface CommunityProduct {
   descriptionAr?: string
   price: number | 'free'
   currency?: string
+  variants?: ProductVariant[]
   type: 'ebook' | 'template' | 'preset' | 'other'
   fileType?: 'pdf' | 'video' | 'audio' | 'zip' | 'image' | 'doc' | 'xls' | 'ppt' | 'file'
   thumbnail: string | null
@@ -427,6 +435,11 @@ const MOTION_SCHOOL: CommunityData = {
       id:'1', title:'After Effects Motion Presets Pack',
       description:'50+ pro motion presets — drag-and-drop into any AE 2022+ project. Comes with a demo scene and setup guide.',
       price:29, currency:'TND', type:'preset', fileType:'zip', creator:'Mohamed Trabelsi',
+      variants:[
+        { id:'v1', label:'Starter Pack', labelAr:'الحزمة الأساسية', price:29 },
+        { id:'v2', label:'Pro Pack', labelAr:'الحزمة الاحترافية', price:49 },
+        { id:'v3', label:'Ultimate Bundle', labelAr:'الحزمة الكاملة', price:79 },
+      ],
       thumbnail:null, banner:'/banners-community/community-2-branding.png',
       downloadsCount:12, rating:4.8, ratingCount:8, purchased:false,
     },
