@@ -129,7 +129,7 @@ export default function SessionsClient({ slug, sessions, communityName, locale }
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(session => {
+          {sessions.map(session => {
             const cfg = TYPE_CONFIG[session.type]
             return (
               <Link key={session.id}
