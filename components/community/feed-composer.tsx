@@ -22,7 +22,7 @@ interface Props {
   onPost: (post: FeedPost) => void
 }
 
-const EMOJI_LIST = ['😀','😂','😍','🥳','🔥','💯','👏','🎉','❤️','😎','🤔','👀','💪','🙌','✨','🚀','💡','🎯','⭐','👍','😊','🤩','💜','🫶','😅','🤣','😭','🥹','💀','👑']
+const EMOJI_LIST = ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🫡','🤭','🫢','🤫','🤔','😐','🫤','😶','😏','😒','🙄','😬','😮‍💨','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🥴','😵','🤯','🥳','🥸','😎','🤓','🧐','👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤝','🙏','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💯','💢','💥','✨','🔥','⭐','🎉','🎊','🚀','💪','🎯','💡','📌','✅','❌','⚡','🏆','🥇','💎','🌟']
 
 export default function FeedComposer({ communityName, avatarColor, onPost }: Props) {
   const [open, setOpen] = useState(false)
@@ -260,33 +260,58 @@ export default function FeedComposer({ communityName, avatarColor, onPost }: Pro
 
           {/* Emoji picker */}
           {showEmoji && (
-            <div className="absolute bottom-10 left-0 z-50 bg-white rounded-xl shadow-lg p-3 grid grid-cols-6 gap-1"
-              style={{ border: '1px solid #e8e4ff', width: 220 }}>
-              {EMOJI_LIST.map(e => (
-                <button key={e} onClick={() => insertEmoji(e)}
-                  className="w-8 h-8 rounded-md flex items-center justify-center text-lg hover:bg-gray-100 transition-colors">
-                  {e}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* GIF placeholder */}
-          {showGif && (
-            <div className="absolute bottom-10 left-0 z-50 bg-white rounded-xl shadow-lg p-4"
-              style={{ border: '1px solid #e8e4ff', width: 260 }}>
-              <input type="text" placeholder="Search GIFs..."
-                className="w-full h-8 px-3 rounded-lg text-[12px] bg-gray-50 border border-gray-200 outline-none mb-3 focus:border-[#8e78fb] transition-colors" />
-              <div className="grid grid-cols-2 gap-2">
-                {['🎉','🔥','👏','😂'].map((g, i) => (
-                  <button key={i} onClick={() => { setContent(prev => prev + ' ' + g); setShowGif(false) }}
-                    className="h-16 rounded-lg flex items-center justify-center text-2xl hover:bg-gray-50 transition-colors"
-                    style={{ background: '#f9f8fe', border: '1px solid #f0f0f0' }}>
-                    {g}
+            <div className="absolute bottom-10 left-0 z-50 bg-white rounded-xl shadow-lg p-3"
+              style={{ border: '1px solid #e8e4ff', width: 300 }}>
+              <div className="grid grid-cols-8 gap-1 max-h-[200px] overflow-y-auto">
+                {EMOJI_LIST.map(e => (
+                  <button key={e} onClick={() => insertEmoji(e)}
+                    className="w-8 h-8 rounded-md flex items-center justify-center text-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                    {e}
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-gray-400 mt-2 text-center">GIF search coming soon</p>
+            </div>
+          )}
+
+          {/* GIF picker */}
+          {showGif && (
+            <div className="absolute bottom-10 left-0 z-50 bg-white rounded-xl shadow-lg p-2.5"
+              style={{ border: '1px solid #e8e4ff', width: 300 }}>
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg mb-2" style={{ background: '#f5f5f5' }}>
+                <span className="text-[10px] text-gray-400">🔍</span>
+                <input type="text" placeholder="Search GIFs..."
+                  className="flex-1 text-[12px] bg-transparent outline-none text-gray-700 placeholder:text-gray-400" />
+              </div>
+              <div className="flex gap-1 mb-2 overflow-x-auto">
+                {['Trending','Agree','Applause','Dance','Facepalm','Happy','Laugh','Love','No','OMG','Sad','Thanks','Yes'].map(tag => (
+                  <span key={tag} className="px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:opacity-80 whitespace-nowrap flex-shrink-0"
+                    style={{ background: '#f4f2fc', color: '#6c52f0' }}>{tag}</span>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-1 max-h-[200px] overflow-y-auto">
+                {[
+                  { emoji: '👍', label: 'Thumbs Up', bg: '#e8e0ff' },
+                  { emoji: '👏', label: 'Clapping', bg: '#fef3c7' },
+                  { emoji: '😂', label: 'Laughing', bg: '#dcfce7' },
+                  { emoji: '🎉', label: 'Party', bg: '#fce7f3' },
+                  { emoji: '🔥', label: 'Fire', bg: '#ffedd5' },
+                  { emoji: '❤️', label: 'Heart', bg: '#fee2e2' },
+                  { emoji: '🙌', label: 'Hands Up', bg: '#e0f2fe' },
+                  { emoji: '😍', label: 'Heart Eyes', bg: '#fce7f3' },
+                  { emoji: '💪', label: 'Strong', bg: '#e8e0ff' },
+                  { emoji: '🤣', label: 'ROFL', bg: '#dcfce7' },
+                  { emoji: '🙏', label: 'Please', bg: '#fef3c7' },
+                  { emoji: '🤯', label: 'Mind Blown', bg: '#e0f2fe' },
+                ].map((gif, i) => (
+                  <button key={i} onClick={() => { setContent(prev => prev + ` [GIF: ${gif.label}]`); setShowGif(false) }}
+                    className="rounded-lg overflow-hidden cursor-pointer hover:brightness-95 transition-all flex flex-col items-center justify-center gap-1"
+                    style={{ background: gif.bg, height: 60 }}>
+                    <span className="text-[22px]">{gif.emoji}</span>
+                    <span className="text-[9px] font-medium" style={{ color: '#555' }}>{gif.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[9px] text-gray-300 text-center mt-1.5">Powered by Tenor</p>
             </div>
           )}
         </div>
