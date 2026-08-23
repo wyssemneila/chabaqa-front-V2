@@ -44,6 +44,7 @@ interface ChatUser {
   time: string
   online: boolean
   unread: boolean
+  lastSeen?: string
 }
 
 interface ChatMessage {
@@ -64,9 +65,9 @@ const MOCK_NOTIFICATIONS: Notification[] = [
 
 const MOCK_CHATS: ChatUser[] = [
   { id: '1', name: 'Alaa Elhefnawy', avatar: 'AE', avatarColor: '#10b981', lastMessage: '!أهلا Wyssem 👋 ...عملية، وتقدر تصلحها في ثواني', time: '5d', online: true, unread: true },
-  { id: '2', name: 'Ufuk Ekici', avatar: 'UE', avatarColor: '#94a3b8', lastMessage: 'Hey Wyssem, welcome to AI Video Generator! ✅ Start...', time: '9d', online: false, unread: false },
-  { id: '3', name: 'Money Lab', avatar: 'ML', avatarColor: '#a855f7', lastMessage: '01055617399 💭 ...بعت كلمة تفاصيل على الرقم ده و هيوصلك', time: 'Mar 20', online: false, unread: false },
-  { id: '4', name: 'Terrell Gentry', avatar: 'TG', avatarColor: '#3b82f6', lastMessage: 'Helloo', time: 'Mar 9', online: false, unread: false },
+  { id: '2', name: 'Ufuk Ekici', avatar: 'UE', avatarColor: '#94a3b8', lastMessage: 'Hey Wyssem, welcome to AI Video Generator! ✅ Start...', time: '9d', online: false, unread: false, lastSeen: '3 min ago' },
+  { id: '3', name: 'Money Lab', avatar: 'ML', avatarColor: '#a855f7', lastMessage: '01055617399 💭 ...بعت كلمة تفاصيل على الرقم ده و هيوصلك', time: 'Mar 20', online: false, unread: false, lastSeen: '2 hours ago' },
+  { id: '4', name: 'Terrell Gentry', avatar: 'TG', avatarColor: '#3b82f6', lastMessage: 'Helloo', time: 'Mar 9', online: false, unread: false, lastSeen: '1 day ago' },
 ]
 
 const MOCK_CONVERSATION: ChatMessage[] = [
@@ -104,6 +105,15 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
   const [chatOpen, setChatOpen] = useState(false)
   const [activeChat, setActiveChat] = useState<ChatUser | null>(null)
   const [chatMsg, setChatMsg] = useState('')
+  const [conversation, setConversation] = useState<ChatMessage[]>(MOCK_CONVERSATION)
+
+  function sendChatMessage() {
+    if (!chatMsg.trim()) return
+    const now = new Date()
+    const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()
+    setConversation(prev => [...prev, { id: Date.now().toString(), text: chatMsg.trim(), sender: 'me', time: timeStr }])
+    setChatMsg('')
+  }
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [chatSearchQuery, setChatSearchQuery] = useState('')
@@ -315,6 +325,9 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
                             <span className="text-[11px] text-gray-400">{chat.time}</span>
                           </div>
                           <p className="text-[12px] text-gray-500 mt-0.5 truncate">{chat.lastMessage}</p>
+                          <span className="text-[10px] mt-0.5 block" style={{ color: chat.online ? '#10b981' : '#9ca3af' }}>
+                            {chat.online ? '🟢 Online' : chat.lastSeen ? `Last seen ${chat.lastSeen}` : 'Offline'}
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -362,7 +375,7 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-semibold text-white">{activeChat.name}</p>
-                <p className="text-[11px] text-white/70">{activeChat.online ? 'online now' : 'offline'}</p>
+                <p className="text-[11px] text-white/70">{activeChat.online ? '🟢 Online now' : `Offline · ${activeChat.lastSeen || 'a while ago'}`}</p>
               </div>
               <button className="w-7 h-7 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors">
                 <Maximize2 className="w-3.5 h-3.5" strokeWidth={2} />
@@ -377,7 +390,7 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3" style={{ background: '#fafbfc' }}>
-              {MOCK_CONVERSATION.map(msg => (
+              {conversation.map(msg => (
                 <div key={msg.id}>
                   {msg.date && <p className="text-center text-[11px] text-gray-400 my-3">{msg.date}</p>}
                   <div className={`flex items-end gap-2.5 ${msg.sender === 'me' ? 'flex-row-reverse' : ''}`}>
@@ -400,6 +413,7 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
 
             <div className="px-5 py-3.5 flex items-center gap-2" style={{ borderTop: '1px solid #f0f0f0' }}>
               <input type="text" value={chatMsg} onChange={e => setChatMsg(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') sendChatMessage() }}
                 placeholder={`Message ${activeChat.name.split(' ')[0]}`}
                 className="flex-1 text-[13px] outline-none text-gray-700 placeholder:text-gray-400 bg-transparent" />
               <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
@@ -412,7 +426,8 @@ export function CommunityLayoutClient({ community, locale, children, isAdmin }: 
                 <span className="text-[11px] font-bold">GIF</span>
               </button>
               {chatMsg.trim() && (
-                <button className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#8e78fb', color: '#fff' }}>
+                <button onClick={sendChatMessage}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer" style={{ background: '#8e78fb', color: '#fff' }}>
                   <Send className="w-3.5 h-3.5" strokeWidth={2} />
                 </button>
               )}
