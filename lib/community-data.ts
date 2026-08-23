@@ -121,9 +121,20 @@ export interface CommunityChallenge {
   steps?: ChallengeStep[]
 }
 
+export interface SessionTimeSlot {
+  id: string
+  time: string
+}
+
+export interface SessionAvailableDay {
+  date: string
+  slots: SessionTimeSlot[]
+}
+
 export interface CommunitySession {
   id: string
   title: string
+  description?: string
   mentorName: string
   mentorAvatar: string | null
   mentorInitials: string
@@ -131,10 +142,17 @@ export interface CommunitySession {
   duration: number
   price: number
   currency: string
-  rating: number
-  reviewsCount: number
+  type: 'online' | 'in-person'
   availableSlots: number
   booked?: boolean
+  bookedDate?: string
+  bookedTime?: string
+  whatYouGet?: string[]
+  requirements?: string[]
+  availableDays?: SessionAvailableDay[]
+  banner?: string | null
+  category?: string
+  tags?: string[]
 }
 
 export interface ProductVariant {
@@ -450,7 +468,60 @@ const MOTION_SCHOOL: CommunityData = {
     },
   ],
   sessions: [
-    { id:'1', title:'1-on-1 After Effects Mentorship', mentorName:'Mohamed Trabelsi', mentorAvatar:null, mentorInitials:'MT', mentorColor:'#47c7ea', duration:60, price:50, currency:'TND', rating:5.0, reviewsCount:2, availableSlots:3, booked:false },
+    {
+      id:'1', title:'1-on-1 After Effects Mentorship',
+      description:'Get personalized guidance on your After Effects projects. We will review your work, optimize your workflow, and help you level up your motion design skills.',
+      mentorName:'Mohamed Trabelsi', mentorAvatar:null, mentorInitials:'MT', mentorColor:'#47c7ea',
+      duration:60, price:50, currency:'TND', type:'online', availableSlots:3, booked:false,
+      category:'Mentorship', tags:['After Effects','1-on-1','Portfolio Review'],
+      whatYouGet:['Personalized project review','Workflow optimization tips','Career guidance','Follow-up resources via email'],
+      requirements:['After Effects installed','Your project files ready','Stable internet connection'],
+      availableDays:[
+        { date:'2026-09-01', slots:[{ id:'s1', time:'10:00' },{ id:'s2', time:'14:00' },{ id:'s3', time:'16:00' }] },
+        { date:'2026-09-03', slots:[{ id:'s4', time:'10:00' },{ id:'s5', time:'11:00' }] },
+        { date:'2026-09-05', slots:[{ id:'s6', time:'14:00' },{ id:'s7', time:'16:00' },{ id:'s8', time:'18:00' }] },
+        { date:'2026-09-08', slots:[{ id:'s9', time:'10:00' },{ id:'s10', time:'14:00' }] },
+        { date:'2026-09-10', slots:[{ id:'s11', time:'11:00' },{ id:'s12', time:'15:00' }] },
+        { date:'2026-09-12', slots:[{ id:'s13', time:'10:00' },{ id:'s14', time:'14:00' },{ id:'s15', time:'17:00' }] },
+        { date:'2026-09-15', slots:[{ id:'s16', time:'10:00' },{ id:'s17', time:'16:00' }] },
+        { date:'2026-09-17', slots:[{ id:'s18', time:'11:00' },{ id:'s19', time:'14:00' }] },
+        { date:'2026-09-19', slots:[{ id:'s20', time:'10:00' },{ id:'s21', time:'15:00' },{ id:'s22', time:'18:00' }] },
+      ],
+    },
+    {
+      id:'2', title:'Content Strategy Session',
+      description:'Build a complete content plan tailored to your niche and audience. We will map out your content calendar, identify your pillars, and create a posting strategy that grows your brand.',
+      mentorName:'Mohamed Trabelsi', mentorAvatar:null, mentorInitials:'MT', mentorColor:'#47c7ea',
+      duration:45, price:35, currency:'TND', type:'online', availableSlots:5, booked:true,
+      bookedDate:'2026-09-05', bookedTime:'14:00',
+      category:'Strategy', tags:['Content','Branding','Social Media'],
+      whatYouGet:['Custom content calendar','Platform-specific strategy','Audience analysis','30-day action plan'],
+      requirements:['Your social media accounts','Content examples you like','Goals for the next 3 months'],
+      availableDays:[
+        { date:'2026-09-02', slots:[{ id:'cs1', time:'09:00' },{ id:'cs2', time:'13:00' }] },
+        { date:'2026-09-05', slots:[{ id:'cs3', time:'14:00' },{ id:'cs4', time:'16:00' }] },
+        { date:'2026-09-09', slots:[{ id:'cs5', time:'10:00' },{ id:'cs6', time:'15:00' }] },
+        { date:'2026-09-12', slots:[{ id:'cs7', time:'09:00' },{ id:'cs8', time:'11:00' },{ id:'cs9', time:'14:00' }] },
+        { date:'2026-09-16', slots:[{ id:'cs10', time:'10:00' },{ id:'cs11', time:'13:00' }] },
+      ],
+    },
+    {
+      id:'3', title:'Portfolio Review & Career Coaching',
+      description:'Get honest, constructive feedback on your motion design portfolio. We will identify strengths, gaps, and create a roadmap to land your dream clients or job.',
+      mentorName:'Mohamed Trabelsi', mentorAvatar:null, mentorInitials:'MT', mentorColor:'#47c7ea',
+      duration:30, price:25, currency:'TND', type:'online', availableSlots:8, booked:false,
+      category:'Career', tags:['Portfolio','Career','Freelancing'],
+      whatYouGet:['Portfolio audit & feedback','Industry positioning advice','Client outreach templates','Pricing strategy guide'],
+      requirements:['Portfolio link or PDF','List of target clients/companies','Your current rate card (if any)'],
+      availableDays:[
+        { date:'2026-09-01', slots:[{ id:'pr1', time:'11:00' },{ id:'pr2', time:'15:00' }] },
+        { date:'2026-09-04', slots:[{ id:'pr3', time:'10:00' },{ id:'pr4', time:'14:00' },{ id:'pr5', time:'17:00' }] },
+        { date:'2026-09-08', slots:[{ id:'pr6', time:'09:00' },{ id:'pr7', time:'13:00' }] },
+        { date:'2026-09-11', slots:[{ id:'pr8', time:'11:00' },{ id:'pr9', time:'15:00' },{ id:'pr10', time:'18:00' }] },
+        { date:'2026-09-15', slots:[{ id:'pr11', time:'10:00' },{ id:'pr12', time:'14:00' }] },
+        { date:'2026-09-18', slots:[{ id:'pr13', time:'09:00' },{ id:'pr14', time:'12:00' },{ id:'pr15', time:'16:00' }] },
+      ],
+    },
   ],
   products: [
     {
