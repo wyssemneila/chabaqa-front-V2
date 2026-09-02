@@ -7,6 +7,7 @@ import { getCommunity, isCurrentUserOwner } from '@/lib/community-data'
 import Link from 'next/link'
 import FeedSection from '@/components/community/feed-section'
 import CommunityHero from '@/components/community/community-hero'
+import CommunityAboutHero from '@/components/community/community-about-hero'
 import ReviewsClient from './reviews/reviews-client'
 
 interface Props {
@@ -28,18 +29,20 @@ export default async function CommunityFeedPage({ params, searchParams }: Props)
   return (
     <div className="flex flex-col gap-4">
 
-      {/* ── HERO: always visible ──── */}
-      <CommunityHero
-        name={isAr ? community.nameAr : community.name}
-        description={isAr ? community.descriptionAr : community.description}
-        slug={slug}
-        membersCount={community.membersCount}
-        onlineCount={community.activeTodayCount}
-        adminCount={adminCount}
-        bannerSrc="/images/community/banner.png"
-        avatarInitials={community.avatarInitials}
-        avatarColor={community.avatarColor}
-      />
+      {/* ── HERO: on Feed/Saved. The About tab uses its own compact hero. ──── */}
+      {activeTab !== 'about' && (
+        <CommunityHero
+          name={isAr ? community.nameAr : community.name}
+          description={isAr ? community.descriptionAr : community.description}
+          slug={slug}
+          membersCount={community.membersCount}
+          onlineCount={community.activeTodayCount}
+          adminCount={adminCount}
+          bannerSrc="/images/community/banner.png"
+          avatarInitials={community.avatarInitials}
+          avatarColor={community.avatarColor}
+        />
+      )}
 
       {/* ── FILTER TABS ─────────────────────────── */}
       <div className="flex items-center gap-0 border-b border-gray-100">
@@ -62,7 +65,24 @@ export default async function CommunityFeedPage({ params, searchParams }: Props)
 
       {/* ── FEED / SAVED / ABOUT ──────────────── */}
       {activeTab === 'about' ? (
-        <ReviewsClient community={community} locale={locale} />
+        <div className="flex flex-col gap-4">
+          <CommunityAboutHero
+            name={isAr ? community.nameAr : community.name}
+            tagline={isAr ? community.descriptionAr : community.description}
+            description={isAr ? community.descriptionAr : community.description}
+            banner={community.banner}
+            videoSrc="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+            avatarInitials={community.avatarInitials}
+            avatarColor={community.avatarColor}
+            creatorName={community.creatorName}
+            membersCount={community.membersCount}
+            rating={community.rating}
+            ratingCount={community.ratingCount}
+            access="Public"
+            price="Free"
+          />
+          <ReviewsClient community={community} locale={locale} />
+        </div>
       ) : (
         <FeedSection
           communityName={isAr ? community.nameAr : community.name}
