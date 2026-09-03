@@ -13,6 +13,7 @@ const navGroups = [
       { label: { en: 'Overview',    ar: 'نظرة عامة'   }, href: '/creator',                    icon: 'grid'      },
       { label: { en: 'Settings',    ar: 'الإعدادات'   }, href: '/creator/community-settings', icon: 'gear'      },
       { label: { en: 'Analytics',   ar: 'التحليلات'   }, href: '/creator/analytics',          icon: 'chart'     },
+      { label: { en: 'Reports',     ar: 'التقارير'    }, href: '/creator/reports',            icon: 'report'    },
     ],
   },
   {
