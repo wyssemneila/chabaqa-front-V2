@@ -44,10 +44,11 @@ function hashStr(str: string): number {
 const FIRST = ['Yassin', 'Nour', 'Mariem', 'Skander', 'Farah', 'Aymen', 'Rania', 'Bilel', 'Ines', 'Oussama', 'Hela', 'Wassim', 'Amira', 'Karim', 'Salma', 'Zied']
 const LAST = ['Ben Ali', 'Trabelsi', 'Gharbi', 'Mansour', 'Haddad', 'Jaziri', 'Bouazizi', 'Khelifi', 'Sassi', 'Chaabane']
 
-export const STUDENTS: Student[] = Array.from({ length: 14 }, (_, i) => {
+export const STUDENTS: Student[] = Array.from({ length: 48 }, (_, i) => {
   const rng = seededRng(hashStr('student' + i))
-  const name = `${FIRST[i % FIRST.length]} ${LAST[Math.floor(rng() * LAST.length)]}`
-  return { id: `stu_${i}`, name, hue: Math.floor(rng() * 360) }
+  const first = FIRST[Math.floor(rng() * FIRST.length)]
+  const last = LAST[Math.floor(rng() * LAST.length)]
+  return { id: `stu_${i}`, name: `${first} ${last}`, hue: Math.floor(rng() * 360) }
 })
 
 const CHAPTER_TITLES = [

@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, notFound } from 'next/navigation'
 import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
-import { ArrowLeft, Users, CheckCircle2, PlayCircle, Clock } from 'lucide-react'
+import { ArrowLeft, Users, CheckCircle2, PlayCircle, Clock, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { HeatmapBar, HeatmapLegend } from '../_components/Heatmap'
 import { getCourse, STUDENTS, watchStatsFor, seededRng, fmtDuration } from '../_components/data'
 
@@ -22,6 +22,12 @@ export default function CourseReportPage() {
   const courseId = String(params.courseId || '')
   const course = getCourse(courseId)
   const [chapterIdx, setChapterIdx] = useState(0)
+  const [query, setQuery] = useState('')
+  const [page, setPage] = useState(0)
+  const PAGE_SIZE = 20
+
+  // Reset to the first page whenever the chapter or the search changes.
+  useEffect(() => { setPage(0) }, [chapterIdx, query])
 
   const model = useMemo(() => {
     if (!course) return null
@@ -54,6 +60,13 @@ export default function CourseReportPage() {
   const m = model!
 
   const completed = Math.round((course.enrolled * m.completionRate) / 100)
+
+  // Search + paginate the member list (scales past thousands of members).
+  const q = query.trim().toLowerCase()
+  const filtered = q ? m.rows.filter(r => r.student.name.toLowerCase().includes(q)) : m.rows
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const curPage = Math.min(page, pageCount - 1)
+  const paged = filtered.slice(curPage * PAGE_SIZE, curPage * PAGE_SIZE + PAGE_SIZE)
 
   return (
     <>
@@ -121,10 +134,28 @@ export default function CourseReportPage() {
                 <HeatmapBar segments={m.aggAvg.map(aggScale)} durationSec={m.chapter.durationSec} height={30} />
               </div>
 
-              {/* per student */}
-              <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--t3)' }}>By member ({m.rows.length})</p>
+              {/* per student — search + paginate */}
+              <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t3)' }}>
+                  By member ({filtered.length.toLocaleString()})
+                </p>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--t3)' }} />
+                  <input
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Find a member…"
+                    className="h-9 pl-8 pr-3 rounded-lg text-[13px] w-[220px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--p)]"
+                    style={{ background: 'var(--bg)', border: '1px solid var(--bd)', color: 'var(--t1)' }}
+                  />
+                </div>
+              </div>
+
+              {filtered.length === 0 ? (
+                <p className="text-[13px] py-8 text-center" style={{ color: 'var(--t3)' }}>No member matches “{query}”.</p>
+              ) : (
               <div className="flex flex-col gap-2.5">
-                {m.rows.map(({ student, stats }) => (
+                {paged.map(({ student, stats }) => (
                   <div key={student.id} className="rowcard relative flex items-center gap-3">
                     {/* avatar + name */}
                     <div className="flex items-center gap-2 w-44 shrink-0 min-w-0">
@@ -156,6 +187,33 @@ export default function CourseReportPage() {
                   </div>
                 ))}
               </div>
+              )}
+
+              {/* pagination */}
+              {filtered.length > PAGE_SIZE && (
+                <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: '1px solid var(--bd)' }}>
+                  <span className="text-[12px]" style={{ color: 'var(--t3)' }}>
+                    Showing {curPage * PAGE_SIZE + 1}–{Math.min((curPage + 1) * PAGE_SIZE, filtered.length)} of {filtered.length.toLocaleString()}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setPage(p => Math.max(0, p - 1))}
+                      disabled={curPage === 0}
+                      className="h-8 px-2.5 rounded-lg text-[12px] font-medium flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ border: '1px solid var(--bd)', background: 'var(--white)', color: 'var(--t2)' }}>
+                      <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                    </button>
+                    <span className="text-[12px] font-medium px-2" style={{ color: 'var(--t2)' }}>Page {curPage + 1} of {pageCount}</span>
+                    <button
+                      onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+                      disabled={curPage >= pageCount - 1}
+                      className="h-8 px-2.5 rounded-lg text-[12px] font-medium flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ border: '1px solid var(--bd)', background: 'var(--white)', color: 'var(--t2)' }}>
+                      Next <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
           </main>
