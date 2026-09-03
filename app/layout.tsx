@@ -10,7 +10,8 @@ import { Ga4ScriptGate } from "@/components/ga4-script-gate"
 import { CookieConsentProvider } from "@/components/cookie-consent-provider"
 import { ArabicAutoTranslate } from "@/components/arabic-auto-translate"
 import { PwaServiceWorker } from "@/components/pwa-service-worker"
-import LoadingScreen from "@/components/ui/LoadingScreen"
+import { Suspense } from "react"
+import { TopProgressBar } from "@/components/ui/TopProgressBar"
 import { ThemeProvider } from "@/components/theme-provider"
 import { DEFAULT_LOCALE, getLocaleDirection, isAppLocale, LOCALE_COOKIE } from "@/lib/i18n/config"
 import { getMessagesForLocale } from "@/lib/i18n/messages"
@@ -130,7 +131,7 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <ReactQueryProvider>
-            <LoadingScreen />
+            <Suspense fallback={null}><TopProgressBar /></Suspense>
             {children}
             <PwaServiceWorker />
             <ArabicAutoTranslate />

@@ -26,7 +26,7 @@ export default function LandingPreviewPage() {
   }, [])
 
   if (!draft) {
-    return <div className="min-h-screen flex items-center justify-center text-sm" style={{ color: '#9590b8' }}>Loading preview…</div>
+    return null // no full-screen loader; the top progress bar signals loading
   }
 
   const t = (en: string) => en
