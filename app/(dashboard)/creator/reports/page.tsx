@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useMemo } from 'react'
-import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
 import { Users, CheckCircle2, PlayCircle, ArrowRight } from 'lucide-react'
 import { COURSES, STUDENTS, seededRng } from './_components/data'
@@ -41,10 +40,7 @@ export default function ReportsIndexPage() {
         @keyframes dashFadeUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
       `}</style>
 
-      <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
-        <DashSidebar />
-        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
-          <DashTopbar title="Reports" subtitle="See exactly how members watch and complete your courses" />
+      <DashTopbar title="Reports" subtitle="See exactly how members watch and complete your courses" />
 
           <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
@@ -95,8 +91,6 @@ export default function ReportsIndexPage() {
               ))}
             </div>
           </main>
-        </div>
-      </div>
     </>
   )
 }
