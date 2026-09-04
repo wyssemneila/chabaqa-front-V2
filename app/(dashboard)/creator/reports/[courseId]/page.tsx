@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, notFound } from 'next/navigation'
-import DashSidebar from '@/components/creator-dashboard/DashSidebar'
 import DashTopbar from '@/components/creator-dashboard/DashTopbar'
 import { ArrowLeft, Users, CheckCircle2, PlayCircle, Clock, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { HeatmapBar, HeatmapLegend } from '../_components/Heatmap'
@@ -75,10 +74,7 @@ export default function CourseReportPage() {
         .rowcard:hover .rowpop { opacity:1; transform:translateY(0); pointer-events:auto }
       `}</style>
 
-      <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
-        <DashSidebar />
-        <div className="md:ml-[220px] flex-1 flex flex-col min-h-screen">
-          <DashTopbar title="Course Report" subtitle={course.title} />
+      <DashTopbar title="Course Report" subtitle={course.title} />
 
           <main id="main-content" className="p-7 flex-1" style={{ animation: 'dashFadeUp .4s ease both' }}>
 
@@ -217,8 +213,6 @@ export default function CourseReportPage() {
             </div>
 
           </main>
-        </div>
-      </div>
     </>
   )
 }
